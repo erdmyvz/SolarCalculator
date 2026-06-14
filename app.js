@@ -249,19 +249,29 @@ if (btnBackToMenuFromSim) {
     });
 }
 
+
+
+
+
+
+
+
+
 // ------------------------------------------
-// THREE.JS ANA RENDER MOTORU (ÇOKLU OBJE VE EĞİMLİ ÇATI)
+// THREE.JS ANA RENDER MOTORU (İLERİ DÜZEY MÜHENDİSLİK DETAYLARIYLA)
 // ------------------------------------------
 let scene, camera, renderer, controls;
 
-// Objeler ve Diziler (Çoklu eklenecekler için)
-let objPanels = null, objHP = null, objGasPipe = null;
+// Objeler ve Diziler
+let objPanels = null, objInverterGroup = null, objHP = null, objGasPipe = null;
+let gridCable = null, gridCableMat = null;
 let arrBatteries = [], arrEVs = [];
 
 // Durum Değişkenleri
 let stateGES = false, stateHP = false;
 let countBat = 0, countEV = 0;
-const MAX_BAT = 3; const MAX_EV = 2;
+let currentGrid = 100; // Kablo animasyonunu yönetmek için global şebeke değeri
+const MAX_BAT = 4; const MAX_EV = 2; // Maksimum kapasiteler
 
 function init3DScene() {
     const container = document.getElementById('three-canvas-container');
@@ -272,7 +282,7 @@ function init3DScene() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xdbeafe); 
     camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(20, 15, 25); 
+    camera.position.set(22, 16, 28); // Evi ve direği tam görecek geniş bir açı
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -292,40 +302,61 @@ function init3DScene() {
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
     // 2. Işıklandırma
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambientLight);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
     const sunLight = new THREE.DirectionalLight(0xfffaed, 1.5);
     sunLight.position.set(15, 30, 15);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048; sunLight.shadow.mapSize.height = 2048;
     scene.add(sunLight);
 
-    // 3. Zemin, Ev ve Garaj (Statik Yapılar)
+    // 3. STATİK YAPILAR (Zemin, Ev, Carport)
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x65a30d }));
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
+    // Ev (Genişlik: 8, Yükseklik: 4.5, Derinlik: 6 | Sağ Duvar: x=2, Sol Duvar: x=-6)
     const house = new THREE.Mesh(new THREE.BoxGeometry(8, 4.5, 6), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
     house.position.set(-2, 2.25, 0); house.castShadow = true; house.receiveShadow = true; scene.add(house);
 
-    // DÜZELTME: Eğimi Arttırılmış Çatı
     const roof = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.5, 6.5), new THREE.MeshStandardMaterial({ color: 0x334155 }));
-    roof.position.set(-2, 5.2, 0); 
-    roof.rotation.z = -0.25; // Eğim ciddi şekilde arttırıldı
-    roof.castShadow = true; scene.add(roof);
+    roof.position.set(-2, 5.2, 0); roof.rotation.z = -0.25; roof.castShadow = true; scene.add(roof);
 
-    // DÜZELTME: Genişletilmiş Carport (İki Araçlık Açık Garaj)
-    const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), new THREE.MeshStandardMaterial({ color: 0x78350f })); p1.position.set(7.5, 2, 3); p1.castShadow=true; scene.add(p1);
-    const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), new THREE.MeshStandardMaterial({ color: 0x78350f })); p2.position.set(7.5, 2, -3); p2.castShadow=true; scene.add(p2);
+    const carportMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
+    const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), carportMat); p1.position.set(7.5, 2, 3); p1.castShadow=true; scene.add(p1);
+    const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), carportMat); p2.position.set(7.5, 2, -3); p2.castShadow=true; scene.add(p2);
     const cpRoof = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 7), new THREE.MeshStandardMaterial({ color: 0xcbd5e1, transparent:true, opacity:0.8 }));
     cpRoof.position.set(4.8, 4, 0); cpRoof.castShadow=true; scene.add(cpRoof);
 
-    // DÜZELTME: Doğalgaz Borusu Konumu (Sol Duvar)
-    objGasPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 4, 16), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
-    objGasPipe.position.set(-6.2, 2, 0); objGasPipe.castShadow = true; scene.add(objGasPipe);
+    // 4. ŞEBEKE BAĞLANTISI (Elektrik Direği ve Akım Kablosu)
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 10, 16), new THREE.MeshStandardMaterial({ color: 0x5c4033 }));
+    pole.position.set(-12, 5, -5); pole.castShadow = true; scene.add(pole);
+    const crossbar = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 2.5), new THREE.MeshStandardMaterial({ color: 0x5c4033 }));
+    crossbar.position.set(-12, 9, -5); scene.add(crossbar);
 
-    // 4. ETKİLEŞİMLİ OBJELER (Scale=0 olarak gizli başlarlar)
-    
-    // A) GES Panelleri (Eğimli çatıya uyarlandı)
+    // Direkten eve sarkan animasyonlu şebeke kablosu
+    const cableCurve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(-12, 9, -5), // Direk ucu
+        new THREE.Vector3(-9, 6.5, -2.5), // Sarkma noktası
+        new THREE.Vector3(-6, 4.5, 0) // Evin sol çatısı
+    );
+    const cableGeo = new THREE.BufferGeometry().setFromPoints(cableCurve.getPoints(20));
+    gridCableMat = new THREE.LineDashedMaterial({ color: 0x0ea5e9, linewidth: 2, dashSize: 0.4, gapSize: 0.3 });
+    gridCable = new THREE.Line(cableGeo, gridCableMat);
+    gridCable.computeLineDistances(); // Kesik çizgiler (akım) için zorunlu
+    scene.add(gridCable);
+
+    // 5. ETKİLEŞİMLİ VE YENİ DÜZEN OBJELER
+
+    // A) Gaz Borusu ve Sayacı (Evin Sol Duvarında)
+    objGasPipe = new THREE.Group();
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
+    pipe.position.set(0, 1.25, 0); // Yerden çıkış
+    const meterBox = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.4), new THREE.MeshStandardMaterial({ color: 0x9ca3af }));
+    meterBox.position.set(0, 2.5, 0.1); // Borunun ucundaki kutu
+    objGasPipe.add(pipe); objGasPipe.add(meterBox);
+    objGasPipe.position.set(-6.1, 0, 2); 
+    scene.add(objGasPipe);
+
+    // B) GES Panelleri, İnverter ve Kablolar (Evin Solu ve Çatı)
     objPanels = new THREE.Group();
     const panelMat = new THREE.MeshStandardMaterial({ color: 0x020617, metalness: 0.9, roughness: 0.1 });
     for(let x=0; x<3; x++) {
@@ -335,69 +366,70 @@ function init3DScene() {
             objPanels.add(panel);
         }
     }
-    objPanels.position.set(-2, 5.65, 0); // Eğimli çatının tam üzerine oturtuldu
-    objPanels.rotation.z = -0.25; 
-    objPanels.scale.set(0,0,0);
-    scene.add(objPanels);
+    objPanels.position.set(-2, 5.65, 0); objPanels.rotation.z = -0.25; objPanels.scale.set(0,0,0); scene.add(objPanels);
 
-    // B) Batarya Üretici Fonksiyonu (Evin sağ arka duvarına dizilirler)
+    objInverterGroup = new THREE.Group();
+    const inverter = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 0.3), new THREE.MeshStandardMaterial({ color: 0xcbd5e1 }));
+    inverter.position.set(-6.1, 3.5, -1);
+    const solarCable = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2), new THREE.MeshStandardMaterial({ color: 0x1f2937 }));
+    solarCable.position.set(-6.1, 4.2, -1); // İnverterden çatıya çıkan kablo
+    objInverterGroup.add(inverter); objInverterGroup.add(solarCable);
+    objInverterGroup.scale.set(0,0,0); scene.add(objInverterGroup);
+
+    // C) Bataryalar (Evin SAĞ duvarına, önden arkaya dizilir)
     function createBattery(x, z) {
-        const bat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.5), new THREE.MeshStandardMaterial({ color: 0xf1f5f9 }));
+        const bat = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.2, 1.2), new THREE.MeshStandardMaterial({ color: 0xf1f5f9 }));
         bat.position.set(x, 1.1, z); bat.castShadow = true; bat.scale.set(0,0,0);
         scene.add(bat); return bat;
     }
-    arrBatteries.push(createBattery(2.2, -2.6));
-    arrBatteries.push(createBattery(2.2, -1.9));
-    arrBatteries.push(createBattery(2.2, -1.2));
+    for(let i=0; i<MAX_BAT; i++) {
+        arrBatteries.push(createBattery(2.3, 1.8 - (i * 1.5))); // x=2.3 sabit, Z ekseninde geriye doğru diziliyor
+    }
 
-    // C) EV Üretici Fonksiyonu (Carport'un altına dizilirler)
+    // D) Elektrikli Araçlar (Carport Altında)
     function createEV(x, z) {
         const ev = new THREE.Group();
-        const carBody = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.1, 1.8), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness:0.6 }));
+        const carBody = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.1, 1.8), new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness:0.4 }));
         carBody.position.y = 0.85; carBody.castShadow = true;
         const carTop = new THREE.Mesh(new THREE.BoxGeometry(2, 0.7, 1.6), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
         carTop.position.set(-0.4, 1.7, 0); carTop.castShadow = true;
         ev.add(carBody); ev.add(carTop);
-        const w1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a })); w1.rotation.x = Math.PI/2; w1.position.set(-1.1, 0.4, 0);
-        const w2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a })); w2.rotation.x = Math.PI/2; w2.position.set(1.2, 0.4, 0);
+        const wMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
+        const w1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 16), wMat); w1.rotation.x = Math.PI/2; w1.position.set(-1.1, 0.4, 0);
+        const w2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 16), wMat); w2.rotation.x = Math.PI/2; w2.position.set(1.2, 0.4, 0);
         ev.add(w1); ev.add(w2);
         ev.position.set(x, 0, z); ev.scale.set(0,0,0);
         scene.add(ev); return ev;
     }
-    arrEVs.push(createEV(4.5, -1.5));
-    arrEVs.push(createEV(4.5, 1.5));
+    arrEVs.push(createEV(4.5, -1.5)); arrEVs.push(createEV(4.5, 1.5));
 
-    // D) Isı Pompası Dış Ünite (Sol Duvar)
+    // E) Isı Pompası ve Boyler (Evin SOL duvarında)
     objHP = new THREE.Group();
-    const hpBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x475569 })); hpBody.position.y = 0.9;
-    const hpFan = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.85, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a })); hpFan.rotation.x = Math.PI/2; hpFan.position.set(0, 0.9, 0.2);
-    objHP.add(hpBody); objHP.add(hpFan);
-    objHP.position.set(-6.5, 0, 1.5); // Borunun yanına, sol duvara hizalandı
+    const hpBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x475569 })); hpBody.position.set(0, 0.9, 0);
+    const hpFan = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.85, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a })); hpFan.rotation.x = Math.PI/2; hpFan.position.set(0, 0.9, 0.4);
+    const boiler = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2.2, 16), new THREE.MeshStandardMaterial({color: 0xe2e8f0})); boiler.position.set(1.2, 1.1, 0); // Boyler yanına yerleşti
+    objHP.add(hpBody); objHP.add(hpFan); objHP.add(boiler);
+    objHP.position.set(-6.8, 0, -1); // Sol duvara, gaz sayacının arka tarafına hizalandı
     objHP.scale.set(0,0,0);
     scene.add(objHP);
 
-    // 5. BUTON ETKİLEŞİMLERİ (Event Listeners)
+    // 6. BUTON ETKİLEŞİMLERİ
     const btnGes = document.getElementById('btnSimGES');
     btnGes.addEventListener('click', () => { 
         stateGES = !stateGES; 
-        btnGes.classList.toggle('bg-green-600'); btnGes.classList.toggle('bg-indigo-600'); 
-        updateScore(); 
+        btnGes.classList.toggle('bg-green-600'); btnGes.classList.toggle('bg-indigo-600'); updateScore(); 
     });
-
     const btnHP = document.getElementById('btnSimHP');
     btnHP.addEventListener('click', () => { 
         stateHP = !stateHP; 
-        btnHP.classList.toggle('bg-green-600'); btnHP.classList.toggle('bg-indigo-600'); 
-        updateScore(); 
+        btnHP.classList.toggle('bg-green-600'); btnHP.classList.toggle('bg-indigo-600'); updateScore(); 
     });
 
     document.getElementById('btnSimBatPlus').addEventListener('click', () => { if(countBat < MAX_BAT) { countBat++; updateScore(); }});
     document.getElementById('btnSimBatMinus').addEventListener('click', () => { if(countBat > 0) { countBat--; updateScore(); }});
-    
     document.getElementById('btnSimEVPlus').addEventListener('click', () => { if(countEV < MAX_EV) { countEV++; updateScore(); }});
     document.getElementById('btnSimEVMinus').addEventListener('click', () => { if(countEV > 0) { countEV--; updateScore(); }});
 
-    // Animasyon Döngüsü
     window.addEventListener('resize', onWindowResize, false);
     animate();
 }
@@ -413,22 +445,20 @@ function onWindowResize() {
 function updateScore() {
     let score = 0; let grid = 100; let carbon = "Yüksek"; let fossil = "Aktif";
     
-    // UI Yazı Güncellemeleri
     document.getElementById('batCountDisplay').innerText = countBat;
     document.getElementById('evCountDisplay').innerText = countEV;
 
     if (stateGES) { score += 30; grid -= 30; carbon = "Orta"; }
-    
     score += countBat * 10; grid -= countBat * 10;
     if (countBat > 0 && stateGES) carbon = "Düşük";
-    
     score += countEV * 10;
     if (countEV > 0) carbon = "Çok Düşük";
-    
     if (stateHP) { score += 20; grid = 0; fossil = "İPTAL EDİLDİ"; carbon = "SIFIR (Net-Zero)"; }
 
+    currentGrid = Math.max(0, grid); // Animasyon için şebeke bağımlılığını tut
+
     document.getElementById('scoreDisplay').innerText = "%" + score;
-    document.getElementById('gridDepDisplay').innerText = "%" + Math.max(0, grid);
+    document.getElementById('gridDepDisplay').innerText = "%" + currentGrid;
     document.getElementById('fossilDisplay').innerText = fossil;
     document.getElementById('carbonDisplay').innerText = carbon;
 
@@ -440,7 +470,7 @@ function updateScore() {
     else sColor.classList.add('bg-green-600');
 }
 
-// Büyüme ve Küçülme (Pop-up) Animasyonu için LERP fonksiyonu
+// Büyüme (Pop-up) Animasyonu
 function lerpScale(obj, target, speed) {
     if(!obj) return;
     obj.scale.x += (target - obj.scale.x) * speed;
@@ -451,12 +481,10 @@ function lerpScale(obj, target, speed) {
 function animate() {
     requestAnimationFrame(animate);
     
+    // Obje Animasyonları
     if (objPanels) lerpScale(objPanels, stateGES ? 1 : 0, 0.1);
-    
-    // Bataryaları sayaça göre tek tek büyüt/küçült
+    if (objInverterGroup) lerpScale(objInverterGroup, stateGES ? 1 : 0, 0.1);
     arrBatteries.forEach((bat, i) => { lerpScale(bat, i < countBat ? 1 : 0, 0.1); });
-    
-    // Araçları sayaça göre tek tek büyüt/küçült
     arrEVs.forEach((ev, i) => { lerpScale(ev, i < countEV ? 1 : 0, 0.1); });
     
     if (objHP && objGasPipe) {
@@ -464,9 +492,27 @@ function animate() {
         lerpScale(objGasPipe, stateHP ? 0 : 1, 0.1); 
     }
 
+    // Şebeke Kablosu Akım (Hareket) Animasyonu
+    if (gridCableMat) {
+        gridCableMat.dashOffset -= 0.05; // Çizgileri hareket ettirir
+    }
+    
+    // Şebeke bağımlılığı %0 olduğunda kabloyu sil (gizle)
+    if (gridCable) {
+        gridCable.visible = currentGrid > 0;
+    }
+
     controls.update();
     renderer.render(scene, camera);
 }
+
+
+
+
+
+
+
+
 // ==========================================
 // LOKAL DÜZELTME: DETAYLI RAPOR METNİ İÇEREN E-POSTA MOTORU
 // ==========================================
