@@ -126,7 +126,7 @@ async function fetchUsersForAdmin() {
 }
 
 // ==========================================
-// GÜÇ HESAPLAYICI DÜZELTİLMİŞ SEÇİM MANTIĞI
+// GÜÇ HESAPLAYICI - SEÇİM VE LİSTELEME
 // ==========================================
 const monthsGrid = document.getElementById('monthsGrid');
 ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"].forEach(m => {
@@ -134,25 +134,16 @@ const monthsGrid = document.getElementById('monthsGrid');
     if(monthsGrid) monthsGrid.appendChild(div);
 });
 
-// RADYO BUTONLARI İÇİN HATASIZ MANTIK
-const radioInputs = document.querySelectorAll('input[name="inputType"]');
-const sectionIds = ['monthlyInputSection', 'yearlyInputSection', 'applianceInputSection'];
-
-radioInputs.forEach(radio => {
+// Radyo Butonu ile Sekme Geçişleri
+document.querySelectorAll('input[name="inputType"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
-        // Tüm kutuları gizle
-        sectionIds.forEach(secId => {
-            const el = document.getElementById(secId);
-            if (el) el.classList.add('hidden');
-        });
-        
-        // Sadece seçileni göster
-        const targetId = e.target.value + 'InputSection';
-        const targetEl = document.getElementById(targetId);
+        document.querySelectorAll('.input-section').forEach(sec => sec.classList.add('hidden'));
+        const targetEl = document.getElementById(e.target.value + 'InputSection');
         if (targetEl) targetEl.classList.remove('hidden');
     });
 });
 
+// Eşya Ekleme Mantığı ve Varsayılan Liste
 const appliancesWrapper = document.getElementById('appliancesWrapper');
 function addApplianceRow(name = "", qty = 1, kw = "", hrs = "") {
     const row = document.createElement('div'); row.className = "appliance-row grid grid-cols-12 gap-2 items-center mt-2";
@@ -161,7 +152,7 @@ function addApplianceRow(name = "", qty = 1, kw = "", hrs = "") {
 }
 
 if(document.getElementById('btnAddAppliance')) {
-    // Sayfa açıldığında standart olarak yüklenecek cihazların tam listesi
+    // Sayfa açıldığında standart yüklenecek cihazlar
     const defaultAppliances = [
         { name: 'Buzdolabı', qty: 1, kw: 0.15, hrs: 240 }, 
         { name: 'Televizyon', qty: 1, kw: 0.1, hrs: 120 }, 
@@ -169,23 +160,19 @@ if(document.getElementById('btnAddAppliance')) {
         { name: 'Bulaşık Makinesi', qty: 1, kw: 1.2, hrs: 15 },
         { name: 'Aydınlatma (Ev)', qty: 10, kw: 0.01, hrs: 150 }
     ];
-    
-    // Listeyi döngüye sok ve ekrana yazdır
     defaultAppliances.forEach(app => addApplianceRow(app.name, app.qty, app.kw, app.hrs));
     
-    // Özel Cihaz Ekle butonuna tıklandığında boş bir satır oluştur
     document.getElementById('btnAddAppliance').addEventListener('click', () => addApplianceRow());
-    
-    // Hazır açılır listeden seçim yapıldığında değerleri parçala ve satır olarak ekle
     document.getElementById('quickAddSelect').addEventListener('change', e => { 
         if (e.target.value) { 
             const [name, qty, kw, hrs] = e.target.value.split('|'); 
             addApplianceRow(name, qty, kw, hrs); 
-            e.target.value = ""; // Seçimi sıfırla ki tekrar aynı cihaz seçilebilsin
+            e.target.value = ""; 
         } 
     });
 }
 
+// Gelecek Yükler
 if(document.getElementById('hasFutureLoads')) {
     document.getElementById('hasFutureLoads').addEventListener('change', e => document.getElementById('futureLoadsContainer').classList.toggle('hidden', !e.target.checked));
     document.getElementById('checkEV').addEventListener('change', e => document.getElementById('wrapEV').classList.toggle('hidden', !e.target.checked));
@@ -266,7 +253,6 @@ document.getElementById('btnSendEmail').addEventListener('click', () => {
         tahmini_fatura: sonFatura.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL"
     };
 
-    // Gerçek EmailJS Gönderim Kodu
     emailjs.send('service_en0v19k', 'template_2z189ds', templateParams)
         .then(function(response) {
             alert(emailTo + " adresine analiz sonucu başarıyla iletildi!");

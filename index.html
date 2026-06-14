@@ -30,14 +30,8 @@
                 </div>
 
                 <form id="loginForm" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">E-posta Adresi</label>
-                        <input type="email" id="loginEmail" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="ornek@firma.com">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Şifre</label>
-                        <input type="password" id="loginPassword" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="••••••••">
-                    </div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-1">E-posta Adresi</label><input type="email" id="loginEmail" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-1">Şifre</label><input type="password" id="loginPassword" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
                     <button type="submit" id="btnLoginSubmit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow transition mt-2">Sisteme Giriş Yap</button>
                 </form>
 
@@ -47,7 +41,7 @@
                         <div><label class="block text-sm font-medium text-gray-700 mb-1">Soyad</label><input type="text" id="regSurname" required class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
                     </div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">Firma İsmi</label><input type="text" id="regCompany" required class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
-                    <div><label class="block text-sm font-medium text-gray-700 mb-1">Telefon</label><input type="tel" id="regPhone" required class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="5XX XXX XX XX"></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-1">Telefon</label><input type="tel" id="regPhone" required class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">E-posta Adresi</label><input type="email" id="regEmail" required class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
                     <div><label class="block text-sm font-medium text-gray-700 mb-1">Şifre (Min 6 Karakter)</label><input type="password" id="regPassword" required minlength="6" class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></div>
                     <button type="submit" id="btnRegisterSubmit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow transition mt-2">Hesap Oluştur</button>
@@ -76,7 +70,7 @@
         </div>
 
         <div id="mainMenu" class="w-full max-w-6xl mx-auto animate-fade-in">
-            <h1 class="text-3xl font-extrabold text-gray-800 mb-2">EPC Merkezim</h1>
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-2">SolarEPC Merkezi</h1>
             <p class="text-gray-500 mb-8">Tüm operasyon süreçlerinizi tek ekrandan yönetin.</p>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -90,12 +84,12 @@
                     <p class="text-blue-100 text-sm">Müşterilerinizin tüketim analizini yapın ve PDF teklifi sunun.</p>
                 </div>
                 
-                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Reklam ve Pazarlama</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div><p class="text-blue-100 text-sm">Reklam ve pazarlama süreçlerinizi yönetin.</p></div>
-                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">İlk Teklif Oluşturma</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div><p class="text-blue-100 text-sm">Sahada hızlı teklif oluşturun.</p></div>
-                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Keşif Sonrası Teklif</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div><p class="text-blue-100 text-sm">Keşif sonrası tekliflerinizi oluşturun.</p></div>
-                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Sözleşme Hazırlama</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div><p class="text-blue-100 text-sm">Sözleşmeleri hazırlayın ve onaylayın.</p></div>
-                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Yasal Süreç Evrakları</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div><p class="text-blue-100 text-sm">Yasal süreçlerde gerekli evrakları hazırlayın.</p></div>
-                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">İşletme ve Bakım (O&M)</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div><p class="text-blue-100 text-sm">İşletme ve bakım süreçlerinizi yönetin.</p></div>
+                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Reklam ve Pazarlama</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
+                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">İlk Teklif Oluşturma</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
+                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Keşif Sonrası Teklif</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
+                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Sözleşme Hazırlama</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
+                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Yasal Süreç Evrakları</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
+                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">İşletme ve Bakım (O&M)</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
             </div>
         </div>
 
@@ -126,7 +120,7 @@
                 <span class="mx-2 text-gray-400">/</span><span class="text-gray-800 font-bold">Güç Hesaplayıcı</span>
             </div>
 
-            <h1 class="text-2xl font-bold text-gray-800 mb-6">Tüketim Analizi</h1>
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">Tüketim İhtiyacı Analizi</h1>
             <div class="space-y-6">
                 
                 <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
@@ -141,19 +135,19 @@
                             <span class="text-gray-700 font-medium">Fatura (12 Aylık Detaylı)</span>
                         </label>
                         <label class="flex items-center space-x-2 cursor-pointer bg-blue-100 px-3 py-1.5 rounded-lg text-blue-800 transition">
-                            <input type="radio" name="inputType" value="appliances" class="w-4 h-4 text-blue-600">
-                            <span class="font-bold text-sm">OFF Grid (Eşya Bazlı)</span>
+                            <input type="radio" name="inputType" value="appliance" class="w-4 h-4 text-blue-600">
+                            <span class="font-bold text-sm">Yeni Kurulum (Eşya Bazlı)</span>
                         </label>
                     </div>
                     
-                    <div id="monthlyInputSection">
+                    <div id="monthlyInputSection" class="input-section">
                         <label class="block text-gray-600 text-sm mb-1">Aylık Ortalama Tüketim (kWh)</label>
                         <input type="number" id="averageMonthlyLoad" value="350" class="w-full md:w-1/2 p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     
-                    <div id="yearlyInputSection" class="hidden"><div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="monthsGrid"></div></div>
+                    <div id="yearlyInputSection" class="input-section hidden"><div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="monthsGrid"></div></div>
                     
-                    <div id="applianceInputSection" class="hidden border-t border-gray-200 pt-5 mt-2">
+                    <div id="applianceInputSection" class="input-section hidden border-t border-gray-200 pt-5 mt-2">
                         <p class="text-sm text-gray-500 mb-4">Evde kullanılacak eşyaların güç ve çalışma saatlerini belirleyin:</p>
                         <div class="grid grid-cols-12 gap-2 mb-2 text-xs font-bold text-gray-500 text-center">
                             <div class="col-span-4 text-left">Cihaz Adı</div>
