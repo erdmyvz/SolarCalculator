@@ -427,7 +427,7 @@ document.getElementById('btnSendEmail').addEventListener('click', async () => {
     };
 
     try {
-        await emailjs.send('service_en0v19k', 'template_2z189ds', templateParams);
+        await emailjs.send('service_en0v19k', 'template_d57vo2b', templateParams);
         alert(emailTo + " adresine detaylı ekran veri özeti mail olarak uçuruldu!");
         document.getElementById('customerEmail').value = ''; 
     } catch (error) {
