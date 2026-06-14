@@ -404,6 +404,15 @@ document.getElementById('btnDownloadPDF').addEventListener('click', () => {
                 <p><strong>epcmerkezim © ${new Date().getFullYear()}</strong></p>
             </div>
         </div>
+    // 6. Tarayıcının Kendi PDF/Yazdırma Ekranını Tetikle
+    setTimeout(() => {
+        window.print();
+        
+        // ÇÖZÜM: Yazdırma ekranı kapandığında arka plandaki raporu tamamen sil
+        if (printArea) {
+            printArea.remove();
+        }
+    }, 200);
     `;
 
     // 6. Tarayıcının Kendi PDF/Yazdırma Ekranını Tetikle
