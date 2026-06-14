@@ -380,7 +380,6 @@ document.getElementById('btnDownloadPDF').addEventListener('click', () => {
     // 5. Tertemiz Resmi Belge Tasarımı (HTML & Inline CSS)
     printArea.innerHTML = `
         <div style="font-family: Arial, sans-serif; color: #222; max-width: 800px; margin: 0 auto; line-height: 1.5;">
-            
             <div style="border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px;">
                 <div style="float: right; text-align: right; font-size: 12px; color: #666;">
                     <strong>Tarih:</strong> ${tarih}<br>
@@ -389,20 +388,16 @@ document.getElementById('btnDownloadPDF').addEventListener('click', () => {
                 <h1 style="color: #2563eb; margin: 0; font-size: 24px;">epcmerkezim</h1>
                 <p style="margin: 0; font-size: 14px; color: #555;">Güneş Enerjisi Tüketim Analiz Raporu</p>
             </div>
-            
             <p><strong>Sayın ${musteriAdi},</strong></p>
             <p style="font-size: 14px; color: #444;">Sistem üzerinden girmiş olduğunuz parametrelere göre hesaplanan teknik ve mali simülasyon özetiniz aşağıda yer almaktadır.</p>
-            
             <div style="margin-top: 30px;">
                 <h3 style="color: #2563eb; border-bottom: 1px solid #ddd; padding-bottom: 5px; font-size: 16px;">1. Mevcut Tüketim Parametreleri</h3>
                 ${yontemHTML}
             </div>
-
             <div style="margin-top: 20px;">
                 <h3 style="color: #16a34a; border-bottom: 1px solid #ddd; padding-bottom: 5px; font-size: 16px;">2. Gelecek İlave Yük Senaryoları</h3>
                 ${gelecekHTML}
             </div>
-
             <div style="margin-top: 40px;">
                 <h3 style="background-color: #1f2937; color: white; padding: 10px; font-size: 16px; margin: 0;">3. Sonuç ve Projeksiyon</h3>
                 <table style="width: 100%; border-collapse: collapse; font-size: 16px;">
@@ -420,25 +415,19 @@ document.getElementById('btnDownloadPDF').addEventListener('click', () => {
                     </tr>
                 </table>
             </div>
-
             <div style="margin-top: 50px; padding-top: 20px; border-top: 1px dashed #ccc; font-size: 11px; color: #777; text-align: center;">
                 <p>Bu rapor ön fizibilite amacıyla üretilmiştir. Kesin değerler ve mekanik uygunluk saha keşfi sonrasında netleşecektir.</p>
                 <p><strong>epcmerkezim © ${new Date().getFullYear()}</strong></p>
             </div>
         </div>
-    // 6. Tarayıcının Kendi PDF/Yazdırma Ekranını Tetikle
-    setTimeout(() => {
-        window.print();
-        
-        // ÇÖZÜM: Yazdırma ekranı kapandığında arka plandaki raporu tamamen sil
-        if (printArea) {
-            printArea.remove();
-        }
-    }, 200);
     `;
 
     // 6. Tarayıcının Kendi PDF/Yazdırma Ekranını Tetikle
     setTimeout(() => {
         window.print();
-    }, 200); // Raporun DOM'a yerleşmesi için milisaniyelik kısa bir bekleme
+        // ÇÖZÜM: Yazdırma ekranı kapandığında arka plandaki raporu tamamen sil
+        if (printArea) {
+            printArea.remove();
+        }
+    }, 200);
 });
