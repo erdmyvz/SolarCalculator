@@ -221,16 +221,24 @@ if(document.getElementById('btnCalculate')) {
 }
 
 // ==========================================
-// 3D SİMÜLASYON GEÇİŞLERİ (YENİ)
+// 3D SİMÜLASYON GEÇİŞLERİ VE RENDER MOTORU
 // ==========================================
 const simulationModule = document.getElementById('simulationModule');
 const btnGoSimulation = document.getElementById('btnGoSimulation');
 const btnBackToMenuFromSim = document.getElementById('btnBackToMenuFromSim');
 
+let is3DInitialized = false; // 3D'nin birden fazla kez yüklenmesini engeller
+
 if (btnGoSimulation) {
     btnGoSimulation.addEventListener('click', () => {
         document.getElementById('mainMenu').classList.add('hidden');
         simulationModule.classList.remove('hidden');
+        
+        // Menüye tıklandığında 3D dünyayı başlat
+        if (!is3DInitialized) {
+            init3DScene();
+            is3DInitialized = true;
+        }
     });
 }
 
@@ -241,6 +249,96 @@ if (btnBackToMenuFromSim) {
     });
 }
 
+// ------------------------------------------
+// THREE.JS ANA RENDER MOTORU BAŞLATMA
+// ------------------------------------------
+let scene, camera, renderer, controls;
+
+function init3DScene() {
+    const container = document.getElementById('three-canvas-container');
+    const loadingUI = document.getElementById('loading3D');
+    if (!container) return;
+
+    // 1. Sahneyi Oluştur (Uzay boşluğu rengi)
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0f172a); 
+
+    // 2. Kamerayı Ayarla
+    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(12, 10, 15); // Kamerayı sağ üst çapraza koy
+
+    // 3. Render Motorunu Başlat
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.shadowMap.enabled = true; // Gölgeleri aç
+    
+    // Yükleniyor yazısını gizle ve Canvas'ı (3D ekranı) kutuya ekle
+    if (loadingUI) loadingUI.style.display = 'none';
+    
+    // Canvas'ı UI elemanlarının arkasında (en altta) tutmak için absolute yapıyoruz
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = '0';
+    renderer.domElement.style.left = '0';
+    renderer.domElement.style.zIndex = '0';
+    container.appendChild(renderer.domElement);
+
+    // 4. Mouse Kontrolleri (OrbitControls - Döndürme ve Yakınlaştırma)
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; // Kaygan, pürüzsüz dönüş hissiyatı
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05; // Kameranın yerin altına inmesini engelle
+
+    // 5. Işıklandırma (Güneş ve Çevre Işığı)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Genel aydınlatma
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+    sunLight.position.set(10, 20, 10); // Güneşin konumu
+    sunLight.castShadow = true; // Güneş gölge yapsın
+    scene.add(sunLight);
+
+    // 6. 3D Objeler: Zemin (Çim)
+    const groundGeo = new THREE.PlaneGeometry(40, 40);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x166534 }); // Koyu yeşil
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2; // Yere yatır
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // 7. 3D Objeler: Temsili Evin Gövdesi
+    const houseGeo = new THREE.BoxGeometry(5, 4, 6);
+    const houseMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc }); // Beyaz duvar
+    const house = new THREE.Mesh(houseGeo, houseMat);
+    house.position.y = 2; // Yarısı yerin altında kalmasın diye yukarı kaldır
+    house.castShadow = true;
+    house.receiveShadow = true;
+    scene.add(house);
+
+    // 8. 3D Objeler: Temsili Evin Çatısı
+    const roofGeo = new THREE.ConeGeometry(4.5, 2.5, 4);
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x7f1d1d }); // Koyu kırmızı kiremit
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.y = 5.25; // Gövdenin tam üstüne koy
+    roof.rotation.y = Math.PI / 4; // Kare gövdeye tam oturması için 45 derece çevir
+    roof.castShadow = true;
+    scene.add(roof);
+
+    // Animasyon Döngüsünü Başlat
+    animate();
+
+    // Ekran boyutu değişirse kamerayı güncelle
+    window.addEventListener('resize', () => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update(); // Mouse hareketlerini güncelle
+    renderer.render(scene, camera);
+}
 
 // ==========================================
 // LOKAL DÜZELTME: DETAYLI RAPOR METNİ İÇEREN E-POSTA MOTORU
