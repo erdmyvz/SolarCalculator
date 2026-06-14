@@ -245,9 +245,9 @@ document.getElementById('btnDownloadPDF').addEventListener('click', () => {
 });
 
 // ==========================================
-// E-POSTA GÖNDERME İŞLEMİ (EmailJS)
+// E-POSTA GÖNDERME İŞLEMİ (EmailJS) - GÜNCEL
 // ==========================================
-document.getElementById('btnSendEmail').addEventListener('click', () => {
+document.getElementById('btnSendEmail').addEventListener('click', async () => {
     const emailTo = document.getElementById('customerEmail').value;
     if(!emailTo || !emailTo.includes('@')) {
         alert("Lütfen geçerli bir müşteri e-posta adresi girin.");
@@ -258,6 +258,7 @@ document.getElementById('btnSendEmail').addEventListener('click', () => {
     btn.textContent = "Gönderiliyor...";
     btn.disabled = true;
 
+    // EmailJS'e gönderilecek veriler (Süslü parantez içindeki kelimelerle eşleşmeli)
     const templateParams = {
         to_email: emailTo,
         aylik_tuketim: Math.round(sonAylik).toLocaleString('tr-TR') + " kWh",
@@ -265,15 +266,22 @@ document.getElementById('btnSendEmail').addEventListener('click', () => {
         tahmini_fatura: sonFatura.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL"
     };
 
-    emailjs.send('service_en0v19k', 'template_d57vo2b', templateParams)
-        .then(function(response) {
-            alert(emailTo + " adresine analiz sonucu başarıyla iletildi!");
-            btn.textContent = "✉️ Analizi Mail At";
-            btn.disabled = false;
-            document.getElementById('customerEmail').value = ''; 
-        }, function(error) {
-            alert("E-posta gönderilirken bir hata oluştu: Lütfen EmailJS ID'lerini doğrulayın.");
-            btn.textContent = "✉️ Analizi Mail At";
-            btn.disabled = false;
-        });
+    try {
+        // DİKKAT: Buradaki 'service_...' ve 'template_...' kısımlarını kendi paneline göre değiştirmelisin!
+        await emailjs.send('service_en0v19k', 'template_2z189ds', templateParams);
+        
+        // İşlem başarılı olursa:
+        alert(emailTo + " adresine analiz sonucu başarıyla iletildi!");
+        document.getElementById('customerEmail').value = ''; 
+        
+    } catch (error) {
+        // İşlem başarısız olursa (örneğin ID'ler yanlışsa):
+        console.error("EmailJS Hatası:", error);
+        alert("E-posta gönderilemedi! Lütfen EmailJS Public Key, Service ID ve Template ID değerlerinizi kontrol edin.");
+        
+    } finally {
+        // Hata da olsa başarılı da olsa butonu her zaman eski haline getir (Kilitlenmeyi önler)
+        btn.textContent = "✉️ Analizi Mail At";
+        btn.disabled = false;
+    }
 });
