@@ -709,3 +709,138 @@ document.getElementById('btnDownloadPDF').addEventListener('click', () => {
         }
     }, 200);
 });
+
+// ==========================================
+// EV & SOLAR ENTEGRASYON HESAPLAYICISI (HIZLI & REAKTİF MOTOR)
+// ==========================================
+const evCalcModule = document.getElementById('evCalcModule');
+const btnGoEVCalc = document.getElementById('btnGoEVCalc');
+const btnBackToMenuFromEV = document.getElementById('btnBackToMenuFromEV');
+
+// Global Sabitler
+let activeTab = 'tabA';
+const DAILY_SUN_HOURS = 4;
+const KWP_TO_M2_RATIO = 5; // 1 kWp = 5 m2
+const ROOF_USABILITY_RATIO = 0.8;
+
+// Menü Geçişleri
+if(btnGoEVCalc) {
+    btnGoEVCalc.addEventListener('click', () => {
+        document.getElementById('mainMenu').classList.add('hidden');
+        evCalcModule.classList.remove('hidden');
+        calculateEVSolar(); // Modül açıldığında hemen hesapla
+    });
+}
+if(btnBackToMenuFromEV) {
+    btnBackToMenuFromEV.addEventListener('click', () => {
+        evCalcModule.classList.add('hidden');
+        document.getElementById('mainMenu').classList.remove('hidden');
+    });
+}
+
+// Sekme (Tab) Yönetimi
+document.querySelectorAll('.ev-tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.ev-tab-btn').forEach(b => {
+            b.classList.remove('bg-teal-600', 'text-white');
+            b.classList.add('bg-gray-100', 'text-gray-600');
+        });
+        e.target.classList.remove('bg-gray-100', 'text-gray-600');
+        e.target.classList.add('bg-teal-600', 'text-white');
+
+        document.querySelectorAll('.ev-tab-content').forEach(content => content.classList.add('hidden'));
+        activeTab = e.target.getAttribute('data-target');
+        document.getElementById(activeTab).classList.remove('hidden');
+
+        calculateEVSolar(); // Sekme değiştiğinde anında hesapla
+    });
+});
+
+// Tüm girdiler için dinleyici (Bir harf/rakam bile değişse tetikler)
+document.querySelectorAll('.ev-reactive-input').forEach(input => {
+    input.addEventListener('input', calculateEVSolar);
+});
+
+// ANA MATEMATİK MOTORU
+function calculateEVSolar() {
+    // 1. Dinamik Fiyatı Ekrândan Çek
+    const dynamicTariffPrice = parseFloat(document.getElementById('evCalcTariff').value) || 2.50;
+
+    // 2. Araç Parametreleri
+    const evRange = parseFloat(document.getElementById('evCalcRange').value) || 1;
+    const evBattery = parseFloat(document.getElementById('evCalcBattery').value) || 1;
+    const evConsumption = parseFloat(document.getElementById('evCalcConsumption').value) || 1;
+    const evACSpeed = parseFloat(document.getElementById('evCalcACSpeed').value) || 1;
+    const evSocket = document.getElementById('evCalcSocket').value;
+
+    // Şarj Önerisi Metni
+    document.getElementById('evChargerRecommendation').innerHTML = 
+        `💡 <strong>Aracınız için önerilen:</strong> ${evSocket} soket tipine sahip, minimum ${evACSpeed} kW çıkış verebilen evsel AC şarj istasyonudur.`;
+
+    // C Sekmesi: Tüketime Göre Fatura Tahmini (Fiyat değiştikçe burası da değişir)
+    const inputKwhVal = parseFloat(document.getElementById('evInputKwh').value) || 0;
+    document.getElementById('dynamicBillEquiv').textContent = (inputKwhVal * dynamicTariffPrice).toFixed(2) + " TL";
+
+    // 3. Hesaplama Değişkenleri
+    let requiredPowerKwp = 0;
+    let requiredAreaM2 = 0;
+    let dailyProductionKwh = 0;
+    let showRoofWarning = false;
+
+    // Çatı Kullanım Limiti
+    const userTotalRoof = parseFloat(document.getElementById('evInputRoof').value) || 0;
+    const maxUsableRoof = userTotalRoof * ROOF_USABILITY_RATIO;
+
+    // 4. Senaryolara Göre Algoritmalar
+    if (activeTab === 'tabA') {
+        requiredAreaM2 = maxUsableRoof;
+        requiredPowerKwp = requiredAreaM2 / KWP_TO_M2_RATIO;
+        dailyProductionKwh = requiredPowerKwp * DAILY_SUN_HOURS;
+        showRoofWarning = false;
+    } 
+    else if (activeTab === 'tabB') {
+        const monthlyBill = parseFloat(document.getElementById('evInputBill').value) || 0;
+        const monthlyKwh = monthlyBill / dynamicTariffPrice;
+        dailyProductionKwh = monthlyKwh / 30;
+        requiredPowerKwp = dailyProductionKwh / DAILY_SUN_HOURS;
+        requiredAreaM2 = requiredPowerKwp * KWP_TO_M2_RATIO;
+        if (requiredAreaM2 > maxUsableRoof) showRoofWarning = true;
+    } 
+    else if (activeTab === 'tabC') {
+        dailyProductionKwh = inputKwhVal / 30;
+        requiredPowerKwp = dailyProductionKwh / DAILY_SUN_HOURS;
+        requiredAreaM2 = requiredPowerKwp * KWP_TO_M2_RATIO;
+        if (requiredAreaM2 > maxUsableRoof) showRoofWarning = true;
+    } 
+    else if (activeTab === 'tabD') {
+        const monthlyKm = parseFloat(document.getElementById('evInputKm').value) || 0;
+        const monthlyEvKwh = monthlyKm * (evConsumption / 100);
+        dailyProductionKwh = monthlyEvKwh / 30;
+        requiredPowerKwp = dailyProductionKwh / DAILY_SUN_HOURS;
+        requiredAreaM2 = requiredPowerKwp * KWP_TO_M2_RATIO;
+        if (requiredAreaM2 > maxUsableRoof) showRoofWarning = true;
+    }
+
+    // 5. Sonuçları Ekrana Bas
+    const monthlyProductionKwh = dailyProductionKwh * 30;
+    const monthlySolarRange = (monthlyProductionKwh / evBattery) * evRange;
+
+    document.getElementById('resPower').textContent = requiredPowerKwp.toFixed(2);
+    document.getElementById('resArea').textContent = requiredAreaM2.toFixed(1);
+    document.getElementById('resProduction').textContent = Math.round(monthlyProductionKwh).toLocaleString('tr-TR');
+    document.getElementById('resSolarRange').textContent = Math.round(monthlySolarRange).toLocaleString('tr-TR');
+
+    // Uyarı Banner Yönetimi
+    const warningBanner = document.getElementById('roofWarningBanner');
+    if (showRoofWarning) {
+        warningBanner.classList.remove('hidden');
+    } else {
+        warningBanner.classList.add('hidden');
+    }
+
+    // İlerleme Çubuğu Animasyonu
+    const chargeRatio = evBattery > 0 ? (monthlyProductionKwh / evBattery) * 100 : 0;
+    const barWidth = Math.min(chargeRatio, 100);
+    document.getElementById('resChargeBar').style.width = barWidth + '%';
+    document.getElementById('resChargePercent').textContent = `%` + Math.round(chargeRatio);
+}
