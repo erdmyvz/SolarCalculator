@@ -161,10 +161,29 @@ function addApplianceRow(name = "", qty = 1, kw = "", hrs = "") {
 }
 
 if(document.getElementById('btnAddAppliance')) {
-    const defaultAppliances = [{ name: 'Buzdolabı', qty: 1, kw: 0.15, hrs: 240 }, { name: 'Televizyon', qty: 1, kw: 0.1, hrs: 120 }, { name: 'Çamaşır Makinesi', qty: 1, kw: 0.8, hrs: 20 }, { name: 'Bulaşık Makinesi', qty: 1, kw: 1.2, hrs: 15 }];
+    // Sayfa açıldığında standart olarak yüklenecek cihazların tam listesi
+    const defaultAppliances = [
+        { name: 'Buzdolabı', qty: 1, kw: 0.15, hrs: 240 }, 
+        { name: 'Televizyon', qty: 1, kw: 0.1, hrs: 120 }, 
+        { name: 'Çamaşır Makinesi', qty: 1, kw: 0.8, hrs: 20 }, 
+        { name: 'Bulaşık Makinesi', qty: 1, kw: 1.2, hrs: 15 },
+        { name: 'Aydınlatma (Ev)', qty: 10, kw: 0.01, hrs: 150 }
+    ];
+    
+    // Listeyi döngüye sok ve ekrana yazdır
     defaultAppliances.forEach(app => addApplianceRow(app.name, app.qty, app.kw, app.hrs));
+    
+    // Özel Cihaz Ekle butonuna tıklandığında boş bir satır oluştur
     document.getElementById('btnAddAppliance').addEventListener('click', () => addApplianceRow());
-    document.getElementById('quickAddSelect').addEventListener('change', e => { if (e.target.value) { const [name, qty, kw, hrs] = e.target.value.split('|'); addApplianceRow(name, qty, kw, hrs); e.target.value = ""; } });
+    
+    // Hazır açılır listeden seçim yapıldığında değerleri parçala ve satır olarak ekle
+    document.getElementById('quickAddSelect').addEventListener('change', e => { 
+        if (e.target.value) { 
+            const [name, qty, kw, hrs] = e.target.value.split('|'); 
+            addApplianceRow(name, qty, kw, hrs); 
+            e.target.value = ""; // Seçimi sıfırla ki tekrar aynı cihaz seçilebilsin
+        } 
+    });
 }
 
 if(document.getElementById('hasFutureLoads')) {
