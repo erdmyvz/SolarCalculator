@@ -405,14 +405,23 @@ document.getElementById('btnSendEmail').addEventListener('click', async () => {
         });
     }
 
-    detayMetni += "\n2. GELECEKTEKİ İLAVE YÜK SENARYOLARI:\n";
+ detayMetni += "\n2. GELECEKTEKİ İLAVE YÜK SENARYOLARI:\n";
     if (document.getElementById('hasFutureLoads').checked) {
+        // Elektrikli Araç Kontrolü
         if (document.getElementById('checkEV').checked) {
             detayMetni += `   - Elektrikli Araç (EV): Aylık ${document.getElementById('evMonthlyKm').value || 0} km sürüş senaryosu eklenmiştir.\n`;
         }
+        // Isı Pompası Kontrolü
         if (document.getElementById('checkHP').checked) {
             detayMetni += `   - Isı Pompası: Aylık sabit +${document.getElementById('hpMonthlyLoad').value || 0} kWh tüketim eklenmiştir.\n`;
         }
+        // YENİ/DÜZELTME: Ekran üzerindeki tüm dinamik Özel Yükleri tarayıp maile ekleyen döngü
+        document.querySelectorAll('#customLoadsWrapper > div').forEach(row => {
+            const inputs = row.querySelectorAll('input');
+            if(inputs.length >= 2 && inputs[0].value) {
+                detayMetni += `   - Özel Proje Yükü (${inputs[0].value}): Aylık +${inputs[1].value || 0} kWh ek tüketim\n`;
+            }
+        });
     } else {
         detayMetni += "   - İlave bir gelecek yük planlanmadı.\n";
     }
