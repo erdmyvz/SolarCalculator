@@ -1,14 +1,11 @@
 // ==========================================
-// 1. SUPABASE BAĞLANTISI (Anahtarları Buraya Girin)
+// 1. SUPABASE BAĞLANTISI
 // ==========================================
 const SUPABASE_URL = 'https://bxcghdbrafzudiigeeud.supabase.co'; 
 const SUPABASE_ANON_KEY = 'sb_publishable_EiDGhm4bT-acQ8xrV9RU4w_4wkUQGys'; 
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUserProfile = null;
-
-// EmailJS Başlatma (Geliştirici hesabı gerektirir, geçici public key)
-emailjs.init("service_en0v19k");
 
 // ==========================================
 // SEKMELER VE AUTH GEÇİŞLERİ
@@ -137,21 +134,22 @@ const monthsGrid = document.getElementById('monthsGrid');
     if(monthsGrid) monthsGrid.appendChild(div);
 });
 
-// HATANIN ÇÖZÜLDÜĞÜ YER: Giriş bölümlerini bul ve sadece seçileni görünür yap
-document.querySelectorAll('input[name="inputType"]').forEach(radio => {
+// RADYO BUTONLARI İÇİN HATASIZ MANTIK
+const radioInputs = document.querySelectorAll('input[name="inputType"]');
+const sectionIds = ['monthlyInputSection', 'yearlyInputSection', 'applianceInputSection'];
+
+radioInputs.forEach(radio => {
     radio.addEventListener('change', (e) => {
-        // 1. Ekranda 'input-section' class'ına sahip tüm kutuları bul ve gizle
-        document.querySelectorAll('.input-section').forEach(sec => {
-            sec.classList.add('hidden');
+        // Tüm kutuları gizle
+        sectionIds.forEach(secId => {
+            const el = document.getElementById(secId);
+            if (el) el.classList.add('hidden');
         });
         
-        // 2. Sadece seçili olan radyo butonunun value değerine uyan kutuyu görünür yap
-        const targetSectionId = e.target.value + 'InputSection';
-        const targetSection = document.getElementById(targetSectionId);
-        
-        if(targetSection) {
-            targetSection.classList.remove('hidden');
-        }
+        // Sadece seçileni göster
+        const targetId = e.target.value + 'InputSection';
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) targetEl.classList.remove('hidden');
     });
 });
 
@@ -181,7 +179,7 @@ if(document.getElementById('hasFutureLoads')) {
 }
 
 // HESAPLAMA MOTORU VE SONUÇLAR
-let sonAylik = 0, sonYillik = 0, sonFatura = 0; // Bu değişkenleri PDF ve mail atarken kullanacağız
+let sonAylik = 0, sonYillik = 0, sonFatura = 0; 
 
 if(document.getElementById('btnCalculate')) {
     document.getElementById('btnCalculate').addEventListener('click', () => {
@@ -212,12 +210,11 @@ if(document.getElementById('btnCalculate')) {
 }
 
 // ==========================================
-// YENİ: PDF İNDİRME İŞLEMİ (html2pdf.js)
+// PDF İNDİRME İŞLEMİ (html2pdf.js)
 // ==========================================
 document.getElementById('btnDownloadPDF').addEventListener('click', () => {
-    const element = document.getElementById('reportContent'); // Sadece analiz sonucunu seç
+    const element = document.getElementById('reportContent'); 
     
-    // PDF Ayarları
     const opt = {
       margin:       1,
       filename:     'epcmerkezim-enerji-analizi.pdf',
@@ -226,12 +223,11 @@ document.getElementById('btnDownloadPDF').addEventListener('click', () => {
       jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
     };
 
-    // PDF'i oluştur ve indir
     html2pdf().set(opt).from(element).save();
 });
 
 // ==========================================
-// YENİ: E-POSTA GÖNDERME İŞLEMİ (EmailJS)
+// E-POSTA GÖNDERME İŞLEMİ (EmailJS)
 // ==========================================
 document.getElementById('btnSendEmail').addEventListener('click', () => {
     const emailTo = document.getElementById('customerEmail').value;
@@ -244,7 +240,6 @@ document.getElementById('btnSendEmail').addEventListener('click', () => {
     btn.textContent = "Gönderiliyor...";
     btn.disabled = true;
 
-    // EmailJS'e gönderilecek veriler
     const templateParams = {
         to_email: emailTo,
         aylik_tuketim: Math.round(sonAylik).toLocaleString('tr-TR') + " kWh",
@@ -252,18 +247,16 @@ document.getElementById('btnSendEmail').addEventListener('click', () => {
         tahmini_fatura: sonFatura.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL"
     };
 
-    /* NOT: Gerçekten e-posta gitmesi için emailjs.com üzerinden ücretsiz hesap açıp 
-      aşağıdaki "YOUR_SERVICE_ID" ve "YOUR_TEMPLATE_ID" kısımlarını kendi id'lerinle değiştirmelisin. 
-      Geçici olarak başarılı simülasyonu koyuyoruz:
-    */
-    
+    // Gerçek EmailJS Gönderim Kodu
     emailjs.send('service_en0v19k', 'template_2z189ds', templateParams)
-    .then(function(response) { ... })
-
-    setTimeout(() => {
-        alert(`${emailTo} adresine analiz sonucu başarıyla iletildi!`);
-        btn.textContent = "✉️ Analizi Mail At";
-        btn.disabled = false;
-        document.getElementById('customerEmail').value = '';
-    }, 1500);
+        .then(function(response) {
+            alert(emailTo + " adresine analiz sonucu başarıyla iletildi!");
+            btn.textContent = "✉️ Analizi Mail At";
+            btn.disabled = false;
+            document.getElementById('customerEmail').value = ''; 
+        }, function(error) {
+            alert("E-posta gönderilirken bir hata oluştu: Lütfen EmailJS ID'lerini doğrulayın.");
+            btn.textContent = "✉️ Analizi Mail At";
+            btn.disabled = false;
+        });
 });
