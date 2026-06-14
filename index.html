@@ -258,24 +258,23 @@
                 <div id="loading3D" class="text-center z-10">
                     <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                     <h3 class="text-indigo-400 font-bold text-xl">3D Render Motoru Başlatılıyor...</h3>
-                    <p class="text-slate-400 text-sm mt-2">Sanal ortam hazırlanıyor, lütfen bekleyin.</p>
                 </div>
                 
-                <div class="absolute top-4 left-4 bg-white/10 backdrop-blur-md p-5 rounded-xl border border-white/20 text-white w-72 shadow-2xl">
+                <div class="absolute top-4 left-4 bg-white/10 backdrop-blur-md p-5 rounded-xl border border-white/20 text-white w-72 shadow-2xl z-10 pointer-events-none">
                     <h4 class="font-bold mb-3 border-b border-white/20 pb-2 flex justify-between items-center">
                         <span>Bağımsızlık Skoru</span>
-                        <span class="text-xs bg-red-500 px-2 py-1 rounded text-white font-bold">%0</span>
+                        <span id="scoreDisplay" class="text-xs bg-red-500 transition-colors duration-500 px-2 py-1 rounded text-white font-bold">%0</span>
                     </h4>
-                    <div class="flex justify-between text-sm mb-2"><span>Şebeke Bağımlılığı:</span><span class="text-red-400 font-bold">%100</span></div>
-                    <div class="flex justify-between text-sm mb-2"><span>Fosil Yakıt Tüketimi:</span><span class="text-orange-400 font-bold">Aktif</span></div>
-                    <div class="flex justify-between text-sm"><span>Karbon Ayak İzi:</span><span class="text-yellow-400 font-bold">Yüksek</span></div>
+                    <div class="flex justify-between text-sm mb-2"><span>Şebeke Bağımlılığı:</span><span id="gridDepDisplay" class="text-red-400 font-bold transition-all">%100</span></div>
+                    <div class="flex justify-between text-sm mb-2"><span>Fosil Yakıt (Doğalgaz):</span><span id="fossilDisplay" class="text-orange-400 font-bold transition-all">Aktif</span></div>
+                    <div class="flex justify-between text-sm"><span>Karbon Ayak İzi:</span><span id="carbonDisplay" class="text-yellow-400 font-bold transition-all">Yüksek</span></div>
                 </div>
 
-                <div class="absolute bottom-4 left-0 right-0 flex justify-center space-x-4">
-                    <button id="btnSimAddGES" class="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-lg border border-white/30 transition text-sm flex items-center"><span class="text-yellow-400 text-lg mr-2">+</span> GES Ekle</button>
-                    <button id="btnSimAddBattery" class="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-lg border border-white/30 transition text-sm flex items-center"><span class="text-green-400 text-lg mr-2">+</span> Batarya</button>
-                    <button id="btnSimAddEV" class="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-lg border border-white/30 transition text-sm flex items-center"><span class="text-blue-400 text-lg mr-2">+</span> Elektrikli Araç</button>
-                    <button id="btnSimAddHP" class="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-lg border border-white/30 transition text-sm flex items-center"><span class="text-orange-400 text-lg mr-2">+</span> Isı Pompası</button>
+                <div class="absolute bottom-4 left-0 right-0 flex justify-center space-x-4 z-10">
+                    <button id="btnSimAddGES" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg shadow-lg font-bold transition-transform transform hover:-translate-y-1 border border-indigo-400"><span class="text-yellow-300 mr-1">☀️</span> GES Kur</button>
+                    <button id="btnSimAddBattery" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg shadow-lg font-bold transition-transform transform hover:-translate-y-1 border border-indigo-400"><span class="text-green-300 mr-1">🔋</span> Batarya Ekle</button>
+                    <button id="btnSimAddEV" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg shadow-lg font-bold transition-transform transform hover:-translate-y-1 border border-indigo-400"><span class="text-blue-300 mr-1">🚗</span> Elektrikli Araç</button>
+                    <button id="btnSimAddHP" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg shadow-lg font-bold transition-transform transform hover:-translate-y-1 border border-indigo-400"><span class="text-orange-300 mr-1">♨️</span> Isı Pompası</button>
                 </div>
             </div>
         </div>
