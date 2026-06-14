@@ -250,11 +250,11 @@ if (btnBackToMenuFromSim) {
 }
 
 // ------------------------------------------
-// THREE.JS ANA RENDER VE ANİMASYON MOTORU
+// THREE.JS ANA RENDER VE ANİMASYON MOTORU (AÇ-KAPA ÖZELLİKLİ & MODERN)
 // ------------------------------------------
 let scene, camera, renderer, controls;
 
-// 3D Obje Referansları ve Durumları
+// 3D Obje Referansları ve Durumları (Aç/Kapa için)
 let objPanels = null, objBattery = null, objEV = null, objHP = null, objGasPipe = null;
 let stateGES = false, stateBattery = false, stateEV = false, stateHP = false;
 
@@ -265,10 +265,10 @@ function init3DScene() {
 
     // 1. Sahne ve Kamera Kurulumu
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0f172a); // Koyu lacivert gökyüzü
+    scene.background = new THREE.Color(0xdbeafe); // Açık mavi, daha ferah bir gökyüzü
     
     camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(15, 12, 18);
+    camera.position.set(20, 15, 25); // Kamerayı biraz daha geri ve yukarı aldık (geniş açı)
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
@@ -288,109 +288,116 @@ function init3DScene() {
     controls.dampingFactor = 0.05;
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
-    // 2. Işıklandırma
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // 2. Işıklandırma (Daha doğal bir gün ışığı)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xffdfb0, 1.2);
-    sunLight.position.set(15, 25, 10);
+    const sunLight = new THREE.DirectionalLight(0xfffaed, 1.5);
+    sunLight.position.set(15, 30, 15);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 1024;
-    sunLight.shadow.mapSize.height = 1024;
+    sunLight.shadow.mapSize.width = 2048; // Daha kaliteli gölgeler
+    sunLight.shadow.mapSize.height = 2048;
     scene.add(sunLight);
 
-    // 3. Zemin ve Temel Ev
-    const groundGeo = new THREE.PlaneGeometry(60, 60);
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.8 });
+    // 3. Zemin ve Modern Ev
+    const groundGeo = new THREE.PlaneGeometry(80, 80);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x65a30d, roughness: 1 }); // Tatlı bir çim yeşili
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    const houseGeo = new THREE.BoxGeometry(6, 5, 7);
-    const houseMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
+    // Ev Gövdesi (Modern, geniş tek katlı)
+    const houseGeo = new THREE.BoxGeometry(8, 4.5, 6);
+    const houseMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0 });
     const house = new THREE.Mesh(houseGeo, houseMat);
-    house.position.y = 2.5;
+    house.position.set(-2, 2.25, 0);
     house.castShadow = true; house.receiveShadow = true;
     scene.add(house);
 
-    const roofGeo = new THREE.ConeGeometry(5.5, 3, 4);
-    const roofMat = new THREE.MeshStandardMaterial({ color: 0x7f1d1d });
+    // Ev Çatısı (Modern eğimli)
+    const roofGeo = new THREE.BoxGeometry(8.5, 0.5, 6.5);
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x334155 }); // Antrasit gri
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = 6.5;
-    roof.rotation.y = Math.PI / 4;
+    roof.position.set(-2, 4.8, 0);
+    roof.rotation.z = -0.05; // Hafif eğim
     roof.castShadow = true;
     scene.add(roof);
 
-    // 4. BAŞLANGIÇ OBJESİ: Doğalgaz Borusu (Isı Pompası ile Yok Olacak)
+    // Açık Garaj (Carport) Direkleri ve Tavanı
+    const carportMat = new THREE.MeshStandardMaterial({ color: 0x78350f }); // Ahşap rengi
+    const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), carportMat); p1.position.set(6, 2, 2.5); p1.castShadow=true; scene.add(p1);
+    const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), carportMat); p2.position.set(6, 2, -2.5); p2.castShadow=true; scene.add(p2);
+    const cpRoof = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.2, 6), new THREE.MeshStandardMaterial({ color: 0xcbd5e1, transparent:true, opacity:0.8 }));
+    cpRoof.position.set(4, 4, 0); cpRoof.castShadow=true; scene.add(cpRoof);
+
+    // 4. BAŞLANGIÇ OBJESİ: Doğalgaz Borusu
     const pipeGeo = new THREE.CylinderGeometry(0.15, 0.15, 4, 16);
-    const pipeMat = new THREE.MeshStandardMaterial({ color: 0xfacc15 }); // Sarı boru
+    const pipeMat = new THREE.MeshStandardMaterial({ color: 0xfacc15 }); 
     objGasPipe = new THREE.Mesh(pipeGeo, pipeMat);
-    objGasPipe.position.set(-3.1, 2, 0);
+    objGasPipe.position.set(-6.2, 2, 0);
     objGasPipe.castShadow = true;
     scene.add(objGasPipe);
 
     // 5. ETKİLEŞİM OBJELERİ (Başlangıçta Görünmez - Scale 0)
     
-    // A) Güneş Panelleri Grubu
+    // A) Güneş Panelleri Grubu (Çatıya tam oturan modern dizilim)
     objPanels = new THREE.Group();
-    const panelMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8, roughness: 0.2 });
-    for(let i=0; i<4; i++) {
-        const panel = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.05, 2.5), panelMat);
-        panel.position.set(-1 + (i%2)*2, 0, -1 + Math.floor(i/2)*2);
-        objPanels.add(panel);
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x020617, metalness: 0.9, roughness: 0.1 });
+    for(let x=0; x<3; x++) {
+        for(let z=0; z<2; z++) {
+            const panel = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 2.8), panelMat);
+            panel.position.set(-2.5 + (x*2.4), 0, -1.5 + (z*3));
+            objPanels.add(panel);
+        }
     }
-    objPanels.position.set(2, 6.6, 0); // Çatının sağına oturt
-    objPanels.rotation.z = -Math.PI / 6; // Çatı eğimine uydur
+    objPanels.position.set(-2, 5.1, 0); 
+    objPanels.rotation.z = -0.05; 
     objPanels.scale.set(0,0,0);
     scene.add(objPanels);
 
-    // B) Batarya Kabini
-    const batGeo = new THREE.BoxGeometry(1.2, 2.5, 0.6);
-    const batMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0 });
+    // B) Batarya Kabini (Dış Duvar)
+    const batGeo = new THREE.BoxGeometry(1.5, 2.5, 0.5);
+    const batMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9 });
     objBattery = new THREE.Mesh(batGeo, batMat);
-    objBattery.position.set(3.2, 1.25, -2);
+    objBattery.position.set(2, 1.25, -2.8);
     objBattery.castShadow = true;
     objBattery.scale.set(0,0,0);
     scene.add(objBattery);
 
-    // C) Elektrikli Araç (Basit Model)
+    // C) Temsili MG4 / Elektrikli Araç Modeli
     objEV = new THREE.Group();
-    const carBody = new THREE.Mesh(new THREE.BoxGeometry(4, 1, 2), new THREE.MeshStandardMaterial({ color: 0x3b82f6 })); // Mavi Gövde
-    carBody.position.y = 0.8; carBody.castShadow = true;
-    const carTop = new THREE.Mesh(new THREE.BoxGeometry(2, 0.8, 1.8), new THREE.MeshStandardMaterial({ color: 0xffffff })); // Beyaz Tavan
-    carTop.position.set(-0.5, 1.7, 0); carTop.castShadow = true;
+    const carBody = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.2, 2), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness:0.6 })); // Metalik Gri Gövde
+    carBody.position.y = 0.9; carBody.castShadow = true;
+    const carTop = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 1.8), new THREE.MeshStandardMaterial({ color: 0x1e293b })); // Siyah Cam Tavan Alanı
+    carTop.position.set(-0.5, 1.8, 0); carTop.castShadow = true;
     objEV.add(carBody); objEV.add(carTop);
-    // Tekerlekler
-    const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 2.2, 16);
-    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111827 });
-    const w1 = new THREE.Mesh(wheelGeo, wheelMat); w1.rotation.x = Math.PI/2; w1.position.set(-1.2, 0.4, 0);
-    const w2 = new THREE.Mesh(wheelGeo, wheelMat); w2.rotation.x = Math.PI/2; w2.position.set(1.2, 0.4, 0);
+    const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 2.2, 16);
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
+    const w1 = new THREE.Mesh(wheelGeo, wheelMat); w1.rotation.x = Math.PI/2; w1.position.set(-1.2, 0.45, 0);
+    const w2 = new THREE.Mesh(wheelGeo, wheelMat); w2.rotation.x = Math.PI/2; w2.position.set(1.4, 0.45, 0);
     objEV.add(w1); objEV.add(w2);
-    objEV.position.set(7, 0, 4); // Garaj konumu
+    objEV.position.set(4, 0, 0); // Carport'un altına park et
     objEV.scale.set(0,0,0);
     scene.add(objEV);
 
     // D) Isı Pompası Dış Ünite
-    const hpGeo = new THREE.BoxGeometry(1.5, 1.5, 0.8);
-    const hpMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af });
+    const hpGeo = new THREE.BoxGeometry(1.5, 1.8, 0.8);
+    const hpMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
     objHP = new THREE.Mesh(hpGeo, hpMat);
-    // Isı pompası fan dairesi
-    const fanGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.85, 16);
-    const fanMat = new THREE.MeshStandardMaterial({ color: 0x1f2937 });
-    const hpFan = new THREE.Mesh(fanGeo, fanMat);
-    hpFan.rotation.x = Math.PI/2;
+    const hpFan = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.85, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+    hpFan.rotation.x = Math.PI/2; hpFan.position.y = 0.2;
     objHP.add(hpFan);
-    objHP.position.set(-3.5, 0.75, 2);
+    objHP.position.set(-6.5, 0.9, 1.5);
     objHP.castShadow = true;
     objHP.scale.set(0,0,0);
     scene.add(objHP);
 
-    // Event Listeners (Buton Tıklamaları)
-    document.getElementById('btnSimAddGES').addEventListener('click', () => { stateGES = true; updateScore(); });
-    document.getElementById('btnSimAddBattery').addEventListener('click', () => { stateBattery = true; updateScore(); });
-    document.getElementById('btnSimAddEV').addEventListener('click', () => { stateEV = true; updateScore(); });
-    document.getElementById('btnSimAddHP').addEventListener('click', () => { stateHP = true; updateScore(); });
+    // BUTON ETKİLEŞİMLERİ (AÇ / KAPA MANTIĞI)
+    setupToggleButton('btnSimAddGES', () => { stateGES = !stateGES; updateScore(); });
+    setupToggleButton('btnSimAddBattery', () => { stateBattery = !stateBattery; updateScore(); });
+    setupToggleButton('btnSimAddEV', () => { stateEV = !stateEV; updateScore(); });
+    setupToggleButton('btnSimAddHP', () => { stateHP = !stateHP; updateScore(); });
 
     // Animasyon Döngüsü
     window.addEventListener('resize', onWindowResize, false);
@@ -402,6 +409,19 @@ function onWindowResize() {
     camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(container.clientWidth, container.clientHeight);
+}
+
+// Buton renklerini Aç/Kapa durumuna göre güncelleyen yardımcı fonksiyon
+function setupToggleButton(btnId, callback) {
+    const btn = document.getElementById(btnId);
+    btn.addEventListener('click', () => {
+        callback();
+        // Basıldıysa butonu yeşil yap, tekrar basıldıysa eski lacivert haline çevir
+        btn.classList.toggle('bg-green-600');
+        btn.classList.toggle('bg-indigo-600');
+        btn.classList.toggle('border-green-400');
+        btn.classList.toggle('border-indigo-400');
+    });
 }
 
 function updateScore() {
@@ -419,18 +439,15 @@ function updateScore() {
     document.getElementById('fossilDisplay').innerText = fossil;
     document.getElementById('carbonDisplay').innerText = carbon;
 
-    // Renk değişimleri
-    if(score >= 40) { sColor.classList.replace('bg-red-500', 'bg-orange-500'); }
-    if(score >= 70) { sColor.classList.replace('bg-orange-500', 'bg-yellow-500'); document.getElementById('gridDepDisplay').classList.replace('text-red-400', 'text-yellow-500'); }
-    if(score === 100) { 
-        sColor.classList.replace('bg-yellow-500', 'bg-green-600'); 
-        document.getElementById('gridDepDisplay').classList.replace('text-yellow-500', 'text-green-500');
-        document.getElementById('fossilDisplay').classList.replace('text-orange-400', 'text-green-500');
-        document.getElementById('carbonDisplay').classList.replace('text-yellow-400', 'text-green-500');
-    }
+    // Skor Renk Sınıfını Temizle ve Yeniden Ata
+    sColor.className = "text-xs px-2 py-1 rounded text-white font-bold transition-colors duration-500";
+    if(score < 40) sColor.classList.add('bg-red-500');
+    else if(score < 70) sColor.classList.add('bg-orange-500');
+    else if(score < 100) sColor.classList.add('bg-yellow-500');
+    else sColor.classList.add('bg-green-600');
 }
 
-// Büyüme (Pop-up) Animasyonu için LERP fonksiyonu
+// Büyüme ve Küçülme (Aç/Kapa) Animasyonu için LERP fonksiyonu
 function lerpScale(obj, target, speed) {
     obj.scale.x += (target - obj.scale.x) * speed;
     obj.scale.y += (target - obj.scale.y) * speed;
@@ -440,15 +457,14 @@ function lerpScale(obj, target, speed) {
 function animate() {
     requestAnimationFrame(animate);
     
-    // Etkileşim durumlarına göre objeleri animasyonlu şekilde büyüt veya küçült
-    if (stateGES && objPanels) lerpScale(objPanels, 1, 0.05);
-    if (stateBattery && objBattery) lerpScale(objBattery, 1, 0.05);
-    if (stateEV && objEV) lerpScale(objEV, 1, 0.05);
+    // Etkileşim durumlarına göre objeleri büyüt (1) veya küçülterek yok et (0)
+    if (objPanels) lerpScale(objPanels, stateGES ? 1 : 0, 0.1);
+    if (objBattery) lerpScale(objBattery, stateBattery ? 1 : 0, 0.1);
+    if (objEV) lerpScale(objEV, stateEV ? 1 : 0, 0.1);
     
-    // Isı pompası geldiğinde boru kaybolsun
-    if (stateHP) {
-        if(objHP) lerpScale(objHP, 1, 0.05);
-        if(objGasPipe) lerpScale(objGasPipe, 0, 0.05); // Doğalgaz borusunu eriterek yok et!
+    if (objHP && objGasPipe) {
+        lerpScale(objHP, stateHP ? 1 : 0, 0.1);
+        lerpScale(objGasPipe, stateHP ? 0 : 1, 0.1); // Isı pompası varsa boruyu yok et, yoksa geri getir
     }
 
     controls.update();
