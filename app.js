@@ -216,19 +216,26 @@ if(document.getElementById('btnCalculate')) {
 }
 
 // ==========================================
-// PDF İNDİRME İŞLEMİ (html2pdf.js)
+// LOKAL DÜZELTME: PDF İNDİRME İŞLEMİ (html2pdf.js)
 // ==========================================
 document.getElementById('btnDownloadPDF').addEventListener('click', () => {
+    // PDF'e dönüştürülecek olan analiz sonuç kutusunu seçiyoruz
     const element = document.getElementById('reportContent'); 
     
+    // Milimetre (mm) bazlı, A4 boyutunda kusursuz render ayarları
     const opt = {
-      margin:       1,
+      margin:       [15, 15, 15, 15], // Üst, sol, alt, sağ boşluklar (mm)
       filename:     'epcmerkezim-enerji-analizi.pdf',
       image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2 },
-      jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+      html2canvas:  { 
+        scale: 2,             // Çözünürlüğü iki katına çıkararak yazıları netleştirir
+        useCORS: true,        // Stil ve grafiklerin eksiksiz yüklenmesini sağlar
+        letterRendering: true 
+      },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } // Standart dikey A4
     };
 
+    // PDF oluşturma tetikleyicisi
     html2pdf().set(opt).from(element).save();
 });
 
@@ -253,7 +260,7 @@ document.getElementById('btnSendEmail').addEventListener('click', () => {
         tahmini_fatura: sonFatura.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL"
     };
 
-    emailjs.send('service_en0v19k', 'template_2z189ds', templateParams)
+    emailjs.send('service_en0v19k', 'template_d57vo2b', templateParams)
         .then(function(response) {
             alert(emailTo + " adresine analiz sonucu başarıyla iletildi!");
             btn.textContent = "✉️ Analizi Mail At";
