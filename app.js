@@ -8,6 +8,11 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUserProfile = null;
 
 // ==========================================
+// 2. EMAILJS BAĞLANTISI
+// ==========================================
+emailjs.init("qrBU4c3EChsaZhBZS");
+
+// ==========================================
 // SEKMELER VE AUTH GEÇİŞLERİ
 // ==========================================
 const authContainer = document.getElementById('authContainer');
