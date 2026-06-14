@@ -221,30 +221,29 @@ if(document.getElementById('btnCalculate')) {
 }
 
 // ==========================================
-// LOKAL DÜZELTME: PDF İNDİRME İŞLEMİ (Özel Taslaklı)
+// LOKAL DÜZELTME: PDF İNDİRME İŞLEMİ (Sağdan Kesilme Sorunu Çözüldü)
 // ==========================================
 document.getElementById('btnDownloadPDF').addEventListener('click', () => {
     const btn = document.getElementById('btnDownloadPDF');
     btn.textContent = "Hazırlanıyor...";
 
-    // PDF'in içine basılacak, Tailwind'den bağımsız, tertemiz bir A4 rapor şablonu oluşturuyoruz.
-    // Kullanıcı adını da veri tabanından çekerek rapora ekliyoruz.
     const musteriAdi = currentUserProfile ? `${currentUserProfile.first_name} ${currentUserProfile.last_name}` : 'Müşterimiz';
     
     const pdfContainer = document.createElement('div');
+    // ÇÖZÜM 1: width: 190mm ve box-sizing vererek içeriğin A4 sınırlarında kalmasını sağlıyoruz
     pdfContainer.innerHTML = `
-        <div style="padding: 40px; font-family: Helvetica, Arial, sans-serif; color: #333;">
+        <div style="width: 190mm; padding: 20px; font-family: Helvetica, Arial, sans-serif; color: #333; box-sizing: border-box;">
             <div style="border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px;">
-                <h1 style="color: #2563eb; margin: 0; font-size: 28px;">epcmerkezim</h1>
+                <h1 style="color: #2563eb; margin: 0; font-size: 28px; font-weight: bold;">epcmerkezim</h1>
                 <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">Güneş Enerjisi Tüketim Analiz Raporu</p>
             </div>
             
-            <h2 style="font-size: 18px; margin-bottom: 15px;">Sayın ${musteriAdi},</h2>
+            <h2 style="font-size: 18px; margin-bottom: 15px; font-weight: bold;">Sayın ${musteriAdi},</h2>
             <p style="line-height: 1.6; margin-bottom: 30px; font-size: 14px;">
                 Planlanan projeniz için yapılan tüketim ihtiyacı analizi sonucunda sistemimiz tarafından hesaplanan teknik ve mali tahmini değerler aşağıda bilginize sunulmuştur.
             </p>
             
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px;">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px; font-size: 14px;">
                 <tr>
                     <td style="padding: 15px; border: 1px solid #e5e7eb; background-color: #f9fafb; font-weight: bold; width: 50%;">Gelecekteki Aylık Tüketim:</td>
                     <td style="padding: 15px; border: 1px solid #e5e7eb; font-size: 18px; color: #2563eb; font-weight: bold;">${Math.round(sonAylik).toLocaleString('tr-TR')} kWh</td>
@@ -260,27 +259,28 @@ document.getElementById('btnDownloadPDF').addEventListener('click', () => {
             </table>
             
             <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin-bottom: 40px;">
-                <p style="margin: 0; font-size: 13px; color: #1e3a8a;">
+                <p style="margin: 0; font-size: 13px; color: #1e3a8a; line-height: 1.5;">
                     <strong>Not:</strong> Yukarıdaki fatura bedeli, güncel tarife üzerinden tahmini olarak hesaplanmıştır. Kesin veriler detaylı saha keşfi sonucunda netleşecektir.
                 </p>
             </div>
             
-            <p style="font-size: 11px; color: #9ca3af; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+            <p style="font-size: 11px; color: #9ca3af; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 60px;">
                 Bu belge SolarSaaS EPC Yönetim Merkezi tarafından otomatik olarak üretilmiştir.
             </p>
         </div>
     `;
 
-    // Milimetre (mm) bazlı, A4 boyutunda PDF yazdırma ayarları
     const opt = {
       margin:       10, 
       filename:     'epcmerkezim-enerji-raporu.pdf',
       image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2 },
+      html2canvas:  { 
+        scale: 2,
+        windowWidth: 800 // ÇÖZÜM 2: Sanal ekran genişliğini 800px yaparak taşmayı engelliyoruz
+      },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // Hazırlanan şablonu PDF olarak indir ve butonu eski haline getir
     html2pdf().set(opt).from(pdfContainer).save().then(() => {
         btn.innerHTML = "📄 Raporu PDF İndir"; 
     });
