@@ -1,8 +1,8 @@
 // ==========================================
 // 1. SUPABASE BAĞLANTISI (Anahtarları Buraya Girin)
 // ==========================================
-const SUPABASE_URL = 'https://BURAYA-KENDI-URLNI-YAZ.supabase.co'; 
-const SUPABASE_ANON_KEY = 'sb_publishable_BURAYA_KENDI_KEYINI_YAZ'; 
+const SUPABASE_URL = 'https://bxcghdbrafzudiigeeud.supabase.co'; 
+const SUPABASE_ANON_KEY = 'sb_publishable_EiDGhm4bT-acQ8xrV9RU4w_4wkUQGys'; 
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUserProfile = null;
