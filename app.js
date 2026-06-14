@@ -257,11 +257,11 @@ document.getElementById('btnSendEmail').addEventListener('click', () => {
       Geçici olarak başarılı simülasyonu koyuyoruz:
     */
     
-    // emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
-    // .then(function(response) { ... })
+    emailjs.send('service_en0v19k', 'template_2z189ds', templateParams)
+    .then(function(response) { ... })
 
     setTimeout(() => {
-        alert(`${emailTo} adresine analiz sonucu başarıyla iletildi! (Gerçek gönderim için EmailJS ayarlarını tamamlayın)`);
+        alert(`${emailTo} adresine analiz sonucu başarıyla iletildi!`);
         btn.textContent = "✉️ Analizi Mail At";
         btn.disabled = false;
         document.getElementById('customerEmail').value = '';
