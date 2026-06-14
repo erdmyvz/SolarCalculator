@@ -221,6 +221,28 @@ if(document.getElementById('btnCalculate')) {
 }
 
 // ==========================================
+// 3D SİMÜLASYON GEÇİŞLERİ (YENİ)
+// ==========================================
+const simulationModule = document.getElementById('simulationModule');
+const btnGoSimulation = document.getElementById('btnGoSimulation');
+const btnBackToMenuFromSim = document.getElementById('btnBackToMenuFromSim');
+
+if (btnGoSimulation) {
+    btnGoSimulation.addEventListener('click', () => {
+        document.getElementById('mainMenu').classList.add('hidden');
+        simulationModule.classList.remove('hidden');
+    });
+}
+
+if (btnBackToMenuFromSim) {
+    btnBackToMenuFromSim.addEventListener('click', () => {
+        simulationModule.classList.add('hidden');
+        document.getElementById('mainMenu').classList.remove('hidden');
+    });
+}
+
+
+// ==========================================
 // LOKAL DÜZELTME: DETAYLI RAPOR METNİ İÇEREN E-POSTA MOTORU
 // ==========================================
 document.getElementById('btnSendEmail').addEventListener('click', async () => {

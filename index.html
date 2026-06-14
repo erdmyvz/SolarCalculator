@@ -96,7 +96,13 @@
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">Güç Hesaplayıcı</h2><span class="bg-blue-800 text-xs px-3 py-1 rounded-full font-medium">Aktif</span></div>
                     <p class="text-blue-100 text-sm">Müşterilerinizin tüketim analizini yapın ve PDF teklifi sunun.</p>
                 </div>
-                
+                <div id="btnGoSimulation" class="cursor-pointer bg-indigo-600 text-white rounded-xl p-6 shadow-lg hover:bg-indigo-700 transition-all transform hover:-translate-y-1">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold">3D Simülasyon</h2>
+                        <span class="bg-indigo-800 text-xs px-3 py-1 rounded-full font-medium text-white">Yeni Proje</span>
+                    </div>
+                    <p class="text-indigo-100 text-sm">Neden güneş enerjisi sistemi yaptırmalısınız? Evinizi 3D ortamda modernize edin.</p>
+                </div>
                 <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Reklam ve Pazarlama</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
                 <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">İlk Teklif Oluşturma</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
                 <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Keşif Sonrası Teklif</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
@@ -232,6 +238,40 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+        <div id="simulationModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+            <div class="mb-6 border-b pb-4 flex items-center">
+                <button id="btnBackToMenuFromSim" class="text-gray-500 hover:text-indigo-600 font-medium flex items-center transition">Ana Menü</button>
+                <span class="mx-2 text-gray-400">/</span><span class="text-gray-800 font-bold">3D Enerji Simülasyonu</span>
+            </div>
+
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">İnteraktif Enerji Bağımsızlığı</h1>
+            <p class="text-gray-600 mb-6">Evinizi 3D ortamda modernize edin ve enerji bağımsızlığınızı adım adım kurun.</p>
+            
+            <div class="w-full bg-slate-900 rounded-xl flex items-center justify-center border-4 border-indigo-100 relative overflow-hidden" style="height: 60vh;">
+                
+                <div class="text-center z-10">
+                    <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <h3 class="text-indigo-400 font-bold text-xl">3D Render Motoru Başlatılıyor...</h3>
+                    <p class="text-slate-400 text-sm mt-2">Bu alana Three.js / React Three Fiber sahnesi entegre edilecek.</p>
+                </div>
+                
+                <div class="absolute top-4 left-4 bg-white/10 backdrop-blur-md p-5 rounded-xl border border-white/20 text-white w-72 shadow-2xl">
+                    <h4 class="font-bold mb-3 border-b border-white/20 pb-2 flex justify-between items-center">
+                        <span>Bağımsızlık Skoru</span>
+                        <span class="text-xs bg-red-500 px-2 py-1 rounded text-white font-bold">%0</span>
+                    </h4>
+                    <div class="flex justify-between text-sm mb-2"><span>Şebeke Bağımlılığı:</span><span class="text-red-400 font-bold">%100</span></div>
+                    <div class="flex justify-between text-sm mb-2"><span>Fosil Yakıt Tüketimi:</span><span class="text-orange-400 font-bold">Aktif</span></div>
+                    <div class="flex justify-between text-sm"><span>Karbon Ayak İzi:</span><span class="text-yellow-400 font-bold">Yüksek</span></div>
+                </div>
+
+                <div class="absolute bottom-4 left-0 right-0 flex justify-center space-x-4">
+                    <button class="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-lg border border-white/30 transition text-sm flex items-center"><span class="text-yellow-400 text-lg mr-2">+</span> GES Ekle</button>
+                    <button class="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-lg border border-white/30 transition text-sm flex items-center"><span class="text-green-400 text-lg mr-2">+</span> Batarya</button>
+                    <button class="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-4 py-2 rounded-lg border border-white/30 transition text-sm flex items-center"><span class="text-blue-400 text-lg mr-2">+</span> Elektrikli Araç</button>
                 </div>
             </div>
         </div>
