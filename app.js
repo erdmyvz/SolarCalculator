@@ -296,233 +296,118 @@ document.getElementById('btnSendEmail').addEventListener('click', async () => {
         btn.disabled = false;
     }
 });
-
 // ==========================================
-// TAM SÜRÜM: DETAYLI VE KUSURSUZ RAPOR İNDİRME MOTORU (html2pdf.js)
+// YENİ VE KESİN ÇÖZÜM: DOĞAL (NATIVE) PDF YAZDIRMA MOTORU
 // ==========================================
 document.getElementById('btnDownloadPDF').addEventListener('click', () => {
-    const btn = document.getElementById('btnDownloadPDF');
-    btn.textContent = "Rapor Hazırlanıyor...";
-    btn.disabled = true;
+    
+    // 1. Yazdırma Alanı Yoksa Oluştur (Görünmez Kapsayıcı)
+    let printArea = document.getElementById('printArea');
+    if (!printArea) {
+        printArea = document.createElement('div');
+        printArea.id = 'printArea';
+        document.body.appendChild(printArea);
+    }
 
-    // Kullanıcı adı ve firma bilgilerini dinamik olarak veritabanından alıyoruz
+    // 2. Müşteri Bilgileri
     const musteriAdi = currentUserProfile ? `${currentUserProfile.first_name} ${currentUserProfile.last_name}` : 'Müşterimiz';
     const firmaAdi = currentUserProfile ? currentUserProfile.company_name : 'SolarEPC Proje Merkezi';
+    const tarih = new Date().toLocaleDateString('tr-TR');
 
-    // --- 1. AŞAMA: KULLANICININ SEÇTİĞİ MEVCUT TÜKETİM MODELİNİ AYRIŞTIRMA ---
+    // 3. Veri Giriş Yöntemi Ayrıştırma
     const inputType = document.querySelector('input[name="inputType"]:checked').value;
-    let yontemBaslik = "";
-    let yontemIcerikHTML = "";
+    let yontemHTML = "";
 
     if (inputType === 'monthly') {
-        yontemBaslik = "Fatura (Aylık Ortalama)";
         const val = document.getElementById('averageMonthlyLoad').value || 0;
-        yontemIcerikHTML = `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 10px; font-weight: bold; color: #4b5563; width: 40%;">Hesaplama Modeli:</td>
-                <td style="padding: 10px; color: #1f2937;">Aylık Ortalama Sabit Fatura Beyanı</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 10px; font-weight: bold; color: #4b5563;">Mevcut Tüketim Değeri:</td>
-                <td style="padding: 10px; color: #2563eb; font-weight: bold; font-size: 14px;">${Number(val).toLocaleString('tr-TR')} kWh / Ay</td>
-            </tr>
-        `;
+        yontemHTML = `<p><strong>Kullanılan Yöntem:</strong> Aylık Sabit Fatura Tüketimi</p><p><strong>Beyan Edilen Değer:</strong> ${val} kWh / Ay</p>`;
     } else if (inputType === 'yearly') {
-        yontemBaslik = "Fatura (12 Aylık Detaylı)";
-        yontemIcerikHTML = `
-            <tr>
-                <td colspan="2" style="padding: 10px;">
-                    <div style="margin-bottom: 8px; color: #4b5563; font-weight: bold;">Sisteme Girilen 12 Aylık Tüketim Geçmişi:</div>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 11px;">
-        `;
-        const aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+        yontemHTML = `<p><strong>Kullanılan Yöntem:</strong> 12 Aylık Fatura Detayı</p><table style="width:100%; border-collapse:collapse; margin-top:10px;"><tr>`;
+        const aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
         document.querySelectorAll('.month-input').forEach((input, i) => {
-            yontemIcerikHTML += `
-                <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 6px; border-radius: 6px; text-align: center;">
-                    <span style="color: #6b7280; font-weight: 500;">${aylar[i]}</span><br>
-                    <strong style="color: #1f2937;">${Number(input.value || 0).toLocaleString('tr-TR')} kWh</strong>
-                </div>
-            `;
+            yontemHTML += `<td style="border:1px solid #ddd; padding:5px; text-align:center; font-size:12px;"><strong>${aylar[i]}</strong><br>${input.value || 0} kWh</td>`;
+            if ((i + 1) % 6 === 0 && i !== 11) yontemHTML += `</tr><tr>`; // 6 ayda bir alt satıra geç
         });
-        yontemIcerikHTML += `</div></td></tr>`;
+        yontemHTML += `</tr></table>`;
     } else {
-        yontemBaslik = "Yeni Kurulum (Eşya Bazlı)";
-        yontemIcerikHTML = `
-            <tr>
-                <td colspan="2" style="padding: 10px;">
-                    <div style="margin-bottom: 8px; color: #4b5563; font-weight: bold;">Aktif Cihaz ve Eşya Envanter Listesi:</div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                        <tr style="background: #f3f4f6; font-weight: bold; color: #374151; border-bottom: 2px solid #e5e7eb;">
-                            <td style="padding: 8px;">Cihaz Adı</td>
-                            <td style="padding: 8px; text-align: center;">Adet</td>
-                            <td style="padding: 8px; text-align: center;">Güç (kW)</td>
-                            <td style="padding: 8px; text-align: center;">Çalışma Süresi</td>
-                        </tr>
-        `;
+        yontemHTML = `<p><strong>Kullanılan Yöntem:</strong> Yeni Kurulum Cihaz Envanteri</p><ul style="font-size:13px; line-height:1.6;">`;
         document.querySelectorAll('.appliance-row').forEach(row => {
             const inputs = row.querySelectorAll('input');
-            if (inputs.length >= 4 && inputs[0].value) {
-                yontemIcerikHTML += `
-                    <tr style="border-bottom: 1px solid #e5e7eb;">
-                        <td style="padding: 8px; color: #1f2937; font-weight: 500;">${inputs[0].value}</td>
-                        <td style="padding: 8px; text-align: center; color: #4b5563;">${inputs[1].value || 1}</td>
-                        <td style="padding: 8px; text-align: center; color: #4b5563;">${inputs[2].value || 0} kW</td>
-                        <td style="padding: 8px; text-align: center; color: #4b5563;">${inputs[3].value || 0} Saat/Ay</td>
-                    </tr>
-                `;
+            if (inputs.length >= 3 && inputs[0].value) {
+                yontemHTML += `<li>${inputs[0].value}: ${inputs[1].value} Adet (${inputs[2].value} kW) - Ayda ${inputs[3].value} Saat</li>`;
             }
         });
-        yontemIcerikHTML += `</table></td></tr>`;
+        yontemHTML += `</ul>`;
     }
 
-    // --- 2. AŞAMA: PROJELENDİRİLEN TÜM GELECEK YÜK PARAMETRELERİNİ TARAMA ---
-    const hasFuture = document.getElementById('hasFutureLoads').checked;
-    let gelecekIcerikHTML = "";
-
-    if (hasFuture) {
-        if (document.getElementById('checkEV').checked) {
-            const evKm = document.getElementById('evMonthlyKm').value || 0;
-            const evRate = document.getElementById('evConsumptionRate').value || 0;
-            gelecekIcerikHTML += `
-                <div style="padding: 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 8px; font-size: 13px;">
-                    <strong style="color: #2563eb;">⚡ Elektrikli Araç (EV) Şarj Altyapısı:</strong><br>
-                    Planlanan Aylık Sürüş: ${Number(evKm).toLocaleString('tr-TR')} km | Ortalama Tüketim Çarpanı: ${evRate} kWh / 100km
-                </div>
-            `;
-        }
-        if (document.getElementById('checkHP').checked) {
-            const hpLoad = document.getElementById('hpMonthlyLoad').value || 0;
-            gelecekIcerikHTML += `
-                <div style="padding: 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 8px; font-size: 13px;">
-                    <strong style="color: #16a34a;">🔥 Isı Pompası Entegrasyonu:</strong><br>
-                    Sisteme İlave Edilecek Sabit Isınma/Söndürme Yükü: ${Number(hpLoad).toLocaleString('tr-TR')} kWh / Ay
-                </div>
-            `;
-        }
-        // Eksik kalan dinamik özel yükleri tek tek tarayıp rapora ekleyen döngü
+    // 4. Gelecek Yükler Ayrıştırma
+    let gelecekHTML = "";
+    if (document.getElementById('hasFutureLoads').checked) {
+        gelecekHTML += `<ul style="font-size:13px; line-height:1.6;">`;
+        if (document.getElementById('checkEV').checked) gelecekHTML += `<li>Elektrikli Araç (EV): Aylık ${document.getElementById('evMonthlyKm').value || 0} km</li>`;
+        if (document.getElementById('checkHP').checked) gelecekHTML += `<li>Isı Pompası: Aylık +${document.getElementById('hpMonthlyLoad').value || 0} kWh</li>`;
         document.querySelectorAll('#customLoadsWrapper > div').forEach(row => {
-            const inputs = row.querySelectorAll('input');
-            if (inputs.length >= 2 && inputs[0].value) {
-                gelecekIcerikHTML += `
-                    <div style="padding: 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 8px; font-size: 13px;">
-                        <strong style="color: #4b5563;">📦 Özel Proje Senaryosu (${inputs[0].value}):</strong><br>
-                        Sisteme Eklenen Aylık Ek Yük Kapasitesi: +${Number(inputs[1].value || 0).toLocaleString('tr-TR')} kWh
-                    </div>
-                `;
-            }
+            const ins = row.querySelectorAll('input');
+            if (ins.length >= 2 && ins[0].value) gelecekHTML += `<li>Özel Yük (${ins[0].value}): Aylık +${ins[1].value} kWh</li>`;
         });
+        gelecekHTML += `</ul>`;
     } else {
-        gelecekIcerikHTML = `
-            <div style="padding: 12px; color: #6b7280; font-style: italic; font-size: 13px; text-align: center; border: 1px dashed #ced4da; border-radius: 6px;">
-                Yakın dönem projeksiyonunda sisteme dahil edilecek ek bir yük beyan edilmemiştir.
-            </div>
-        `;
+        gelecekHTML = `<p style="font-size:13px; color:#555;">Sisteme ilave edilecek ek yük senaryosu planlanmamıştır.</p>`;
     }
 
-    // --- 3. AŞAMA: BÜTÜNSEL A4 DASHBOARD ŞABLONUNU OLUŞTURMA ---
-    const pdfContainer = document.createElement('div');
-    pdfContainer.innerHTML = `
-        <div style="width: 190mm; padding: 25px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111827; box-sizing: border-box; background: #ffffff; min-height: 270mm; display: flex; flex-direction: column; justify-content: space-between;">
+    // 5. Tertemiz Resmi Belge Tasarımı (HTML & Inline CSS)
+    printArea.innerHTML = `
+        <div style="font-family: Arial, sans-serif; color: #222; max-width: 800px; margin: 0 auto; line-height: 1.5;">
             
-            <div>
-                <div style="border-bottom: 3px solid #2563eb; padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div>
-                        <h1 style="color: #2563eb; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; font-family: Arial, sans-serif;">epcmerkezim</h1>
-                        <p style="margin: 3px 0 0 0; color: #4b5563; font-size: 13px; font-weight: 500;">Güneş Enerjisi Ön Fizibilite & Analiz Raporu</p>
-                    </div>
-                    <div style="text-align: right; font-size: 11px; color: #6b7280; line-height: 1.4;">
-                        <strong>Düzenleyen:</strong> ${firmaAdi}<br>
-                        <strong>Rapor Tarihi:</strong> ${new Date().toLocaleDateString('tr-TR')}<br>
-                        <strong>Belge Seri No:</strong> EPC-${Math.floor(100000 + Math.random() * 900000)}
-                    </div>
+            <div style="border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px;">
+                <div style="float: right; text-align: right; font-size: 12px; color: #666;">
+                    <strong>Tarih:</strong> ${tarih}<br>
+                    <strong>Düzenleyen:</strong> ${firmaAdi}
                 </div>
-                
-                <h2 style="font-size: 16px; margin-bottom: 15px; font-weight: bold; color: #1f2937;">Sayın ${musteriAdi},</h2>
-                <p style="font-size: 13px; line-height: 1.6; margin-bottom: 25px; color: #374151;">
-                    SaaS otomasyon ekranı üzerinde yapılandırdığınız teknik parametrelere, geçmiş fatura tüketim indekslerinize ve gelecekte kurmayı planladığınız ek yük senaryolarınıza göre hazırlanan detaylı simülasyon rapor paneli aşağıda bilgilerinize sunulmuştur.
-                </p>
-                
-                <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin-bottom: 20px; background: #fafafa;">
-                    <div style="background: #f8fafc; padding: 10px 15px; font-size: 11.5px; font-weight: bold; color: #2563eb; border-bottom: 1px solid #e5e7eb; text-transform: uppercase; letter-spacing: 0.5px;">
-                        [Bölüm 1] Mevcut Altyapı Tüketim Girdileri
-                    </div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                        <tr style="border-bottom: 1px solid #e5e7eb; background: #ffffff;">
-                            <td style="padding: 10px; font-weight: bold; color: #4b5563; width: 35%;">Tercih Edilen Model:</td>
-                            <td style="padding: 10px; color: #1f2937; font-weight: 600;">${yontemBaslik}</td>
-                        </tr>
-                        ${yontemIcerikHTML}
-                    </table>
-                </div>
-                
-                <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin-bottom: 25px; background: #fafafa;">
-                    <div style="background: #f8fafc; padding: 10px 15px; font-size: 11.5px; font-weight: bold; color: #16a34a; border-bottom: 1px solid #e5e7eb; text-transform: uppercase; letter-spacing: 0.5px;">
-                        [Bölüm 2] Projelendirilen Gelecek İlave Yük Senaryoları
-                    </div>
-                    <div style="padding: 15px; background: #ffffff;">
-                        ${gelecekIcerikHTML}
-                    </div>
-                </div>
-                
-                <div style="border: 1px solid #111827; border-radius: 10px; overflow: hidden; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                    <div style="background: #111827; color: #ffffff; padding: 12px 15px; font-size: 11.5px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
-                        [Sonuç Paneli] Enerji Projeksiyonu Ve Tarife Analizi
-                    </div>
-                    <div style="display: flex; background: #ffffff; min-height: 85px;">
-                        <div style="flex: 1; padding: 15px; text-align: center; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; justify-content: center;">
-                            <span style="font-size: 10.5px; font-weight: bold; color: #4b5563; text-transform: uppercase;">Gelecekteki Aylık Tüketim</span>
-                            <div style="font-size: 22px; font-weight: 800; color: #2563eb; margin-top: 4px;">
-                                ${Math.round(sonAylik).toLocaleString('tr-TR')} <span style="font-size: 12px; font-weight: normal; color: #6b7280;">kWh</span>
-                            </div>
-                        </div>
-                        <div style="flex: 1; padding: 15px; text-align: center; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; justify-content: center;">
-                            <span style="font-size: 10.5px; font-weight: bold; color: #4b5563; text-transform: uppercase;">Yıllık Toplam Proje İhtiyacı</span>
-                            <div style="font-size: 22px; font-weight: 800; color: #16a34a; margin-top: 4px;">
-                                ${Math.round(sonYillik).toLocaleString('tr-TR')} <span style="font-size: 12px; font-weight: normal; color: #6b7280;">kWh</span>
-                            </div>
-                        </div>
-                        <div style="flex: 1; padding: 15px; text-align: center; background: #f9fafb; display: flex; flex-direction: column; justify-content: center;">
-                            <span style="font-size: 10.5px; font-weight: bold; color: #1f2937; text-transform: uppercase;">Tahmini Aylık Fatura</span>
-                            <div style="font-size: 22px; font-weight: 800; color: #b45309; margin-top: 4px;">
-                                ₺ ${sonFatura.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <h1 style="color: #2563eb; margin: 0; font-size: 24px;">epcmerkezim</h1>
+                <p style="margin: 0; font-size: 14px; color: #555;">Güneş Enerjisi Tüketim Analiz Raporu</p>
+            </div>
+            
+            <p><strong>Sayın ${musteriAdi},</strong></p>
+            <p style="font-size: 14px; color: #444;">Sistem üzerinden girmiş olduğunuz parametrelere göre hesaplanan teknik ve mali simülasyon özetiniz aşağıda yer almaktadır.</p>
+            
+            <div style="margin-top: 30px;">
+                <h3 style="color: #2563eb; border-bottom: 1px solid #ddd; padding-bottom: 5px; font-size: 16px;">1. Mevcut Tüketim Parametreleri</h3>
+                ${yontemHTML}
             </div>
 
-            <div>
-                <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px; border-radius: 0 6px 6px 0; margin-bottom: 20px;">
-                    <p style="margin: 0; font-size: 11px; color: #1e3a8a; line-height: 1.5;">
-                        * <strong>Teknik Şerh:</strong> Bu analiz dokümanı, dijital panel üzerinde girilen kullanıcı verilerine dayanılarak ön fizibilite simülasyonu sunar. Çatı alanının statik taşıma kapasitesi, bölgesel trafo merkezlerinin AG/OG güç tahsis limitleri ve resmi çağrı mektubu süreçleri yerinde keşif sonrasında kesinleşecektir.
-                    </p>
-                </div>
-                
-                <p style="font-size: 10px; color: #9ca3af; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 15px; margin: 0;">
-                    Bu doküman epcmerkezim entegre SaaS otomasyon motoru tarafından doğrulanarak güvenli formatta basılmıştır.
-                </p>
+            <div style="margin-top: 20px;">
+                <h3 style="color: #16a34a; border-bottom: 1px solid #ddd; padding-bottom: 5px; font-size: 16px;">2. Gelecek İlave Yük Senaryoları</h3>
+                ${gelecekHTML}
             </div>
 
+            <div style="margin-top: 40px;">
+                <h3 style="background-color: #1f2937; color: white; padding: 10px; font-size: 16px; margin: 0;">3. Sonuç ve Projeksiyon</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 16px;">
+                    <tr>
+                        <td style="padding: 15px; border: 1px solid #ddd; background-color: #f9fafb; font-weight: bold; width: 50%;">Gelecekteki Aylık Tüketim:</td>
+                        <td style="padding: 15px; border: 1px solid #ddd;">${Math.round(sonAylik).toLocaleString('tr-TR')} kWh</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 15px; border: 1px solid #ddd; background-color: #f9fafb; font-weight: bold;">Yıllık Toplam Sistem İhtiyacı:</td>
+                        <td style="padding: 15px; border: 1px solid #ddd; color: #16a34a; font-weight: bold;">${Math.round(sonYillik).toLocaleString('tr-TR')} kWh</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 15px; border: 1px solid #ddd; background-color: #fef3c7; font-weight: bold; color: #92400e;">Tahmini Aylık Fatura Bedeli:</td>
+                        <td style="padding: 15px; border: 1px solid #ddd; background-color: #fef3c7; font-weight: bold; color: #b45309; font-size: 20px;">₺ ${sonFatura.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div style="margin-top: 50px; padding-top: 20px; border-top: 1px dashed #ccc; font-size: 11px; color: #777; text-align: center;">
+                <p>Bu rapor ön fizibilite amacıyla üretilmiştir. Kesin değerler ve mekanik uygunluk saha keşfi sonrasında netleşecektir.</p>
+                <p><strong>epcmerkezim © ${new Date().getFullYear()}</strong></p>
+            </div>
         </div>
     `;
 
-    // html2pdf.js Milimetrik Sayfa Çıktı Ayarları
-    const opt = {
-        margin:       10, 
-        filename:     `epcmerkezim_detayli_analiz_raporu.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, windowWidth: 800 }, // Sanal ekran genişliği taşmayı ve kesilmeyi %100 önler
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    // PDF Çıktısını Tetikleme ve Kilitleri Açma
-    html2pdf().set(opt).from(pdfContainer).save().then(() => {
-        btn.innerHTML = "📄 Raporu PDF İndir"; 
-        btn.disabled = false;
-    }).catch((err) => {
-        console.error("PDF Motoru Hatası:", err);
-        btn.innerHTML = "📄 Raporu PDF İndir"; 
-        btn.disabled = false;
-        alert("PDF dosyası oluşturulurken bir sistem hatası meydana geldi.");
-    });
+    // 6. Tarayıcının Kendi PDF/Yazdırma Ekranını Tetikle
+    setTimeout(() => {
+        window.print();
+    }, 200); // Raporun DOM'a yerleşmesi için milisaniyelik kısa bir bekleme
 });

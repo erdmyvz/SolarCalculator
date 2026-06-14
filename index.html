@@ -13,6 +13,15 @@
     <style>
         .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* YENİ EKLENEN YAZDIRMA (NATIVE PDF) AYARLARI */
+        @media print {
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
+            /* Arka plan renklerinin PDF'te çıkması için */
+            * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex items-start justify-center min-h-screen font-sans">
