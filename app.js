@@ -140,10 +140,18 @@ const monthsGrid = document.getElementById('monthsGrid');
 // HATANIN ÇÖZÜLDÜĞÜ YER: Giriş bölümlerini bul ve sadece seçileni görünür yap
 document.querySelectorAll('input[name="inputType"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
-        // Hepsini gizle
-        document.querySelectorAll('.input-section').forEach(sec => sec.classList.add('hidden'));
-        // Sadece ID'si seçilene uyanı göster
-        document.getElementById(e.target.value + 'InputSection').classList.remove('hidden');
+        // 1. Ekranda 'input-section' class'ına sahip tüm kutuları bul ve gizle
+        document.querySelectorAll('.input-section').forEach(sec => {
+            sec.classList.add('hidden');
+        });
+        
+        // 2. Sadece seçili olan radyo butonunun value değerine uyan kutuyu görünür yap
+        const targetSectionId = e.target.value + 'InputSection';
+        const targetSection = document.getElementById(targetSectionId);
+        
+        if(targetSection) {
+            targetSection.classList.remove('hidden');
+        }
     });
 });
 
