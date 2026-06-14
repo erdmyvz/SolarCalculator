@@ -10,6 +10,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
     <style>
         .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
@@ -250,12 +253,12 @@
             <h1 class="text-2xl font-bold text-gray-800 mb-2">İnteraktif Enerji Bağımsızlığı</h1>
             <p class="text-gray-600 mb-6">Evinizi 3D ortamda modernize edin ve enerji bağımsızlığınızı adım adım kurun.</p>
             
-            <div class="w-full bg-slate-900 rounded-xl flex items-center justify-center border-4 border-indigo-100 relative overflow-hidden" style="height: 60vh;">
+            <div id="three-canvas-container" class="w-full bg-slate-900 rounded-xl flex items-center justify-center border-4 border-indigo-100 relative overflow-hidden" style="height: 60vh;">
                 
-                <div class="text-center z-10">
+                <div id="loading3D" class="text-center z-10">
                     <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                     <h3 class="text-indigo-400 font-bold text-xl">3D Render Motoru Başlatılıyor...</h3>
-                    <p class="text-slate-400 text-sm mt-2">Bu alana Three.js / React Three Fiber sahnesi entegre edilecek.</p>
+                    <p class="text-slate-400 text-sm mt-2">Sanal ortam hazırlanıyor, lütfen bekleyin.</p>
                 </div>
                 
                 <div class="absolute top-4 left-4 bg-white/10 backdrop-blur-md p-5 rounded-xl border border-white/20 text-white w-72 shadow-2xl">
