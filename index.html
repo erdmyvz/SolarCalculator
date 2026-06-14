@@ -253,30 +253,28 @@
             <h1 class="text-2xl font-bold text-gray-800 mb-2">İnteraktif Enerji Bağımsızlığı</h1>
             <p class="text-gray-600 mb-6">Evinizi 3D ortamda modernize edin ve enerji bağımsızlığınızı adım adım kurun.</p>
             
-            <div id="three-canvas-container" class="w-full bg-slate-900 rounded-xl flex items-center justify-center border-4 border-indigo-100 relative overflow-hidden" style="height: 60vh;">
-                
-                <div id="loading3D" class="text-center z-10">
-                    <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <h3 class="text-indigo-400 font-bold text-xl">3D Render Motoru Başlatılıyor...</h3>
-                </div>
-                
-                <div class="absolute top-4 left-4 bg-white/10 backdrop-blur-md p-5 rounded-xl border border-white/20 text-white w-72 shadow-2xl z-10 pointer-events-none">
-                    <h4 class="font-bold mb-3 border-b border-white/20 pb-2 flex justify-between items-center">
-                        <span>Bağımsızlık Skoru</span>
-                        <span id="scoreDisplay" class="text-xs bg-red-500 transition-colors duration-500 px-2 py-1 rounded text-white font-bold">%0</span>
-                    </h4>
-                    <div class="flex justify-between text-sm mb-2"><span>Şebeke Bağımlılığı:</span><span id="gridDepDisplay" class="text-red-400 font-bold transition-all">%100</span></div>
-                    <div class="flex justify-between text-sm mb-2"><span>Fosil Yakıt (Doğalgaz):</span><span id="fossilDisplay" class="text-orange-400 font-bold transition-all">Aktif</span></div>
-                    <div class="flex justify-between text-sm"><span>Karbon Ayak İzi:</span><span id="carbonDisplay" class="text-yellow-400 font-bold transition-all">Yüksek</span></div>
-                </div>
+            <div class="absolute bottom-4 left-0 right-0 flex justify-center space-x-3 z-10">
+                    
+                    <button id="btnSimGES" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-lg font-bold transition-transform transform border border-indigo-400 flex items-center">
+                        <span class="text-yellow-300 mr-2">☀️</span> GES Aç/Kapa
+                    </button>
 
-                <div class="absolute bottom-4 left-0 right-0 flex justify-center space-x-4 z-10">
-                    <button id="btnSimAddGES" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg shadow-lg font-bold transition-transform transform hover:-translate-y-1 border border-indigo-400"><span class="text-yellow-300 mr-1">☀️</span> GES Kur</button>
-                    <button id="btnSimAddBattery" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg shadow-lg font-bold transition-transform transform hover:-translate-y-1 border border-indigo-400"><span class="text-green-300 mr-1">🔋</span> Batarya Ekle</button>
-                    <button id="btnSimAddEV" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg shadow-lg font-bold transition-transform transform hover:-translate-y-1 border border-indigo-400"><span class="text-blue-300 mr-1">🚗</span> Elektrikli Araç</button>
-                    <button id="btnSimAddHP" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg shadow-lg font-bold transition-transform transform hover:-translate-y-1 border border-indigo-400"><span class="text-orange-300 mr-1">♨️</span> Isı Pompası</button>
+                    <div class="flex items-center bg-indigo-600 rounded-lg shadow-lg border border-indigo-400 overflow-hidden">
+                        <button id="btnSimBatMinus" class="px-3 py-2 bg-indigo-700 hover:bg-indigo-500 text-white font-bold transition">-</button>
+                        <span class="px-3 text-white font-bold text-sm"><span class="text-green-300 mr-1">🔋</span> Batarya: <span id="batCountDisplay">0</span></span>
+                        <button id="btnSimBatPlus" class="px-3 py-2 bg-indigo-700 hover:bg-indigo-500 text-white font-bold transition">+</button>
+                    </div>
+
+                    <div class="flex items-center bg-indigo-600 rounded-lg shadow-lg border border-indigo-400 overflow-hidden">
+                        <button id="btnSimEVMinus" class="px-3 py-2 bg-indigo-700 hover:bg-indigo-500 text-white font-bold transition">-</button>
+                        <span class="px-3 text-white font-bold text-sm"><span class="text-blue-300 mr-1">🚗</span> Araç: <span id="evCountDisplay">0</span></span>
+                        <button id="btnSimEVPlus" class="px-3 py-2 bg-indigo-700 hover:bg-indigo-500 text-white font-bold transition">+</button>
+                    </div>
+
+                    <button id="btnSimHP" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg shadow-lg font-bold transition-transform transform border border-indigo-400 flex items-center">
+                        <span class="text-orange-300 mr-2">♨️</span> Isı Pompası
+                    </button>
                 </div>
-            </div>
         </div>
     </div>
 
