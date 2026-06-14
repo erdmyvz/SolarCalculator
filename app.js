@@ -8,7 +8,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUserProfile = null;
 
 // EmailJS Başlatma (Geliştirici hesabı gerektirir, geçici public key)
-emailjs.init("YOUR_PUBLIC_KEY");
+emailjs.init("service_en0v19k");
 
 // ==========================================
 // SEKMELER VE AUTH GEÇİŞLERİ
