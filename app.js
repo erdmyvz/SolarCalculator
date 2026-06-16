@@ -1037,3 +1037,121 @@ window.respondToTicket = async function(id) {
     alert("Yanıt ve fiyat teklifi müşteriye başarıyla iletildi!");
     fetchTicketsForAdmin(); // Listeyi yenile
 };
+
+// ==========================================
+// MODÜL 6: SATIŞ YARDIMCISI (COPILOT) MOTORU
+// ==========================================
+const salesAssistantModule = document.getElementById('salesAssistantModule');
+const btnGoSalesAssistant = document.getElementById('btnGoSalesAssistant');
+const btnBackToMenuFromSales = document.getElementById('btnBackToMenuFromSales');
+
+const salesSetupArea = document.getElementById('salesSetupArea');
+const activeCallArea = document.getElementById('activeCallArea');
+const setupKurulumPrices = document.getElementById('setupKurulumPrices');
+const setupDanismanlikPrices = document.getElementById('setupDanismanlikPrices');
+const objectionButtonsContainer = document.getElementById('objectionButtonsContainer');
+const scriptDisplayArea = document.getElementById('scriptDisplayArea');
+
+// Menü Geçişleri
+if(btnGoSalesAssistant) {
+    btnGoSalesAssistant.addEventListener('click', () => {
+        document.getElementById('mainMenu').classList.add('hidden');
+        salesAssistantModule.classList.remove('hidden');
+        resetSalesCopilot();
+    });
+}
+if(btnBackToMenuFromSales) {
+    btnBackToMenuFromSales.addEventListener('click', () => {
+        salesAssistantModule.classList.add('hidden');
+        document.getElementById('mainMenu').classList.remove('hidden');
+    });
+}
+
+// Radyo Butonu Dinleyicisi (Fiyat Kutu Görünümleri)
+document.querySelectorAll('input[name="companyType"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        if(e.target.value === 'kurulum') {
+            setupKurulumPrices.classList.remove('hidden');
+            setupDanismanlikPrices.classList.add('hidden');
+        } else {
+            setupKurulumPrices.classList.add('hidden');
+            setupDanismanlikPrices.classList.remove('hidden');
+        }
+    });
+});
+
+// Senaryo ve Psikolojik Cevap Veritabanı
+const salesScenarios = {
+    kurulum: {
+        "300 m² evim var, GES istiyorum": "Metrekare hesabı üzerinden güneş enerjisi sistemi hesaplayamayız. İsterseniz evinizdeki tüketim alışkanlıklarınızdan veya faturanızdan konuşmaya devam edelim.",
+        "3.000 TL fatura ödüyorum": "Bu faturaya göre yaklaşık 10 kW kapasiteli bir sistem tavsiye edebilirim. Çatınızda sadece 50 metrekare yer kaplayacaktır. Peki, bölgenizde çok sık elektrik kesintisi yaşanıyor mu?",
+        "Evet, sık kesiliyor": "Elektrik kesintisinin sık yaşandığı yerlerde mutlaka hibrit sistem ve batarya tavsiye etmekteyiz. Kesintinin süresine göre batarya kapasitesini ileride de rahatlıkla arttırabiliriz.",
+        "Peki maliyeti nedir?": "10 kW sistem ve 5 kWh batarya için şöyle bir kaba fiyatlandırma yapabilirim:<br><br>• 1 kW güneş enerjisi maliyeti ortalama <strong>{kwPrice} Dolar</strong><br>• 1 kWh batarya maliyeti ortalama <strong>{batPrice} Dolar</strong><br><br><strong>Toplam: {totalPrice} Dolar</strong> şeklinde referans bir fiyat verebilirim fakat net ve asıl fiyat mühendislerimizin keşfinden sonra çıkacaktır. İsterseniz uygun bir gününüzde keşfe gelebiliriz.",
+        "Eşimle görüşmem gerekiyor": "Kesinlikle, bu durum aileniz için çok önemli bir yatırım. Ancak düşünün; eşinizin ve ailenizin akşamları şebeke kesintisinden dolayı karanlıkta veya soğukta kalmasını ister misiniz?",
+        "Haklısınız fakat şu an param yok": "Sizi çok iyi anlıyorum. Bu yüzden ödeme planı konusunda size yardımcı olabiliriz. Kurulum öncesi %30, kurulum sonrası %60 şeklinde bütçenizi yormayacak esnek ödeme koşulları oluşturabiliriz.",
+        "Şu an kendimi hazır hissetmiyorum": "Güneş her gün doğup batıyor. O enerjiyi her gün bedava üretip faturanızı sıfırlamak varken neden bekleyerek para kaybetmeye devam edelim? Hızlıca bir aksiyon alalım."
+    },
+    danismanlik: {
+        "GES kurdurmak istiyorum ama birden fazla teklif var": "Sizi çok iyi anlıyorum, sektörde yüzlerce firma var ve aklınızı karıştıracak farklı teklifler vermiş olabilirler. Her şeyden önce, biz danışmanlık hizmetimize doğrudan net 'tüketim hesabı' ile başlıyoruz. Tüketimleriniz belli olduktan sonra, Türkiye pazarında kronik sorunu olmayan, olsa bile anında teknik servis ve çağrı merkezi desteği veren doğru ürünleri belirliyoruz.<br><br>Sonraki süreçte belirlediğimiz bu nokta atışı ürünlerle kurulumcu firmalardan teklifler istiyoruz. Gelen teklifler benzer ürünlerle olacağı için karşılaştırmamız elma ile elmayı kıyaslamak oluyor. Gelen teklifleri beraber değerlendirip paranızın tam karşılığını almanızı sağlıyoruz.",
+        "Sürece nasıl başlayabilirim / Maliyeti nedir?": "Sizi tüm bu karmaşadan ve yanlış karar riskinden kurtaran danışmanlık hizmetimizin baştan sona toplam bedeli <strong>{consultPrice} TL</strong>'dir.",
+        "Bu fiyat çok fazla geldi": "Haklısınız, ek bir maliyet gibi görünebilir. Ancak şu an elinizdeki teklifleri doğrudan seçtiğinizde, içinde Türkiye'de teknik servisi olmayan, ihtiyacınızı karşılamayan veya sırf ucuz diye sisteme eklenmiş ürünler olabilir. Belki de kurulumu yapacak ekibin ilk işi olacaktır.<br><br>Biz sizi tam olarak bu durumlardan ve çöpe gidecek yüzbinlerce liradan koruyoruz. İleride çıkabilecek devasa sorunları en baştan öngörerek yıllarca sorunsuz çalışacak bir tesis kurmanızı sağlıyorum.",
+        "Eşimle görüşmem gerekiyor": "Tabii ki, bu ailenizin ortak kararı. İsterseniz ödemeyi aldıktan sonra hemen sizlerle bir e-toplantı organize edelim. Eşiniz de toplantıya katılsın ve aklındaki tüm soru işaretlerini danışmanlığımız kapsamında tek tek, şeffafça cevaplayayım."
+    }
+};
+
+// Görüşmeyi Başlat Butonu
+document.getElementById('btnStartCall').addEventListener('click', () => {
+    salesSetupArea.classList.add('hidden');
+    activeCallArea.classList.remove('hidden');
+    
+    // Stratejiyi ve Değişkenleri Al
+    const compType = document.querySelector('input[name="companyType"]:checked').value;
+    const kwPrice = parseFloat(document.getElementById('baseKwPrice').value) || 0;
+    const batPrice = parseFloat(document.getElementById('baseBatPrice').value) || 0;
+    const consultPrice = parseFloat(document.getElementById('baseConsultPrice').value) || 0;
+    const totalPrice = (10 * kwPrice) + (5 * batPrice); // 10kW panel + 5kWh batarya sabit hesaplaması
+
+    // Başlığı Güncelle
+    document.getElementById('activeStrategyLabel').innerText = compType === 'kurulum' ? "Strateji: Kurulum (EPC) Firması" : "Strateji: Danışmanlık Firması";
+
+    // Müşteri İtiraz Butonlarını Doldur
+    objectionButtonsContainer.innerHTML = '';
+    const currentScenarios = salesScenarios[compType];
+    
+    for (const [objection, response] of Object.entries(currentScenarios)) {
+        const btn = document.createElement('button');
+        btn.className = "text-left w-full bg-white hover:bg-orange-50 border border-gray-300 hover:border-orange-400 text-gray-700 font-bold p-3 rounded-lg shadow-sm transition-all";
+        btn.innerHTML = `💬 "${objection}"`;
+        
+        btn.addEventListener('click', () => {
+            // Aktif buton stili
+            document.querySelectorAll('#objectionButtonsContainer button').forEach(b => {
+                b.classList.remove('bg-orange-600', 'text-white', 'border-orange-700');
+                b.classList.add('bg-white', 'text-gray-700');
+            });
+            btn.classList.remove('bg-white', 'text-gray-700');
+            btn.classList.add('bg-orange-600', 'text-white', 'border-orange-700');
+
+            // Metin içindeki değişkenleri değiştir
+            let finalResponse = response
+                .replace('{kwPrice}', kwPrice.toLocaleString('tr-TR'))
+                .replace('{batPrice}', batPrice.toLocaleString('tr-TR'))
+                .replace('{totalPrice}', totalPrice.toLocaleString('tr-TR'))
+                .replace('{consultPrice}', consultPrice.toLocaleString('tr-TR'));
+
+            // Ekrana büyük puntoyla bas
+            scriptDisplayArea.innerHTML = `<p class="text-white text-2xl md:text-3xl leading-relaxed font-light animate-fade-in">${finalResponse}</p>`;
+        });
+        
+        objectionButtonsContainer.appendChild(btn);
+    }
+});
+
+// Görüşmeyi Sonlandır Butonu
+document.getElementById('btnEndCall').addEventListener('click', resetSalesCopilot);
+
+function resetSalesCopilot() {
+    activeCallArea.classList.add('hidden');
+    salesSetupArea.classList.remove('hidden');
+    scriptDisplayArea.innerHTML = `<p class="text-slate-500 text-lg italic">Müşterinin söylediği veya sorması muhtemel cümleyi sol taraftan seçtiğinizde, ikna edici metin burada belirecektir.</p>`;
+}
