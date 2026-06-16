@@ -17,12 +17,10 @@
         .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* ÇÖZÜM: Rapor taslağını normal ekranda tamamen gizler */
         @media screen {
             #printArea { display: none !important; }
         }
         
-        /* YAZDIRMA (NATIVE PDF) AYARLARI */
         @media print {
             body * { visibility: hidden; }
             #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
@@ -99,6 +97,7 @@
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">Güç Hesaplayıcı</h2><span class="bg-blue-800 text-xs px-3 py-1 rounded-full font-medium">Aktif</span></div>
                     <p class="text-blue-100 text-sm">Müşterilerinizin tüketim analizini yapın ve PDF teklifi sunun.</p>
                 </div>
+                
                 <div id="btnGoSimulation" class="cursor-pointer bg-indigo-600 text-white rounded-xl p-6 shadow-lg hover:bg-indigo-700 transition-all transform hover:-translate-y-1">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-bold">3D Simülasyon</h2>
@@ -106,6 +105,7 @@
                     </div>
                     <p class="text-indigo-100 text-sm">Neden güneş enerjisi sistemi yaptırmalısınız? Evinizi 3D ortamda modernize edin.</p>
                 </div>
+                
                 <div id="btnGoEVCalc" class="cursor-pointer bg-teal-600 text-white rounded-xl p-6 shadow-lg hover:bg-teal-700 transition-all transform hover:-translate-y-1">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-bold">EV Yük Hesaplayıcı</h2>
@@ -113,12 +113,20 @@
                     </div>
                     <p class="text-teal-100 text-sm">EV'niz için güneş enerjisi sistemi hesaplayın ve optimize edin.</p>
                 </div>
+                
+                <div id="btnGoTechSupport" class="cursor-pointer bg-red-600 text-white rounded-xl p-6 shadow-lg hover:bg-red-700 transition-all transform hover:-translate-y-1">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold">Teknik Servis Talebi</h2>
+                        <span class="bg-red-800 text-xs px-3 py-1 rounded-full font-medium text-white">Aktif</span>
+                    </div>
+                    <p class="text-red-100 text-sm">Yanlış kurulan veya arızalı GES tesisleriniz için profesyonel destek ve keşif talebi oluşturun.</p>
+                </div>
+
                 <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Reklam ve Pazarlama</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
                 <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">İlk Teklif Oluşturma</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
                 <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Keşif Sonrası Teklif</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
                 <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Sözleşme Hazırlama</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
                 <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">Yasal Süreç Evrakları</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
-                <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm opacity-80 cursor-default"><div class="flex items-center justify-between"><h2 class="text-lg font-bold text-gray-700">İşletme ve Bakım (O&M)</h2><span class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-md font-bold">Yakında</span></div></div>
             </div>
         </div>
 
@@ -127,8 +135,9 @@
                 <button id="btnBackToMenuFromAdmin" class="text-gray-500 hover:text-red-600 font-medium flex items-center transition">Ana Menü</button>
                 <button id="btnRefreshUsers" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm font-bold transition">Yenile</button>
             </div>
+            
             <h2 class="text-2xl font-bold text-gray-800 mb-6">Sisteme Kayıtlı Kullanıcılar</h2>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto mb-8">
                 <table class="min-w-full bg-white border border-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
@@ -141,8 +150,16 @@
                     <tbody id="usersTableBody" class="divide-y divide-gray-200"></tbody>
                 </table>
             </div>
-        </div>
 
+            <div class="border-t pt-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Teknik Servis Talepleri (Gelen Kutusu)</h2>
+                    <button id="btnRefreshTickets" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm font-bold transition">Talepleri Yenile</button>
+                </div>
+                <div id="adminTicketsList" class="space-y-4">
+                    </div>
+            </div>
+        </div>
 
         <div id="calculatorModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="mb-6 border-b pb-4 flex items-center">
@@ -152,7 +169,6 @@
 
             <h1 class="text-2xl font-bold text-gray-800 mb-6">Tüketim İhtiyacı Analizi</h1>
             <div class="space-y-6">
-                
                 <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
                     <label class="block text-gray-800 font-semibold mb-4">Tüketim Verisi Giriş Yöntemi:</label>
                     <div class="flex flex-col md:flex-row items-start md:items-center md:space-x-6 space-y-3 md:space-y-0 mb-6">
@@ -253,7 +269,6 @@
             </div>
         </div>
 
-
         <div id="simulationModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackToMenuFromSim" class="text-gray-500 hover:text-indigo-600 font-medium flex items-center transition">Ana Menü</button>
@@ -313,7 +328,6 @@
                 </div>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    
                     <div class="bg-white p-6 rounded-xl border border-green-100 shadow-sm hover:shadow-md transition-shadow">
                         <div class="text-green-500 text-3xl mb-4 flex items-center space-x-2">
                             <span>🔌</span><span class="text-gray-300 text-lg">➔</span><span>🔋</span>
@@ -323,7 +337,6 @@
                             Gündüz ürettiğiniz enerjinin fazlasını <strong>batarya (depolama)</strong> sistemlerinizde saklayın. Güneşin olmadığı gece saatlerinde veya bölgesel elektrik kesintilerinde bile şebekeye ihtiyaç duymadan, hayatınıza hiçbir şey olmamış gibi konforla devam edin.
                         </p>
                     </div>
-
                     <div class="bg-white p-6 rounded-xl border border-orange-100 shadow-sm hover:shadow-md transition-shadow">
                         <div class="text-orange-500 text-3xl mb-4 flex items-center space-x-2">
                             <span>🔥</span><span class="text-gray-300 text-lg">➔</span><span>⚡</span>
@@ -333,7 +346,6 @@
                             Çatınızda ürettiğiniz temiz enerjiyle çalışan bir <strong>Isı Pompası</strong>, evinizin tüm ısınma ve sıcak su ihtiyacını karşılar. Mutfağınızdaki <strong>indüksiyonlu ocak</strong> ile yemeklerinizi fosil yakıt kullanmadan, güvenle pişirebilirsiniz. Doğalgaz faturası tarihe karışır.
                         </p>
                     </div>
-                    
                     <div class="bg-white p-6 rounded-xl border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
                         <div class="text-blue-500 text-3xl mb-4 flex items-center space-x-2">
                             <span>⛽</span><span class="text-gray-300 text-lg">➔</span><span>🚗</span>
@@ -343,24 +355,11 @@
                             Garajınızdaki <strong>elektrikli araçlarınızı (EV)</strong> güneşten elde ettiğiniz bedava enerjiyle şarj edin. Akaryakıt istasyonlarına, benzin ve mazot fiyatlarındaki dalgalanmalara olan bağımlılığınızı tamamen sıfırlayın. Ulaşımda gerçek özgürlüğü yaşayın.
                         </p>
                     </div>
-                    
-                    
                 </div>
             </div>
         </div>
 
-
-
-
-
-
-
-
-
-
-
         <div id="evCalcModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
-            
             <div class="mb-6 border-b pb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div class="flex items-center">
                     <button id="btnBackToMenuFromEV" class="text-gray-500 hover:text-teal-600 font-medium flex items-center transition">Ana Menü</button>
@@ -450,12 +449,54 @@
             </div>
         </div>
 
+        <div id="techSupportModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+            <div class="mb-6 border-b pb-4 flex items-center">
+                <button id="btnBackToMenuFromSupport" class="text-gray-500 hover:text-red-600 font-medium flex items-center transition">Ana Menü</button>
+                <span class="mx-2 text-gray-400">/</span><span class="text-gray-800 font-bold">Teknik Servis ve Müdahale</span>
+            </div>
 
+            <div class="bg-red-50 border-l-4 border-red-600 p-5 rounded-r-lg mb-8 shadow-sm">
+                <h3 class="text-red-800 font-extrabold text-lg mb-2">⚠️ Lütfen Talep Oluşturmadan Önce Okuyun</h3>
+                <p class="text-sm text-red-700 leading-relaxed mb-2">Verimli ve profesyonel bir hizmet sunabilmek adına teknik destek kapsamımız aşağıdaki kurallarla sınırlandırılmıştır:</p>
+                <ul class="list-disc ml-5 text-sm text-red-700 space-y-1 font-medium">
+                    <li><strong>10 kW altındaki</strong> evsel (mesken) tesislere hizmet verilmemektedir.</li>
+                    <li><span class="line-through">Solinved</span> ve <span class="line-through">Tommatech</span> marka ürünlere destek sağlanmamaktadır.</li>
+                    <li><strong>Sadece:</strong> Victron, Fronius, Pylontech, Jinko, Deye ve Solax markalı sistemlerin yanlış kurulumlarından kaynaklı sorunlara müdahale edilmektedir.</li>
+                </ul>
+            </div>
 
-        
+            <div class="flex border-b border-gray-200 mb-6">
+                <button id="tabNewTicket" class="px-6 py-3 font-bold text-red-600 border-b-2 border-red-600 transition">Yeni Talep Oluştur</button>
+                <button id="tabMyTickets" class="px-6 py-3 font-bold text-gray-500 hover:text-gray-700 transition">Geçmiş Taleplerim ve Durumları</button>
+            </div>
 
+            <form id="ticketForm" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">Ad Soyad</label><input type="text" id="tsName" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">Telefon</label><input type="tel" id="tsPhone" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">E-Posta</label><input type="email" id="tsEmail" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">Tesisin Açık Adresi</label><input type="text" id="tsAddress" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500"></div>
+                </div>
 
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">İnverter Marka / Model</label><input type="text" id="tsInverter" required placeholder="Örn: Victron Quattro..." class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">Batarya Marka / Model (Varsa)</label><input type="text" id="tsBattery" placeholder="Örn: Pylontech US3000C..." class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">Kurulumu Yapan Firma/Kişi</label><input type="text" id="tsInstaller" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">Kurulum Tarihi</label><input type="date" id="tsInstallDate" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">Sorun Ne Zaman Başladı?</label><input type="date" id="tsProblemDate" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500"></div>
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">Sistem Fotoğrafları</label><input type="file" id="tsPhotos" multiple accept="image/*" class="w-full p-2 border border-gray-300 rounded-lg bg-white text-sm text-gray-600"></div>
+                </div>
 
+                <div><label class="block text-sm font-bold text-gray-700 mb-1">Yaşadığınız Sorunun Detaylı Özeti</label><textarea id="tsProblemDesc" rows="4" required class="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-red-500"></textarea></div>
+
+                <button type="submit" id="btnSubmitTicket" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all text-lg">Talebi Gönder ve İncelemeye Al</button>
+            </form>
+
+            <div id="myTicketsArea" class="hidden space-y-4">
+                <div id="myTicketsList" class="grid grid-cols-1 gap-4">
+                    </div>
+            </div>
+        </div>
 
     </div>
 
