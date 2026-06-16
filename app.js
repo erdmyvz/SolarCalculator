@@ -710,6 +710,14 @@ document.getElementById('btnDownloadPDF').addEventListener('click', () => {
     }, 200);
 });
 
+
+
+
+
+
+
+
+
 // ==========================================
 // EV & SOLAR ENTEGRASYON HESAPLAYICISI (HIZLI & REAKTİF MOTOR)
 // ==========================================
@@ -718,7 +726,7 @@ const btnGoEVCalc = document.getElementById('btnGoEVCalc');
 const btnBackToMenuFromEV = document.getElementById('btnBackToMenuFromEV');
 
 // Global Sabitler
-let activeTab = 'tabA';
+let activeTab = 'tabBill'; // Varsayılan sekme artık 'Fatura'
 const DAILY_SUN_HOURS = 4;
 const KWP_TO_M2_RATIO = 5; // 1 kWp = 5 m2
 const ROOF_USABILITY_RATIO = 0.8;
@@ -728,7 +736,7 @@ if(btnGoEVCalc) {
     btnGoEVCalc.addEventListener('click', () => {
         document.getElementById('mainMenu').classList.add('hidden');
         evCalcModule.classList.remove('hidden');
-        calculateEVSolar(); // Modül açıldığında hemen hesapla
+        calculateEVSolar(); 
     });
 }
 if(btnBackToMenuFromEV) {
@@ -756,7 +764,7 @@ document.querySelectorAll('.ev-tab-btn').forEach(btn => {
     });
 });
 
-// Tüm girdiler için dinleyici (Bir harf/rakam bile değişse tetikler)
+// Tüm girdiler için dinleyici
 document.querySelectorAll('.ev-reactive-input').forEach(input => {
     input.addEventListener('input', calculateEVSolar);
 });
@@ -773,11 +781,9 @@ function calculateEVSolar() {
     const evACSpeed = parseFloat(document.getElementById('evCalcACSpeed').value) || 1;
     const evSocket = document.getElementById('evCalcSocket').value;
 
-    // Şarj Önerisi Metni
     document.getElementById('evChargerRecommendation').innerHTML = 
         `💡 <strong>Aracınız için önerilen:</strong> ${evSocket} soket tipine sahip, minimum ${evACSpeed} kW çıkış verebilen evsel AC şarj istasyonudur.`;
 
-    // C Sekmesi: Tüketime Göre Fatura Tahmini (Fiyat değiştikçe burası da değişir)
     const inputKwhVal = parseFloat(document.getElementById('evInputKwh').value) || 0;
     document.getElementById('dynamicBillEquiv').textContent = (inputKwhVal * dynamicTariffPrice).toFixed(2) + " TL";
 
@@ -787,41 +793,35 @@ function calculateEVSolar() {
     let dailyProductionKwh = 0;
     let showRoofWarning = false;
 
-    // Çatı Kullanım Limiti
+    // 4. Çatı Kullanım Limiti (Artık Zorunlu Temel Kural)
     const userTotalRoof = parseFloat(document.getElementById('evInputRoof').value) || 0;
     const maxUsableRoof = userTotalRoof * ROOF_USABILITY_RATIO;
 
-    // 4. Senaryolara Göre Algoritmalar
-    if (activeTab === 'tabA') {
-        requiredAreaM2 = maxUsableRoof;
-        requiredPowerKwp = requiredAreaM2 / KWP_TO_M2_RATIO;
-        dailyProductionKwh = requiredPowerKwp * DAILY_SUN_HOURS;
-        showRoofWarning = false;
-    } 
-    else if (activeTab === 'tabB') {
+    // 5. Senaryolara Göre Algoritmalar
+    if (activeTab === 'tabBill') {
         const monthlyBill = parseFloat(document.getElementById('evInputBill').value) || 0;
         const monthlyKwh = monthlyBill / dynamicTariffPrice;
         dailyProductionKwh = monthlyKwh / 30;
         requiredPowerKwp = dailyProductionKwh / DAILY_SUN_HOURS;
         requiredAreaM2 = requiredPowerKwp * KWP_TO_M2_RATIO;
-        if (requiredAreaM2 > maxUsableRoof) showRoofWarning = true;
     } 
-    else if (activeTab === 'tabC') {
+    else if (activeTab === 'tabKwh') {
         dailyProductionKwh = inputKwhVal / 30;
         requiredPowerKwp = dailyProductionKwh / DAILY_SUN_HOURS;
         requiredAreaM2 = requiredPowerKwp * KWP_TO_M2_RATIO;
-        if (requiredAreaM2 > maxUsableRoof) showRoofWarning = true;
     } 
-    else if (activeTab === 'tabD') {
+    else if (activeTab === 'tabKm') {
         const monthlyKm = parseFloat(document.getElementById('evInputKm').value) || 0;
         const monthlyEvKwh = monthlyKm * (evConsumption / 100);
         dailyProductionKwh = monthlyEvKwh / 30;
         requiredPowerKwp = dailyProductionKwh / DAILY_SUN_HOURS;
         requiredAreaM2 = requiredPowerKwp * KWP_TO_M2_RATIO;
-        if (requiredAreaM2 > maxUsableRoof) showRoofWarning = true;
     }
 
-    // 5. Sonuçları Ekrana Bas
+    // Limit Kontrolü (İstenen çatı alanı kullanılabilirden büyükse uyar)
+    if (requiredAreaM2 > maxUsableRoof) showRoofWarning = true;
+
+    // 6. Sonuçları Ekrana Bas
     const monthlyProductionKwh = dailyProductionKwh * 30;
     const monthlySolarRange = (monthlyProductionKwh / evBattery) * evRange;
 
@@ -830,10 +830,12 @@ function calculateEVSolar() {
     document.getElementById('resProduction').textContent = Math.round(monthlyProductionKwh).toLocaleString('tr-TR');
     document.getElementById('resSolarRange').textContent = Math.round(monthlySolarRange).toLocaleString('tr-TR');
 
-    // Uyarı Banner Yönetimi
+    // Dinamik Uyarı Banner Yönetimi
     const warningBanner = document.getElementById('roofWarningBanner');
     if (showRoofWarning) {
         warningBanner.classList.remove('hidden');
+        // Mesajı daha akıllı hale getirdik:
+        warningBanner.innerHTML = `⚠️ DİKKAT: İhtiyacınız olan alan (${requiredAreaM2.toFixed(1)} m²), çatınızın kullanılabilir limitini (${maxUsableRoof.toFixed(1)} m²) aşıyor. Sadece çatınıza sığan kadar panel kurabilirsiniz.`;
     } else {
         warningBanner.classList.add('hidden');
     }
