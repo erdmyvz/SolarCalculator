@@ -846,3 +846,194 @@ function calculateEVSolar() {
     document.getElementById('resChargeBar').style.width = barWidth + '%';
     document.getElementById('resChargePercent').textContent = `%` + Math.round(chargeRatio);
 }
+
+// ==========================================
+// TEKNİK SERVİS MODÜLÜ VE TICKET YÖNETİMİ
+// ==========================================
+const techSupportModule = document.getElementById('techSupportModule');
+const btnGoTechSupport = document.getElementById('btnGoTechSupport');
+const btnBackToMenuFromSupport = document.getElementById('btnBackToMenuFromSupport');
+
+const tabNewTicket = document.getElementById('tabNewTicket');
+const tabMyTickets = document.getElementById('tabMyTickets');
+const ticketForm = document.getElementById('ticketForm');
+const myTicketsArea = document.getElementById('myTicketsArea');
+
+// Menü Geçişleri
+if(btnGoTechSupport) {
+    btnGoTechSupport.addEventListener('click', () => {
+        document.getElementById('mainMenu').classList.add('hidden');
+        techSupportModule.classList.remove('hidden');
+        
+        // Kullanıcı verileri varsa formda hazır gelsin
+        if(currentUserProfile) {
+            document.getElementById('tsName').value = `${currentUserProfile.first_name} ${currentUserProfile.last_name}`;
+            document.getElementById('tsPhone').value = currentUserProfile.phone;
+        }
+    });
+}
+if(btnBackToMenuFromSupport) {
+    btnBackToMenuFromSupport.addEventListener('click', () => {
+        techSupportModule.classList.add('hidden');
+        document.getElementById('mainMenu').classList.remove('hidden');
+    });
+}
+
+// Sekme Yönetimi
+tabNewTicket.addEventListener('click', () => {
+    ticketForm.classList.remove('hidden'); myTicketsArea.classList.add('hidden');
+    tabNewTicket.classList.add('text-red-600', 'border-b-2', 'border-red-600'); tabNewTicket.classList.remove('text-gray-500');
+    tabMyTickets.classList.add('text-gray-500'); tabMyTickets.classList.remove('text-red-600', 'border-b-2', 'border-red-600');
+});
+
+tabMyTickets.addEventListener('click', () => {
+    ticketForm.classList.add('hidden'); myTicketsArea.classList.remove('hidden');
+    tabMyTickets.classList.add('text-red-600', 'border-b-2', 'border-red-600'); tabMyTickets.classList.remove('text-gray-500');
+    tabNewTicket.classList.add('text-gray-500'); tabNewTicket.classList.remove('text-red-600', 'border-b-2', 'border-red-600');
+    fetchMyTickets(); // Talepleri çek
+});
+
+// Yeni Talep Gönderme
+ticketForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitTicket');
+    btn.textContent = "Gönderiliyor..."; btn.disabled = true;
+
+    // Fotoğraf yükleme şimdilik veritabanında yer kaplamaması için mock bırakıldı
+    // Gerçekte supabase.storage kullanılmalıdır.
+    
+    const ticketData = {
+        user_id: (await supabaseClient.auth.getUser()).data.user.id,
+        full_name: document.getElementById('tsName').value,
+        phone: document.getElementById('tsPhone').value,
+        email: document.getElementById('tsEmail').value,
+        address: document.getElementById('tsAddress').value,
+        inverter_model: document.getElementById('tsInverter').value,
+        battery_model: document.getElementById('tsBattery').value,
+        installer_name: document.getElementById('tsInstaller').value,
+        install_date: document.getElementById('tsInstallDate').value,
+        problem_date: document.getElementById('tsProblemDate').value,
+        problem_desc: document.getElementById('tsProblemDesc').value
+    };
+
+    const { error } = await supabaseClient.from('support_tickets').insert([ticketData]);
+
+    if (error) {
+        alert("Talep gönderilirken hata oluştu: " + error.message);
+    } else {
+        alert("Talebiniz başarıyla iletildi. Teknik ekibimiz inceleyip tarafınıza dönüş yapacaktır.");
+        ticketForm.reset();
+        tabMyTickets.click(); // Taleplerim sayfasına yönlendir
+    }
+    btn.textContent = "Talebi Gönder ve İncelemeye Al"; btn.disabled = false;
+});
+
+// Kullanıcının Taleplerini Çekme
+async function fetchMyTickets() {
+    const list = document.getElementById('myTicketsList');
+    list.innerHTML = '<p class="text-gray-500 text-sm">Talepleriniz yükleniyor...</p>';
+    
+    const userId = (await supabaseClient.auth.getUser()).data.user.id;
+    const { data, error } = await supabaseClient.from('support_tickets').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+
+    if (error || !data || data.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-sm p-4 bg-gray-50 rounded">Henüz oluşturulmuş bir teknik servis talebiniz bulunmamaktadır.</p>';
+        return;
+    }
+
+    list.innerHTML = '';
+    data.forEach(t => {
+        let statusColor = "bg-yellow-100 text-yellow-800";
+        if(t.status === "Değerlendiriliyor") statusColor = "bg-blue-100 text-blue-800";
+        if(t.status === "Dönüş Yapıldı") statusColor = "bg-green-100 text-green-800";
+
+        list.innerHTML += `
+            <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h4 class="font-bold text-gray-800">İnverter: ${t.inverter_model}</h4>
+                        <p class="text-xs text-gray-500">Tarih: ${new Date(t.created_at).toLocaleDateString('tr-TR')}</p>
+                    </div>
+                    <span class="${statusColor} px-3 py-1 rounded-full text-xs font-bold">${t.status}</span>
+                </div>
+                <p class="text-sm text-gray-600 bg-gray-50 p-3 rounded mb-3"><strong>Sorun:</strong> ${t.problem_desc}</p>
+                ${t.admin_response ? `
+                    <div class="bg-green-50 border border-green-200 p-4 rounded-lg">
+                        <p class="text-sm text-green-800 mb-2"><strong>Yönetici Yanıtı:</strong> ${t.admin_response}</p>
+                        ${t.price_quote ? `<p class="text-sm font-bold text-green-900 bg-white inline-block px-3 py-1 rounded shadow-sm border border-green-100">💰 Teklif: ${t.price_quote} TL</p>` : ''}
+                    </div>
+                ` : '<p class="text-xs text-gray-400 italic">Henüz yönetici değerlendirmesi girilmedi.</p>'}
+            </div>
+        `;
+    });
+}
+
+// --------------------------------------------------
+// ADMIN TARAFI: Talepleri Görme ve Yanıtlama
+// --------------------------------------------------
+document.getElementById('btnRefreshTickets')?.addEventListener('click', fetchTicketsForAdmin);
+
+// Admin paneline girildiğinde talepleri de yükle (Bunu mevcut adminPanelCard event listener'ına entegre ettik)
+const originalAdminClick = adminPanelCard.onclick;
+adminPanelCard.addEventListener('click', () => { fetchTicketsForAdmin(); });
+
+async function fetchTicketsForAdmin() {
+    const list = document.getElementById('adminTicketsList');
+    if(!list) return;
+    list.innerHTML = '<p class="text-gray-500 text-sm">Gelen talepler yükleniyor...</p>';
+    
+    const { data, error } = await supabaseClient.from('support_tickets').select('*').order('created_at', { ascending: false });
+
+    if (error || !data || data.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-sm p-4 bg-gray-50 rounded">Sistemde henüz bir talep yok.</p>';
+        return;
+    }
+
+    list.innerHTML = '';
+    data.forEach(t => {
+        list.innerHTML += `
+            <div class="p-5 bg-white border border-gray-200 rounded-xl shadow-sm mb-4">
+                <div class="flex justify-between items-start mb-2">
+                    <h4 class="font-bold text-gray-800 text-lg">${t.full_name} <span class="text-sm font-normal text-gray-500">(${t.phone})</span></h4>
+                    <select onchange="updateTicketStatus(${t.id}, this.value)" class="text-xs font-bold border border-gray-300 rounded p-1 outline-none">
+                        <option value="Başvuru İletildi" ${t.status === 'Başvuru İletildi' ? 'selected' : ''}>Başvuru İletildi</option>
+                        <option value="Değerlendiriliyor" ${t.status === 'Değerlendiriliyor' ? 'selected' : ''}>Değerlendiriliyor</option>
+                        <option value="Dönüş Yapıldı" ${t.status === 'Dönüş Yapıldı' ? 'selected' : ''}>Dönüş Yapıldı</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 text-xs text-gray-600 mb-3 gap-2">
+                    <p><strong>İnverter:</strong> ${t.inverter_model}</p>
+                    <p><strong>Batarya:</strong> ${t.battery_model || 'Yok'}</p>
+                    <p><strong>Kuran Firma:</strong> ${t.installer_name}</p>
+                    <p><strong>Adres:</strong> ${t.address}</p>
+                </div>
+                <p class="text-sm text-gray-800 bg-red-50 p-3 rounded border border-red-100 mb-3"><strong>Sorun:</strong> ${t.problem_desc}</p>
+                
+                <div class="bg-gray-50 p-3 rounded border border-gray-200 flex gap-2">
+                    <input type="text" id="resp_${t.id}" placeholder="Müşteriye iletilecek teknik yanıt..." value="${t.admin_response || ''}" class="flex-1 p-2 text-sm border border-gray-300 rounded outline-none">
+                    <input type="number" id="price_${t.id}" placeholder="Fiyat (TL)" value="${t.price_quote || ''}" class="w-24 p-2 text-sm border border-gray-300 rounded outline-none">
+                    <button onclick="respondToTicket(${t.id})" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold">Yanıtla & Gönder</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// Global scope for inline onclick functions
+window.updateTicketStatus = async function(id, newStatus) {
+    await supabaseClient.from('support_tickets').update({ status: newStatus }).eq('id', id);
+};
+
+window.respondToTicket = async function(id) {
+    const responseText = document.getElementById(`resp_${id}`).value;
+    const priceVal = document.getElementById(`price_${id}`).value;
+    
+    await supabaseClient.from('support_tickets').update({ 
+        admin_response: responseText, 
+        price_quote: priceVal ? parseFloat(priceVal) : null,
+        status: 'Dönüş Yapıldı'
+    }).eq('id', id);
+    
+    alert("Yanıt ve fiyat teklifi müşteriye başarıyla iletildi!");
+    fetchTicketsForAdmin(); // Listeyi yenile
+};
