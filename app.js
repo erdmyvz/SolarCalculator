@@ -1,12 +1,20 @@
 // ============================================================================
-// SOLARSaaS EPC YÖNETİM MERKEZİ - ANA JAVASCRIPT MOTORU
+// SOLARSaaS EPC YÖNETİM MERKEZİ - NİHAİ ANA JAVASCRIPT MOTORU
 // ============================================================================
 
-// --- 1. SPA (SINGLE PAGE APPLICATION) YÖNLENDİRİCİ ---
+// --- 1. SUPABASE VE EMAILJS BAĞLANTILARI ---
+const SUPABASE_URL = 'https://bxcghdbrafzudiigeeud.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_EiDGhm4bT-acQ8xrV9RU4w_4wkUQGys';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUserProfile = null;
+
+emailjs.init("qrBU4c3EChsaZhBZS");
+
+// --- 2. SPA (SINGLE PAGE APPLICATION) YÖNLENDİRİCİ ---
 window.isLanding3DInitialized = false;
 window.isApp3DInitialized = false;
 
-function handleSPA_Routing() {
+async function handleSPA_Routing() {
     const hash = window.location.hash || '#home';
     
     // Tüm ana katmanları gizle
@@ -21,24 +29,128 @@ function handleSPA_Routing() {
     // URL Hash'e göre ilgili katmanı aç
     if (hash === '#home' && landing) {
         landing.classList.remove('hidden');
-        if(!window.isLanding3DInitialized) {
-            initLanding3DScene();
-            window.isLanding3DInitialized = true;
-        }
+        if(!window.isLanding3DInitialized) { initLanding3DScene(); window.isLanding3DInitialized = true; }
     } else if (hash === '#auth' && auth) {
         auth.classList.remove('hidden');
     } else if (hash === '#app' && app) {
+        // Oturum kontrolü
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+            window.location.hash = '#auth'; // Giriş yapmamışsa logine at
+            return;
+        }
         app.classList.remove('hidden');
     }
 }
 
-// Tarayıcı geri tuşu ve ilk yükleme dinleyicileri
 window.addEventListener('hashchange', handleSPA_Routing);
-window.addEventListener('load', handleSPA_Routing);
+
+// Sayfa Yüklendiğinde Oturum Kontrolü
+window.addEventListener('load', async () => {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+        await fetchUserProfile(session.user.id, session.user.email);
+        if (window.location.hash === '#auth' || window.location.hash === '') {
+            window.location.hash = '#app'; // Oturum varsa direkt uygulamaya al
+        }
+    }
+    handleSPA_Routing();
+});
 
 
-// --- 2. ANA MENÜ VE MODÜL GEÇİŞ YÖNETİMİ ---
-// Uygulama içi modül butonları ve hedef ID'leri
+// --- 3. AUTH (GİRİŞ / KAYIT / PROFİL) İŞLEMLERİ ---
+const tabLogin = document.getElementById('tabLogin');
+const tabRegister = document.getElementById('tabRegister');
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+
+tabLogin?.addEventListener('click', () => {
+    loginForm.classList.remove('hidden'); registerForm.classList.add('hidden');
+    tabLogin.classList.add('text-blue-600', 'border-b-2'); tabLogin.classList.remove('text-gray-400');
+    tabRegister.classList.add('text-gray-400'); tabRegister.classList.remove('text-blue-600', 'border-b-2');
+});
+
+tabRegister?.addEventListener('click', () => {
+    registerForm.classList.remove('hidden'); loginForm.classList.add('hidden');
+    tabRegister.classList.add('text-blue-600', 'border-b-2'); tabRegister.classList.remove('text-gray-400');
+    tabLogin.classList.add('text-gray-400'); tabLogin.classList.remove('text-blue-600', 'border-b-2');
+});
+
+// Kayıt Ol
+registerForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnRegisterSubmit');
+    btn.textContent = "Kaydediliyor..."; btn.disabled = true;
+
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+
+    if (error) { alert("Kayıt Hatası: " + error.message); } 
+    else if (data.user) {
+        const role = (email === 'erdem.yvz@hotmail.com') ? 'admin' : 'user';
+        await supabaseClient.from('profiles').insert([{ 
+            id: data.user.id, 
+            first_name: document.getElementById('regName').value, 
+            last_name: document.getElementById('regSurname').value, 
+            company_name: document.getElementById('regCompany').value, 
+            phone: document.getElementById('regPhone').value, 
+            role: role 
+        }]);
+        alert("Kayıt Başarılı! E-postanızı onaylayın veya giriş yapın."); 
+        registerForm.reset(); tabLogin.click();
+    }
+    btn.textContent = "Hesap Oluştur"; btn.disabled = false;
+});
+
+// Giriş Yap
+loginForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnLoginSubmit');
+    btn.textContent = "Giriş Yapılıyor..."; btn.disabled = true;
+
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPassword').value,
+    });
+
+    if (error) { alert("Giriş Başarısız: Bilgilerinizi kontrol edin."); } 
+    else if (data.user) {
+        await fetchUserProfile(data.user.id, data.user.email);
+        window.location.hash = '#app'; // Uygulamaya Geç
+        loginForm.reset();
+    }
+    btn.textContent = "Sisteme Giriş Yap"; btn.disabled = false;
+});
+
+async function fetchUserProfile(userId, displayEmail) {
+    const { data } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
+    if (data) {
+        currentUserProfile = data;
+        document.getElementById('userNameDisplay').textContent = `${data.first_name} ${data.last_name}`;
+        document.getElementById('userCompanyDisplay').textContent = data.company_name;
+        document.getElementById('userEmailDisplay').textContent = displayEmail;
+        document.getElementById('userInitials').textContent = data.first_name.charAt(0).toUpperCase();
+
+        const adminCard = document.getElementById('adminPanelCard');
+        if(adminCard) adminCard.classList.toggle('hidden', data.role !== 'admin');
+    }
+}
+
+// Menü ve Çıkış
+const btnProfile = document.getElementById('btnProfile');
+const profileDropdown = document.getElementById('profileDropdown');
+btnProfile?.addEventListener('click', () => profileDropdown.classList.toggle('hidden'));
+
+document.getElementById('btnLogout')?.addEventListener('click', async () => {
+    await supabaseClient.auth.signOut();
+    currentUserProfile = null;
+    profileDropdown.classList.add('hidden');
+    window.location.hash = '#home'; // Çıkışta Landing'e at
+});
+
+
+// --- 4. ANA MENÜ VE MODÜL GEÇİŞ YÖNETİMİ ---
 const menuMap = {
     'btnGoCalculator': 'calculatorModule',
     'btnGoSimulation': 'simulationModule',
@@ -48,7 +160,6 @@ const menuMap = {
     'adminPanelCard': 'adminModule'
 };
 
-// Menüden modüllere gidiş
 for (const [btnId, modId] of Object.entries(menuMap)) {
     const btn = document.getElementById(btnId);
     if(btn) {
@@ -56,40 +167,33 @@ for (const [btnId, modId] of Object.entries(menuMap)) {
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById(modId).classList.remove('hidden');
             
-            // Uygulama içi 3D modülü açıldığında render motorunu tetikle
+            // Simülasyon açıldığında motoru tetikle
             if(modId === 'simulationModule' && !window.isApp3DInitialized) {
                 initApp3DScene();
                 window.isApp3DInitialized = true;
+            }
+            if(modId === 'evCalcModule') calculateEVSolar();
+            if(modId === 'techSupportModule' && currentUserProfile) {
+                document.getElementById('tsName').value = `${currentUserProfile.first_name} ${currentUserProfile.last_name}`;
+                document.getElementById('tsPhone').value = currentUserProfile.phone;
             }
         });
     }
 }
 
-// Modüllerden Ana Menüye Dönüş Butonları
 const backButtons = ['btnBackToMenu', 'btnBackToMenuFromSim', 'btnBackToMenuFromEV', 'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin'];
 backButtons.forEach(id => {
     const btn = document.getElementById(id);
     if(btn) {
         btn.addEventListener('click', () => {
-            Object.values(menuMap).forEach(modId => {
-                const mod = document.getElementById(modId);
-                if(mod) mod.classList.add('hidden');
-            });
+            Object.values(menuMap).forEach(modId => document.getElementById(modId)?.classList.add('hidden'));
             document.getElementById('mainMenu').classList.remove('hidden');
         });
     }
 });
 
-// Test İçin Hızlı Giriş (Auth Bypass)
-document.getElementById('btnLoginSubmit')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    window.location.hash = '#app'; // Giriş yapınca direkt uygulamaya at
-});
 
-
-// ============================================================================
-// MODÜL: AÇILIŞ SAYFASI (LANDING PAGE) 3D KAYDIRMA MOTORU
-// ============================================================================
+// --- 5. AÇILIŞ SAYFASI (LANDING) 3D SCROLL MOTORU VE YATIRIMCI TALEPLERİ ---
 let landingScene, landingCamera, landingRenderer;
 let landHouse, landPanels, landBattery, landEV, landHP, landGasPipe;
 
@@ -110,11 +214,9 @@ function initLanding3DScene() {
 
     landingScene.add(new THREE.AmbientLight(0xffffff, 0.6));
     const sun = new THREE.DirectionalLight(0xfffaed, 1.4);
-    sun.position.set(10, 25, 10);
-    sun.castShadow = true;
+    sun.position.set(10, 25, 10); sun.castShadow = true;
     landingScene.add(sun);
 
-    // Zemin ve Ev
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0x1e3a1e, roughness:1 }));
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; landingScene.add(ground);
 
@@ -127,7 +229,6 @@ function initLanding3DScene() {
     landGasPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 16), new THREE.MeshStandardMaterial({ color: 0xeab308 }));
     landGasPipe.position.set(-3.1, 1.5, 1); landingScene.add(landGasPipe);
 
-    // Gizli Animasyon Elemanları
     landPanels = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.05, 4), new THREE.MeshStandardMaterial({ color: 0x020617, metalness:0.8 }));
     landPanels.position.set(0, 4.5, 0); landPanels.rotation.z = -0.3; landPanels.scale.set(0,0,0); landingScene.add(landPanels);
 
@@ -166,7 +267,6 @@ function initLanding3DScene() {
     animate();
 }
 
-// YATIRIMCI PUBLIC BAŞVURU SİSTEMİ
 window.openLeadModal = function(type) {
     document.getElementById('leadType').value = type;
     document.getElementById('leadModalTitle').innerText = type === 'kurulum' ? 'Yeni GES Kurulum Başvuru Formu' : 'Teknik Servis & Müdahale Başvuru Formu';
@@ -174,31 +274,254 @@ window.openLeadModal = function(type) {
 };
 window.closeLeadModal = function() { document.getElementById('leadModal').classList.add('hidden'); };
 
-document.getElementById('leadPublicForm')?.addEventListener('submit', (e) => {
+document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const type = document.getElementById('leadType').value;
     const randomCode = "EPC-" + Math.floor(1000 + Math.random() * 9000);
-    alert(`🎉 Başvurunuz Merkeze İletildi!\n\nLütfen Takip Kodunuzu Not Edin: ${randomCode}`);
-    closeLeadModal();
-    document.getElementById('leadTrackInput').value = randomCode;
-    
-    // Test Gösterimi (Gerçek Supabase bağlandığında bu kısım güncellenecek)
+
+    const leadData = {
+        user_id: "00000000-0000-0000-0000-000000000000",
+        full_name: document.getElementById('leadName').value,
+        phone: document.getElementById('leadPhone').value,
+        email: document.getElementById('leadEmail').value,
+        address: document.getElementById('leadAddress').value,
+        inverter_model: type === 'kurulum' ? 'Yeni Kurulum Talebi' : 'Servis İhtiyacı',
+        problem_desc: document.getElementById('leadDetails').value,
+        installer_name: randomCode,
+        status: 'Başvuru İletildi'
+    };
+
+    const { error } = await supabaseClient.from('support_tickets').insert([leadData]);
+
+    if (!error) {
+        alert(`🎉 Başvurunuz İletildi!\n\nLütfen Takip Kodunuzu Not Edin: ${randomCode}`);
+        closeLeadModal();
+        document.getElementById('leadTrackInput').value = randomCode;
+        document.getElementById('btnTrackQuery').click();
+    } else {
+        alert("Hata: Başvuru gönderilemedi. Veritabanı (RLS) ayarlarını kontrol edin.");
+    }
+});
+
+document.getElementById('btnTrackQuery')?.addEventListener('click', async () => {
+    const code = document.getElementById('leadTrackInput').value.trim();
     const display = document.getElementById('trackResultDisplay');
-    display.classList.remove('hidden');
-    display.className = "mt-4 p-4 rounded-xl text-sm font-bold bg-yellow-100 text-yellow-800";
-    display.innerHTML = `<p><strong>Müşteri:</strong> ${document.getElementById('leadName').value}</p><p><strong>Durum:</strong> Başvuru İletildi, İnceleniyor...</p>`;
+    if(!code) return;
+
+    display.classList.remove('hidden', 'bg-yellow-100', 'text-yellow-800', 'bg-blue-100', 'text-blue-800', 'bg-green-100', 'text-green-800');
+    display.innerHTML = "Sorgulanıyor...";
+
+    const { data } = await supabaseClient.from('support_tickets').select('*').eq('installer_name', code).single();
+
+    if(!data) {
+        display.classList.add('bg-red-100', 'text-red-800');
+        display.innerText = "Kayıt Bulunamadı. Kodu kontrol edin.";
+        return;
+    }
+
+    let c = "bg-yellow-100 text-yellow-800";
+    if(data.status === 'Değerlendiriliyor') c = "bg-blue-100 text-blue-800";
+    if(data.status === 'Dönüş Yapıldı') c = "bg-green-100 text-green-800";
+
+    display.classList.add(c);
+    display.innerHTML = `<p><strong>Müşteri:</strong> ${data.full_name}</p><p><strong>Durum:</strong> ${data.status}</p>${data.admin_response ? `<p><strong>Merkez Notu:</strong> ${data.admin_response}</p>` : ''}`;
 });
 
 
-// ============================================================================
-// MODÜL: EV YÜK HESAPLAYICISI
-// ============================================================================
-let activeEVTab = 'tabBill';
+// --- 6. GÜÇ HESAPLAYICI (ORİJİNAL) ---
+let sonAylik = 0, sonYillik = 0, sonFatura = 0; 
+const appliancesWrapper = document.getElementById('appliancesWrapper');
 
+function addApplianceRow(name = "", qty = 1, kw = "", hrs = "") {
+    const row = document.createElement('div'); row.className = "appliance-row grid grid-cols-12 gap-2 items-center mt-2";
+    row.innerHTML = `<div class="col-span-4"><input type="text" placeholder="Adı" value="${name}" class="w-full p-2 border rounded text-sm"></div><div class="col-span-2"><input type="number" value="${qty}" class="app-qty w-full p-2 border rounded text-sm text-center"></div><div class="col-span-3"><input type="number" placeholder="kW" value="${kw}" step="0.01" class="app-kw w-full p-2 border rounded text-sm text-center"></div><div class="col-span-2"><input type="number" placeholder="Saat" value="${hrs}" class="app-hrs w-full p-2 border rounded text-sm text-center"></div><div class="col-span-1 text-center"><button class="btn-delete-app text-red-500 font-bold text-lg">&times;</button></div>`;
+    row.querySelector('.btn-delete-app').addEventListener('click', () => row.remove()); if(appliancesWrapper) appliancesWrapper.appendChild(row);
+}
+
+if(document.getElementById('btnAddAppliance')) {
+    const defaultApps = [{ name: 'Buzdolabı', qty: 1, kw: 0.15, hrs: 240 }, { name: 'Televizyon', qty: 1, kw: 0.1, hrs: 120 }, { name: 'Çamaşır Makinesi', qty: 1, kw: 0.8, hrs: 20 }, { name: 'Bulaşık Makinesi', qty: 1, kw: 1.2, hrs: 15 }, { name: 'Aydınlatma', qty: 10, kw: 0.01, hrs: 150 }];
+    defaultApps.forEach(app => addApplianceRow(app.name, app.qty, app.kw, app.hrs));
+    document.getElementById('btnAddAppliance').addEventListener('click', () => addApplianceRow());
+    document.getElementById('quickAddSelect').addEventListener('change', e => { if (e.target.value) { const [n, q, k, h] = e.target.value.split('|'); addApplianceRow(n, q, k, h); e.target.value = ""; } });
+}
+
+document.querySelectorAll('input[name="inputType"]')?.forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        document.querySelectorAll('.input-section').forEach(sec => sec.classList.add('hidden'));
+        const targetEl = document.getElementById(e.target.value + 'InputSection');
+        if (targetEl) targetEl.classList.remove('hidden');
+    });
+});
+
+document.getElementById('hasFutureLoads')?.addEventListener('change', e => document.getElementById('futureLoadsContainer').classList.toggle('hidden', !e.target.checked));
+document.getElementById('checkEV')?.addEventListener('change', e => document.getElementById('wrapEV').classList.toggle('hidden', !e.target.checked));
+document.getElementById('checkHP')?.addEventListener('change', e => document.getElementById('wrapHP').classList.toggle('hidden', !e.target.checked));
+document.getElementById('btnAddCustomLoad')?.addEventListener('click', () => {
+    const row = document.createElement('div'); row.className = "flex space-x-2 bg-gray-50 p-2 rounded border border-gray-200";
+    row.innerHTML = `<input type="text" placeholder="Yük Adı" class="w-1/2 p-2 border rounded text-sm"><input type="number" placeholder="Aylık" class="custom-load-input w-1/3 p-2 border rounded text-sm" value="0"><button class="btn-delete-load text-red-500 font-bold px-2">X</button>`;
+    row.querySelector('.btn-delete-load').addEventListener('click', () => row.remove()); document.getElementById('customLoadsWrapper').appendChild(row);
+});
+
+document.getElementById('btnCalculate')?.addEventListener('click', () => {
+    let base = 0; const type = document.querySelector('input[name="inputType"]:checked').value;
+    if (type === 'monthly') base = parseFloat(document.getElementById('averageMonthlyLoad').value) || 0;
+    else if (type === 'yearly') { let t = 0; document.querySelectorAll('.month-input').forEach(i => t += parseFloat(i.value) || 0); base = t / 12; }
+    else { let t = 0; document.querySelectorAll('.appliance-row').forEach(r => t += (parseFloat(r.querySelector('.app-qty').value)||0) * (parseFloat(r.querySelector('.app-kw').value)||0) * (parseFloat(r.querySelector('.app-hrs').value)||0)); base = t; }
+
+    let extra = 0;
+    if (document.getElementById('hasFutureLoads').checked) {
+        if(document.getElementById('checkEV').checked) extra += (parseFloat(document.getElementById('evMonthlyKm').value)||0)/100 * (parseFloat(document.getElementById('evConsumptionRate').value)||0);
+        if(document.getElementById('checkHP').checked) extra += parseFloat(document.getElementById('hpMonthlyLoad').value) || 0;
+        document.querySelectorAll('.custom-load-input').forEach(i => extra += parseFloat(i.value) || 0);
+    }
+
+    sonAylik = base + extra; sonYillik = sonAylik * 12; 
+    let trf = parseFloat(document.getElementById('tariffSelect').value); sonFatura = sonAylik * trf;
+
+    document.getElementById('finalMonthlyLoad').textContent = Math.round(sonAylik).toLocaleString('tr-TR');
+    document.getElementById('finalYearlyLoad').textContent = Math.round(sonYillik).toLocaleString('tr-TR');
+    document.getElementById('finalMonthlyBill').textContent = sonFatura.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    document.getElementById('resultsModule').classList.remove('hidden'); 
+    document.getElementById('resultsModule').scrollIntoView({ behavior: 'smooth' });
+});
+
+
+// --- 7. UYGULAMA İÇİ (DASHBOARD) 3D SİMÜLASYON ---
+let appScene, appCamera, appRenderer, appControls;
+let appPanels, appHP, appGasPipe;
+let arrBatteries = [], arrEVs = [];
+let stateGES = false, stateHP = false;
+let countBat = 0, countEV = 0;
+
+function initApp3DScene() {
+    const container = document.getElementById('three-canvas-container');
+    if (!container || appScene) return;
+
+    appScene = new THREE.Scene();
+    appScene.background = new THREE.Color(0xdbeafe); 
+    appCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    appCamera.position.set(22, 16, 28); 
+
+    appRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    appRenderer.setSize(container.clientWidth, container.clientHeight);
+    appRenderer.shadowMap.enabled = true;
+    appRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    
+    appRenderer.domElement.style.position = 'absolute';
+    appRenderer.domElement.style.top = '0';
+    appRenderer.domElement.style.left = '0';
+    container.appendChild(appRenderer.domElement);
+
+    appControls = new THREE.OrbitControls(appCamera, appRenderer.domElement);
+    appControls.enableDamping = true; appControls.dampingFactor = 0.05;
+    appControls.maxPolarAngle = Math.PI / 2 - 0.05;
+
+    appScene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const sunLight = new THREE.DirectionalLight(0xfffaed, 1.5);
+    sunLight.position.set(15, 30, 15); sunLight.castShadow = true;
+    appScene.add(sunLight);
+
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x65a30d }));
+    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; appScene.add(ground);
+
+    const house = new THREE.Mesh(new THREE.BoxGeometry(8, 4.5, 6), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+    house.position.set(-2, 2.25, 0); house.castShadow = true; house.receiveShadow = true; appScene.add(house);
+
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.5, 6.5), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+    roof.position.set(-2, 5.2, 0); roof.rotation.z = -0.25; roof.castShadow = true; appScene.add(roof);
+
+    const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), new THREE.MeshStandardMaterial({ color: 0x78350f })); p1.position.set(7.5, 2, 3); p1.castShadow=true; appScene.add(p1);
+    const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), new THREE.MeshStandardMaterial({ color: 0x78350f })); p2.position.set(7.5, 2, -3); p2.castShadow=true; appScene.add(p2);
+    const cpRoof = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 7), new THREE.MeshStandardMaterial({ color: 0xcbd5e1, transparent:true, opacity:0.8 }));
+    cpRoof.position.set(4.8, 4, 0); cpRoof.castShadow=true; appScene.add(cpRoof);
+
+    appGasPipe = new THREE.Group();
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5), new THREE.MeshStandardMaterial({ color: 0xfacc15 })); pipe.position.set(0, 1.25, 0); 
+    const meterBox = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.4), new THREE.MeshStandardMaterial({ color: 0x9ca3af })); meterBox.position.set(0, 2.5, 0.15); 
+    appGasPipe.add(pipe); appGasPipe.add(meterBox); appGasPipe.position.set(-5.5, 0, 3.2); appScene.add(appGasPipe);
+
+    appHP = new THREE.Group();
+    const hpBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x475569 })); hpBody.position.set(0, 0.9, 0);
+    const hpFan = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.85, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a })); hpFan.rotation.x = Math.PI/2; hpFan.position.set(0, 0.9, 0.4); 
+    const boiler = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2.2, 16), new THREE.MeshStandardMaterial({color: 0xe2e8f0})); boiler.position.set(1.2, 1.1, 0); 
+    appHP.add(hpBody); appHP.add(hpFan); appHP.add(boiler); appHP.position.set(-3.5, 0, 3.6); appHP.scale.set(0,0,0); appScene.add(appHP);
+
+    appPanels = new THREE.Group();
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x020617, metalness: 0.9, roughness: 0.1 });
+    for(let x=0; x<3; x++) { for(let z=0; z<2; z++) { const panel = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 2.8), panelMat); panel.position.set(-2.5 + (x*2.4), 0, -1.5 + (z*3)); appPanels.add(panel); } }
+    appPanels.position.set(-2, 5.65, 0); appPanels.rotation.z = -0.25; appPanels.scale.set(0,0,0); appScene.add(appPanels);
+
+    for(let i=0; i<4; i++) {
+        const bat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.6), new THREE.MeshStandardMaterial({ color: 0xf1f5f9 }));
+        bat.position.set(-1.5 - (i * 1.4), 1.1, -3.3); bat.castShadow = true; bat.scale.set(0,0,0);
+        appScene.add(bat); arrBatteries.push(bat);
+    }
+
+    for(let i=0; i<2; i++) {
+        const ev = new THREE.Group();
+        const carBody = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.1, 1.8), new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness:0.4 })); carBody.position.y = 0.85; carBody.castShadow = true;
+        const carTop = new THREE.Mesh(new THREE.BoxGeometry(2, 0.7, 1.6), new THREE.MeshStandardMaterial({ color: 0x1e293b })); carTop.position.set(-0.4, 1.7, 0); carTop.castShadow = true;
+        ev.add(carBody); ev.add(carTop);
+        const wMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
+        const w1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 16), wMat); w1.rotation.x = Math.PI/2; w1.position.set(-1.1, 0.4, 0);
+        const w2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 16), wMat); w2.rotation.x = Math.PI/2; w2.position.set(1.2, 0.4, 0);
+        ev.add(w1); ev.add(w2); ev.position.set(4.5, 0, -1.5 + (i*3)); ev.scale.set(0,0,0);
+        appScene.add(ev); arrEVs.push(ev);
+    }
+
+    document.getElementById('loading3D').style.display = 'none';
+
+    document.getElementById('btnSimGES').addEventListener('click', (e) => { stateGES = !stateGES; e.target.classList.toggle('bg-green-600'); updateAppScore(); });
+    document.getElementById('btnSimHP').addEventListener('click', (e) => { stateHP = !stateHP; e.target.classList.toggle('bg-green-600'); updateAppScore(); });
+    document.getElementById('btnSimBatPlus').addEventListener('click', () => { if(countBat < 4) { countBat++; updateAppScore(); }});
+    document.getElementById('btnSimBatMinus').addEventListener('click', () => { if(countBat > 0) { countBat--; updateAppScore(); }});
+    document.getElementById('btnSimEVPlus').addEventListener('click', () => { if(countEV < 2) { countEV++; updateAppScore(); }});
+    document.getElementById('btnSimEVMinus').addEventListener('click', () => { if(countEV > 0) { countEV--; updateAppScore(); }});
+
+    function animate() {
+        requestAnimationFrame(animate);
+        if (appPanels) { appPanels.scale.lerp(new THREE.Vector3(stateGES?1:0, stateGES?1:0, stateGES?1:0), 0.1); }
+        arrBatteries.forEach((b, i) => b.scale.lerp(new THREE.Vector3(i<countBat?1:0, i<countBat?1:0, i<countBat?1:0), 0.1));
+        arrEVs.forEach((v, i) => v.scale.lerp(new THREE.Vector3(i<countEV?1:0, i<countEV?1:0, i<countEV?1:0), 0.1));
+        if (appHP) appHP.scale.lerp(new THREE.Vector3(stateHP?1:0, stateHP?1:0, stateHP?1:0), 0.1);
+        if (appGasPipe) appGasPipe.scale.lerp(new THREE.Vector3(stateHP?0:1, stateHP?0:1, stateHP?0:1), 0.1);
+        appControls.update();
+        appRenderer.render(appScene, appCamera);
+    }
+    animate();
+}
+
+function updateAppScore() {
+    let score = 0; let grid = 100; let carbon = "Yüksek"; let fossil = "Aktif";
+    document.getElementById('batCountDisplay').innerText = countBat;
+    document.getElementById('evCountDisplay').innerText = countEV;
+    if (stateGES) { score += 30; grid -= 30; carbon = "Orta"; }
+    score += countBat * 10; grid -= countBat * 10;
+    if (countBat > 0 && stateGES) carbon = "Düşük";
+    score += countEV * 10;
+    if (countEV > 0) carbon = "Çok Düşük";
+    if (stateHP) { score += 20; grid = 0; fossil = "İPTAL EDİLDİ"; carbon = "SIFIR (Net-Zero)"; }
+
+    document.getElementById('scoreDisplay').innerText = "%" + score;
+    document.getElementById('gridDepDisplay').innerText = "%" + Math.max(0, grid);
+    document.getElementById('fossilDisplay').innerText = fossil;
+    document.getElementById('carbonDisplay').innerText = carbon;
+
+    const sColor = document.getElementById('scoreDisplay');
+    sColor.className = "text-xs px-2 py-1 rounded text-white font-bold transition-colors duration-500";
+    if(score < 30) sColor.classList.add('bg-red-500');
+    else if(score < 70) sColor.classList.add('bg-orange-500');
+    else if(score < 100) sColor.classList.add('bg-yellow-500');
+    else sColor.classList.add('bg-green-600');
+}
+
+
+// --- 8. EV YÜK HESAPLAYICI ---
+let activeEVTab = 'tabBill';
 document.querySelectorAll('.ev-tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.ev-tab-btn').forEach(b => {
-            b.classList.remove('bg-teal-600', 'text-white'); b.classList.add('bg-gray-100', 'text-gray-600');
-        });
+        document.querySelectorAll('.ev-tab-btn').forEach(b => { b.classList.remove('bg-teal-600', 'text-white'); b.classList.add('bg-gray-100', 'text-gray-600'); });
         e.target.classList.remove('bg-gray-100', 'text-gray-600'); e.target.classList.add('bg-teal-600', 'text-white');
         document.querySelectorAll('.ev-tab-content').forEach(c => c.classList.add('hidden'));
         activeEVTab = e.target.getAttribute('data-target');
@@ -206,17 +529,13 @@ document.querySelectorAll('.ev-tab-btn').forEach(btn => {
         calculateEVSolar(); 
     });
 });
-
-document.querySelectorAll('.ev-reactive-input').forEach(input => {
-    input.addEventListener('input', calculateEVSolar);
-});
+document.querySelectorAll('.ev-reactive-input').forEach(input => input.addEventListener('input', calculateEVSolar));
 
 function calculateEVSolar() {
     const tariff = parseFloat(document.getElementById('evCalcTariff')?.value) || 2.50;
     const evRange = parseFloat(document.getElementById('evCalcRange')?.value) || 1;
     const evBattery = parseFloat(document.getElementById('evCalcBattery')?.value) || 1;
     const evConsumption = parseFloat(document.getElementById('evCalcConsumption')?.value) || 1;
-    
     const userRoof = parseFloat(document.getElementById('evInputRoof')?.value) || 0;
     const maxUsableRoof = userRoof * 0.8;
     
@@ -247,19 +566,78 @@ function calculateEVSolar() {
 }
 
 
-// ============================================================================
-// MODÜL: SATIŞ ASİSTAN YARDIMCISI (COPILOT)
-// ============================================================================
+// --- 9. TEKNİK SERVİS MODÜLÜ ---
+const tabNewTicket = document.getElementById('tabNewTicket');
+const tabMyTickets = document.getElementById('tabMyTickets');
+const ticketForm = document.getElementById('ticketForm');
+const myTicketsArea = document.getElementById('myTicketsArea');
+
+tabNewTicket?.addEventListener('click', () => {
+    ticketForm.classList.remove('hidden'); myTicketsArea.classList.add('hidden');
+    tabNewTicket.classList.add('text-red-600', 'border-b-2'); tabNewTicket.classList.remove('text-gray-500');
+    tabMyTickets.classList.add('text-gray-500'); tabMyTickets.classList.remove('text-red-600', 'border-b-2');
+});
+tabMyTickets?.addEventListener('click', () => {
+    ticketForm.classList.add('hidden'); myTicketsArea.classList.remove('hidden');
+    tabMyTickets.classList.add('text-red-600', 'border-b-2'); tabMyTickets.classList.remove('text-gray-500');
+    tabNewTicket.classList.add('text-gray-500'); tabNewTicket.classList.remove('text-red-600', 'border-b-2');
+    fetchMyTickets();
+});
+
+ticketForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitTicket'); btn.textContent = "Gönderiliyor..."; btn.disabled = true;
+
+    const { error } = await supabaseClient.from('support_tickets').insert([{
+        user_id: (await supabaseClient.auth.getUser()).data.user.id,
+        full_name: document.getElementById('tsName').value,
+        phone: document.getElementById('tsPhone').value,
+        email: document.getElementById('tsEmail').value,
+        address: document.getElementById('tsAddress').value,
+        inverter_model: document.getElementById('tsInverter').value,
+        battery_model: document.getElementById('tsBattery').value,
+        installer_name: document.getElementById('tsInstaller').value,
+        install_date: document.getElementById('tsInstallDate').value,
+        problem_date: document.getElementById('tsProblemDate').value,
+        problem_desc: document.getElementById('tsProblemDesc').value
+    }]);
+
+    if (error) alert("Hata: " + error.message);
+    else { alert("Talebiniz başarıyla iletildi."); ticketForm.reset(); tabMyTickets.click(); }
+    btn.textContent = "Talebi Gönder"; btn.disabled = false;
+});
+
+async function fetchMyTickets() {
+    const list = document.getElementById('myTicketsList');
+    list.innerHTML = '<p class="text-gray-500 text-sm">Yükleniyor...</p>';
+    const userId = (await supabaseClient.auth.getUser()).data.user.id;
+    const { data, error } = await supabaseClient.from('support_tickets').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+
+    if (error || !data || data.length === 0) { list.innerHTML = '<p class="text-gray-500 text-sm">Talebiniz bulunmuyor.</p>'; return; }
+    list.innerHTML = '';
+    data.forEach(t => {
+        let sc = "bg-yellow-100 text-yellow-800"; if(t.status === "Değerlendiriliyor") sc = "bg-blue-100 text-blue-800"; if(t.status === "Dönüş Yapıldı") sc = "bg-green-100 text-green-800";
+        list.innerHTML += `<div class="p-5 bg-white border rounded-xl mb-3"><div class="flex justify-between items-start mb-2"><h4 class="font-bold">${t.inverter_model}</h4><span class="${sc} px-3 py-1 rounded-full text-xs font-bold">${t.status}</span></div><p class="text-sm bg-gray-50 p-2 rounded">${t.problem_desc}</p>${t.admin_response ? `<div class="mt-2 bg-green-50 p-3 rounded border"><p class="text-sm"><strong>Yanıt:</strong> ${t.admin_response}</p>${t.price_quote ? `<p class="font-bold text-green-900">💰 Teklif: ${t.price_quote} TL</p>`:''}</div>` : ''}</div>`;
+    });
+}
+
+
+// --- 10. SATIŞ ASİSTAN YARDIMCISI (COPILOT) ---
 const salesScenarios = {
     kurulum: {
         "300 m² evim var, GES istiyorum": "Metrekare hesabı üzerinden güneş enerjisi sistemi hesaplayamayız. Tüketim alışkanlıklarınızdan veya faturanızdan konuşmaya devam edelim.",
         "3.000 TL fatura ödüyorum": "Bu faturaya göre yaklaşık 10 kW kapasiteli bir sistem tavsiye edebilirim. Çatınızda 50 metrekare yer kaplar. Bölgenizde çok elektrik kesiliyor mu?",
+        "Evet, sık kesiliyor": "Elektrik kesintisinin sık yaşandığı yerlerde mutlaka hibrit sistem ve batarya tavsiye etmekteyiz. Kesintinin süresine göre batarya kapasitesini arttırabiliriz.",
         "Peki maliyeti nedir?": "10 kW sistem ve 5 kWh batarya için referans bedel: Toplam <strong>{totalPrice} Dolar</strong> civarıdır. Kesin fiyat için keşfe gelelim.",
+        "Eşimle görüşmem gerekiyor": "Kesinlikle, bu durum aileniz için çok önemli. Ancak düşünün; eşinizin akşamları şebeke kesintisinden dolayı karanlıkta kalmasını ister misiniz?",
+        "Haklısınız fakat şu an param yok": "Ödeme planı konusunda yardımcı olabiliriz. Kurulum öncesi %30, kurulum sonrası %60 şeklinde esnek koşullar oluşturabiliriz.",
         "Şu an kendimi hazır hissetmiyorum": "Güneş her gün doğup batıyor. O enerjiyi her gün bedava üretip faturanızı sıfırlamak varken neden bekleyerek para kaybetmeye devam edelim?"
     },
     danismanlik: {
-        "Sürece nasıl başlayabilirim / Maliyeti nedir?": "Sizi tüm karmaşadan ve yanlış karar riskinden kurtaran danışmanlık hizmetimizin bedeli <strong>{consultPrice} TL</strong>'dir.",
-        "Bu fiyat çok fazla geldi": "Haklısınız, ek maliyet gibi görünebilir. Ancak sizi ucuz ve çöp olacak ürünlerden koruyoruz. Çöpe gidecek yüzbinlerce liradan tasarruf edeceksiniz."
+        "GES kurdurmak istiyorum ama birden fazla teklif var": "Sizi çok iyi anlıyorum. Her şeyden önce, biz doğrudan 'tüketim hesabı' ile başlıyoruz. Ardından gelen teklifleri elma ile elma olarak kıyaslamanızı sağlıyoruz.",
+        "Sürece nasıl başlayabilirim / Maliyeti nedir?": "Sizi tüm karmaşadan kurtaran danışmanlık hizmetimizin bedeli <strong>{consultPrice} TL</strong>'dir.",
+        "Bu fiyat çok fazla geldi": "Haklısınız, ek maliyet gibi görünebilir. Ancak sizi ucuz ve çöp olacak ürünlerden koruyoruz. Çöpe gidecek yüzbinlerce liradan tasarruf edeceksiniz.",
+        "Eşimle görüşmem gerekiyor": "İsterseniz ödemeyi aldıktan sonra hemen e-toplantı organize edelim. Eşiniz de katılsın ve aklındaki tüm soru işaretlerini cevaplayayım."
     }
 };
 
@@ -271,17 +649,15 @@ document.getElementById('btnStartCall')?.addEventListener('click', () => {
     const kwPrice = parseFloat(document.getElementById('baseKwPrice').value) || 0;
     const batPrice = parseFloat(document.getElementById('baseBatPrice').value) || 0;
     const consultPrice = parseFloat(document.getElementById('baseConsultPrice').value) || 0;
-    
     const container = document.getElementById('objectionButtonsContainer');
     container.innerHTML = '';
     
     for (const [objection, response] of Object.entries(salesScenarios[compType])) {
         const btn = document.createElement('button');
-        btn.className = "text-left w-full bg-white hover:bg-orange-50 border p-3 rounded-lg shadow-sm";
+        btn.className = "text-left w-full bg-white hover:bg-orange-50 border p-3 rounded-lg shadow-sm font-bold text-gray-700";
         btn.innerHTML = `💬 "${objection}"`;
         btn.addEventListener('click', () => {
-            const finalRes = response.replace('{totalPrice}', ((10*kwPrice)+(5*batPrice)).toLocaleString())
-                                     .replace('{consultPrice}', consultPrice.toLocaleString());
+            const finalRes = response.replace('{totalPrice}', ((10*kwPrice)+(5*batPrice)).toLocaleString('tr-TR')).replace('{consultPrice}', consultPrice.toLocaleString('tr-TR'));
             document.getElementById('scriptDisplayArea').innerHTML = `<p class="text-white text-2xl leading-relaxed font-light">${finalRes}</p>`;
         });
         container.appendChild(btn);
@@ -295,33 +671,52 @@ document.getElementById('btnEndCall')?.addEventListener('click', () => {
 });
 
 
-// ============================================================================
-// MODÜL: UYGULAMA İÇİ (DASHBOARD) 3D SİMÜLASYON
-// ============================================================================
-let appScene, appCamera, appRenderer;
-function initApp3DScene() {
-    const container = document.getElementById('three-canvas-container');
-    if (!container || appScene) return;
+// --- 11. ADMIN İŞLEMLERİ (KULLANICILAR VE TALEPLER) ---
+document.getElementById('btnRefreshUsers')?.addEventListener('click', fetchUsersForAdmin);
+document.getElementById('btnRefreshTickets')?.addEventListener('click', fetchTicketsForAdmin);
 
-    appScene = new THREE.Scene();
-    appScene.background = new THREE.Color(0xdbeafe); 
-    appCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-    appCamera.position.set(22, 16, 28); 
-
-    appRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    appRenderer.setSize(container.clientWidth, container.clientHeight);
-    container.appendChild(appRenderer.domElement);
-
-    const house = new THREE.Mesh(new THREE.BoxGeometry(8, 4.5, 6), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
-    house.position.set(-2, 2.25, 0); appScene.add(house);
-
-    document.getElementById('loading3D').style.display = 'none';
-    
-    appScene.add(new THREE.AmbientLight(0xffffff, 0.8));
-
-    function animate() {
-        requestAnimationFrame(animate);
-        appRenderer.render(appScene, appCamera);
+async function fetchUsersForAdmin() {
+    const list1 = document.getElementById('usersTableBody');
+    const list2 = document.getElementById('adminLeadsList');
+    if(list1) {
+        list1.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Yükleniyor...</td></tr>';
+        const { data } = await supabaseClient.from('profiles').select('*');
+        list1.innerHTML = '';
+        if(data) data.forEach(u => list1.innerHTML += `<tr><td class="p-4 border-b">${u.first_name} ${u.last_name}</td><td class="p-4 border-b">${u.company_name}</td><td class="p-4 border-b">${u.phone}</td><td class="p-4 border-b">${u.role}</td></tr>`);
     }
-    animate();
+    
+    // Public Yatırımcı Talepleri (user_id = 00000000-0000-0000-0000-000000000000)
+    if(list2) {
+        list2.innerHTML = '<p class="text-gray-500">Yükleniyor...</p>';
+        const { data } = await supabaseClient.from('support_tickets').select('*').eq('user_id', '00000000-0000-0000-0000-000000000000').order('created_at', {ascending: false});
+        list2.innerHTML = '';
+        if(!data || data.length===0) { list2.innerHTML = '<p class="text-gray-500 text-sm">Yatırımcı talebi yok.</p>'; return; }
+        data.forEach(l => {
+            list2.innerHTML += `<div class="p-4 border rounded-xl bg-slate-50 mb-2 flex justify-between items-center"><div class="w-1/2"><strong>${l.full_name}</strong> - <span>${l.phone}</span><p class="text-sm italic">${l.problem_desc}</p><span class="font-mono text-xs text-blue-600 font-bold">KOD: ${l.installer_name}</span></div><div class="flex gap-2"><input type="text" id="l_resp_${l.id}" placeholder="Yanıt" value="${l.admin_response||''}" class="p-2 border rounded text-xs"><input type="number" id="l_price_${l.id}" placeholder="TL" value="${l.price_quote||''}" class="p-2 border rounded text-xs w-20"><button onclick="respondTicket(${l.id}, true)" class="bg-blue-600 text-white font-bold px-3 rounded text-xs">Yanıtla</button></div></div>`;
+        });
+    }
 }
+
+async function fetchTicketsForAdmin() {
+    const list = document.getElementById('adminTicketsList');
+    if(!list) return;
+    list.innerHTML = '<p class="text-gray-500">Yükleniyor...</p>';
+    const { data } = await supabaseClient.from('support_tickets').select('*').neq('user_id', '00000000-0000-0000-0000-000000000000').order('created_at', {ascending: false});
+    list.innerHTML = '';
+    if(!data || data.length===0) { list.innerHTML = '<p class="text-gray-500 text-sm">Firma teknik servis talebi yok.</p>'; return; }
+    data.forEach(t => {
+        list.innerHTML += `<div class="p-4 border rounded-xl bg-white mb-2 shadow-sm"><div class="flex justify-between mb-2"><strong>${t.full_name} (${t.inverter_model})</strong><select onchange="updateTicketStatus(${t.id}, this.value)" class="text-xs border p-1 rounded"><option value="Başvuru İletildi" ${t.status==='Başvuru İletildi'?'selected':''}>İletildi</option><option value="Değerlendiriliyor" ${t.status==='Değerlendiriliyor'?'selected':''}>Değerlendiriliyor</option><option value="Dönüş Yapıldı" ${t.status==='Dönüş Yapıldı'?'selected':''}>Dönüş Yapıldı</option></select></div><p class="text-sm bg-gray-50 p-2 rounded mb-2">${t.problem_desc}</p><div class="flex gap-2"><input type="text" id="t_resp_${t.id}" placeholder="Teknik yanıt..." value="${t.admin_response||''}" class="flex-1 p-2 border rounded text-sm"><input type="number" id="t_price_${t.id}" placeholder="Fiyat" value="${t.price_quote||''}" class="w-24 p-2 border rounded text-sm"><button onclick="respondTicket(${t.id}, false)" class="bg-green-600 text-white font-bold px-4 rounded text-sm">Gönder</button></div></div>`;
+    });
+}
+
+window.updateTicketStatus = async function(id, status) { await supabaseClient.from('support_tickets').update({ status }).eq('id', id); };
+window.respondTicket = async function(id, isPublic) {
+    const prefix = isPublic ? 'l' : 't';
+    const r = document.getElementById(`${prefix}_resp_${id}`).value;
+    const p = document.getElementById(`${prefix}_price_${id}`).value;
+    await supabaseClient.from('support_tickets').update({ admin_response: r, price_quote: p ? parseFloat(p) : null, status: 'Dönüş Yapıldı' }).eq('id', id);
+    alert("Yanıt başarıyla gönderildi!");
+    isPublic ? fetchUsersForAdmin() : fetchTicketsForAdmin();
+};
+
+document.getElementById('adminPanelCard')?.addEventListener('click', () => { fetchUsersForAdmin(); fetchTicketsForAdmin(); });
