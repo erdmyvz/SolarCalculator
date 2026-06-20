@@ -204,19 +204,33 @@ function initLanding3DScene() {
     landingScene = new THREE.Scene();
     landingScene.background = new THREE.Color(0x0f172a); 
 
-    landingCamera = new THREE.PerspectiveCamera(40, canvasBox.clientWidth / canvasBox.clientHeight, 0.1, 1000);
+    // Ekran boyutlarını güvenli bir şekilde al
+    const width = canvasBox.clientWidth || window.innerWidth;
+    const height = canvasBox.clientHeight || window.innerHeight;
+
+    landingCamera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
     landingCamera.position.set(18, 14, 22);
+    
+    // ÇÖZÜMÜN KALBİ: Kamerayı tam olarak evin merkezine (0, 2, 0) odakla
+    landingCamera.lookAt(0, 2, 0);
 
     landingRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    landingRenderer.setSize(canvasBox.clientWidth, canvasBox.clientHeight);
+    landingRenderer.setSize(width, height);
+    landingRenderer.setPixelRatio(window.devicePixelRatio); // Yüksek çözünürlüklü ekranlar için netlik
     landingRenderer.shadowMap.enabled = true;
+    landingRenderer.shadowMap.type = THREE.PCFSoftShadowMap; // Yumuşak ve gerçekçi gölgeler
     canvasBox.appendChild(landingRenderer.domElement);
 
+    // Işıklandırma
     landingScene.add(new THREE.AmbientLight(0xffffff, 0.6));
     const sun = new THREE.DirectionalLight(0xfffaed, 1.4);
-    sun.position.set(10, 25, 10); sun.castShadow = true;
+    sun.position.set(10, 25, 10);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 2048; // Gölgelerin kalitesini artırır
+    sun.shadow.mapSize.height = 2048;
     landingScene.add(sun);
 
+    // 1. Zemin ve Boş Villa
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0x1e3a1e, roughness:1 }));
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; landingScene.add(ground);
 
@@ -226,47 +240,76 @@ function initLanding3DScene() {
     const roof = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.4, 5.4), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
     roof.position.set(0, 4.2, 0); roof.rotation.z = -0.3; roof.castShadow = true; landingScene.add(roof);
 
-    landGasPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 16), new THREE.MeshStandardMaterial({ color: 0xeab308 }));
-    landGasPipe.position.set(-3.1, 1.5, 1); landingScene.add(landGasPipe);
+    // Açık Garaj (Carport) Direkleri
+    const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.6, 0.2), new THREE.MeshStandardMaterial({ color: 0x451a03 })); p1.position.set(6, 1.8, 2); p1.castShadow = true; landingScene.add(p1);
+    const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.6, 0.2), new THREE.MeshStandardMaterial({ color: 0x451a03 })); p2.position.set(6, 1.8, -2); p2.castShadow = true; landingScene.add(p2);
+    const cpRoof = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 5), new THREE.MeshStandardMaterial({ color: 0x64748b, transparent:true, opacity:0.6 })); cpRoof.position.set(4, 3.6, 0); landingScene.add(cpRoof);
 
+    // Doğalgaz Borusu (Başlangıçta Var)
+    landGasPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 16), new THREE.MeshStandardMaterial({ color: 0xeab308 }));
+    landGasPipe.position.set(-3.1, 1.5, 1); landGasPipe.castShadow = true; landingScene.add(landGasPipe);
+
+    // 2. ETKİLEŞİM ELEMANLARI (Başlangıçta Boyutları Scale: 0 olarak gizli)
     landPanels = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.05, 4), new THREE.MeshStandardMaterial({ color: 0x020617, metalness:0.8 }));
     landPanels.position.set(0, 4.5, 0); landPanels.rotation.z = -0.3; landPanels.scale.set(0,0,0); landingScene.add(landPanels);
 
     landBattery = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 1), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
-    landBattery.position.set(1, 0.9, -2.6); landBattery.scale.set(0,0,0); landingScene.add(landBattery);
+    landBattery.position.set(1, 0.9, -2.6); landBattery.castShadow = true; landBattery.scale.set(0,0,0); landingScene.add(landBattery);
 
     landHP = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 0.7), new THREE.MeshStandardMaterial({ color: 0x475569 }));
-    landHP.position.set(-3.5, 0.7, -1); landHP.scale.set(0,0,0); landingScene.add(landHP);
+    landHP.position.set(-3.5, 0.7, -1); landHP.castShadow = true; landHP.scale.set(0,0,0); landingScene.add(landHP);
 
     landEV = new THREE.Group();
-    const cBody = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1, 1.6), new THREE.MeshStandardMaterial({ color: 0x0284c7 })); cBody.position.y = 0.7;
-    const cTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 1.4), new THREE.MeshStandardMaterial({ color: 0x0f172a })); cTop.position.set(-0.3, 1.5, 0);
+    const cBody = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1, 1.6), new THREE.MeshStandardMaterial({ color: 0x0284c7 })); cBody.position.y = 0.7; cBody.castShadow = true;
+    const cTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 1.4), new THREE.MeshStandardMaterial({ color: 0x0f172a })); cTop.position.set(-0.3, 1.5, 0); cTop.castShadow = true;
     landEV.add(cBody); landEV.add(cTop); landEV.position.set(4.5, 0, 0); landEV.scale.set(0,0,0);
     landingScene.add(landEV);
 
+    // EKRAN YENİDEN BOYUTLANDIRMA DÜZELTİCİSİ (Responsive)
+    window.addEventListener('resize', () => {
+        if(document.getElementById('landingContainer').classList.contains('hidden')) return;
+        const newWidth = canvasBox.clientWidth || window.innerWidth;
+        const newHeight = canvasBox.clientHeight || window.innerHeight;
+        landingCamera.aspect = newWidth / newHeight;
+        landingCamera.updateProjectionMatrix();
+        landingRenderer.setSize(newWidth, newHeight);
+    });
+
+    // SCROLL ANİMASYONU DİNLEYİCİSİ
     window.addEventListener('scroll', () => {
         const scrollArea = document.getElementById('scrollMagicArea');
         if(!scrollArea) return;
+        // Kaydırma yüzdesini (0.0 ile 1.0 arası) hesapla
         const progress = Math.min(Math.max(window.scrollY / (scrollArea.clientHeight - window.innerHeight), 0), 1);
 
-        let sPan = progress > 0.1 ? Math.min((progress - 0.1) * 5, 1) : 0; landPanels.scale.set(sPan, sPan, sPan);
-        let sBat = progress > 0.35 ? Math.min((progress - 0.35) * 5, 1) : 0; landBattery.scale.set(sBat, sBat, sBat);
-        let sHp = progress > 0.60 ? Math.min((progress - 0.60) * 5, 1) : 0; landHP.scale.set(sHp, sHp, sHp);
-        let sGas = progress > 0.60 ? Math.max(1 - (progress - 0.60) * 5, 0) : 1; landGasPipe.scale.set(sGas, sGas, sGas);
-        let sEv = progress > 0.82 ? Math.min((progress - 0.82) * 6, 1) : 0; landEV.scale.set(sEv, sEv, sEv);
+        // Kaydırma oranına göre objeleri sırayla büyüt (Lerp/Scale)
+        let sPan = progress > 0.1 ? Math.min((progress - 0.1) * 5, 1) : 0; 
+        landPanels.scale.set(sPan, sPan, sPan);
+        
+        let sBat = progress > 0.35 ? Math.min((progress - 0.35) * 5, 1) : 0; 
+        landBattery.scale.set(sBat, sBat, sBat);
+        
+        let sHp = progress > 0.60 ? Math.min((progress - 0.60) * 5, 1) : 0; 
+        landHP.scale.set(sHp, sHp, sHp);
+        
+        let sGas = progress > 0.60 ? Math.max(1 - (progress - 0.60) * 5, 0) : 1; 
+        landGasPipe.scale.set(sGas, sGas, sGas);
+        
+        let sEv = progress > 0.82 ? Math.min((progress - 0.82) * 6, 1) : 0; 
+        landEV.scale.set(sEv, sEv, sEv);
 
         const ind = document.getElementById('scrollIndicator');
         if(ind) ind.style.opacity = progress > 0.05 ? '0' : '1';
     });
 
+    // RENDER DÖNGÜSÜ
     function animate() {
         requestAnimationFrame(animate);
-        landingScene.rotation.y = window.scrollY * 0.0008; 
+        landingScene.rotation.y = window.scrollY * 0.0005; // Ev scroll ile kendi etrafında yavaşça döner
         landingRenderer.render(landingScene, landingCamera);
     }
     animate();
 }
-
 window.openLeadModal = function(type) {
     document.getElementById('leadType').value = type;
     document.getElementById('leadModalTitle').innerText = type === 'kurulum' ? 'Yeni GES Kurulum Başvuru Formu' : 'Teknik Servis & Müdahale Başvuru Formu';
