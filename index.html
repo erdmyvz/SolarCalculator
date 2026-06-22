@@ -14,6 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <style>
+        body { overflow-x: hidden; }
         .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         
@@ -28,7 +29,7 @@
 </head>
 <body class="bg-gray-100 min-h-screen font-sans">
 
-    <div id="landingContainer" class="hidden w-full min-h-screen bg-slate-900 text-white overflow-x-hidden">
+    <div id="landingContainer" class="hidden w-full min-h-screen bg-slate-900 text-white ">
         <nav class="fixed top-0 w-full z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
             <div class="flex justify-between items-center p-4 max-w-7xl mx-auto">
                 <a href="#home" class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300">epcmerkezim</a>
