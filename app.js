@@ -17,7 +17,6 @@ window.isApp3DInitialized = false;
 async function handleSPA_Routing() {
     const hash = window.location.hash || '#home';
     
-    // Tüm ana katmanları gizle
     const landing = document.getElementById('landingContainer');
     const auth = document.getElementById('authContainer');
     const app = document.getElementById('appContainer');
@@ -26,17 +25,15 @@ async function handleSPA_Routing() {
     if(auth) auth.classList.add('hidden');
     if(app) app.classList.add('hidden');
     
-    // URL Hash'e göre ilgili katmanı aç
     if (hash === '#home' && landing) {
         landing.classList.remove('hidden');
         if(!window.isLanding3DInitialized) { initLanding3DScene(); window.isLanding3DInitialized = true; }
     } else if (hash === '#auth' && auth) {
         auth.classList.remove('hidden');
     } else if (hash === '#app' && app) {
-        // Oturum kontrolü
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) {
-            window.location.hash = '#auth'; // Giriş yapmamışsa logine at
+            window.location.hash = '#auth';
             return;
         }
         app.classList.remove('hidden');
@@ -45,13 +42,12 @@ async function handleSPA_Routing() {
 
 window.addEventListener('hashchange', handleSPA_Routing);
 
-// Sayfa Yüklendiğinde Oturum Kontrolü
 window.addEventListener('load', async () => {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
         await fetchUserProfile(session.user.id, session.user.email);
         if (window.location.hash === '#auth' || window.location.hash === '') {
-            window.location.hash = '#app'; // Oturum varsa direkt uygulamaya al
+            window.location.hash = '#app';
         }
     }
     handleSPA_Routing();
@@ -76,7 +72,6 @@ tabRegister?.addEventListener('click', () => {
     tabLogin.classList.add('text-gray-400'); tabLogin.classList.remove('text-blue-600', 'border-b-2');
 });
 
-// Kayıt Ol
 registerForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btnRegisterSubmit');
@@ -103,7 +98,6 @@ registerForm?.addEventListener('submit', async (e) => {
     btn.textContent = "Hesap Oluştur"; btn.disabled = false;
 });
 
-// Giriş Yap
 loginForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btnLoginSubmit');
@@ -117,7 +111,7 @@ loginForm?.addEventListener('submit', async (e) => {
     if (error) { alert("Giriş Başarısız: Bilgilerinizi kontrol edin."); } 
     else if (data.user) {
         await fetchUserProfile(data.user.id, data.user.email);
-        window.location.hash = '#app'; // Uygulamaya Geç
+        window.location.hash = '#app';
         loginForm.reset();
     }
     btn.textContent = "Sisteme Giriş Yap"; btn.disabled = false;
@@ -137,7 +131,6 @@ async function fetchUserProfile(userId, displayEmail) {
     }
 }
 
-// Menü ve Çıkış
 const btnProfile = document.getElementById('btnProfile');
 const profileDropdown = document.getElementById('profileDropdown');
 btnProfile?.addEventListener('click', () => profileDropdown.classList.toggle('hidden'));
@@ -146,13 +139,11 @@ document.getElementById('btnLogout')?.addEventListener('click', async () => {
     await supabaseClient.auth.signOut();
     currentUserProfile = null;
     profileDropdown.classList.add('hidden');
-    window.location.hash = '#home'; // Çıkışta Landing'e at
+    window.location.hash = '#home';
 });
 
 
 // --- 4. ANA MENÜ VE MODÜL GEÇİŞ YÖNETİMİ ---
-
-// YENİ EKLENEN MENÜLER BURAYA TANIMLANDI
 const menuMap = {
     'btnGoCRM': 'crmModule',
     'btnGoCompanyMgmt': 'companyManagementModule',
@@ -171,7 +162,6 @@ for (const [btnId, modId] of Object.entries(menuMap)) {
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById(modId).classList.remove('hidden');
             
-            // Simülasyon açıldığında motoru tetikle
             if(modId === 'simulationModule' && !window.isApp3DInitialized) {
                 initApp3DScene();
                 window.isApp3DInitialized = true;
@@ -185,7 +175,6 @@ for (const [btnId, modId] of Object.entries(menuMap)) {
     }
 }
 
-// YENİ GERİ DÖNÜŞ BUTONLARI EKLENDİ
 const backButtons = ['btnBackToMenu', 'btnBackToMenuFromSim', 'btnBackToMenuFromEV', 'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin', 'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt'];
 backButtons.forEach(id => {
     const btn = document.getElementById(id);
@@ -197,59 +186,47 @@ backButtons.forEach(id => {
     }
 });
 
-// ============================================================================
-// FİRMA YÖNETİMİ - TAB (SEKME) VE YAPAY ZEKA İŞLEMLERİ
-// ============================================================================
 
-// 1. Sekmeler Arası Geçiş Animasyonu
+// --- 4.1 FİRMA YÖNETİMİ SEKME (TAB) VE YZ SİMÜLASYON AYARLARI ---
 document.querySelectorAll('.cm-tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
         document.querySelectorAll('.cm-tab-btn').forEach(b => {
             b.classList.remove('bg-emerald-600', 'text-white');
             b.classList.add('bg-slate-100', 'text-slate-600');
         });
-        
         e.target.classList.remove('bg-slate-100', 'text-slate-600');
         e.target.classList.add('bg-emerald-600', 'text-white');
         
         document.querySelectorAll('.cm-tab-content').forEach(c => c.classList.add('hidden'));
-        
         const targetId = e.target.getAttribute('data-target');
-        document.getElementById(targetId).classList.remove('hidden');
+        document.getElementById(targetId)?.classList.remove('hidden');
     });
 });
 
-// 2. Yapay Zeka Butonu Tetikleyicisi (API Bağlanana Kadar Simülasyon)
 document.getElementById('btnRunAI')?.addEventListener('click', () => {
     const name = document.getElementById('cmName').value;
     const pitch = document.getElementById('cmPitch').value;
-    
     if(!name || !pitch) {
-        alert("Lütfen sağlıklı bir analiz için en azından Firma İsmi ve Temel Vaat alanlarını doldurun.");
+        alert("Lütfen en azından Firma İsmi ve Temel Vaat alanlarını doldurun.");
         return;
     }
-    
     const btn = document.getElementById('btnRunAI');
-    btn.textContent = "Veriler Yapay Zekaya İletiliyor...";
-    btn.classList.add('opacity-70', 'cursor-not-allowed');
+    btn.textContent = "Veriler İşleniyor...";
     btn.disabled = true;
-    
     setTimeout(() => {
-        alert(`Sistem Mesajı: "${name}" firmasına ait form verileri başarıyla işlendi. Yapay Zeka API entegrasyonu tamamlandığında, size özel kurumsal check-up raporu bu ekranda anında belirecektir.`);
+        alert(`Sistem Mesajı: "${name}" firmasından alınan analiz verileri başarıyla sunucuya iletildi. Yapay Zeka API entegrasyonu sağlandığında sonuçlar bu ekrana yansıtılacaktır.`);
         btn.textContent = "YZ İle Reçete Oluştur (Yakında)";
-        btn.classList.remove('opacity-70', 'cursor-not-allowed');
         btn.disabled = false;
     }, 1500);
 });
 
 
 // ============================================================================
-// ORTAK 3D MİMARİ MOTORU (Sol Çapraz Perspektif ve Düzeltilmiş Konumlar)
+// ORTAK 3D MİMARİ MOTORU (Geri Getirilen ve Düzeltilen Gövde)
 // ============================================================================
 function createEcoSystem(scene) {
     const objs = {};
 
-    // Zemin ve Ev
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x65a30d }));
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
@@ -259,14 +236,12 @@ function createEcoSystem(scene) {
     const roof = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.5, 6.5), new THREE.MeshStandardMaterial({ color: 0x334155 }));
     roof.position.set(-2, 5.50, 0); roof.rotation.z = -0.25; roof.castShadow = true; scene.add(roof);
 
-    // Carport
     const cpMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
     const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), cpMat); p1.position.set(7.5, 2, 3); p1.castShadow=true; scene.add(p1);
     const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), cpMat); p2.position.set(7.5, 2, -3); p2.castShadow=true; scene.add(p2);
     const cpRoof = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 7), new THREE.MeshStandardMaterial({ color: 0xcbd5e1, transparent:true, opacity:0.8 }));
     cpRoof.position.set(4.8, 4, 0); cpRoof.castShadow=true; scene.add(cpRoof);
 
-    // Şebeke Direği ve Akım Kablosu
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 10, 16), new THREE.MeshStandardMaterial({ color: 0x5c4033 }));
     pole.position.set(-12, 5, -5); pole.castShadow = true; scene.add(pole);
     const crossbar = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 2.5), new THREE.MeshStandardMaterial({ color: 0x5c4033 }));
@@ -278,7 +253,6 @@ function createEcoSystem(scene) {
     objs.gridCable = new THREE.Line(cableGeo, objs.gridCableMat);
     objs.gridCable.computeLineDistances(); scene.add(objs.gridCable);
 
-    // Etkileşimli Objeler
     objs.gasPipe = new THREE.Group();
     const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5), new THREE.MeshStandardMaterial({ color: 0xfacc15 })); pipe.position.set(0, 1.25, 0); 
     const meterBox = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.4), new THREE.MeshStandardMaterial({ color: 0x9ca3af })); meterBox.position.set(0, 2.5, 0.15); 
@@ -295,19 +269,17 @@ function createEcoSystem(scene) {
     for(let x=0; x<3; x++) { for(let z=0; z<2; z++) { const p = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 2.8), panelMat); p.position.set(-2.5 + (x*2.4), 0, -1.5 + (z*3)); objs.panels.add(p); } }
     objs.panels.position.set(-2, 5.95, 0); objs.panels.rotation.z = -0.25; objs.panels.scale.set(0,0,0); scene.add(objs.panels);
 
-    // İNVERTER VE KABLO DÜZELTMESİ (Kablo uzatıldı, İnverter sola alındı)
     objs.inverterGroup = new THREE.Group();
     const inverter = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 0.3), new THREE.MeshStandardMaterial({ color: 0xcbd5e1 })); 
     inverter.position.set(-5.2, 3.5, -3.2); 
     const solarCable = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.5), new THREE.MeshStandardMaterial({ color: 0x1f2937 })); 
-    solarCable.position.set(-5.2, 4.85, -3.2); // Kablo Y ekseninde yukarı çekildi
+    solarCable.position.set(-5.2, 4.85, -3.2); 
     objs.inverterGroup.add(inverter); objs.inverterGroup.add(solarCable); objs.inverterGroup.scale.set(0,0,0); scene.add(objs.inverterGroup);
 
-    // BATARYA DÜZELTMESİ (Taşma engellendi, merkeze toplandı)
     objs.batteries = [];
     for(let i=0; i<4; i++) {
         const bat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.6), new THREE.MeshStandardMaterial({ color: 0xf1f5f9 }));
-        bat.position.set(-0.5 - (i * 1.2), 1.1, -3.3); // X Ekseni -0.5 ile -4.1 arasına sıkıştırıldı
+        bat.position.set(-0.5 - (i * 1.2), 1.1, -3.3); 
         bat.castShadow = true; bat.scale.set(0,0,0);
         scene.add(bat); objs.batteries.push(bat);
     }
@@ -327,15 +299,15 @@ function createEcoSystem(scene) {
     return objs;
 }
 
+
 // --- 5. AÇILIŞ SAYFASI (LANDING) 3D SCROLL MOTORU ---
 let landingScene, landingCamera, landingRenderer, landObjs;
 
-// Animasyon Sırasında Parlama (Flash) Efekti Veren Fonksiyon
 function applyFlashEffect(objGroup, scaleValue) {
+    if(!objGroup) return;
     objGroup.scale.set(scaleValue, scaleValue, scaleValue);
     const isFlashing = (scaleValue > 0.05 && scaleValue < 0.95);
-    const glowColor = isFlashing ? 0x64748b : 0x000000; // Büyürken hafifçe parlar
-    
+    const glowColor = isFlashing ? 0x64748b : 0x000000;
     objGroup.traverse(child => {
         if (child.isMesh && child.material) {
             child.material.emissive.setHex(glowColor);
@@ -354,9 +326,8 @@ function initLanding3DScene() {
     const height = canvasBox.clientHeight || window.innerHeight;
 
     landingCamera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
-    // KAMERA SOL ÇAPRAZA ALINDI (-24 X EKSENİ)
     landingCamera.position.set(-24, 18, 30);
-    landingCamera.lookAt(-2, 2, 0); // Tam olarak evin merkezine bakıyor
+    landingCamera.lookAt(-2, 2, 0); 
 
     landingRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     landingRenderer.setSize(width, height);
@@ -386,7 +357,6 @@ function initLanding3DScene() {
         if(!scrollArea || !landObjs) return;
         const progress = Math.min(Math.max(window.scrollY / (scrollArea.clientHeight - window.innerHeight), 0), 1);
 
-        // HIZLI BELİRME: Değerler sıkıştırıldı (0.05 ile 0.30 arasına alındı)
         let sPan = progress > 0.05 ? Math.min((progress - 0.05) * 10, 1) : 0; 
         applyFlashEffect(landObjs.panels, sPan); 
         applyFlashEffect(landObjs.inverterGroup, sPan);
@@ -398,13 +368,12 @@ function initLanding3DScene() {
         applyFlashEffect(landObjs.hp, sHp);
         
         let sGas = progress > 0.15 ? Math.max(1 - (progress - 0.15) * 10, 0) : 1; 
-        landObjs.gasPipe.scale.set(sGas, sGas, sGas);
+        if(landObjs.gasPipe) landObjs.gasPipe.scale.set(sGas, sGas, sGas);
         
         let sEv = progress > 0.20 ? Math.min((progress - 0.20) * 10, 1) : 0; 
         landObjs.evs.forEach(v => applyFlashEffect(v, sEv));
 
-        // Şebeke kablosu hızlıca kaybolur
-        landObjs.gridCable.visible = progress < 0.25;
+        if(landObjs.gridCable) landObjs.gridCable.visible = progress < 0.25;
 
         const ind = document.getElementById('scrollIndicator');
         if(ind) ind.style.opacity = progress > 0.02 ? '0' : '1';
@@ -412,58 +381,49 @@ function initLanding3DScene() {
 
     function animate() {
         requestAnimationFrame(animate);
-        // DÖNÜŞ YÖNÜ: Eksi (-) işareti sayesinde ev sağa doğru dönüp arkayı gösterir
         landingScene.rotation.y = -window.scrollY * 0.0012; 
-        if(landObjs) landObjs.gridCableMat.dashOffset -= 0.05; 
+        if(landObjs && landObjs.gridCableMat) landObjs.gridCableMat.dashOffset -= 0.05; 
         landingRenderer.render(landingScene, landingCamera);
     }
     animate();
 }
 
-// --- 5. YATIRIMCI PUBLIC BAŞVURU SİSTEMİ (GÜNCELLENMİŞ) ---
 window.openLeadModal = function(type) {
     document.getElementById('leadType').value = type;
     document.getElementById('leadModalTitle').innerText = type === 'kurulum' ? 'Yeni GES Kurulum Başvuru Formu' : 'Teknik Servis & Müdahale Başvuru Formu';
     document.getElementById('leadDetailsLabel').innerText = type === 'kurulum' ? 'Eklemek İstediğiniz Notlar' : 'Yaşadığınız Sorunun Detaylı Özeti';
     
-    // Kurulum extra alanlarını sadece 'kurulum' seçildiyse göster
     const extraFields = document.getElementById('kurulumExtraFields');
     if (type === 'kurulum') {
-        extraFields.classList.remove('hidden');
+        extraFields?.classList.remove('hidden');
     } else {
-        extraFields.classList.add('hidden');
+        extraFields?.classList.add('hidden');
     }
-    
-    document.getElementById('leadModal').classList.remove('hidden');
+    document.getElementById('leadModal')?.classList.remove('hidden');
 };
 
 window.closeLeadModal = function() { 
-    document.getElementById('leadModal').classList.add('hidden'); 
-    document.getElementById('leadPublicForm').reset();
+    document.getElementById('leadModal')?.classList.add('hidden'); 
+    document.getElementById('leadPublicForm')?.reset();
 };
 
 document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const type = document.getElementById('leadType').value;
     
-    // EĞER KURULUM İSE VE AMAÇ SATIŞ YAPMAKSA DİREKT REDDET
     if (type === 'kurulum') {
         const intent = document.getElementById('leadIntent').value;
         if (intent === 'satis') {
             alert("⚠️ BAŞVURUNUZ KABUL EDİLEMEDİ\n\nTürkiye'deki mevcut lisanssız elektrik üretim yönetmelikleri (Mahsuplaşma) gereği, evsel sistemlerde 'sadece üretip satarak para kazanmak' ticari bir model olarak uygun değildir. Sistem sadece kendi öz tüketiminizi karşılamak üzere tasarlandığında yasal ve kârlı olmaktadır.\n\nLütfen amacınızı öz tüketim olarak güncelleyerek tekrar başvurun.");
-            return; // Supabase'e kaydetmeden işlemi durdur!
+            return;
         }
     }
 
     const randomCode = "EPC-" + Math.floor(1000 + Math.random() * 9000);
-
-// Sorun açıklamasına ekstra detayları yedir (Admin'in görebilmesi için)
     let combinedDetails = document.getElementById('leadDetails').value;
     if (type === 'kurulum') {
         const outage = document.getElementById('leadOutage').value;
-        // YENİ EKLENEN KISIM BURASI: Checkbox yerine metin kutusunu okuyoruz
         const extraCons = document.getElementById('leadExtraConsumption').value || 'Yok';
-        
         combinedDetails = `[Şebeke Kesintisi: ${outage}] | [İlave Tüketim Planı: ${extraCons}]\n\nMüşteri Notu: ${combinedDetails}`;
     }
 
@@ -485,39 +445,34 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
         alert(`🎉 Başvurunuz İletildi!\n\nLütfen Takip Kodunuzu Not Edin: ${randomCode}`);
         closeLeadModal();
         document.getElementById('leadTrackInput').value = randomCode;
-        document.getElementById('btnTrackQuery').click(); // Sorgulamayı otomatik tetikle
+        document.getElementById('btnTrackQuery').click();
     } else {
         alert("Hata: Başvuru gönderilemedi. Bağlantınızı kontrol edin.");
     }
 });
 
-// TAKİP KODU SORGULAMA MOTORU (Hata Çözüldü)
 document.getElementById('btnTrackQuery')?.addEventListener('click', async () => {
     const code = document.getElementById('leadTrackInput').value.trim();
     const display = document.getElementById('trackResultDisplay');
     if(!code) return;
 
-    // Önceki renk sınıflarını temizle
     display.classList.remove('hidden', 'bg-yellow-100', 'text-yellow-800', 'bg-blue-100', 'text-blue-800', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
     display.className = "mt-4 p-4 rounded-xl text-sm font-bold bg-slate-100 text-slate-800";
     display.innerHTML = "Sorgulanıyor...";
 
     try {
         const { data, error } = await supabaseClient.from('support_tickets').select('*').eq('installer_name', code).single();
-
         if (error || !data) {
             display.className = "mt-4 p-4 rounded-xl text-sm font-bold bg-red-100 text-red-800";
             display.innerText = "Kayıt Bulunamadı. Takip kodunuzu doğru yazdığınızdan emin olun.";
             return;
         }
-
         let c = "bg-yellow-100 text-yellow-800";
         if(data.status === 'Değerlendiriliyor') c = "bg-blue-100 text-blue-800";
         if(data.status === 'Dönüş Yapıldı') c = "bg-green-100 text-green-800";
 
         display.className = `mt-4 p-4 rounded-xl text-sm font-bold ${c}`;
         display.innerHTML = `<p><strong>Müşteri:</strong> ${data.full_name}</p><p><strong>Durum:</strong> ${data.status}</p>${data.admin_response ? `<p class="mt-2 pt-2 border-t border-black/10"><strong>Merkez Notu:</strong> ${data.admin_response}</p>` : ''}`;
-    
     } catch (err) {
         display.className = "mt-4 p-4 rounded-xl text-sm font-bold bg-red-100 text-red-800";
         display.innerText = "Sistemsel bir hata oluştu, lütfen daha sonra tekrar deneyin.";
@@ -527,7 +482,6 @@ document.getElementById('btnTrackQuery')?.addEventListener('click', async () => 
 
 // --- 6. GÜÇ HESAPLAYICI (ORİJİNAL) ---
 let sonAylik = 0, sonYillik = 0, sonFatura = 0; 
-const appliancesWrapper = document.getElementById('appliancesWrapper');
 
 function addApplianceRow(name = "", qty = 1, kw = "", hrs = "") {
     const row = document.createElement('div'); row.className = "appliance-row grid grid-cols-12 gap-2 items-center mt-2";
@@ -585,9 +539,9 @@ document.getElementById('btnCalculate')?.addEventListener('click', () => {
 
 
 // --- 7. UYGULAMA İÇİ (DASHBOARD) 3D SİMÜLASYON ---
-let appScene, appCamera, appRenderer, appControls, appObjs;
+let appScene, appCamera, appRenderer, appControls;
 let stateGES = false, stateHP = false;
-let countBat = 0, countEV = 0, currentGrid = 100;
+let countBat = 0, countEV = 0;
 
 function initApp3DScene() {
     const container = document.getElementById('three-canvas-container');
@@ -616,7 +570,6 @@ function initApp3DScene() {
     sunLight.position.set(15, 30, 15); sunLight.castShadow = true;
     appScene.add(sunLight);
 
-    // Mimariyi Ortak Fonksiyondan Çağırıyoruz
     appObjs = createEcoSystem(appScene);
     document.getElementById('loading3D').style.display = 'none';
 
@@ -630,7 +583,6 @@ function initApp3DScene() {
     function animate() {
         requestAnimationFrame(animate);
         if (appObjs) {
-            // Buton durumlarına göre objeleri büyüt/küçült
             appObjs.panels.scale.lerp(new THREE.Vector3(stateGES?1:0, stateGES?1:0, stateGES?1:0), 0.1);
             appObjs.inverterGroup.scale.lerp(new THREE.Vector3(stateGES?1:0, stateGES?1:0, stateGES?1:0), 0.1);
             appObjs.hp.scale.lerp(new THREE.Vector3(stateHP?1:0, stateHP?1:0, stateHP?1:0), 0.1);
@@ -638,8 +590,8 @@ function initApp3DScene() {
             appObjs.batteries.forEach((b, i) => b.scale.lerp(new THREE.Vector3(i<countBat?1:0, i<countBat?1:0, i<countBat?1:0), 0.1));
             appObjs.evs.forEach((v, i) => v.scale.lerp(new THREE.Vector3(i<countEV?1:0, i<countEV?1:0, i<countEV?1:0), 0.1));
             
-            appObjs.gridCableMat.dashOffset -= 0.05; // Akım animasyonu
-            appObjs.gridCable.visible = currentGrid > 0; // Şebeke 0 ise kabloyu gizle
+            if(appObjs.gridCableMat) appObjs.gridCableMat.dashOffset -= 0.05; 
+            if(appObjs.gridCable) appObjs.gridCable.visible = currentGrid > 0; 
         }
         appControls.update();
         appRenderer.render(appScene, appCamera);
@@ -666,11 +618,12 @@ function updateAppScore() {
 
     const sColor = document.getElementById('scoreDisplay');
     sColor.className = "text-xs px-2 py-1 rounded text-white font-bold transition-colors duration-500";
-    if(score < 30) sColor.classList.add('bg-red-500'); 
-    else if(score < 70) sColor.classList.add('bg-orange-500'); 
-    else if(score < 100) sColor.classList.add('bg-yellow-500'); 
+    if(score < 30) sColor.classList.add('bg-red-500');
+    else if(score < 70) sColor.classList.add('bg-orange-500');
+    else if(score < 100) sColor.classList.add('bg-yellow-500');
     else sColor.classList.add('bg-green-600');
 }
+
 
 // --- 8. EV YÜK HESAPLAYICI ---
 let activeEVTab = 'tabBill';
@@ -692,17 +645,16 @@ document.querySelectorAll('.ev-tab-btn').forEach(btn => {
 });
 
 document.querySelectorAll('.ev-reactive-input').forEach(input => input.addEventListener('input', calculateEVSolar));
+
 function calculateEVSolar() {
     const tariff = parseFloat(document.getElementById('evCalcTariff')?.value) || 2.50;
     const evRange = parseFloat(document.getElementById('evCalcRange')?.value) || 1;
     const evBattery = parseFloat(document.getElementById('evCalcBattery')?.value) || 1;
     const evConsumption = parseFloat(document.getElementById('evCalcConsumption')?.value) || 1;
-    // YENİ EKLENDİ: Araç AC Şarj Hızını okuyoruz
     const evACSpeed = parseFloat(document.getElementById('evCalcACSpeed')?.value) || 11; 
     const userRoof = parseFloat(document.getElementById('evInputRoof')?.value) || 0;
     const maxUsableRoof = userRoof * 0.8;
     
-    // 1. ŞARJ İSTASYONU ÖNERİSİ HESAPLAMA VE EKRANA YAZDIRMA (YENİ EKLENEN KISIM)
     const recommendationBox = document.getElementById('evChargerRecommendation');
     if (recommendationBox) {
         if (evACSpeed > 0 && evBattery > 0) {
@@ -716,7 +668,6 @@ function calculateEVSolar() {
     let requiredPowerKwp = 0, dailyProductionKwh = 0;
     let houseMonthlyKwh = 0, evMonthlyKwh = 0;
 
-    // 2. Tüketim Senaryoları (Ev + Araç Birleşimi Mantığı)
     if (activeEVTab === 'tabBill') {
         const monthlyBill = parseFloat(document.getElementById('evInputBill')?.value) || 0;
         houseMonthlyKwh = monthlyBill / tariff;
@@ -733,14 +684,12 @@ function calculateEVSolar() {
         houseMonthlyKwh = 350; 
     }
 
-    // 3. Toplam Sistem İhtiyacı
     const totalMonthlyKwh = houseMonthlyKwh + evMonthlyKwh;
     dailyProductionKwh = totalMonthlyKwh / 30;
 
     requiredPowerKwp = dailyProductionKwh / 4;
     const requiredAreaM2 = requiredPowerKwp * 5;
     
-    // 4. Çıktıları Ekrana Yazdırma
     const totalMonthlyProduction = dailyProductionKwh * 30;
     document.getElementById('resPower').innerText = requiredPowerKwp.toFixed(2);
     document.getElementById('resArea').innerText = requiredAreaM2.toFixed(1);
@@ -750,7 +699,6 @@ function calculateEVSolar() {
     const solarRange = (surplusEnergy / evBattery) * evRange;
     document.getElementById('resSolarRange').innerText = Math.round(solarRange).toLocaleString('tr-TR');
     
-    // 5. İlerleme Çubuğu Kodları
     const chargeRatio = evBattery > 0 ? (surplusEnergy / evBattery) * 100 : 0;
     const barWidth = Math.min(chargeRatio, 100); 
     
@@ -760,7 +708,6 @@ function calculateEVSolar() {
     if(resBar) resBar.style.width = barWidth + '%';
     if(resPercent) resPercent.innerText = `%${Math.round(chargeRatio)}`;
     
-    // 6. Çatı Uyarı Sistemi Yönetimi
     const warning = document.getElementById('roofWarningBanner');
     if(warning) {
         if (requiredAreaM2 > maxUsableRoof) {
@@ -771,6 +718,7 @@ function calculateEVSolar() {
         }
     }
 }
+
 
 // --- 9. TEKNİK SERVİS MODÜLÜ ---
 const tabNewTicket = document.getElementById('tabNewTicket');
@@ -827,12 +775,13 @@ async function fetchMyTickets() {
     });
 }
 
+
 // --- 10. SATIŞ ASİSTAN YARDIMCISI (COPILOT) - DİNAMİK HAVUZ SÜRÜMÜ ---
 const salesScenarios = {
     kurulum: {
         "300 m² evim var, GES istiyorum": "Metrekare hesabı üzerinden güneş enerjisi sistemi hesaplayamayız. Tüketim alışkanlıklarınızdan veya faturanızdan konuşmaya devam edelim.",
         "3.000 TL fatura ödüyorum": "Bu faturaya göre yaklaşık 10 kW kapasiteli bir sistem tavsiye edebilirim. Çatınızda 50 metrekare yer kaplar. Bölgenizde çok elektrik kesiliyor mu?",
-        "Evet, sık kesiliyor": "Elektrik kesintisinin sık yaşandığı yerlerde mutlaka hibrit sistem ve batarya tavsiye etmekteyiz. Kesintinin süresine göre batarya kapasitesini arttırabiliriz.",
+        "Evet, sık kesiliyor": "Elektrik kesintisinin sık yaşandığı yerlerde mutlaka hibrit sistem and batarya tavsiye etmekteyiz. Kesintinin süresine göre batarya kapasitesini arttırabiliriz.",
         "Peki maliyeti nedir?": "10 kW sistem ve 5 kWh batarya için referans bedel: Toplam <strong>{totalPrice} Dolar</strong> civarıdır. Kesin fiyat için keşfe gelelim.",
         "Eşimle görüşmem gerekiyor": "Kesinlikle, bu durum aileniz için çok önemli. Ancak düşünün; eşinizin akşamları şebeke kesintisinden dolayı karanlıkta kalmasını ister misiniz?",
         "Haklısınız fakat şu an param yok": "Ödeme planı konusunda yardımcı olabiliriz. Kurulum öncesi %30, kurulum sonrası %60 şeklinde esnek koşullar oluşturabiliriz.",
@@ -846,7 +795,6 @@ const salesScenarios = {
     }
 };
 
-// YENİ ELEMAN: Ekibin Ortak Eklediği Hazır Cevapları Veritabanına Yazma
 document.getElementById('btnSaveNewObjection')?.addEventListener('click', async () => {
     const objection = document.getElementById('newObjectionInput').value.trim();
     const response = document.getElementById('newResponseInput').value.trim();
@@ -856,31 +804,24 @@ document.getElementById('btnSaveNewObjection')?.addEventListener('click', async 
         alert("Lütfen hem itiraz cümlesini hem de asistanın vereceği yanıtı doldurun.");
         return;
     }
-
     const btn = document.getElementById('btnSaveNewObjection');
     btn.textContent = "Ortak Havuza Kaydediliyor..."; btn.disabled = true;
 
-    // Supabase'e genel/herkese açık senaryo satırı olarak ekle
     const { error } = await supabaseClient.from('sales_copilot_scripts').insert([{
-        company_type: compType,
-        objection: objection,
-        response: response
+        company_type: compType, objection: objection, response: response
     }]);
 
     if (error) {
         console.error(error);
-        alert("Hata: Kayıt yapılamadı. Lütfen Supabase'de 'sales_copilot_scripts' tablosunun kurulu olduğundan emin olun.");
+        alert("Hata: Kayıt yapılamadı.");
     } else {
-        alert("🎉 Yeni hazır cevap başarıyla ortak arşive eklendi! Artık tüm kullanıcılar bu tüyoyu görebilecek.");
-        
-        // Formu temizle
+        alert("🎉 Yeni hazır cevap başarıyla ortak arşive eklendi!");
         document.getElementById('newObjectionInput').value = '';
         document.getElementById('newResponseInput').value = '';
     }
     btn.textContent = "Cevabı Tüm Ekip İçin Kaydet"; btn.disabled = false;
 });
 
-// GÜNCELLEME: Görüşmeyi Başlatırken Ortak Havuzdaki Dinamik Verileri Çekme
 document.getElementById('btnStartCall')?.addEventListener('click', async () => {
     document.getElementById('salesSetupArea').classList.add('hidden');
     document.getElementById('activeCallArea').classList.remove('hidden');
@@ -892,29 +833,16 @@ document.getElementById('btnStartCall')?.addEventListener('click', async () => {
     const container = document.getElementById('objectionButtonsContainer');
     
     container.innerHTML = '<p class="text-sm text-gray-400 italic p-2">Güncel senaryolar senkronize ediliyor...</p>';
-    
-    // 1. Kodun içindeki temel/statik senaryoları klonla
     let mergedScenarios = { ...salesScenarios[compType] };
 
-    // 2. Supabase'den diğer kullanıcıların eklediği tüm ortak satırları çekip üzerine birleştir
     try {
-        const { data, error } = await supabaseClient
-            .from('sales_copilot_scripts')
-            .select('*')
-            .eq('company_type', compType);
-            
+        const { data, error } = await supabaseClient.from('sales_copilot_scripts').select('*').eq('company_type', compType);
         if (!error && data) {
-            data.forEach(item => {
-                mergedScenarios[item.objection] = item.response; // Varsa üzerine yazar, yoksa yeni ekler
-            });
+            data.forEach(item => { mergedScenarios[item.objection] = item.response; });
         }
-    } catch (err) {
-        console.warn("Dinamik senaryo tablosuna erişilemedi, varsayılan listeyle devam ediliyor.");
-    }
+    } catch (err) { console.warn("Dinamik senaryolara erişilemedi."); }
 
     container.innerHTML = '';
-    
-    // Düzenlenmiş nihai listeyi ekrana buton olarak bas
     for (const [objection, response] of Object.entries(mergedScenarios)) {
         const btn = document.createElement('button');
         btn.className = "text-left w-full bg-white hover:bg-orange-50 border p-3 rounded-lg shadow-sm font-bold text-gray-700 transition-all";
@@ -923,7 +851,6 @@ document.getElementById('btnStartCall')?.addEventListener('click', async () => {
             const finalRes = response
                 .replace('{totalPrice}', ((10 * kwPrice) + (5 * batPrice)).toLocaleString('tr-TR'))
                 .replace('{consultPrice}', consultPrice.toLocaleString('tr-TR'));
-                
             document.getElementById('scriptDisplayArea').innerHTML = `<p class="text-white text-2xl leading-relaxed font-light animate-fade-in">${finalRes}</p>`;
         });
         container.appendChild(btn);
@@ -935,6 +862,7 @@ document.getElementById('btnEndCall')?.addEventListener('click', () => {
     document.getElementById('salesSetupArea').classList.remove('hidden');
     document.getElementById('scriptDisplayArea').innerHTML = `<p class="text-slate-500 italic">Müşterinin söylediği cümleyi seçtiğinizde, yanıt burada belirecektir.</p>`;
 });
+
 
 // --- 11. ADMIN İŞLEMLERİ (KULLANICILAR VE TALEPLER) ---
 document.getElementById('btnRefreshUsers')?.addEventListener('click', fetchUsersForAdmin);
@@ -949,8 +877,6 @@ async function fetchUsersForAdmin() {
         list1.innerHTML = '';
         if(data) data.forEach(u => list1.innerHTML += `<tr><td class="p-4 border-b">${u.first_name} ${u.last_name}</td><td class="p-4 border-b">${u.company_name}</td><td class="p-4 border-b">${u.phone}</td><td class="p-4 border-b">${u.role}</td></tr>`);
     }
-    
-    // Public Yatırımcı Talepleri (user_id = 00000000-0000-0000-0000-000000000000)
     if(list2) {
         list2.innerHTML = '<p class="text-gray-500">Yükleniyor...</p>';
         const { data } = await supabaseClient.from('support_tickets').select('*').eq('user_id', '00000000-0000-0000-0000-000000000000').order('created_at', {ascending: false});
