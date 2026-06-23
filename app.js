@@ -827,7 +827,12 @@ async function fetchMyTickets() {
 }
 
 
-// --- 10. SATIŞ ASİSTAN YARDIMCISI (COPILOT) ---
+
+
+
+
+
+// --- 10. SATIŞ ASİSTAN YARDIMCISI (COPILOT) - DİNAMİK HAVUZ SÜRÜMÜ ---
 const salesScenarios = {
     kurulum: {
         "300 m² evim var, GES istiyorum": "Metrekare hesabı üzerinden güneş enerjisi sistemi hesaplayamayız. Tüketim alışkanlıklarınızdan veya faturanızdan konuşmaya devam edelim.",
@@ -846,7 +851,42 @@ const salesScenarios = {
     }
 };
 
-document.getElementById('btnStartCall')?.addEventListener('click', () => {
+// YENİ ELEMAN: Ekibin Ortak Eklediği Hazır Cevapları Veritabanına Yazma
+document.getElementById('btnSaveNewObjection')?.addEventListener('click', async () => {
+    const objection = document.getElementById('newObjectionInput').value.trim();
+    const response = document.getElementById('newResponseInput').value.trim();
+    const compType = document.querySelector('input[name="companyType"]:checked').value;
+
+    if (!objection || !response) {
+        alert("Lütfen hem itiraz cümlesini hem de asistanın vereceği yanıtı doldurun.");
+        return;
+    }
+
+    const btn = document.getElementById('btnSaveNewObjection');
+    btn.textContent = "Ortak Havuza Kaydediliyor..."; btn.disabled = true;
+
+    // Supabase'e genel/herkese açık senaryo satırı olarak ekle
+    const { error } = await supabaseClient.from('sales_copilot_scripts').insert([{
+        company_type: compType,
+        objection: objection,
+        response: response
+    }]);
+
+    if (error) {
+        console.error(error);
+        alert("Hata: Kayıt yapılamadı. Lütfen Supabase'de 'sales_copilot_scripts' tablosunun kurulu olduğundan emin olun.");
+    } else {
+        alert("🎉 Yeni hazır cevap başarıyla ortak arşive eklendi! Artık tüm kullanıcılar bu tüyoyu görebilecek.");
+        
+        // Formu temizle
+        document.getElementById('newObjectionInput').value = '';
+        document.getElementById('newResponseInput').value = '';
+    }
+    btn.textContent = "Cevabı Tüm Ekip İçin Kaydet"; btn.disabled = false;
+});
+
+// GÜNCELLEME: Görüşmeyi Başlatırken Ortak Havuzdaki Dinamik Verileri Çekme
+document.getElementById('btnStartCall')?.addEventListener('click', async () => {
     document.getElementById('salesSetupArea').classList.add('hidden');
     document.getElementById('activeCallArea').classList.remove('hidden');
     
@@ -855,15 +895,41 @@ document.getElementById('btnStartCall')?.addEventListener('click', () => {
     const batPrice = parseFloat(document.getElementById('baseBatPrice').value) || 0;
     const consultPrice = parseFloat(document.getElementById('baseConsultPrice').value) || 0;
     const container = document.getElementById('objectionButtonsContainer');
+    
+    container.innerHTML = '<p class="text-sm text-gray-400 italic p-2">Güncel senaryolar senkronize ediliyor...</p>';
+    
+    // 1. Kodun içindeki temel/statik senaryoları klonla
+    let mergedScenarios = { ...salesScenarios[compType] };
+
+    // 2. Supabase'den diğer kullanıcıların eklediği tüm ortak satırları çekip üzerine birleştir
+    try {
+        const { data, error } = await supabaseClient
+            .from('sales_copilot_scripts')
+            .select('*')
+            .eq('company_type', compType);
+            
+        if (!error && data) {
+            data.forEach(item => {
+                mergedScenarios[item.objection] = item.response; // Varsa üzerine yazar, yoksa yeni ekler
+            });
+        }
+    } catch (err) {
+        console.warn("Dinamik senaryo tablosuna erişilemedi, varsayılan listeyle devam ediliyor.");
+    }
+
     container.innerHTML = '';
     
-    for (const [objection, response] of Object.entries(salesScenarios[compType])) {
+    // Düzenlenmiş nihai listeyi ekrana buton olarak bas
+    for (const [objection, response] of Object.entries(mergedScenarios)) {
         const btn = document.createElement('button');
-        btn.className = "text-left w-full bg-white hover:bg-orange-50 border p-3 rounded-lg shadow-sm font-bold text-gray-700";
+        btn.className = "text-left w-full bg-white hover:bg-orange-50 border p-3 rounded-lg shadow-sm font-bold text-gray-700 transition-all";
         btn.innerHTML = `💬 "${objection}"`;
         btn.addEventListener('click', () => {
-            const finalRes = response.replace('{totalPrice}', ((10*kwPrice)+(5*batPrice)).toLocaleString('tr-TR')).replace('{consultPrice}', consultPrice.toLocaleString('tr-TR'));
-            document.getElementById('scriptDisplayArea').innerHTML = `<p class="text-white text-2xl leading-relaxed font-light">${finalRes}</p>`;
+            const finalRes = response
+                .replace('{totalPrice}', ((10 * kwPrice) + (5 * batPrice)).toLocaleString('tr-TR'))
+                .replace('{consultPrice}', consultPrice.toLocaleString('tr-TR'));
+                
+            document.getElementById('scriptDisplayArea').innerHTML = `<p class="text-white text-2xl leading-relaxed font-light animate-fade-in">${finalRes}</p>`;
         });
         container.appendChild(btn);
     }
@@ -874,6 +940,9 @@ document.getElementById('btnEndCall')?.addEventListener('click', () => {
     document.getElementById('salesSetupArea').classList.remove('hidden');
     document.getElementById('scriptDisplayArea').innerHTML = `<p class="text-slate-500 italic">Müşterinin söylediği cümleyi seçtiğinizde, yanıt burada belirecektir.</p>`;
 });
+
+
+
 
 
 // --- 11. ADMIN İŞLEMLERİ (KULLANICILAR VE TALEPLER) ---

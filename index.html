@@ -406,7 +406,7 @@
                 <div class="w-full bg-gray-600 rounded-full h-3">
                     <div id="resChargeBar" class="bg-teal-500 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
                 </div>
-                
+
             </div>
         </div>
 
@@ -441,7 +441,17 @@
             <div id="myTicketsArea" class="hidden"><div id="myTicketsList" class="grid grid-cols-1 gap-4"></div></div>
         </div>
 
+
+
+
+
         <div id="salesAssistantModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+            
+            <div class="mb-6 border-b pb-4 flex items-center">
+                <button id="btnBackToMenuFromSales" class="text-gray-500 hover:text-orange-600 font-medium flex items-center transition">← Ana Menü</button>
+                <span class="mx-2 text-gray-400">/</span><span class="text-gray-800 font-bold">Satış Yardımcısı (Copilot)</span>
+            </div>
+            
             <div id="salesSetupArea" class="max-w-2xl mx-auto bg-gray-50 p-8 rounded-xl border border-gray-200">
                 <h2 class="text-2xl font-extrabold text-gray-800 mb-2 text-center">Görüşme Öncesi Hazırlık</h2>
                 <div class="space-y-6">
@@ -462,6 +472,26 @@
                     <button id="btnStartCall" class="w-full bg-orange-600 text-white font-extrabold text-lg py-4 rounded-xl shadow-lg">Görüşmeyi Başlat</button>
                 </div>
             </div>
+
+            <div class="mt-6 pt-6 border-t border-gray-200">
+                        <h4 class="text-sm font-black text-gray-700 mb-2 flex items-center">
+                            <span class="text-base mr-1.5">➕</span> Yeni Hazır Cevap/İtiraz Ekle
+                        </h4>
+                        <div class="space-y-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Müşterinin Olası Cümlesi / İtirazı</label>
+                                <input type="text" id="newObjectionInput" placeholder="Örn: Nakit ödemede indirim var mı?" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500 text-gray-700">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Satışçıya Verilecek Tüyo / Hazır Cevap</label>
+                                <textarea id="newResponseInput" rows="2" placeholder="Örn: Nakit ödemelerde ekstra %5 indirim uygulayabiliyoruz..." class="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500 text-gray-700"></textarea>
+                            </div>
+                            <button type="button" id="btnSaveNewObjection" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-lg text-xs transition shadow-sm">
+                                Cevabı Tüm Ekip İçin Kaydet
+                            </button>
+                        </div>
+                    </div>
+
             <div id="activeCallArea" class="hidden">
                 <div class="flex justify-between items-center mb-6 bg-orange-50 p-4 rounded-lg border border-orange-200">
                     <div><span class="flex items-center text-orange-800 font-bold text-lg"><span class="w-3 h-3 bg-green-500 rounded-full animate-pulse mr-2"></span> Çağrı Asistanı Aktif</span><p id="activeStrategyLabel" class="text-sm text-orange-600">Kurulum Stratejisi</p></div>
