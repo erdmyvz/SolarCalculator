@@ -431,13 +431,14 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
 
     const randomCode = "EPC-" + Math.floor(1000 + Math.random() * 9000);
 
-    // Sorun açıklamasına ekstra detayları yedir (Admin'in görebilmesi için)
+// Sorun açıklamasına ekstra detayları yedir (Admin'in görebilmesi için)
     let combinedDetails = document.getElementById('leadDetails').value;
     if (type === 'kurulum') {
         const outage = document.getElementById('leadOutage').value;
-        const hasEV = document.getElementById('leadHasEV').checked ? 'Var' : 'Yok';
-        const hasHP = document.getElementById('leadHasHP').checked ? 'Var' : 'Yok';
-        combinedDetails = `[Şebeke Kesintisi: ${outage}] | [Elektrikli Araç: ${hasEV}] | [Isı Pompası: ${hasHP}]\n\nMüşteri Notu: ${combinedDetails}`;
+        // YENİ EKLENEN KISIM BURASI: Checkbox yerine metin kutusunu okuyoruz
+        const extraCons = document.getElementById('leadExtraConsumption').value || 'Yok';
+        
+        combinedDetails = `[Şebeke Kesintisi: ${outage}] | [İlave Tüketim Planı: ${extraCons}]\n\nMüşteri Notu: ${combinedDetails}`;
     }
 
     const leadData = {
