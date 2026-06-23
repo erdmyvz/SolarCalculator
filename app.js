@@ -686,23 +686,35 @@ document.querySelectorAll('.ev-tab-btn').forEach(btn => {
 });
 
 document.querySelectorAll('.ev-reactive-input').forEach(input => input.addEventListener('input', calculateEVSolar));
-
 function calculateEVSolar() {
     const tariff = parseFloat(document.getElementById('evCalcTariff')?.value) || 2.50;
     const evRange = parseFloat(document.getElementById('evCalcRange')?.value) || 1;
     const evBattery = parseFloat(document.getElementById('evCalcBattery')?.value) || 1;
     const evConsumption = parseFloat(document.getElementById('evCalcConsumption')?.value) || 1;
+    // YENİ EKLENDİ: Araç AC Şarj Hızını okuyoruz
+    const evACSpeed = parseFloat(document.getElementById('evCalcACSpeed')?.value) || 11; 
     const userRoof = parseFloat(document.getElementById('evInputRoof')?.value) || 0;
     const maxUsableRoof = userRoof * 0.8;
     
+    // 1. ŞARJ İSTASYONU ÖNERİSİ HESAPLAMA VE EKRANA YAZDIRMA (YENİ EKLENEN KISIM)
+    const recommendationBox = document.getElementById('evChargerRecommendation');
+    if (recommendationBox) {
+        if (evACSpeed > 0 && evBattery > 0) {
+            const chargeTime = (evBattery / evACSpeed).toFixed(1);
+            recommendationBox.innerHTML = `<strong>💡 Şarj İstasyonu Önerisi:</strong> Aracınızın tam doluma (%0 - %100) ulaşması ${evACSpeed} kW'lık bir ev tipi şarj cihazı ile yaklaşık <strong>${chargeTime} saat</strong> sürecektir.`;
+        } else {
+            recommendationBox.innerHTML = "Lütfen geçerli bir batarya ve şarj hızı girin.";
+        }
+    }
+
     let requiredPowerKwp = 0, dailyProductionKwh = 0;
     let houseMonthlyKwh = 0, evMonthlyKwh = 0;
 
-    // 1. Tüketim Senaryoları (Ev + Araç Birleşimi Mantığı)
+    // 2. Tüketim Senaryoları (Ev + Araç Birleşimi Mantığı)
     if (activeEVTab === 'tabBill') {
         const monthlyBill = parseFloat(document.getElementById('evInputBill')?.value) || 0;
         houseMonthlyKwh = monthlyBill / tariff;
-        evMonthlyKwh = 1500 * (evConsumption / 100); // Ev faturasına ek olarak varsayılan 1500km araç tüketimi eklendi
+        evMonthlyKwh = 1500 * (evConsumption / 100); 
     } 
     else if (activeEVTab === 'tabKwh') {
         houseMonthlyKwh = parseFloat(document.getElementById('evInputKwh')?.value) || 0;
@@ -712,28 +724,27 @@ function calculateEVSolar() {
     else if (activeEVTab === 'tabKm') {
         const km = parseFloat(document.getElementById('evInputKm')?.value) || 0;
         evMonthlyKwh = km * (evConsumption / 100);
-        houseMonthlyKwh = 350; // Sadece araca odaklanmamak için ortalama 350 kWh ev tüketimi sisteme dahil edildi
+        houseMonthlyKwh = 350; 
     }
 
-    // 2. Toplam Sistem İhtiyacı
+    // 3. Toplam Sistem İhtiyacı
     const totalMonthlyKwh = houseMonthlyKwh + evMonthlyKwh;
     dailyProductionKwh = totalMonthlyKwh / 30;
 
     requiredPowerKwp = dailyProductionKwh / 4;
     const requiredAreaM2 = requiredPowerKwp * 5;
     
-    // 3. Çıktıları Ekrana Yazdırma
+    // 4. Çıktıları Ekrana Yazdırma
     const totalMonthlyProduction = dailyProductionKwh * 30;
     document.getElementById('resPower').innerText = requiredPowerKwp.toFixed(2);
     document.getElementById('resArea').innerText = requiredAreaM2.toFixed(1);
     document.getElementById('resProduction').innerText = Math.round(totalMonthlyProduction).toLocaleString('tr-TR');
     
-    // Güneş enerjisinden evin harcaması (houseMonthlyKwh) çıktıktan sonra araca kalan "net (surplus)" enerji ile menzil hesabı
     const surplusEnergy = Math.max(0, totalMonthlyProduction - houseMonthlyKwh);
     const solarRange = (surplusEnergy / evBattery) * evRange;
     document.getElementById('resSolarRange').innerText = Math.round(solarRange).toLocaleString('tr-TR');
     
-    // 4. EKSİK OLAN İLERLEME ÇUBUĞU KODU BURASI
+    // 5. İlerleme Çubuğu Kodları
     const chargeRatio = evBattery > 0 ? (surplusEnergy / evBattery) * 100 : 0;
     const barWidth = Math.min(chargeRatio, 100); 
     
@@ -743,7 +754,7 @@ function calculateEVSolar() {
     if(resBar) resBar.style.width = barWidth + '%';
     if(resPercent) resPercent.innerText = `%${Math.round(chargeRatio)}`;
     
-    // 5. Çatı Uyarı Sistemi Yönetimi
+    // 6. Çatı Uyarı Sistemi Yönetimi
     const warning = document.getElementById('roofWarningBanner');
     if(warning) {
         if (requiredAreaM2 > maxUsableRoof) {
@@ -754,7 +765,6 @@ function calculateEVSolar() {
         }
     }
 }
-
 
 
 
