@@ -393,17 +393,52 @@ function initLanding3DScene() {
 
 
 
+
+// --- 5. YATIRIMCI PUBLIC BAŞVURU SİSTEMİ (GÜNCELLENMİŞ) ---
 window.openLeadModal = function(type) {
     document.getElementById('leadType').value = type;
     document.getElementById('leadModalTitle').innerText = type === 'kurulum' ? 'Yeni GES Kurulum Başvuru Formu' : 'Teknik Servis & Müdahale Başvuru Formu';
+    document.getElementById('leadDetailsLabel').innerText = type === 'kurulum' ? 'Eklemek İstediğiniz Notlar' : 'Yaşadığınız Sorunun Detaylı Özeti';
+    
+    // Kurulum extra alanlarını sadece 'kurulum' seçildiyse göster
+    const extraFields = document.getElementById('kurulumExtraFields');
+    if (type === 'kurulum') {
+        extraFields.classList.remove('hidden');
+    } else {
+        extraFields.classList.add('hidden');
+    }
+    
     document.getElementById('leadModal').classList.remove('hidden');
 };
-window.closeLeadModal = function() { document.getElementById('leadModal').classList.add('hidden'); };
+
+window.closeLeadModal = function() { 
+    document.getElementById('leadModal').classList.add('hidden'); 
+    document.getElementById('leadPublicForm').reset();
+};
 
 document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const type = document.getElementById('leadType').value;
+    
+    // EĞER KURULUM İSE VE AMAÇ SATIŞ YAPMAKSA DİREKT REDDET
+    if (type === 'kurulum') {
+        const intent = document.getElementById('leadIntent').value;
+        if (intent === 'satis') {
+            alert("⚠️ BAŞVURUNUZ KABUL EDİLEMEDİ\n\nTürkiye'deki mevcut lisanssız elektrik üretim yönetmelikleri (Mahsuplaşma) gereği, evsel sistemlerde 'sadece üretip satarak para kazanmak' ticari bir model olarak uygun değildir. Sistem sadece kendi öz tüketiminizi karşılamak üzere tasarlandığında yasal ve kârlı olmaktadır.\n\nLütfen amacınızı öz tüketim olarak güncelleyerek tekrar başvurun.");
+            return; // Supabase'e kaydetmeden işlemi durdur!
+        }
+    }
+
     const randomCode = "EPC-" + Math.floor(1000 + Math.random() * 9000);
+
+    // Sorun açıklamasına ekstra detayları yedir (Admin'in görebilmesi için)
+    let combinedDetails = document.getElementById('leadDetails').value;
+    if (type === 'kurulum') {
+        const outage = document.getElementById('leadOutage').value;
+        const hasEV = document.getElementById('leadHasEV').checked ? 'Var' : 'Yok';
+        const hasHP = document.getElementById('leadHasHP').checked ? 'Var' : 'Yok';
+        combinedDetails = `[Şebeke Kesintisi: ${outage}] | [Elektrikli Araç: ${hasEV}] | [Isı Pompası: ${hasHP}]\n\nMüşteri Notu: ${combinedDetails}`;
+    }
 
     const leadData = {
         user_id: "00000000-0000-0000-0000-000000000000",
@@ -412,7 +447,7 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
         email: document.getElementById('leadEmail').value,
         address: document.getElementById('leadAddress').value,
         inverter_model: type === 'kurulum' ? 'Yeni Kurulum Talebi' : 'Servis İhtiyacı',
-        problem_desc: document.getElementById('leadDetails').value,
+        problem_desc: combinedDetails,
         installer_name: randomCode,
         status: 'Başvuru İletildi'
     };
@@ -423,35 +458,55 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
         alert(`🎉 Başvurunuz İletildi!\n\nLütfen Takip Kodunuzu Not Edin: ${randomCode}`);
         closeLeadModal();
         document.getElementById('leadTrackInput').value = randomCode;
-        document.getElementById('btnTrackQuery').click();
+        document.getElementById('btnTrackQuery').click(); // Sorgulamayı otomatik tetikle
     } else {
-        alert("Hata: Başvuru gönderilemedi. Veritabanı (RLS) ayarlarını kontrol edin.");
+        alert("Hata: Başvuru gönderilemedi. Bağlantınızı kontrol edin.");
     }
 });
 
+// TAKİP KODU SORGULAMA MOTORU (Hata Çözüldü)
 document.getElementById('btnTrackQuery')?.addEventListener('click', async () => {
     const code = document.getElementById('leadTrackInput').value.trim();
     const display = document.getElementById('trackResultDisplay');
     if(!code) return;
 
-    display.classList.remove('hidden', 'bg-yellow-100', 'text-yellow-800', 'bg-blue-100', 'text-blue-800', 'bg-green-100', 'text-green-800');
+    // Önceki renk sınıflarını temizle
+    display.classList.remove('hidden', 'bg-yellow-100', 'text-yellow-800', 'bg-blue-100', 'text-blue-800', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+    display.className = "mt-4 p-4 rounded-xl text-sm font-bold bg-slate-100 text-slate-800";
     display.innerHTML = "Sorgulanıyor...";
 
-    const { data } = await supabaseClient.from('support_tickets').select('*').eq('installer_name', code).single();
+    try {
+        const { data, error } = await supabaseClient.from('support_tickets').select('*').eq('installer_name', code).single();
 
-    if(!data) {
-        display.classList.add('bg-red-100', 'text-red-800');
-        display.innerText = "Kayıt Bulunamadı. Kodu kontrol edin.";
-        return;
+        if (error || !data) {
+            display.className = "mt-4 p-4 rounded-xl text-sm font-bold bg-red-100 text-red-800";
+            display.innerText = "Kayıt Bulunamadı. Takip kodunuzu doğru yazdığınızdan emin olun.";
+            return;
+        }
+
+        let c = "bg-yellow-100 text-yellow-800";
+        if(data.status === 'Değerlendiriliyor') c = "bg-blue-100 text-blue-800";
+        if(data.status === 'Dönüş Yapıldı') c = "bg-green-100 text-green-800";
+
+        display.className = `mt-4 p-4 rounded-xl text-sm font-bold ${c}`;
+        display.innerHTML = `<p><strong>Müşteri:</strong> ${data.full_name}</p><p><strong>Durum:</strong> ${data.status}</p>${data.admin_response ? `<p class="mt-2 pt-2 border-t border-black/10"><strong>Merkez Notu:</strong> ${data.admin_response}</p>` : ''}`;
+    
+    } catch (err) {
+        display.className = "mt-4 p-4 rounded-xl text-sm font-bold bg-red-100 text-red-800";
+        display.innerText = "Sistemsel bir hata oluştu, lütfen daha sonra tekrar deneyin.";
     }
-
-    let c = "bg-yellow-100 text-yellow-800";
-    if(data.status === 'Değerlendiriliyor') c = "bg-blue-100 text-blue-800";
-    if(data.status === 'Dönüş Yapıldı') c = "bg-green-100 text-green-800";
-
-    display.classList.add(c);
-    display.innerHTML = `<p><strong>Müşteri:</strong> ${data.full_name}</p><p><strong>Durum:</strong> ${data.status}</p>${data.admin_response ? `<p><strong>Merkez Notu:</strong> ${data.admin_response}</p>` : ''}`;
 });
+
+
+
+
+
+
+
+
+
+
+
 
 
 // --- 6. GÜÇ HESAPLAYICI (ORİJİNAL) ---
