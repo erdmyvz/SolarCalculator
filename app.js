@@ -199,24 +199,29 @@ backButtons.forEach(id => {
 
 
 
+
+
+
+
+
+
 // ============================================================================
-// ORTAK 3D MİMARİ MOTORU (ÇATI VE PANELLER YÜKSELTİLMİŞ SÜRÜM)
+// ORTAK 3D MİMARİ MOTORU (Sol Çapraz Perspektif ve Düzeltilmiş Konumlar)
 // ============================================================================
 function createEcoSystem(scene) {
     const objs = {};
 
-    // Zemin ve Ev Gövdesi
+    // Zemin ve Ev
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x65a30d }));
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
     const house = new THREE.Mesh(new THREE.BoxGeometry(8, 4.5, 6), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
     house.position.set(-2, 2.25, 0); house.castShadow = true; house.receiveShadow = true; scene.add(house);
     
-    // ÇATI BİRKAÇ PİKSEL YÜKSELTİLEREK HAVAYA KALDIRILDI (5.20 -> 5.50)
     const roof = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.5, 6.5), new THREE.MeshStandardMaterial({ color: 0x334155 }));
     roof.position.set(-2, 5.50, 0); roof.rotation.z = -0.25; roof.castShadow = true; scene.add(roof);
 
-    // Carport (Açık Garaj)
+    // Carport
     const cpMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
     const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), cpMat); p1.position.set(7.5, 2, 3); p1.castShadow=true; scene.add(p1);
     const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), cpMat); p2.position.set(7.5, 2, -3); p2.castShadow=true; scene.add(p2);
@@ -235,40 +240,40 @@ function createEcoSystem(scene) {
     objs.gridCable = new THREE.Line(cableGeo, objs.gridCableMat);
     objs.gridCable.computeLineDistances(); scene.add(objs.gridCable);
 
-    // Ön Cephe: Gaz Borusu ve Sayacı
+    // Etkileşimli Objeler
     objs.gasPipe = new THREE.Group();
     const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5), new THREE.MeshStandardMaterial({ color: 0xfacc15 })); pipe.position.set(0, 1.25, 0); 
     const meterBox = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.4), new THREE.MeshStandardMaterial({ color: 0x9ca3af })); meterBox.position.set(0, 2.5, 0.15); 
     objs.gasPipe.add(pipe); objs.gasPipe.add(meterBox); objs.gasPipe.position.set(-5.5, 0, 3.2); scene.add(objs.gasPipe);
 
-    // Ön Cephe: Isı Pompası ve Boyler
     objs.hp = new THREE.Group();
     const hpBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x475569 })); hpBody.position.set(0, 0.9, 0);
     const hpFan = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.85, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a })); hpFan.rotation.x = Math.PI/2; hpFan.position.set(0, 0.9, 0.4); 
     const boiler = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2.2, 16), new THREE.MeshStandardMaterial({color: 0xe2e8f0})); boiler.position.set(1.2, 1.1, 0); 
     objs.hp.add(hpBody); objs.hp.add(hpFan); objs.hp.add(boiler); objs.hp.position.set(-3.5, 0, 3.6); objs.hp.scale.set(0,0,0); scene.add(objs.hp);
 
-    // GÜNEŞ PANELLERİ ÇATIYA GÖRE ORANTILI YÜKSELTİLEREK UÇAN ETKİ VERİLDİ (5.65 -> 5.95)
     objs.panels = new THREE.Group();
     const panelMat = new THREE.MeshStandardMaterial({ color: 0x020617, metalness: 0.9, roughness: 0.1 });
     for(let x=0; x<3; x++) { for(let z=0; z<2; z++) { const p = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 2.8), panelMat); p.position.set(-2.5 + (x*2.4), 0, -1.5 + (z*3)); objs.panels.add(p); } }
     objs.panels.position.set(-2, 5.95, 0); objs.panels.rotation.z = -0.25; objs.panels.scale.set(0,0,0); scene.add(objs.panels);
 
-    // Arka Cephe: İnverter İstasyonu
+    // İNVERTER VE KABLO DÜZELTMESİ (Kablo uzatıldı, İnverter sola alındı)
     objs.inverterGroup = new THREE.Group();
-    const inverter = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 0.3), new THREE.MeshStandardMaterial({ color: 0xcbd5e1 })); inverter.position.set(-4, 3.5, -3.2); 
-    const solarCable = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2), new THREE.MeshStandardMaterial({ color: 0x1f2937 })); solarCable.position.set(-4, 4.2, -3.2); 
+    const inverter = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 0.3), new THREE.MeshStandardMaterial({ color: 0xcbd5e1 })); 
+    inverter.position.set(-5.2, 3.5, -3.2); 
+    const solarCable = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.5), new THREE.MeshStandardMaterial({ color: 0x1f2937 })); 
+    solarCable.position.set(-5.2, 4.85, -3.2); // Kablo Y ekseninde yukarı çekildi
     objs.inverterGroup.add(inverter); objs.inverterGroup.add(solarCable); objs.inverterGroup.scale.set(0,0,0); scene.add(objs.inverterGroup);
 
-    // Arka Cephe: Powerwall Batarya Modülleri
+    // BATARYA DÜZELTMESİ (Taşma engellendi, merkeze toplandı)
     objs.batteries = [];
     for(let i=0; i<4; i++) {
         const bat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.6), new THREE.MeshStandardMaterial({ color: 0xf1f5f9 }));
-        bat.position.set(-1.5 - (i * 1.4), 1.1, -3.3); bat.castShadow = true; bat.scale.set(0,0,0);
+        bat.position.set(-0.5 - (i * 1.2), 1.1, -3.3); // X Ekseni -0.5 ile -4.1 arasına sıkıştırıldı
+        bat.castShadow = true; bat.scale.set(0,0,0);
         scene.add(bat); objs.batteries.push(bat);
     }
 
-    // Garaj: Elektrikli Araçlar
     objs.evs = [];
     for(let i=0; i<2; i++) {
         const ev = new THREE.Group();
@@ -284,16 +289,21 @@ function createEcoSystem(scene) {
     return objs;
 }
 
-
-
-
-
-
-
-
-
 // --- 5. AÇILIŞ SAYFASI (LANDING) 3D SCROLL MOTORU ---
 let landingScene, landingCamera, landingRenderer, landObjs;
+
+// Animasyon Sırasında Parlama (Flash) Efekti Veren Fonksiyon
+function applyFlashEffect(objGroup, scaleValue) {
+    objGroup.scale.set(scaleValue, scaleValue, scaleValue);
+    const isFlashing = (scaleValue > 0.05 && scaleValue < 0.95);
+    const glowColor = isFlashing ? 0x64748b : 0x000000; // Büyürken hafifçe parlar
+    
+    objGroup.traverse(child => {
+        if (child.isMesh && child.material) {
+            child.material.emissive.setHex(glowColor);
+        }
+    });
+}
 
 function initLanding3DScene() {
     const canvasBox = document.getElementById('hero3DCanvas');
@@ -306,8 +316,9 @@ function initLanding3DScene() {
     const height = canvasBox.clientHeight || window.innerHeight;
 
     landingCamera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
-    landingCamera.position.set(22, 16, 28);
-    landingCamera.lookAt(0, 2, 0);
+    // KAMERA SOL ÇAPRAZA ALINDI (-24 X EKSENİ)
+    landingCamera.position.set(-24, 18, 30);
+    landingCamera.lookAt(-2, 2, 0); // Tam olarak evin merkezine bakıyor
 
     landingRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     landingRenderer.setSize(width, height);
@@ -321,7 +332,6 @@ function initLanding3DScene() {
     sun.position.set(15, 30, 15); sun.castShadow = true;
     landingScene.add(sun);
 
-    // Mimariyi Ortak Fonksiyondan Çağırıyoruz
     landObjs = createEcoSystem(landingScene);
 
     window.addEventListener('resize', () => {
@@ -338,41 +348,47 @@ function initLanding3DScene() {
         if(!scrollArea || !landObjs) return;
         const progress = Math.min(Math.max(window.scrollY / (scrollArea.clientHeight - window.innerHeight), 0), 1);
 
-        let sPan = progress > 0.1 ? Math.min((progress - 0.1) * 5, 1) : 0; 
-        landObjs.panels.scale.set(sPan, sPan, sPan); landObjs.inverterGroup.scale.set(sPan, sPan, sPan);
+        // HIZLI BELİRME: Değerler sıkıştırıldı (0.05 ile 0.30 arasına alındı)
+        let sPan = progress > 0.05 ? Math.min((progress - 0.05) * 10, 1) : 0; 
+        applyFlashEffect(landObjs.panels, sPan); 
+        applyFlashEffect(landObjs.inverterGroup, sPan);
         
-        let sBat = progress > 0.35 ? Math.min((progress - 0.35) * 5, 1) : 0; 
-        landObjs.batteries.forEach(b => b.scale.set(sBat, sBat, sBat));
+        let sBat = progress > 0.10 ? Math.min((progress - 0.10) * 10, 1) : 0; 
+        landObjs.batteries.forEach(b => applyFlashEffect(b, sBat));
         
-        let sHp = progress > 0.60 ? Math.min((progress - 0.60) * 5, 1) : 0; 
-        landObjs.hp.scale.set(sHp, sHp, sHp);
+        let sHp = progress > 0.15 ? Math.min((progress - 0.15) * 10, 1) : 0; 
+        applyFlashEffect(landObjs.hp, sHp);
         
-        let sGas = progress > 0.60 ? Math.max(1 - (progress - 0.60) * 5, 0) : 1; 
+        let sGas = progress > 0.15 ? Math.max(1 - (progress - 0.15) * 10, 0) : 1; 
         landObjs.gasPipe.scale.set(sGas, sGas, sGas);
         
-        let sEv = progress > 0.82 ? Math.min((progress - 0.82) * 6, 1) : 0; 
-        landObjs.evs.forEach(v => v.scale.set(sEv, sEv, sEv));
+        let sEv = progress > 0.20 ? Math.min((progress - 0.20) * 10, 1) : 0; 
+        landObjs.evs.forEach(v => applyFlashEffect(v, sEv));
 
-        // Bağımsızlık sağlandıkça şebeke kablosunu gizle (Scroll > 0.6 ise görünmez yap)
-        landObjs.gridCable.visible = progress < 0.6;
+        // Şebeke kablosu hızlıca kaybolur
+        landObjs.gridCable.visible = progress < 0.25;
 
         const ind = document.getElementById('scrollIndicator');
-        if(ind) ind.style.opacity = progress > 0.05 ? '0' : '1';
+        if(ind) ind.style.opacity = progress > 0.02 ? '0' : '1';
     });
 
-    // RENDER DÖNGÜSÜ (SOLDAN SAĞA VE ARKA CEPHAYİ GÖSTEREN SÜRÜM)
     function animate() {
         requestAnimationFrame(animate);
-        
-        // BAŞARI: Eksi işareti dönüşü soldan sağa çevirir. 
-        // 0.0014 çarpanı ise scroll bittiğinde arka duvarın tam görülmesini sağlar.
-        landingScene.rotation.y = -window.scrollY * 0.0014; 
-        
-        if(landObjs) landObjs.gridCableMat.dashOffset -= 0.05; // Akım simülasyonu
+        // DÖNÜŞ YÖNÜ: Eksi (-) işareti sayesinde ev sağa doğru dönüp arkayı gösterir
+        landingScene.rotation.y = -window.scrollY * 0.0012; 
+        if(landObjs) landObjs.gridCableMat.dashOffset -= 0.05; 
         landingRenderer.render(landingScene, landingCamera);
     }
     animate();
 }
+
+
+
+
+
+
+
+
 
 
 
