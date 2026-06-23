@@ -151,7 +151,11 @@ document.getElementById('btnLogout')?.addEventListener('click', async () => {
 
 
 // --- 4. ANA MENÜ VE MODÜL GEÇİŞ YÖNETİMİ ---
+
+// YENİ EKLENEN MENÜLER BURAYA TANIMLANDI
 const menuMap = {
+    'btnGoCRM': 'crmModule',
+    'btnGoCompanyMgmt': 'companyManagementModule',
     'btnGoCalculator': 'calculatorModule',
     'btnGoSimulation': 'simulationModule',
     'btnGoEVCalc': 'evCalcModule',
@@ -181,7 +185,8 @@ for (const [btnId, modId] of Object.entries(menuMap)) {
     }
 }
 
-const backButtons = ['btnBackToMenu', 'btnBackToMenuFromSim', 'btnBackToMenuFromEV', 'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin'];
+// YENİ GERİ DÖNÜŞ BUTONLARI EKLENDİ
+const backButtons = ['btnBackToMenu', 'btnBackToMenuFromSim', 'btnBackToMenuFromEV', 'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin', 'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt'];
 backButtons.forEach(id => {
     const btn = document.getElementById(id);
     if(btn) {
@@ -192,17 +197,50 @@ backButtons.forEach(id => {
     }
 });
 
+// ============================================================================
+// FİRMA YÖNETİMİ - TAB (SEKME) VE YAPAY ZEKA İŞLEMLERİ
+// ============================================================================
 
+// 1. Sekmeler Arası Geçiş Animasyonu
+document.querySelectorAll('.cm-tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.cm-tab-btn').forEach(b => {
+            b.classList.remove('bg-emerald-600', 'text-white');
+            b.classList.add('bg-slate-100', 'text-slate-600');
+        });
+        
+        e.target.classList.remove('bg-slate-100', 'text-slate-600');
+        e.target.classList.add('bg-emerald-600', 'text-white');
+        
+        document.querySelectorAll('.cm-tab-content').forEach(c => c.classList.add('hidden'));
+        
+        const targetId = e.target.getAttribute('data-target');
+        document.getElementById(targetId).classList.remove('hidden');
+    });
+});
 
-
-
-
-
-
-
-
-
-
+// 2. Yapay Zeka Butonu Tetikleyicisi (API Bağlanana Kadar Simülasyon)
+document.getElementById('btnRunAI')?.addEventListener('click', () => {
+    const name = document.getElementById('cmName').value;
+    const pitch = document.getElementById('cmPitch').value;
+    
+    if(!name || !pitch) {
+        alert("Lütfen sağlıklı bir analiz için en azından Firma İsmi ve Temel Vaat alanlarını doldurun.");
+        return;
+    }
+    
+    const btn = document.getElementById('btnRunAI');
+    btn.textContent = "Veriler Yapay Zekaya İletiliyor...";
+    btn.classList.add('opacity-70', 'cursor-not-allowed');
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        alert(`Sistem Mesajı: "${name}" firmasına ait form verileri başarıyla işlendi. Yapay Zeka API entegrasyonu tamamlandığında, size özel kurumsal check-up raporu bu ekranda anında belirecektir.`);
+        btn.textContent = "YZ İle Reçete Oluştur (Yakında)";
+        btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        btn.disabled = false;
+    }, 1500);
+});
 
 
 // ============================================================================
@@ -382,18 +420,6 @@ function initLanding3DScene() {
     animate();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
 // --- 5. YATIRIMCI PUBLIC BAŞVURU SİSTEMİ (GÜNCELLENMİŞ) ---
 window.openLeadModal = function(type) {
     document.getElementById('leadType').value = type;
@@ -499,17 +525,6 @@ document.getElementById('btnTrackQuery')?.addEventListener('click', async () => 
 });
 
 
-
-
-
-
-
-
-
-
-
-
-
 // --- 6. GÜÇ HESAPLAYICI (ORİJİNAL) ---
 let sonAylik = 0, sonYillik = 0, sonFatura = 0; 
 const appliancesWrapper = document.getElementById('appliancesWrapper');
@@ -567,9 +582,6 @@ document.getElementById('btnCalculate')?.addEventListener('click', () => {
     document.getElementById('resultsModule').classList.remove('hidden'); 
     document.getElementById('resultsModule').scrollIntoView({ behavior: 'smooth' });
 });
-
-
-
 
 
 // --- 7. UYGULAMA İÇİ (DASHBOARD) 3D SİMÜLASYON ---
@@ -659,12 +671,6 @@ function updateAppScore() {
     else if(score < 100) sColor.classList.add('bg-yellow-500'); 
     else sColor.classList.add('bg-green-600');
 }
-
-
-
-
-
-
 
 // --- 8. EV YÜK HESAPLAYICI ---
 let activeEVTab = 'tabBill';
@@ -766,11 +772,6 @@ function calculateEVSolar() {
     }
 }
 
-
-
-
-
-
 // --- 9. TEKNİK SERVİS MODÜLÜ ---
 const tabNewTicket = document.getElementById('tabNewTicket');
 const tabMyTickets = document.getElementById('tabMyTickets');
@@ -825,12 +826,6 @@ async function fetchMyTickets() {
         list.innerHTML += `<div class="p-5 bg-white border rounded-xl mb-3"><div class="flex justify-between items-start mb-2"><h4 class="font-bold">${t.inverter_model}</h4><span class="${sc} px-3 py-1 rounded-full text-xs font-bold">${t.status}</span></div><p class="text-sm bg-gray-50 p-2 rounded">${t.problem_desc}</p>${t.admin_response ? `<div class="mt-2 bg-green-50 p-3 rounded border"><p class="text-sm"><strong>Yanıt:</strong> ${t.admin_response}</p>${t.price_quote ? `<p class="font-bold text-green-900">💰 Teklif: ${t.price_quote} TL</p>`:''}</div>` : ''}</div>`;
     });
 }
-
-
-
-
-
-
 
 // --- 10. SATIŞ ASİSTAN YARDIMCISI (COPILOT) - DİNAMİK HAVUZ SÜRÜMÜ ---
 const salesScenarios = {
@@ -940,10 +935,6 @@ document.getElementById('btnEndCall')?.addEventListener('click', () => {
     document.getElementById('salesSetupArea').classList.remove('hidden');
     document.getElementById('scriptDisplayArea').innerHTML = `<p class="text-slate-500 italic">Müşterinin söylediği cümleyi seçtiğinizde, yanıt burada belirecektir.</p>`;
 });
-
-
-
-
 
 // --- 11. ADMIN İŞLEMLERİ (KULLANICILAR VE TALEPLER) ---
 document.getElementById('btnRefreshUsers')?.addEventListener('click', fetchUsersForAdmin);
