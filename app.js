@@ -192,10 +192,93 @@ backButtons.forEach(id => {
     }
 });
 
+// ============================================================================
+// ORTAK 3D MİMARİ MOTORU (Hem Açılış Sayfası Hem Uygulama İçi İçin)
+// ============================================================================
+function createEcoSystem(scene) {
+    const objs = {};
 
-// --- 5. AÇILIŞ SAYFASI (LANDING) 3D SCROLL MOTORU VE YATIRIMCI TALEPLERİ ---
-let landingScene, landingCamera, landingRenderer;
-let landHouse, landPanels, landBattery, landEV, landHP, landGasPipe;
+    // Zemin ve Ev
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x65a30d }));
+    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+    const house = new THREE.Mesh(new THREE.BoxGeometry(8, 4.5, 6), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+    house.position.set(-2, 2.25, 0); house.castShadow = true; house.receiveShadow = true; scene.add(house);
+    
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.5, 6.5), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+    roof.position.set(-2, 5.2, 0); roof.rotation.z = -0.25; roof.castShadow = true; scene.add(roof);
+
+    // Carport
+    const cpMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
+    const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), cpMat); p1.position.set(7.5, 2, 3); p1.castShadow=true; scene.add(p1);
+    const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), cpMat); p2.position.set(7.5, 2, -3); p2.castShadow=true; scene.add(p2);
+    const cpRoof = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 7), new THREE.MeshStandardMaterial({ color: 0xcbd5e1, transparent:true, opacity:0.8 }));
+    cpRoof.position.set(4.8, 4, 0); cpRoof.castShadow=true; scene.add(cpRoof);
+
+    // Şebeke Direği ve Akım Kablosu
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 10, 16), new THREE.MeshStandardMaterial({ color: 0x5c4033 }));
+    pole.position.set(-12, 5, -5); pole.castShadow = true; scene.add(pole);
+    const crossbar = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 2.5), new THREE.MeshStandardMaterial({ color: 0x5c4033 }));
+    crossbar.position.set(-12, 9, -5); scene.add(crossbar);
+
+    const cableCurve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-12, 9, -5), new THREE.Vector3(-9, 6.5, -2.5), new THREE.Vector3(-6, 4.5, 0));
+    const cableGeo = new THREE.BufferGeometry().setFromPoints(cableCurve.getPoints(20));
+    objs.gridCableMat = new THREE.LineDashedMaterial({ color: 0x0ea5e9, linewidth: 2, dashSize: 0.4, gapSize: 0.3 });
+    objs.gridCable = new THREE.Line(cableGeo, objs.gridCableMat);
+    objs.gridCable.computeLineDistances(); scene.add(objs.gridCable);
+
+    // Etkileşimli Objeler
+    objs.gasPipe = new THREE.Group();
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5), new THREE.MeshStandardMaterial({ color: 0xfacc15 })); pipe.position.set(0, 1.25, 0); 
+    const meterBox = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.4), new THREE.MeshStandardMaterial({ color: 0x9ca3af })); meterBox.position.set(0, 2.5, 0.15); 
+    objs.gasPipe.add(pipe); objs.gasPipe.add(meterBox); objs.gasPipe.position.set(-5.5, 0, 3.2); scene.add(objs.gasPipe);
+
+    objs.hp = new THREE.Group();
+    const hpBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x475569 })); hpBody.position.set(0, 0.9, 0);
+    const hpFan = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.85, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a })); hpFan.rotation.x = Math.PI/2; hpFan.position.set(0, 0.9, 0.4); 
+    const boiler = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2.2, 16), new THREE.MeshStandardMaterial({color: 0xe2e8f0})); boiler.position.set(1.2, 1.1, 0); 
+    objs.hp.add(hpBody); objs.hp.add(hpFan); objs.hp.add(boiler); objs.hp.position.set(-3.5, 0, 3.6); objs.hp.scale.set(0,0,0); scene.add(objs.hp);
+
+    objs.panels = new THREE.Group();
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x020617, metalness: 0.9, roughness: 0.1 });
+    for(let x=0; x<3; x++) { for(let z=0; z<2; z++) { const p = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 2.8), panelMat); p.position.set(-2.5 + (x*2.4), 0, -1.5 + (z*3)); objs.panels.add(p); } }
+    objs.panels.position.set(-2, 5.65, 0); objs.panels.rotation.z = -0.25; objs.panels.scale.set(0,0,0); scene.add(objs.panels);
+
+    objs.inverterGroup = new THREE.Group();
+    const inverter = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.1, 0.3), new THREE.MeshStandardMaterial({ color: 0xcbd5e1 })); inverter.position.set(-4, 3.5, -3.2); 
+    const solarCable = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2), new THREE.MeshStandardMaterial({ color: 0x1f2937 })); solarCable.position.set(-4, 4.2, -3.2); 
+    objs.inverterGroup.add(inverter); objs.inverterGroup.add(solarCable); objs.inverterGroup.scale.set(0,0,0); scene.add(objs.inverterGroup);
+
+    objs.batteries = [];
+    for(let i=0; i<4; i++) {
+        const bat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.6), new THREE.MeshStandardMaterial({ color: 0xf1f5f9 }));
+        bat.position.set(-1.5 - (i * 1.4), 1.1, -3.3); bat.castShadow = true; bat.scale.set(0,0,0);
+        scene.add(bat); objs.batteries.push(bat);
+    }
+
+    objs.evs = [];
+    for(let i=0; i<2; i++) {
+        const ev = new THREE.Group();
+        const cBody = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.1, 1.8), new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness:0.4 })); cBody.position.y = 0.85; cBody.castShadow = true;
+        const cTop = new THREE.Mesh(new THREE.BoxGeometry(2, 0.7, 1.6), new THREE.MeshStandardMaterial({ color: 0x1e293b })); cTop.position.set(-0.4, 1.7, 0); cTop.castShadow = true;
+        ev.add(cBody); ev.add(cTop);
+        const wMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
+        const w1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 16), wMat); w1.rotation.x = Math.PI/2; w1.position.set(-1.1, 0.4, 0);
+        const w2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 16), wMat); w2.rotation.x = Math.PI/2; w2.position.set(1.2, 0.4, 0);
+        ev.add(w1); ev.add(w2); ev.position.set(4.5, 0, -1.5 + (i*3)); ev.scale.set(0,0,0);
+        scene.add(ev); objs.evs.push(ev);
+    }
+    return objs;
+}
+
+
+
+
+
+
+
+// --- 5. AÇILIŞ SAYFASI (LANDING) 3D SCROLL MOTORU ---
+let landingScene, landingCamera, landingRenderer, landObjs;
 
 function initLanding3DScene() {
     const canvasBox = document.getElementById('hero3DCanvas');
@@ -204,68 +287,28 @@ function initLanding3DScene() {
     landingScene = new THREE.Scene();
     landingScene.background = new THREE.Color(0x0f172a); 
 
-    // Ekran boyutlarını güvenli bir şekilde al
     const width = canvasBox.clientWidth || window.innerWidth;
     const height = canvasBox.clientHeight || window.innerHeight;
 
     landingCamera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
-    landingCamera.position.set(18, 14, 22);
-    
-    // ÇÖZÜMÜN KALBİ: Kamerayı tam olarak evin merkezine (0, 2, 0) odakla
+    landingCamera.position.set(22, 16, 28);
     landingCamera.lookAt(0, 2, 0);
 
     landingRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     landingRenderer.setSize(width, height);
-    landingRenderer.setPixelRatio(window.devicePixelRatio); // Yüksek çözünürlüklü ekranlar için netlik
+    landingRenderer.setPixelRatio(window.devicePixelRatio);
     landingRenderer.shadowMap.enabled = true;
-    landingRenderer.shadowMap.type = THREE.PCFSoftShadowMap; // Yumuşak ve gerçekçi gölgeler
+    landingRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
     canvasBox.appendChild(landingRenderer.domElement);
 
-    // Işıklandırma
     landingScene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const sun = new THREE.DirectionalLight(0xfffaed, 1.4);
-    sun.position.set(10, 25, 10);
-    sun.castShadow = true;
-    sun.shadow.mapSize.width = 2048; // Gölgelerin kalitesini artırır
-    sun.shadow.mapSize.height = 2048;
+    const sun = new THREE.DirectionalLight(0xfffaed, 1.5);
+    sun.position.set(15, 30, 15); sun.castShadow = true;
     landingScene.add(sun);
 
-    // 1. Zemin ve Boş Villa
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0x1e3a1e, roughness:1 }));
-    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; landingScene.add(ground);
+    // Mimariyi Ortak Fonksiyondan Çağırıyoruz
+    landObjs = createEcoSystem(landingScene);
 
-    landHouse = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 5), new THREE.MeshStandardMaterial({ color: 0xf1f5f9 }));
-    landHouse.position.y = 2; landHouse.castShadow = true; landHouse.receiveShadow = true; landingScene.add(landHouse);
-
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.4, 5.4), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
-    roof.position.set(0, 4.2, 0); roof.rotation.z = -0.3; roof.castShadow = true; landingScene.add(roof);
-
-    // Açık Garaj (Carport) Direkleri
-    const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.6, 0.2), new THREE.MeshStandardMaterial({ color: 0x451a03 })); p1.position.set(6, 1.8, 2); p1.castShadow = true; landingScene.add(p1);
-    const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.6, 0.2), new THREE.MeshStandardMaterial({ color: 0x451a03 })); p2.position.set(6, 1.8, -2); p2.castShadow = true; landingScene.add(p2);
-    const cpRoof = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 5), new THREE.MeshStandardMaterial({ color: 0x64748b, transparent:true, opacity:0.6 })); cpRoof.position.set(4, 3.6, 0); landingScene.add(cpRoof);
-
-    // Doğalgaz Borusu (Başlangıçta Var)
-    landGasPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3, 16), new THREE.MeshStandardMaterial({ color: 0xeab308 }));
-    landGasPipe.position.set(-3.1, 1.5, 1); landGasPipe.castShadow = true; landingScene.add(landGasPipe);
-
-    // 2. ETKİLEŞİM ELEMANLARI (Başlangıçta Boyutları Scale: 0 olarak gizli)
-    landPanels = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.05, 4), new THREE.MeshStandardMaterial({ color: 0x020617, metalness:0.8 }));
-    landPanels.position.set(0, 4.5, 0); landPanels.rotation.z = -0.3; landPanels.scale.set(0,0,0); landingScene.add(landPanels);
-
-    landBattery = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.8, 1), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
-    landBattery.position.set(1, 0.9, -2.6); landBattery.castShadow = true; landBattery.scale.set(0,0,0); landingScene.add(landBattery);
-
-    landHP = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 0.7), new THREE.MeshStandardMaterial({ color: 0x475569 }));
-    landHP.position.set(-3.5, 0.7, -1); landHP.castShadow = true; landHP.scale.set(0,0,0); landingScene.add(landHP);
-
-    landEV = new THREE.Group();
-    const cBody = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1, 1.6), new THREE.MeshStandardMaterial({ color: 0x0284c7 })); cBody.position.y = 0.7; cBody.castShadow = true;
-    const cTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 1.4), new THREE.MeshStandardMaterial({ color: 0x0f172a })); cTop.position.set(-0.3, 1.5, 0); cTop.castShadow = true;
-    landEV.add(cBody); landEV.add(cTop); landEV.position.set(4.5, 0, 0); landEV.scale.set(0,0,0);
-    landingScene.add(landEV);
-
-    // EKRAN YENİDEN BOYUTLANDIRMA DÜZELTİCİSİ (Responsive)
     window.addEventListener('resize', () => {
         if(document.getElementById('landingContainer').classList.contains('hidden')) return;
         const newWidth = canvasBox.clientWidth || window.innerWidth;
@@ -275,41 +318,45 @@ function initLanding3DScene() {
         landingRenderer.setSize(newWidth, newHeight);
     });
 
-    // SCROLL ANİMASYONU DİNLEYİCİSİ
     window.addEventListener('scroll', () => {
         const scrollArea = document.getElementById('scrollMagicArea');
-        if(!scrollArea) return;
-        // Kaydırma yüzdesini (0.0 ile 1.0 arası) hesapla
+        if(!scrollArea || !landObjs) return;
         const progress = Math.min(Math.max(window.scrollY / (scrollArea.clientHeight - window.innerHeight), 0), 1);
 
-        // Kaydırma oranına göre objeleri sırayla büyüt (Lerp/Scale)
         let sPan = progress > 0.1 ? Math.min((progress - 0.1) * 5, 1) : 0; 
-        landPanels.scale.set(sPan, sPan, sPan);
+        landObjs.panels.scale.set(sPan, sPan, sPan); landObjs.inverterGroup.scale.set(sPan, sPan, sPan);
         
         let sBat = progress > 0.35 ? Math.min((progress - 0.35) * 5, 1) : 0; 
-        landBattery.scale.set(sBat, sBat, sBat);
+        landObjs.batteries.forEach(b => b.scale.set(sBat, sBat, sBat));
         
         let sHp = progress > 0.60 ? Math.min((progress - 0.60) * 5, 1) : 0; 
-        landHP.scale.set(sHp, sHp, sHp);
+        landObjs.hp.scale.set(sHp, sHp, sHp);
         
         let sGas = progress > 0.60 ? Math.max(1 - (progress - 0.60) * 5, 0) : 1; 
-        landGasPipe.scale.set(sGas, sGas, sGas);
+        landObjs.gasPipe.scale.set(sGas, sGas, sGas);
         
         let sEv = progress > 0.82 ? Math.min((progress - 0.82) * 6, 1) : 0; 
-        landEV.scale.set(sEv, sEv, sEv);
+        landObjs.evs.forEach(v => v.scale.set(sEv, sEv, sEv));
+
+        // Bağımsızlık sağlandıkça şebeke kablosunu gizle (Scroll > 0.6 ise görünmez yap)
+        landObjs.gridCable.visible = progress < 0.6;
 
         const ind = document.getElementById('scrollIndicator');
         if(ind) ind.style.opacity = progress > 0.05 ? '0' : '1';
     });
 
-    // RENDER DÖNGÜSÜ
     function animate() {
         requestAnimationFrame(animate);
-        landingScene.rotation.y = window.scrollY * 0.0005; // Ev scroll ile kendi etrafında yavaşça döner
+        landingScene.rotation.y = window.scrollY * 0.0008; 
+        if(landObjs) landObjs.gridCableMat.dashOffset -= 0.05; // Akım animasyonu
         landingRenderer.render(landingScene, landingCamera);
     }
     animate();
 }
+
+
+
+
 window.openLeadModal = function(type) {
     document.getElementById('leadType').value = type;
     document.getElementById('leadModalTitle').innerText = type === 'kurulum' ? 'Yeni GES Kurulum Başvuru Formu' : 'Teknik Servis & Müdahale Başvuru Formu';
@@ -430,12 +477,13 @@ document.getElementById('btnCalculate')?.addEventListener('click', () => {
 });
 
 
+
+
+
 // --- 7. UYGULAMA İÇİ (DASHBOARD) 3D SİMÜLASYON ---
-let appScene, appCamera, appRenderer, appControls;
-let appPanels, appHP, appGasPipe;
-let arrBatteries = [], arrEVs = [];
+let appScene, appCamera, appRenderer, appControls, appObjs;
 let stateGES = false, stateHP = false;
-let countBat = 0, countEV = 0;
+let countBat = 0, countEV = 0, currentGrid = 100;
 
 function initApp3DScene() {
     const container = document.getElementById('three-canvas-container');
@@ -450,7 +498,6 @@ function initApp3DScene() {
     appRenderer.setSize(container.clientWidth, container.clientHeight);
     appRenderer.shadowMap.enabled = true;
     appRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    
     appRenderer.domElement.style.position = 'absolute';
     appRenderer.domElement.style.top = '0';
     appRenderer.domElement.style.left = '0';
@@ -465,54 +512,8 @@ function initApp3DScene() {
     sunLight.position.set(15, 30, 15); sunLight.castShadow = true;
     appScene.add(sunLight);
 
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x65a30d }));
-    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; appScene.add(ground);
-
-    const house = new THREE.Mesh(new THREE.BoxGeometry(8, 4.5, 6), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
-    house.position.set(-2, 2.25, 0); house.castShadow = true; house.receiveShadow = true; appScene.add(house);
-
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.5, 6.5), new THREE.MeshStandardMaterial({ color: 0x334155 }));
-    roof.position.set(-2, 5.2, 0); roof.rotation.z = -0.25; roof.castShadow = true; appScene.add(roof);
-
-    const p1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), new THREE.MeshStandardMaterial({ color: 0x78350f })); p1.position.set(7.5, 2, 3); p1.castShadow=true; appScene.add(p1);
-    const p2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4, 0.3), new THREE.MeshStandardMaterial({ color: 0x78350f })); p2.position.set(7.5, 2, -3); p2.castShadow=true; appScene.add(p2);
-    const cpRoof = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 7), new THREE.MeshStandardMaterial({ color: 0xcbd5e1, transparent:true, opacity:0.8 }));
-    cpRoof.position.set(4.8, 4, 0); cpRoof.castShadow=true; appScene.add(cpRoof);
-
-    appGasPipe = new THREE.Group();
-    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5), new THREE.MeshStandardMaterial({ color: 0xfacc15 })); pipe.position.set(0, 1.25, 0); 
-    const meterBox = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.4), new THREE.MeshStandardMaterial({ color: 0x9ca3af })); meterBox.position.set(0, 2.5, 0.15); 
-    appGasPipe.add(pipe); appGasPipe.add(meterBox); appGasPipe.position.set(-5.5, 0, 3.2); appScene.add(appGasPipe);
-
-    appHP = new THREE.Group();
-    const hpBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x475569 })); hpBody.position.set(0, 0.9, 0);
-    const hpFan = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.85, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a })); hpFan.rotation.x = Math.PI/2; hpFan.position.set(0, 0.9, 0.4); 
-    const boiler = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2.2, 16), new THREE.MeshStandardMaterial({color: 0xe2e8f0})); boiler.position.set(1.2, 1.1, 0); 
-    appHP.add(hpBody); appHP.add(hpFan); appHP.add(boiler); appHP.position.set(-3.5, 0, 3.6); appHP.scale.set(0,0,0); appScene.add(appHP);
-
-    appPanels = new THREE.Group();
-    const panelMat = new THREE.MeshStandardMaterial({ color: 0x020617, metalness: 0.9, roughness: 0.1 });
-    for(let x=0; x<3; x++) { for(let z=0; z<2; z++) { const panel = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.05, 2.8), panelMat); panel.position.set(-2.5 + (x*2.4), 0, -1.5 + (z*3)); appPanels.add(panel); } }
-    appPanels.position.set(-2, 5.65, 0); appPanels.rotation.z = -0.25; appPanels.scale.set(0,0,0); appScene.add(appPanels);
-
-    for(let i=0; i<4; i++) {
-        const bat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 0.6), new THREE.MeshStandardMaterial({ color: 0xf1f5f9 }));
-        bat.position.set(-1.5 - (i * 1.4), 1.1, -3.3); bat.castShadow = true; bat.scale.set(0,0,0);
-        appScene.add(bat); arrBatteries.push(bat);
-    }
-
-    for(let i=0; i<2; i++) {
-        const ev = new THREE.Group();
-        const carBody = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.1, 1.8), new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness:0.4 })); carBody.position.y = 0.85; carBody.castShadow = true;
-        const carTop = new THREE.Mesh(new THREE.BoxGeometry(2, 0.7, 1.6), new THREE.MeshStandardMaterial({ color: 0x1e293b })); carTop.position.set(-0.4, 1.7, 0); carTop.castShadow = true;
-        ev.add(carBody); ev.add(carTop);
-        const wMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
-        const w1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 16), wMat); w1.rotation.x = Math.PI/2; w1.position.set(-1.1, 0.4, 0);
-        const w2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 16), wMat); w2.rotation.x = Math.PI/2; w2.position.set(1.2, 0.4, 0);
-        ev.add(w1); ev.add(w2); ev.position.set(4.5, 0, -1.5 + (i*3)); ev.scale.set(0,0,0);
-        appScene.add(ev); arrEVs.push(ev);
-    }
-
+    // Mimariyi Ortak Fonksiyondan Çağırıyoruz
+    appObjs = createEcoSystem(appScene);
     document.getElementById('loading3D').style.display = 'none';
 
     document.getElementById('btnSimGES').addEventListener('click', (e) => { stateGES = !stateGES; e.target.classList.toggle('bg-green-600'); updateAppScore(); });
@@ -524,11 +525,18 @@ function initApp3DScene() {
 
     function animate() {
         requestAnimationFrame(animate);
-        if (appPanels) { appPanels.scale.lerp(new THREE.Vector3(stateGES?1:0, stateGES?1:0, stateGES?1:0), 0.1); }
-        arrBatteries.forEach((b, i) => b.scale.lerp(new THREE.Vector3(i<countBat?1:0, i<countBat?1:0, i<countBat?1:0), 0.1));
-        arrEVs.forEach((v, i) => v.scale.lerp(new THREE.Vector3(i<countEV?1:0, i<countEV?1:0, i<countEV?1:0), 0.1));
-        if (appHP) appHP.scale.lerp(new THREE.Vector3(stateHP?1:0, stateHP?1:0, stateHP?1:0), 0.1);
-        if (appGasPipe) appGasPipe.scale.lerp(new THREE.Vector3(stateHP?0:1, stateHP?0:1, stateHP?0:1), 0.1);
+        if (appObjs) {
+            // Buton durumlarına göre objeleri büyüt/küçült
+            appObjs.panels.scale.lerp(new THREE.Vector3(stateGES?1:0, stateGES?1:0, stateGES?1:0), 0.1);
+            appObjs.inverterGroup.scale.lerp(new THREE.Vector3(stateGES?1:0, stateGES?1:0, stateGES?1:0), 0.1);
+            appObjs.hp.scale.lerp(new THREE.Vector3(stateHP?1:0, stateHP?1:0, stateHP?1:0), 0.1);
+            appObjs.gasPipe.scale.lerp(new THREE.Vector3(stateHP?0:1, stateHP?0:1, stateHP?0:1), 0.1);
+            appObjs.batteries.forEach((b, i) => b.scale.lerp(new THREE.Vector3(i<countBat?1:0, i<countBat?1:0, i<countBat?1:0), 0.1));
+            appObjs.evs.forEach((v, i) => v.scale.lerp(new THREE.Vector3(i<countEV?1:0, i<countEV?1:0, i<countEV?1:0), 0.1));
+            
+            appObjs.gridCableMat.dashOffset -= 0.05; // Akım animasyonu
+            appObjs.gridCable.visible = currentGrid > 0; // Şebeke 0 ise kabloyu gizle
+        }
         appControls.update();
         appRenderer.render(appScene, appCamera);
     }
@@ -546,18 +554,22 @@ function updateAppScore() {
     if (countEV > 0) carbon = "Çok Düşük";
     if (stateHP) { score += 20; grid = 0; fossil = "İPTAL EDİLDİ"; carbon = "SIFIR (Net-Zero)"; }
 
+    currentGrid = Math.max(0, grid);
     document.getElementById('scoreDisplay').innerText = "%" + score;
-    document.getElementById('gridDepDisplay').innerText = "%" + Math.max(0, grid);
+    document.getElementById('gridDepDisplay').innerText = "%" + currentGrid;
     document.getElementById('fossilDisplay').innerText = fossil;
     document.getElementById('carbonDisplay').innerText = carbon;
 
     const sColor = document.getElementById('scoreDisplay');
     sColor.className = "text-xs px-2 py-1 rounded text-white font-bold transition-colors duration-500";
-    if(score < 30) sColor.classList.add('bg-red-500');
-    else if(score < 70) sColor.classList.add('bg-orange-500');
-    else if(score < 100) sColor.classList.add('bg-yellow-500');
+    if(score < 30) sColor.classList.add('bg-red-500'); 
+    else if(score < 70) sColor.classList.add('bg-orange-500'); 
+    else if(score < 100) sColor.classList.add('bg-yellow-500'); 
     else sColor.classList.add('bg-green-600');
 }
+
+
+
 
 
 // --- 8. EV YÜK HESAPLAYICI ---
