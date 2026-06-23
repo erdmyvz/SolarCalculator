@@ -664,18 +664,27 @@ function updateAppScore() {
 
 
 
+
+
 // --- 8. EV YÜK HESAPLAYICI ---
 let activeEVTab = 'tabBill';
+
 document.querySelectorAll('.ev-tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.ev-tab-btn').forEach(b => { b.classList.remove('bg-teal-600', 'text-white'); b.classList.add('bg-gray-100', 'text-gray-600'); });
-        e.target.classList.remove('bg-gray-100', 'text-gray-600'); e.target.classList.add('bg-teal-600', 'text-white');
+        document.querySelectorAll('.ev-tab-btn').forEach(b => { 
+            b.classList.remove('bg-teal-600', 'text-white'); 
+            b.classList.add('bg-gray-100', 'text-gray-600'); 
+        });
+        e.target.classList.remove('bg-gray-100', 'text-gray-600'); 
+        e.target.classList.add('bg-teal-600', 'text-white');
         document.querySelectorAll('.ev-tab-content').forEach(c => c.classList.add('hidden'));
+        
         activeEVTab = e.target.getAttribute('data-target');
         document.getElementById(activeEVTab).classList.remove('hidden');
         calculateEVSolar(); 
     });
 });
+
 document.querySelectorAll('.ev-reactive-input').forEach(input => input.addEventListener('input', calculateEVSolar));
 
 function calculateEVSolar() {
@@ -687,30 +696,69 @@ function calculateEVSolar() {
     const maxUsableRoof = userRoof * 0.8;
     
     let requiredPowerKwp = 0, dailyProductionKwh = 0;
+    let houseMonthlyKwh = 0, evMonthlyKwh = 0;
 
+    // 1. Tüketim Senaryoları (Ev + Araç Birleşimi Mantığı)
     if (activeEVTab === 'tabBill') {
         const monthlyBill = parseFloat(document.getElementById('evInputBill')?.value) || 0;
-        dailyProductionKwh = (monthlyBill / tariff) / 30;
-    } else if (activeEVTab === 'tabKwh') {
-        const kwh = parseFloat(document.getElementById('evInputKwh')?.value) || 0;
-        dailyProductionKwh = kwh / 30;
-        document.getElementById('dynamicBillEquiv').innerText = (kwh * tariff).toFixed(2) + " TL";
-    } else if (activeEVTab === 'tabKm') {
+        houseMonthlyKwh = monthlyBill / tariff;
+        evMonthlyKwh = 1500 * (evConsumption / 100); // Ev faturasına ek olarak varsayılan 1500km araç tüketimi eklendi
+    } 
+    else if (activeEVTab === 'tabKwh') {
+        houseMonthlyKwh = parseFloat(document.getElementById('evInputKwh')?.value) || 0;
+        document.getElementById('dynamicBillEquiv').innerText = (houseMonthlyKwh * tariff).toFixed(2) + " TL";
+        evMonthlyKwh = 1500 * (evConsumption / 100); 
+    } 
+    else if (activeEVTab === 'tabKm') {
         const km = parseFloat(document.getElementById('evInputKm')?.value) || 0;
-        dailyProductionKwh = (km * (evConsumption / 100)) / 30;
+        evMonthlyKwh = km * (evConsumption / 100);
+        houseMonthlyKwh = 350; // Sadece araca odaklanmamak için ortalama 350 kWh ev tüketimi sisteme dahil edildi
     }
+
+    // 2. Toplam Sistem İhtiyacı
+    const totalMonthlyKwh = houseMonthlyKwh + evMonthlyKwh;
+    dailyProductionKwh = totalMonthlyKwh / 30;
 
     requiredPowerKwp = dailyProductionKwh / 4;
     const requiredAreaM2 = requiredPowerKwp * 5;
     
+    // 3. Çıktıları Ekrana Yazdırma
+    const totalMonthlyProduction = dailyProductionKwh * 30;
     document.getElementById('resPower').innerText = requiredPowerKwp.toFixed(2);
     document.getElementById('resArea').innerText = requiredAreaM2.toFixed(1);
-    document.getElementById('resProduction').innerText = Math.round(dailyProductionKwh * 30);
-    document.getElementById('resSolarRange').innerText = Math.round(((dailyProductionKwh * 30) / evBattery) * evRange);
+    document.getElementById('resProduction').innerText = Math.round(totalMonthlyProduction).toLocaleString('tr-TR');
     
+    // Güneş enerjisinden evin harcaması (houseMonthlyKwh) çıktıktan sonra araca kalan "net (surplus)" enerji ile menzil hesabı
+    const surplusEnergy = Math.max(0, totalMonthlyProduction - houseMonthlyKwh);
+    const solarRange = (surplusEnergy / evBattery) * evRange;
+    document.getElementById('resSolarRange').innerText = Math.round(solarRange).toLocaleString('tr-TR');
+    
+    // 4. EKSİK OLAN İLERLEME ÇUBUĞU KODU BURASI
+    const chargeRatio = evBattery > 0 ? (surplusEnergy / evBattery) * 100 : 0;
+    const barWidth = Math.min(chargeRatio, 100); 
+    
+    const resBar = document.getElementById('resChargeBar');
+    const resPercent = document.getElementById('resChargePercent');
+    
+    if(resBar) resBar.style.width = barWidth + '%';
+    if(resPercent) resPercent.innerText = `%${Math.round(chargeRatio)}`;
+    
+    // 5. Çatı Uyarı Sistemi Yönetimi
     const warning = document.getElementById('roofWarningBanner');
-    if(warning) warning.classList.toggle('hidden', requiredAreaM2 <= maxUsableRoof);
+    if(warning) {
+        if (requiredAreaM2 > maxUsableRoof) {
+            warning.classList.remove('hidden');
+            warning.innerHTML = `⚠️ DİKKAT: İhtiyacınız olan alan (${requiredAreaM2.toFixed(1)} m²), çatınızın limitini (${maxUsableRoof.toFixed(1)} m²) aşıyor.`;
+        } else {
+            warning.classList.add('hidden');
+        }
+    }
 }
+
+
+
+
+
 
 
 // --- 9. TEKNİK SERVİS MODÜLÜ ---
