@@ -14,11 +14,14 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Şifreyi Vercel'in güvenli kasasından (Environment Variables) çekiyoruz
+        // Şifreyi Vercel'in güvenli kasasından çekiyoruz
         const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-        // DİKKAT: Model ismi Google'ın en güncel standartlarına göre 'gemini-1.5-flash-latest' olarak düzeltildi.
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+        // DİKKAT: 'v1beta' yerine tam kararlı 'v1' sunucusuna geçildi!
+        // Model olarak standart 'gemini-1.5-flash' tanımlandı.
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
