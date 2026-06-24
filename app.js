@@ -233,9 +233,40 @@ KURALLAR:
 `;
 }
 
-// 2. Yapay Zeka Butonu Tetikleyicisi ve Prompt Üretimi
-document.getElementById('btnRunAI')?.addEventListener('click', () => {
-    // 1. Verileri Topla
+
+// ============================================================================
+// YAPAY ZEKA (AI) MEGA-PROMPT MOTORU VE GEMINI API BAĞLANTISINI TETİKLEYEN FONKSİYON
+// ============================================================================
+    
+
+
+function generateAIPrompt(companyData) {
+    return `
+Sen, Michael Gerber'in "E-Myth" prensiplerini ve Donald Miller'ın "StoryBrand" çerçevesini kusursuz bir şekilde benimsemiş, dünya çapında üst düzey bir "Kurumsal Dönüşüm ve İşletme Danışmanı"sın. Amacın, şirketlerin sistem kurmasına, kârlılığını artırmasına ve kurucuya bağımlı olmaktan kurtulmasına yardımcı olmaktır.
+
+Şu an analiz edip reçete yazacağın firmanın temel profili aşağıdadır:
+--------------------------------------------------
+🏢 FİRMA BİLGİLERİ:
+- Firma Adı: ${companyData.name}
+- Temel Vaadi (Elevator Pitch): ${companyData.pitch}
+- Eşsiz Satış Teklifi (USP): ${companyData.usp || "Belirtilmemiş - (Marka farklılaşma sorunu olabilir)"}
+- Müşteride Çözdüğü Ana Acı/Sorun: ${companyData.pain || "Belirtilmemiş - (Müşteri empatisi eksik olabilir)"}
+--------------------------------------------------
+
+GÖREVİN:
+Bu firmanın profiline bakarak, "Marketing", "Satış" ve "Operasyon" başta olmak üzere temel fonksiyonlarda neleri yanlış yapıyor olabileceğini (Teşhis) ve bu sorunları aşmak için hemen yarın sabah uygulamaya koyabilecekleri 3 adımlık acil bir eylem planını (Tedavi) yaz.
+
+KURALLAR:
+1. Kurumsal ve ilham verici bir ton kullan, ama asla akademik ve sıkıcı bir jargon kullanma.
+2. Tavsiyelerin genel geçer (örn: "sosyal medyayı iyi kullanın") olmasın. Firmanın profiline özel spesifik taktikler ver.
+3. Çıktını şık bir HTML formatında, kalın yazılar (<strong>), başlıklar (<h3>), listeler (<ul>) ve emojiler kullanarak ver ki doğrudan web sitesindeki bir <div> içine basabilelim. Markdown kullanma, sadece saf HTML etiketleri kullan.
+4. Çıktının sonuna mutlaka firmanın "Hero (Kahraman)" değil, müşterinin "Guide (Rehberi)" olduğunu hatırlatan vurucu bir motivasyon cümlesi ekle.
+`;
+}
+
+// 2. Gemini API Tetikleyicisi
+document.getElementById('btnRunAI')?.addEventListener('click', async () => {
+    // Verileri Topla
     const companyData = {
         name: document.getElementById('cmName').value.trim(),
         pitch: document.getElementById('cmPitch').value.trim(),
@@ -243,49 +274,78 @@ document.getElementById('btnRunAI')?.addEventListener('click', () => {
         pain: document.getElementById('cmPain').value.trim()
     };
     
-    // Güvenlik: Boş alan kontrolü
+    // Kontroller
     if(!companyData.name || !companyData.pitch) {
         alert("Lütfen sağlıklı bir analiz için en azından Firma İsmi ve Temel Vaat alanlarını doldurun.");
         return;
     }
+
     
     const btn = document.getElementById('btnRunAI');
-    btn.textContent = "Mega-Prompt Üretiliyor...";
+    btn.textContent = "Yapay Zeka Analiz Ediyor...";
     btn.classList.add('opacity-70', 'cursor-not-allowed');
     btn.disabled = true;
     
-    // 2. Gizli Mega-Prompt'u Oluştur
-    const generatedPrompt = generateAIPrompt(companyData);
+    const resultArea = document.querySelector('.bg-slate-800.text-white.p-6.rounded-xl.shadow-sm');
     
-    // 3. Simülasyon (API Entegrasyonu gelene kadar)
-    setTimeout(() => {
-        // İleride burada fetch('api/openai', { body: generatedPrompt }) çalışacak.
-        // Şimdilik promptu console'a ve ekrana basıyoruz ki test edebilesin.
-        
-        console.log("----- YAPAY ZEKAYA GİDECEK MEGA PROMPT -----");
-        console.log(generatedPrompt);
-        
-        // Ekranda "Temel Sorunlar Kartı" yerine Prompt'u göster
-        const resultArea = document.querySelector('.bg-slate-800.text-white.p-6.rounded-xl.shadow-sm');
+    // Yükleniyor Animasyonu
+    if (resultArea) {
+        resultArea.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-12">
+                <div class="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p class="text-emerald-400 font-bold animate-pulse">Gemini firmanızı analiz ediyor, lütfen bekleyin...</p>
+            </div>
+        `;
+    }
+
+    const generatedPrompt = generateAIPrompt(companyData);
+
+   try {
+        // YENİ: Artık Google'a değil, kendi güvenli arka depomuza gidiyoruz
+        const response = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ prompt: generatedPrompt }) 
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Arka uç ile bağlantı kurulamadı.");
+        }
+
+        // Arka depodan dönen metni al
+        const aiResponseText = data.result;
+
+        // Sonucu Ekrana Bas
         if (resultArea) {
             resultArea.innerHTML = `
-                <div class="flex items-center justify-between border-b border-slate-700 pb-2 mb-4">
-                    <h4 class="font-bold text-emerald-400">🤖 YZ Analiz Motoru (Test Modu)</h4>
+                <div class="flex items-center justify-between border-b border-slate-700 pb-3 mb-4">
+                    <h4 class="font-bold text-emerald-400 text-lg">✨ YZ Kurumsal Danışman Reçetesi</h4>
                 </div>
-                <p class="text-xs text-slate-300 mb-4">Aşağıdaki arka plan komutu üretildi. Gerçek API entegrasyonu sağlandığında, bu komut OpenAI/Claude'a gönderilecek ve dönen yanıt burada şık bir rapor olarak gösterilecektir. Test etmek için metni kopyalayıp ChatGPT'ye yapıştırabilirsiniz.</p>
-                <div class="bg-slate-900 p-3 rounded text-xs text-slate-400 font-mono overflow-y-auto h-64 border border-slate-700 select-all">
-                    ${generatedPrompt.replace(/\n/g, '<br>')}
+                <div class="text-sm text-slate-200 overflow-y-auto max-h-[450px] custom-scrollbar space-y-4 pr-2 leading-relaxed">
+                    ${aiResponseText}
                 </div>
-                <button onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText); alert('Kopyalandı!');" class="mt-3 w-full bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2 rounded transition">Promptu Kopyala</button>
             `;
         }
 
+    } catch (error) {
+        console.error("API Hatası:", error);
+        if (resultArea) {
+            resultArea.innerHTML = `
+                <div class="text-red-400 font-bold p-4 bg-red-900/30 border border-red-800 rounded-lg">
+                    ⚠️ Bir hata oluştu: ${error.message}
+                </div>
+            `;
+        }
+    } finally {
         btn.textContent = "Yeni Bir Rapor Oluştur";
         btn.classList.remove('opacity-70', 'cursor-not-allowed');
         btn.disabled = false;
-    }, 1000);
+    }
 });
-
 
 // ============================================================================
 // ORTAK 3D MİMARİ MOTORU (Geri Getirilen ve Düzeltilen Gövde)
