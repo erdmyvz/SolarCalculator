@@ -203,21 +203,87 @@ document.querySelectorAll('.cm-tab-btn').forEach(btn => {
     });
 });
 
+
+
+// ============================================================================
+// YAPAY ZEKA (AI) MEGA-PROMPT MOTORU
+// ============================================================================
+
+function generateAIPrompt(companyData) {
+    return `
+Sen, Michael Gerber'in "E-Myth" prensiplerini ve Donald Miller'ın "StoryBrand" çerçevesini kusursuz bir şekilde benimsemiş, dünya çapında üst düzey bir "Kurumsal Dönüşüm ve İşletme Danışmanı"sın. Amacın, şirketlerin sistem kurmasına, kârlılığını artırmasına ve kurucuya bağımlı olmaktan kurtulmasına yardımcı olmaktır.
+
+Şu an analiz edip reçete yazacağın firmanın temel profili aşağıdadır:
+--------------------------------------------------
+🏢 FİRMA BİLGİLERİ:
+- Firma Adı: ${companyData.name}
+- Temel Vaadi (Elevator Pitch): ${companyData.pitch}
+- Eşsiz Satış Teklifi (USP): ${companyData.usp || "Belirtilmemiş - (Marka farklılaşma sorunu olabilir)"}
+- Müşteride Çözdüğü Ana Acı/Sorun: ${companyData.pain || "Belirtilmemiş - (Müşteri empatisi eksik olabilir)"}
+--------------------------------------------------
+
+GÖREVİN:
+Bu firmanın profiline bakarak, "Marketing", "Satış" ve "Operasyon" başta olmak üzere temel fonksiyonlarda neleri yanlış yapıyor olabileceğini (Teşhis) ve bu sorunları aşmak için hemen yarın sabah uygulamaya koyabilecekleri 3 adımlık acil bir eylem planını (Tedavi) yaz.
+
+KURALLAR:
+1. Kurumsal ve ilham verici bir ton kullan, ama asla akademik ve sıkıcı bir jargon kullanma.
+2. Tavsiyelerin genel geçer (örn: "sosyal medyayı iyi kullanın") olmasın. Firmanın profiline özel (örn: "Hedef kitlenizin ${companyData.pain} sorununu çözerken sosyal medyada şu kancayı kullanın...") spesifik taktikler ver.
+3. Çıktını şık bir HTML formatında, kalın yazılar (<strong>), listeler (<ul>) ve emojiler kullanarak ver ki doğrudan web sitesindeki bir <div> içine basabilelim.
+4. Çıktının sonuna mutlaka firmanın "Hero (Kahraman)" değil, müşterinin "Guide (Rehberi)" olduğunu hatırlatan vurucu bir motivasyon cümlesi ekle.
+`;
+}
+
+// 2. Yapay Zeka Butonu Tetikleyicisi ve Prompt Üretimi
 document.getElementById('btnRunAI')?.addEventListener('click', () => {
-    const name = document.getElementById('cmName').value;
-    const pitch = document.getElementById('cmPitch').value;
-    if(!name || !pitch) {
-        alert("Lütfen en azından Firma İsmi ve Temel Vaat alanlarını doldurun.");
+    // 1. Verileri Topla
+    const companyData = {
+        name: document.getElementById('cmName').value.trim(),
+        pitch: document.getElementById('cmPitch').value.trim(),
+        usp: document.getElementById('cmUSP').value.trim(),
+        pain: document.getElementById('cmPain').value.trim()
+    };
+    
+    // Güvenlik: Boş alan kontrolü
+    if(!companyData.name || !companyData.pitch) {
+        alert("Lütfen sağlıklı bir analiz için en azından Firma İsmi ve Temel Vaat alanlarını doldurun.");
         return;
     }
+    
     const btn = document.getElementById('btnRunAI');
-    btn.textContent = "Veriler İşleniyor...";
+    btn.textContent = "Mega-Prompt Üretiliyor...";
+    btn.classList.add('opacity-70', 'cursor-not-allowed');
     btn.disabled = true;
+    
+    // 2. Gizli Mega-Prompt'u Oluştur
+    const generatedPrompt = generateAIPrompt(companyData);
+    
+    // 3. Simülasyon (API Entegrasyonu gelene kadar)
     setTimeout(() => {
-        alert(`Sistem Mesajı: "${name}" firmasından alınan analiz verileri başarıyla sunucuya iletildi. Yapay Zeka API entegrasyonu sağlandığında sonuçlar bu ekrana yansıtılacaktır.`);
-        btn.textContent = "YZ İle Reçete Oluştur (Yakında)";
+        // İleride burada fetch('api/openai', { body: generatedPrompt }) çalışacak.
+        // Şimdilik promptu console'a ve ekrana basıyoruz ki test edebilesin.
+        
+        console.log("----- YAPAY ZEKAYA GİDECEK MEGA PROMPT -----");
+        console.log(generatedPrompt);
+        
+        // Ekranda "Temel Sorunlar Kartı" yerine Prompt'u göster
+        const resultArea = document.querySelector('.bg-slate-800.text-white.p-6.rounded-xl.shadow-sm');
+        if (resultArea) {
+            resultArea.innerHTML = `
+                <div class="flex items-center justify-between border-b border-slate-700 pb-2 mb-4">
+                    <h4 class="font-bold text-emerald-400">🤖 YZ Analiz Motoru (Test Modu)</h4>
+                </div>
+                <p class="text-xs text-slate-300 mb-4">Aşağıdaki arka plan komutu üretildi. Gerçek API entegrasyonu sağlandığında, bu komut OpenAI/Claude'a gönderilecek ve dönen yanıt burada şık bir rapor olarak gösterilecektir. Test etmek için metni kopyalayıp ChatGPT'ye yapıştırabilirsiniz.</p>
+                <div class="bg-slate-900 p-3 rounded text-xs text-slate-400 font-mono overflow-y-auto h-64 border border-slate-700 select-all">
+                    ${generatedPrompt.replace(/\n/g, '<br>')}
+                </div>
+                <button onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText); alert('Kopyalandı!');" class="mt-3 w-full bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2 rounded transition">Promptu Kopyala</button>
+            `;
+        }
+
+        btn.textContent = "Yeni Bir Rapor Oluştur";
+        btn.classList.remove('opacity-70', 'cursor-not-allowed');
         btn.disabled = false;
-    }, 1500);
+    }, 1000);
 });
 
 
