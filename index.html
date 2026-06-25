@@ -242,6 +242,11 @@
                     <p class="text-emerald-100 text-sm">Kurumsal check-up, operasyon kılavuzu ve YZ analizi.</p>
                 </button>
 
+                <button id="btnGoRegulations" class="cursor-pointer bg-slate-700 hover:bg-slate-800 text-white rounded-xl p-6 shadow-lg transition-all transform hover:-translate-y-1 text-left">
+                    <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">Güncel Mevzuatlar</h2><span class="bg-slate-900 text-xs px-3 py-1 rounded-full font-medium">Aktif</span></div>
+                    <p class="text-slate-200 text-sm">GES izin süreçleri, bölge EDAŞ listeleri ve resmi mevzuat linkleri.</p>
+                </button>
+
                 <div id="btnGoCalculator" class="cursor-pointer bg-blue-600 text-white rounded-xl p-6 shadow-lg hover:bg-blue-700 transition-all transform hover:-translate-y-1">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">Güç Hesaplayıcı</h2><span class="bg-blue-800 text-xs px-3 py-1 rounded-full font-medium">Aktif</span></div>
                     <p class="text-blue-100 text-sm">Müşterilerinizin tüketim analizini yapın ve PDF teklifi sunun.</p>
@@ -467,6 +472,142 @@
 
                     </div>
                 </div>
+            </div>
+        </div>
+
+
+        <div id="regulationsModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+            <div class="mb-6 border-b pb-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <button id="btnBackToMenuFromReg" class="text-gray-500 hover:text-slate-800 font-medium flex items-center transition">← Ana Menü</button>
+                    <span class="mx-2 text-gray-400">/</span><span class="text-gray-800 font-bold">Güncel Mevzuatlar & GES Süreçleri</span>
+                </div>
+                <div class="text-xs font-bold text-slate-400 italic hidden md:block">"Süreç takibi projenin can damarıdır."</div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <div class="lg:col-span-2 space-y-8">
+                    
+                    <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                            <span>📋</span> Adım Adım 25 kW Altı GES İzin Süreci
+                        </h3>
+                        
+                        <div class="space-y-6 relative border-l-2 border-slate-300 ml-3 pl-6">
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">1. Evrak Hazırlığı ve Çağrı Mektubu Başvurusu</h4>
+                                <p class="text-xs text-slate-600 mt-1">Sürecin ilk adımı, sistemin kurulacağı bölgedeki görevli elektrik dağıtım şirketine (EDAŞ) kapasite tahsisi için başvurmaktır.</p>
+                                <p class="text-xs text-slate-500 bg-white p-2 rounded border mt-2"><strong>Gerekli Temel Evraklar:</strong> Tapu veya kira sözleşmesi, başvuru formu, güncel abonelik bilgileri, tek hat şeması, yetki belgesi/vekaletname.</p>
+                                <p class="text-[11px] text-blue-700 font-semibold mt-1">🎯 Amaç: Kurulacak tesisin şebekeye bağlanabilmesi için trafo kapasitesinin uygun olup olmadığının onaylanması.</p>
+                            </div>
+
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">2. Çağrı Mektubunun Alınması</h4>
+                                <p class="text-xs text-slate-600 mt-1">Dağıtım şirketi teknik değerlendirmeyi yapar (genellikle takip eden ayın 20'sine kadar sonuçlanır). Kapasite uygunsa firmaya Çağrı Mektubu (Bağlantı Anlaşmasına Çağrı Mektubu) verilir. Bu belge, <em>"Sisteminizi kurabilirsiniz, şebekemizde size yer ayırdık"</em> anlamına gelir.</p>
+                            </div>
+
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">3. TEDAŞ Proje Onayı</h4>
+                                <p class="text-xs text-slate-600 mt-1">Çağrı mektubu alındıktan sonra (genellikle 90 gün içinde) tesisin detaylı mühendislik projelerinin çizilip onaylatılması gerekir.</p>
+                                <p class="text-xs text-slate-500 bg-white p-2 rounded border mt-2"><strong>Elektrik ve Statik Projeler:</strong> Hazırlanan detaylı tek hat şemaları, yerleşim planları ve statik hesaplamalar TEDAŞ'a veya TEDAŞ'ın bölgede yetkilendirdiği kuruluşa sunularak onaylatılır.</p>
+                            </div>
+
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">4. Bağlantı Anlaşmasının İmzalanması</h4>
+                                <p class="text-xs text-slate-600 mt-1">Proje onayı alındıktan sonra ilgili EDAŞ ile Bağlantı Anlaşması imzalanır. Bu aşamadan itibaren tesisin fiziksel kurulum (panel, inverter, konstrüksiyon montajı ve kablolama) işlemleri başlayabilir.</p>
+                            </div>
+
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">5. Geçici Kabul İşlemleri</h4>
+                                <p class="text-xs text-slate-600 mt-1">Sahadaki kurulum tamamlandığında, tesisin projeye ve standartlara uygun inşa edildiğinin resmen tescillenmesi gerekir. TEDAŞ heyeti sahaya gelerek test ve kontrolleri yapar. Uygun bulunursa Geçici Kabul Tutanağı imzalanır. Tesis artık yasal olarak elektrik üretmeye hazırdır.</p>
+                            </div>
+
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">6. Sistem Kullanım Anlaşması ve İşletmeye Alma (Çift Yönlü Sayaç)</h4>
+                                <p class="text-xs text-slate-600 mt-1">Geçici kabulden sonra EDAŞ ile Sistem Kullanım Anlaşması imzalanır. Mevcut elektrik sayacı, üretimi ve tüketimi ayrı ayrı okuyabilen çift yönlü sayaç ile değiştirilir. Bu adımdan sonra aylık mahsuplaşma süreci resmi olarak başlar.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xl font-black text-slate-800 mb-2 flex items-center gap-2">
+                            <span>🗺️</span> Bölgelere Göre Görevli Elektrik Dağıtım Şirketleri (EDAŞ)
+                        </h3>
+                        <p class="text-xs text-slate-500 mb-4">Türkiye'deki elektrik dağıtımı, 21 farklı bölgeye ayrılmış lisanslı şirketler tarafından sağlanmaktadır. Süreç başvurusu kurulum yapılacak ile göre belirlenir.</p>
+                        
+                        <div class="overflow-x-auto max-h-[350px] custom-scrollbar border rounded-lg">
+                            <table class="w-full text-xs text-left border-collapse bg-white">
+                                <thead class="bg-slate-100 sticky top-0 border-b shadow-sm z-10">
+                                    <tr>
+                                        <th class="p-3 font-bold text-slate-700">Bölge / İller</th>
+                                        <th class="p-3 font-bold text-slate-700">Dağıtım Şirketi (EDAŞ)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-slate-600">
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">İstanbul (Anadolu Yakası)</td><td class="p-3 font-bold text-blue-600">AYEDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">İstanbul (Avrupa Yakası)</td><td class="p-3 font-bold text-blue-600">BEDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Bursa, Balıkesir, Çanakkale, Yalova</td><td class="p-3 font-bold text-slate-700">UEDAŞ (Uludağ EDAŞ)</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Kocaeli, Sakarya, Bolu, Düzce</td><td class="p-3 font-bold text-slate-700">SEDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Edirne, Tekirdağ, Kırklareli</td><td class="p-3 font-bold text-slate-700">TREDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">İzmir, Manisa</td><td class="p-3 font-bold text-slate-700">GDZ EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Aydın, Denizli, Muğla</td><td class="p-3 font-bold text-slate-700">ADM EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Ankara, Kırıkkale, Zonguldak, Bartın, Karabük, Çankırı, Kastamonu</td><td class="p-3 font-bold text-slate-700">Başkent EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Antalya, Burdur, Isparta</td><td class="p-3 font-bold text-slate-700">Akdeniz EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Adana, Mersin, Osmaniye, Hatay, Kilis, Gaziantep</td><td class="p-3 font-bold text-slate-700">Toroslar EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Konya, Karaman, Aksaray, Niğde, Nevşehir, Kırşehir</td><td class="p-3 font-bold text-slate-700">MEDAŞ (Meram EDAŞ)</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Sivas, Tokat, Yozgat</td><td class="p-3 font-bold text-slate-700">ÇEDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Samsun, Amasya, Çorum, Ordu, Sinop</td><td class="p-3 font-bold text-slate-700">YEDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Trabzon, Rize, Giresun, Gümüşhane, Artvin</td><td class="p-3 font-bold text-slate-700">Çoruh EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Erzurum, Ağrı, Ardahan, Bayburt, Erzincan, Iğdır, Kars</td><td class="p-3 font-bold text-slate-700">Aras EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Diyarbakır, Şanlıurfa, Mardin, Batman, Siirt, Şırnak</td><td class="p-3 font-bold text-slate-700">Dicle EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Elazığ, Malatya, Bingöl, Tunceli</td><td class="p-3 font-bold text-slate-700">Fırat EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Van, Bitlis, Hakkari, Muş</td><td class="p-3 font-bold text-slate-700">VEDAŞ</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-slate-800 text-white p-6 rounded-xl shadow-sm">
+                        <h4 class="font-bold text-emerald-400 border-b border-slate-700 pb-2 mb-4 flex items-center gap-1.5">
+                            <span>🔗</span> Resmi Kurum Kısayolları
+                        </h4>
+                        <div class="space-y-3">
+                            <a href="http://tedas.gov.tr/tr/1" target="_blank" class="block w-full text-center bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded text-xs transition">
+                                TEDAŞ Resmi Web Sitesi
+                            </a>
+                            <a href="http://epdk.gov.tr/Anasayfa/Anasayfa" target="_blank" class="block w-full text-center bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded text-xs transition">
+                                EPDK Anasayfa
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200 p-6 rounded-xl shadow-sm">
+                        <h4 class="font-bold text-slate-800 border-b pb-2 mb-4 flex items-center gap-1.5">
+                            <span>📜</span> Önemli Mevzuat ve Tarifeler
+                        </h4>
+                        <div class="space-y-3">
+                            <a href="https://www.epdk.gov.tr/Detay/Icerik/3-1327/elektrik-faturalarina-esas-tarife-tablolari" target="_blank" class="block w-full bg-white hover:bg-slate-100 border text-slate-700 font-bold p-3 rounded-lg text-xs transition shadow-sm text-left flex items-center justify-between">
+                                <span>⚡ Elektrik Esas Tarife Tabloları</span>
+                                <span class="text-slate-400">➔</span>
+                            </a>
+                            <a href="https://www.epdk.gov.tr/Detay/Icerik/3-0-92-3/elektriklisanssiz-uretim" target="_blank" class="block w-full bg-white hover:bg-slate-100 border text-slate-700 font-bold p-3 rounded-lg text-xs transition shadow-sm text-left flex items-center justify-between">
+                                <span>☀️ Lisanssız Elektrik Üretim Yönetmeliği</span>
+                                <span class="text-slate-400">➔</span>
+                            </a>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-4 italic leading-tight">Bir proje geliştirirken, trafo kapasitelerinin doluluk oranları en kritik değişkendir. Kurulumdan önce mutlaka ilgili EDAŞ sistemlerinden sorgulama yapılması tavsiye edilir.</p>
+                    </div>
+                </div>
+
             </div>
         </div>
 

@@ -143,8 +143,8 @@ document.getElementById('btnLogout')?.addEventListener('click', async () => {
 });
 
 
-// --- 4. ANA MENÜ VE MODÜL GEÇİŞ YÖNETİMİ ---
 const menuMap = {
+    'btnGoRegulations': 'regulationsModule',                 // YENİ EKLENDİ
     'btnGoCRM': 'crmModule',
     'btnGoCompanyMgmt': 'companyManagementModule',
     'btnGoCalculator': 'calculatorModule',
@@ -175,7 +175,7 @@ for (const [btnId, modId] of Object.entries(menuMap)) {
     }
 }
 
-const backButtons = ['btnBackToMenu', 'btnBackToMenuFromSim', 'btnBackToMenuFromEV', 'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin', 'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt'];
+const backButtons = ['btnBackToMenu', 'btnBackToMenuFromSim', 'btnBackToMenuFromEV', 'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin', 'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt', 'btnBackToMenuFromReg'];
 backButtons.forEach(id => {
     const btn = document.getElementById(id);
     if(btn) {
