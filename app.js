@@ -144,7 +144,8 @@ document.getElementById('btnLogout')?.addEventListener('click', async () => {
 
 
 const menuMap = {
-    'btnGoRegulations': 'regulationsModule',                 // YENİ EKLENDİ
+    'btnGoSectoral': 'sectoralModule',                       
+    'btnGoRegulations': 'regulationsModule',
     'btnGoCRM': 'crmModule',
     'btnGoCompanyMgmt': 'companyManagementModule',
     'btnGoCalculator': 'calculatorModule',
@@ -175,7 +176,7 @@ for (const [btnId, modId] of Object.entries(menuMap)) {
     }
 }
 
-const backButtons = ['btnBackToMenu', 'btnBackToMenuFromSim', 'btnBackToMenuFromEV', 'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin', 'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt', 'btnBackToMenuFromReg'];
+const backButtons = ['btnBackToMenu', 'btnBackToMenuFromSim', 'btnBackToMenuFromEV', 'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin', 'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt', 'btnBackToMenuFromReg', 'btnBackToMenuFromSectoral'];
 backButtons.forEach(id => {
     const btn = document.getElementById(id);
     if(btn) {

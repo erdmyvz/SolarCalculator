@@ -232,44 +232,71 @@
                     <p class="text-red-100 text-sm">Firmaları, kullanıcıları ve genel yatırımcı başvurularını görüntüleyin.</p>
                 </div>
                 
+                // CRM Merkezi
                 <button id="btnGoCRM" class="cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl p-6 shadow-lg transition-all transform hover:-translate-y-1 text-left">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">CRM Merkezi</h2><span class="bg-indigo-800 text-xs px-3 py-1 rounded-full font-medium">Yakında</span></div>
                     <p class="text-indigo-100 text-sm">Müşteri takibi ve otomatik satış hunisi.</p>
                 </button>
 
+                // Firma Yönetimi
                 <button id="btnGoCompanyMgmt" class="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl p-6 shadow-lg transition-all transform hover:-translate-y-1 text-left">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">Firma Yönetimi</h2><span class="bg-emerald-800 text-xs px-3 py-1 rounded-full font-medium">Aktif</span></div>
                     <p class="text-emerald-100 text-sm">Kurumsal check-up, operasyon kılavuzu ve YZ analizi.</p>
                 </button>
 
+                // Güncel Mevzuatlar
                 <button id="btnGoRegulations" class="cursor-pointer bg-slate-700 hover:bg-slate-800 text-white rounded-xl p-6 shadow-lg transition-all transform hover:-translate-y-1 text-left">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">Güncel Mevzuatlar</h2><span class="bg-slate-900 text-xs px-3 py-1 rounded-full font-medium">Aktif</span></div>
                     <p class="text-slate-200 text-sm">GES izin süreçleri, bölge EDAŞ listeleri ve resmi mevzuat linkleri.</p>
                 </button>
 
+                // Güç Hesaplayıcı    
                 <div id="btnGoCalculator" class="cursor-pointer bg-blue-600 text-white rounded-xl p-6 shadow-lg hover:bg-blue-700 transition-all transform hover:-translate-y-1">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">Güç Hesaplayıcı</h2><span class="bg-blue-800 text-xs px-3 py-1 rounded-full font-medium">Aktif</span></div>
                     <p class="text-blue-100 text-sm">Müşterilerinizin tüketim analizini yapın ve PDF teklifi sunun.</p>
                 </div>
+
+                // 3D Simülasyon
                 <div id="btnGoSimulation" class="cursor-pointer bg-indigo-600 text-white rounded-xl p-6 shadow-lg hover:bg-indigo-700 transition-all transform hover:-translate-y-1">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">3D Simülasyon</h2><span class="bg-indigo-800 text-xs px-3 py-1 rounded-full font-medium text-white">Aktif</span></div>
                     <p class="text-indigo-100 text-sm">Evinizi 3D ortamda modernize edin ve bağımsızlığı simüle edin.</p>
                 </div>
+
+                // EV Yük Hesaplayıcı
                 <div id="btnGoEVCalc" class="cursor-pointer bg-teal-600 text-white rounded-xl p-6 shadow-lg hover:bg-teal-700 transition-all transform hover:-translate-y-1">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">EV Yük Hesaplayıcı</h2><span class="bg-teal-800 text-xs px-3 py-1 rounded-full font-medium text-white">Aktif</span></div>
                     <p class="text-teal-100 text-sm">EV'niz için güneş enerjisi sistemi hesaplayın ve optimize edin.</p>
                 </div>
+
+                // Teknik Servis Talebi
                 <div id="btnGoTechSupport" class="cursor-pointer bg-red-600 text-white rounded-xl p-6 shadow-lg hover:bg-red-700 transition-all transform hover:-translate-y-1">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">Teknik Servis Talebi</h2><span class="bg-red-800 text-xs px-3 py-1 rounded-full font-medium text-white">Aktif</span></div>
                     <p class="text-red-100 text-sm">GES arızaları veya yanlış kurulum sorunları için talep oluşturun.</p>
                 </div>
+
+                // Satış Yardımcısı (Copilot)
                 <div id="btnGoSalesAssistant" class="cursor-pointer bg-orange-600 text-white rounded-xl p-6 shadow-lg hover:bg-orange-700 transition-all transform hover:-translate-y-1">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">Satış Yardımcısı (Copilot)</h2><span class="bg-orange-800 text-xs px-3 py-1 rounded-full font-medium text-white">Aktif</span></div>
                     <p class="text-orange-100 text-sm">Görüşmelerde müşteri itirazlarına hazır psikolojik yanıtları yönetin.</p>
                 </div>
+
+                // Sektörel Gelişmeler
+                <button id="btnGoSectoral" class="cursor-pointer bg-sky-700 hover:bg-sky-800 text-white rounded-xl p-6 shadow-lg transition-all transform hover:-translate-y-1 text-left">
+                    <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">Sektörel Gelişmeler</h2><span class="bg-sky-900 text-xs px-3 py-1 rounded-full font-medium">Aktif</span></div>
+                    <p class="text-sky-100 text-sm">Hücre teknolojisi, pazar analizleri ve faydalı platformlar.</p>
+                </button>
+
+                // YENİ MENÜ BUTONLARI 
+
+
+
+
+
             </div>
         </div>
 
+
+        // CRM Merkezi ve Firma Yönetimi Modülleri
         <div id="crmModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackToMenuFromCRM" class="text-gray-500 hover:text-indigo-600 font-medium flex items-center transition">← Ana Menü</button>
@@ -282,6 +309,7 @@
             </div>
         </div>
 
+        // Firma Yönetimi ve YZ Analizi Modülü
         <div id="companyManagementModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="mb-6 border-b pb-4 flex items-center justify-between">
                 <div class="flex items-center">
@@ -476,6 +504,7 @@
         </div>
 
 
+        // CRM Merkezi ve Firma Yönetimi Modülleri
         <div id="regulationsModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="mb-6 border-b pb-4 flex items-center justify-between">
                 <div class="flex items-center">
@@ -612,10 +641,7 @@
         </div>
 
 
-
-
-
-
+        // Admin Paneli ve Kullanıcı Yönetimi Modülleri
         <div id="adminModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
 
             <div class="mb-6 border-b pb-4 flex items-center justify-between">
@@ -647,6 +673,8 @@
             </div>
         </div>
 
+
+        // Güç Hesaplayıcı Modülü
         <div id="calculatorModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackToMenu" class="text-gray-500 hover:text-blue-600 font-medium flex items-center transition">Ana Menü</button>
@@ -698,6 +726,8 @@
             </div>
         </div>
 
+
+        // 3D Simülasyon Modülü
         <div id="simulationModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="mb-6 border-b pb-4 flex items-center"><button id="btnBackToMenuFromSim" class="text-gray-500 hover:text-indigo-600 font-medium flex items-center transition">Ana Menü</button><span class="mx-2 text-gray-400">/</span><span class="text-gray-800 font-bold">3D Enerji Simülasyonu</span></div>
             <h1 class="text-2xl font-bold text-gray-800 mb-2">İnteraktif Enerji Bağımsızlığı</h1>
@@ -718,6 +748,8 @@
             </div>
         </div>
 
+
+        // EV & Solar Entegrasyon Analizi
         <div id="evCalcModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="mb-6 border-b pb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div class="flex items-center"><button id="btnBackToMenuFromEV" class="text-gray-500 hover:text-teal-600 font-medium flex items-center transition">Ana Menü</button><span class="mx-2 text-gray-400">/</span><span class="text-gray-800 font-bold">EV & Solar Entegrasyon Analizi</span></div>
@@ -772,6 +804,7 @@
             </div>
         </div>
 
+        // Teknik Servis Talepleri Modülü
         <div id="techSupportModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="mb-6 border-b pb-4 flex items-center"><button id="btnBackToMenuFromSupport" class="text-gray-500 hover:text-red-600 font-medium flex items-center transition">Ana Menü</button><span class="mx-2 text-gray-400">/</span><span class="text-gray-800 font-bold">Teknik Servis ve Müdahale</span></div>
             <div class="bg-red-50 border-l-4 border-red-600 p-5 rounded-r-lg mb-8 shadow-sm">
@@ -803,10 +836,7 @@
             <div id="myTicketsArea" class="hidden"><div id="myTicketsList" class="grid grid-cols-1 gap-4"></div></div>
         </div>
 
-
-
-
-
+        // Satış Yardımcısı (Copilot) Modülü
         <div id="salesAssistantModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             
             <div class="mb-6 border-b pb-4 flex items-center">
@@ -865,6 +895,112 @@
                 </div>
             </div>
         </div>
+
+
+        // Sektörel Gelişmeler ve Faydalı Siteler Modülü
+        <div id="sectoralModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+            <div class="mb-6 border-b pb-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <button id="btnBackToMenuFromSectoral" class="text-gray-500 hover:text-sky-700 font-medium flex items-center transition">← Ana Menü</button>
+                    <span class="mx-2 text-gray-400">/</span><span class="text-gray-800 font-bold">Sektörel Gelişmeler ve Faydalı Siteler</span>
+                </div>
+                <div class="text-xs font-bold text-slate-400 italic hidden md:block">"Bilgi, en güçlü yatırımdır."</div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                        <span>🌍</span> Temel Mühendislik Araçları
+                    </h3>
+                    <div class="space-y-4 flex-1">
+                        <div class="bg-white p-4 rounded-lg border shadow-sm hover:border-sky-400 transition">
+                            <a href="https://globalsolaratlas.info/map" target="_blank" class="block">
+                                <h4 class="font-bold text-sky-700 mb-1 flex justify-between items-center">Global Solar Atlas (GSA) <span class="text-xs">↗</span></h4>
+                                <p class="text-xs text-slate-600">Dünya üzerindeki herhangi bir noktanın güneş enerjisi potansiyelini harita üzerinde sunan web tabanlı, ücretsiz bir platformdur. PVsyst gibi detaylı yazılımlara girmeden önce, "Bu lokasyona GES kurmak ne kadar verimli olur?" sorusunun en hızlı ve uluslararası geçerliliği olan cevabıdır.</p>
+                            </a>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg border shadow-sm hover:border-sky-400 transition">
+                            <a href="https://www.nrel.gov/pv/cell-efficiency.html" target="_blank" class="block">
+                                <h4 class="font-bold text-sky-700 mb-1 flex justify-between items-center">NREL Cell Efficiency Chart <span class="text-xs">↗</span></h4>
+                                <p class="text-xs text-slate-600">Güneş pili (hücre) verimliliğindeki tarihi gelişimi ve laboratuvar rekorlarını takip edebileceğiniz, sektörün en prestijli resmi referans grafiği.</p>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                        <span>🔬</span> Hücre Teknolojisi & Ar-Ge Takibi
+                    </h3>
+                    <div class="space-y-4 flex-1">
+                        <div class="bg-white p-4 rounded-lg border shadow-sm hover:border-sky-400 transition">
+                            <a href="https://www.ise.fraunhofer.de/en/publications/studies/photovoltaics-report.html" target="_blank" class="block">
+                                <h4 class="font-bold text-sky-700 mb-1 flex justify-between items-center">Fraunhofer ISE <span class="text-xs">↗</span></h4>
+                                <p class="text-xs text-slate-600">Avrupa'nın en büyük güneş enerjisi araştırma enstitüsü. "Photovoltaics Report" dokümanı; hücre tiplerinin pazar paylarını ve laboratuvar-seri üretim farklarını özetler.</p>
+                            </a>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg border shadow-sm hover:border-sky-400 transition">
+                            <a href="https://itrpv.vdma.org/" target="_blank" class="block">
+                                <h4 class="font-bold text-sky-700 mb-1 flex justify-between items-center">ITRPV (Teknoloji Yol Haritası) <span class="text-xs">↗</span></h4>
+                                <p class="text-xs text-slate-600">Önümüzdeki 10 yıl boyunca hücre/modül teknolojilerinde (wafer boyutları, gümüş kullanımı, hücre mimarileri) sektörün nereye evrileceğini gösteren net projeksiyon rehberidir.</p>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 text-white p-6 rounded-xl shadow-sm flex flex-col">
+                    <h3 class="text-lg font-black text-sky-300 mb-4 flex items-center gap-2">
+                        <span>📈</span> Küresel Pazar Analizleri & Haberler
+                    </h3>
+                    <div class="space-y-3 flex-1">
+                        <a href="https://www.pv-magazine.com/" target="_blank" class="block bg-slate-700 hover:bg-slate-600 p-3 rounded border border-slate-600 transition">
+                            <h4 class="font-bold text-sky-100 text-sm mb-1 flex justify-between">pv magazine International <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-300">Güneş enerjisi sektörünün "New York Times"ıdır. Haberler, teknoloji incelemeleri ve fiyat endeksleri.</p>
+                        </a>
+                        <a href="https://about.bnef.com/" target="_blank" class="block bg-slate-700 hover:bg-slate-600 p-3 rounded border border-slate-600 transition">
+                            <h4 class="font-bold text-sky-100 text-sm mb-1 flex justify-between">BNEF - BloombergNEF <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-300">Finansal otorite. "Tier 1 Modül Üreticileri Listesi" finansman sağlayan kurumlar için referans kabul edilir.</p>
+                        </a>
+                        <a href="https://taiyangnews.info/" target="_blank" class="block bg-slate-700 hover:bg-slate-600 p-3 rounded border border-slate-600 transition">
+                            <h4 class="font-bold text-sky-100 text-sm mb-1 flex justify-between">TaiyangNews <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-300">Derinlemesine teknik üretim raporları sunan mükemmel ve ücretsiz bir kaynaktır.</p>
+                        </a>
+                        <a href="https://www.pv-tech.org/" target="_blank" class="block bg-slate-700 hover:bg-slate-600 p-3 rounded border border-slate-600 transition">
+                            <h4 class="font-bold text-sky-100 text-sm mb-1 flex justify-between">PV Tech <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-300">Tedarik zinciri ve büyük ölçekli projeler (utility-scale) odaklı haber platformu.</p>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                        <span>🇹🇷</span> Türkiye Pazarı & Yerel Gelişmeler
+                    </h3>
+                    <div class="space-y-3 flex-1">
+                        <a href="https://www.gunder.org.tr/" target="_blank" class="block bg-white hover:bg-sky-50 p-3 rounded border shadow-sm transition">
+                            <h4 class="font-bold text-sky-700 text-sm mb-1 flex justify-between">GÜNDER <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-600">Sektörün en köklü derneklerinden biri. Mevzuat değişiklikleri ve sektörel raporlar.</p>
+                        </a>
+                        <a href="https://gensed.org/" target="_blank" class="block bg-white hover:bg-sky-50 p-3 rounded border shadow-sm transition">
+                            <h4 class="font-bold text-sky-700 text-sm mb-1 flex justify-between">GENSED <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-600">Endüstriyel çatılar ve depolama konusunda aktifler. Webinarları yerel mevzuat için çok faydalıdır.</p>
+                        </a>
+                        <a href="https://www.enerjigunlugu.net/" target="_blank" class="block bg-white hover:bg-sky-50 p-3 rounded border shadow-sm transition">
+                            <h4 class="font-bold text-sky-700 text-sm mb-1 flex justify-between">Enerji Günlüğü <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-600">Resmi gazete kararları ve yerel şebeke (TEİAŞ/EPDK) haberleri.</p>
+                        </a>
+                        <a href="https://www.temizenerji.org/" target="_blank" class="block bg-white hover:bg-sky-50 p-3 rounded border shadow-sm transition">
+                            <h4 class="font-bold text-sky-700 text-sm mb-1 flex justify-between">Temiz Enerji <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-600">Türkiye enerji pazarındaki güncel sürdürülebilirlik haberleri.</p>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        // YENİ MODÜL KODLARI BURAYA EKLENECEK
 
     </div>
 
