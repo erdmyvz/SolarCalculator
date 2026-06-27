@@ -32,6 +32,10 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         
+        /* Kaydırma Animasyonları */
+        .reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s ease-out; }
+        .reveal.is-visible { opacity: 1; transform: translateY(0); }
+        
         /* Yeni Landing Page Tasarım Sınıfları */
         .tech-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
         .glass-panel { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -57,6 +61,7 @@
             <div class="flex justify-between items-center p-4 max-w-7xl mx-auto">
                 <a href="#home" class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">epcmerkezim</a>
                 <div class="space-x-4 flex items-center">
+                    <button onclick="document.getElementById('pricingSection').scrollIntoView()" class="text-sm font-bold text-gray-300 hover:text-white transition">Fiyatlandırma</button>
                     <button onclick="document.getElementById('trackingSection').scrollIntoView()" class="text-sm font-bold text-gray-300 hover:text-white transition">Başvuru Takip</button>
                     <a href="#auth" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-bold text-sm transition shadow-lg">Kurumsal EPC Girişi</a>
                 </div>
@@ -70,17 +75,17 @@
                 <p class="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-12">Evinizin güneş enerjisi potansiyelini hesaplayın, 3D ortamda simüle edin ve uzman kurulumcu firmalardan anında teklif alın.</p>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
-                    <button onclick="openPublicModule('calculatorModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition duration-300 text-left cursor-pointer group">
+                    <button onclick="openPublicModule('calculatorModule')" class="glass-panel reveal p-6 rounded-2xl hover:-translate-y-2 transition duration-300 text-left cursor-pointer group">
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">📊</div>
                         <h3 class="text-xl font-bold text-white mb-2">Çatı Güç Hesaplayıcı</h3>
                         <p class="text-sm text-slate-400">Faturanıza göre ihtiyacınız olan GES kapasitesini ücretsiz hesaplayın.</p>
                     </button>
-                    <button onclick="openPublicModule('simulationModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition duration-300 text-left cursor-pointer group">
+                    <button onclick="openPublicModule('simulationModule')" class="glass-panel reveal p-6 rounded-2xl hover:-translate-y-2 transition duration-300 text-left cursor-pointer group">
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">🏠</div>
                         <h3 class="text-xl font-bold text-white mb-2">İnteraktif 3D Simülasyon</h3>
                         <p class="text-sm text-slate-400">Evinizin enerji bağımsızlığını 3D ortamda görselleştirin.</p>
                     </button>
-                    <button onclick="openPublicModule('evCalcModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition duration-300 text-left cursor-pointer group">
+                    <button onclick="openPublicModule('evCalcModule')" class="glass-panel reveal p-6 rounded-2xl hover:-translate-y-2 transition duration-300 text-left cursor-pointer group">
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">🚗</div>
                         <h3 class="text-xl font-bold text-white mb-2">EV & Solar Analizi</h3>
                         <p class="text-sm text-slate-400">Elektrikli aracınızın güneşten nasıl şarj olacağını planlayın.</p>
@@ -95,16 +100,33 @@
                 <p class="text-slate-600 mb-12">Projeniz için ücretsiz teknik keşif başlatın veya mevcut sisteminiz için servis çağırın. Talebiniz anında kayıtlı EPC firmalarının sistemine düşer.</p>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-                    <div onclick="openLeadModal('kurulum')" class="bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-emerald-300 transition duration-300 cursor-pointer text-left relative overflow-hidden">
+                    <div onclick="openLeadModal('kurulum')" class="reveal bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-emerald-300 transition duration-300 cursor-pointer text-left relative overflow-hidden">
                         <div class="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">ÜCRETSİZ KEŞİF</div>
                         <div class="text-4xl mb-4">☀️</div>
                         <h3 class="text-2xl font-bold text-slate-800 mb-2">Sıfırdan GES Kurulumu</h3>
                         <p class="text-slate-500 text-sm">Uzman mühendislerimizden çatı analizi ve anahtar teslim kurulum teklifi almak için formu doldurun.</p>
                     </div>
-                    <div onclick="openLeadModal('servis')" class="bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-red-300 transition duration-300 cursor-pointer text-left">
+                    <div onclick="openLeadModal('servis')" class="reveal bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-red-300 transition duration-300 cursor-pointer text-left">
                         <div class="text-4xl mb-4">🔧</div>
                         <h3 class="text-2xl font-bold text-slate-800 mb-2">Teknik Servis & Arıza</h3>
                         <p class="text-slate-500 text-sm">Mevcut inverter veya batarya sistemlerinizdeki arızalar için profesyonel destek talebi oluşturun.</p>
+                    </div>
+                </div>
+
+                <!-- FİYATLANDIRMA KARTLARI BÖLÜMÜ -->
+                <div id="pricingSection" class="mb-20 pt-12">
+                    <h2 class="text-3xl font-black text-slate-800 mb-2">Kurumsal Planlar</h2>
+                    <p class="text-slate-600 mb-8">Firmanızın büyüklüğüne uygun esnek paket seçin. (14 günlük ücretsiz deneme)</p>
+                    
+                    <!-- Aylık / Yıllık Seçimi -->
+                    <div class="flex justify-center gap-4 mb-12">
+                        <button id="btnBillingMonthly" class="bg-slate-900 text-white font-bold px-8 py-3 rounded-lg transition shadow-md">Aylık Fatura</button>
+                        <button id="btnBillingYearly" class="bg-slate-100 text-slate-500 hover:text-slate-800 font-bold px-8 py-3 rounded-lg transition border border-slate-300">Yıllık Fatura (2 ay hediye)</button>
+                    </div>
+
+                    <!-- Fiyat Kartları Grid -->
+                    <div id="pricingCardsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                        <!-- Dinamik olarak JS tarafından basılacak -->
                     </div>
                 </div>
 
@@ -210,66 +232,69 @@
     </div>
 
     <!-- ============================================================================ -->
-    <!-- 4. APP CONTAINER (DASHBOARD) - LOGİN OLMUŞ FİRMALAR & ADMİN İÇİN             -->
+    <!-- APP CONTAINER (DASHBOARD) - LOGIN OLMUŞ FIRMALAR & ADMIN İÇİN             -->
     <!-- ============================================================================ -->
     <div id="appContainer" class="hidden w-full px-4 md:px-8 pb-10 bg-slate-50 min-h-screen">
         
         <!-- DASHBOARD ÜST MENÜ (Header) -->
-        <div class="w-full max-w-7xl mx-auto mt-4 mb-8 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <div class="w-full max-w-7xl mx-auto mt-4 mb-8 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-wrap gap-4">
             <a href="#home" class="text-xl font-extrabold text-slate-800 flex items-center gap-2">
                 <span class="text-2xl">☀️</span> EPC <span class="text-emerald-600">Merkezim</span>
             </a>
-            <div class="relative">
-                <button id="btnProfile" class="flex items-center space-x-3 focus:outline-none hover:bg-slate-50 p-2 rounded-lg transition border border-transparent hover:border-slate-200">
-                    <div class="text-right hidden md:block">
-                        <p id="userNameDisplay" class="text-sm font-bold text-slate-800">Yükleniyor...</p>
-                        <p id="userCompanyDisplay" class="text-xs text-slate-500 font-medium">Yükleniyor...</p>
+            <div class="flex items-center gap-3">
+                <div id="userPlanBadge" class="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">Başlangıç Planı · Deneme Sürümü</div>
+                <div class="relative">
+                    <button id="btnProfile" class="flex items-center space-x-3 focus:outline-none hover:bg-slate-50 p-2 rounded-lg transition border border-transparent hover:border-slate-200">
+                        <div class="text-right hidden md:block">
+                            <p id="userNameDisplay" class="text-sm font-bold text-slate-800">Yükleniyor...</p>
+                            <p id="userCompanyDisplay" class="text-xs text-slate-500 font-medium">Yükleniyor...</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg border border-emerald-200 shadow-sm"><span id="userInitials">?</span></div>
+                    </button>
+                    
+                    <!-- Profil Açılır Menüsü -->
+                    <div id="profileDropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 bg-slate-50"><p id="userEmailDisplay" class="text-xs text-slate-500 break-all font-mono"></p></div>
+                        <a href="#home" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 border-b">Ziyaretçi Arayüzüne Dön</a>
+                        <button id="btnLogout" class="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 font-bold transition">Sistemden Güvenli Çıkış</button>
                     </div>
-                    <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg border border-emerald-200 shadow-sm"><span id="userInitials">?</span></div>
-                </button>
-                
-                <!-- Profil Açılır Menüsü -->
-                <div id="profileDropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-50 overflow-hidden">
-                    <div class="p-4 border-b border-slate-100 bg-slate-50"><p id="userEmailDisplay" class="text-xs text-slate-500 break-all font-mono"></p></div>
-                    <a href="#home" class="block w-full text-left px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 border-b">Ziyaretçi Arayüzüne Dön</a>
-                    <button id="btnLogout" class="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 font-bold transition">Sistemden Güvenli Çıkış</button>
                 </div>
             </div>
         </div>
 
-        <!-- DASHBOARD ANA MENÜ SEÇENEKLERİ (Tüm Modüllerin Başlangıç Noktası) -->
+        <!-- DASHBOARD ANA MENÜ SEÇENEKLERİ -->
         <div id="mainMenu" class="w-full max-w-7xl mx-auto animate-fade-in">
             <h1 class="text-3xl font-extrabold text-slate-800 mb-2 tracking-tight">Solar EPC Yönetim Paneli</h1>
             <p class="text-slate-500 mb-8 font-medium">Satış, proje takibi ve mühendislik analizlerinizi tek merkezden yönetin.</p>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 
-                <!-- 0. ADMİN KARTI (SADECE ERDEM YAVUZ / ADMIN GÖREBİLİR) -->
+                <!-- 0. ADMİN KARTI -->
                 <div id="adminPanelCard" class="hidden cursor-pointer bg-slate-900 text-white rounded-xl p-6 shadow-2xl hover:shadow-emerald-500/20 transition-all transform hover:-translate-y-1 col-span-1 md:col-span-2 lg:col-span-3 border border-slate-700">
                     <div class="flex items-center justify-between mb-2">
                         <h2 class="text-2xl font-black flex items-center gap-2 text-emerald-400"><span>👑</span> Süper Admin (Sistem Yöneticisi)</h2>
                         <span class="bg-red-600 text-xs px-3 py-1 rounded-full font-bold shadow">Tam Yetki</span>
                     </div>
-                    <p class="text-slate-300 text-sm">Platformdaki tüm firma hareketlerini, kullanıcıları ve genel sistem başvuru havuzunu buradan denetleyin.</p>
+                    <p class="text-slate-300 text-sm">Platformdaki tüm firma hareketlerini, kullanıcıları, fiyatlandırma planlarını ve genel sistem başvuru havuzunu buradan denetleyin.</p>
                 </div>
                 
-                <!-- 1. CRM VE PROJE YÖNETİMİ (Kalp Modül) -->
+                <!-- 1. CRM VE PROJE YÖNETİMİ -->
                 <button id="btnGoCRM" class="cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 text-left col-span-1 md:col-span-2 relative overflow-hidden group">
                     <div class="absolute -right-4 -top-4 text-7xl opacity-10 group-hover:scale-110 transition duration-500">💼</div>
                     <div class="flex items-center justify-between mb-4 relative z-10">
                         <h2 class="text-2xl font-bold">Satış CRM & Proje Takip</h2>
                         <span class="bg-emerald-800 text-xs px-3 py-1 rounded-full font-bold border border-emerald-500 shadow-inner">Aktif Modül</span>
                     </div>
-                    <p class="text-emerald-100 text-sm leading-relaxed relative z-10">Web sitenizden gelen Lead'leri (başvuruları) toplayın, müşteri anketlerini doldurun ve projenin TEDAŞ/Kurulum aşamalarını takip edin.</p>
+                    <p class="text-emerald-100 text-sm leading-relaxed relative z-10">Web sitenizden gelen Lead'leri toplayın, müşteri anketlerini doldurun ve projenin aşamalarını takip edin.</p>
                 </button>
 
-                <!-- 2. FİRMA YÖNETİMİ VE YZ DANIŞMANI -->
+                <!-- 2. KURUMSAL ZEKA & YZ -->
                 <button id="btnGoCompanyMgmt" class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-white rounded-xl p-6 shadow-lg transition-all transform hover:-translate-y-1 text-left border border-slate-700">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold flex items-center gap-2"><span>🏢</span> Kurumsal Zeka & YZ</h2><span class="bg-slate-900 text-xs px-3 py-1 rounded-full font-bold text-emerald-400 border border-slate-600">AI Destekli</span></div>
                     <p class="text-slate-300 text-sm">Firmanızın operasyon profilini çıkarın, yapay zekadan pazarlama ve süreç reçetesi alın.</p>
                 </button>
                 
-                <!-- 3. DİĞER HESAPLAMA VE SİMÜLASYON ARAÇLARI -->
+                <!-- 3. HESAPLAMA ARAÇLARI -->
                 <div id="btnGoCalculator" class="cursor-pointer bg-blue-600 text-white rounded-xl p-6 shadow-lg hover:bg-blue-700 transition-all transform hover:-translate-y-1">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold flex items-center gap-2"><span>⚡</span> Güç & Fatura Hesaplayıcı</h2></div>
                     <p class="text-blue-100 text-sm leading-relaxed">Müşteriye özel tüketim analizi yapın ve saniyeler içinde PDF formatında resmi teklif çıktısı alın.</p>
@@ -277,7 +302,7 @@
 
                 <div id="btnGoSimulation" class="cursor-pointer bg-indigo-600 text-white rounded-xl p-6 shadow-lg hover:bg-indigo-700 transition-all transform hover:-translate-y-1">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold flex items-center gap-2"><span>🏠</span> 3D Mimari Simülasyon</h2></div>
-                    <p class="text-indigo-100 text-sm leading-relaxed">Müşteri görüşmelerinde batarya ve ısı pompası senaryolarını canlı 3D ortamda bağımsızlık skoruyla oynatın.</p>
+                    <p class="text-indigo-100 text-sm leading-relaxed">Müşteri görüşmelerinde batarya ve ısı pompası senaryolarını canlı 3D ortamda oynatın.</p>
                 </div>
 
                 <div id="btnGoEVCalc" class="cursor-pointer bg-teal-600 text-white rounded-xl p-6 shadow-lg hover:bg-teal-700 transition-all transform hover:-translate-y-1">
@@ -287,7 +312,7 @@
 
                 <button id="btnGoSalesAssistant" class="cursor-pointer bg-orange-600 text-white rounded-xl p-6 shadow-lg hover:bg-orange-700 transition-all transform hover:-translate-y-1 text-left">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold flex items-center gap-2"><span>🧠</span> Satış Copilot (İtiraz)</h2></div>
-                    <p class="text-orange-100 text-sm leading-relaxed">Müşteri "Çok pahalı" veya "Düşünmem lazım" dediğinde sahada kullanabileceğiniz psikolojik hazır cevap senaryoları.</p>
+                    <p class="text-orange-100 text-sm leading-relaxed">Müşteri "Çok pahalı" dediğinde sahada kullanabileceğiniz hazır cevap senaryoları.</p>
                 </button>
 
                 <button id="btnGoRegulations" class="cursor-pointer bg-slate-700 hover:bg-slate-600 text-white rounded-xl p-6 shadow-lg transition-all transform hover:-translate-y-1 text-left border border-slate-600">
@@ -297,13 +322,23 @@
 
                 <button id="btnGoEducation" class="cursor-pointer bg-amber-600 hover:bg-amber-700 text-white rounded-xl p-6 shadow-lg transition-all transform hover:-translate-y-1 text-left">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold flex items-center gap-2"><span>🎓</span> Sektör Sözlüğü (Eğitim)</h2></div>
-                    <p class="text-amber-100 text-sm leading-relaxed">Yeni başlayan satış ekipleri için kW, kWh, Aktif/Reaktif güç kavramlarının kolay ve analojik anlatımı.</p>
+                    <p class="text-amber-100 text-sm leading-relaxed">Yeni başlayan satış ekipleri için kW, kWh, Aktif/Reaktif güç kavramlarının kolay anlatımı.</p>
+                </button>
+
+                <button id="btnGoSectoral" class="cursor-pointer bg-violet-600 hover:bg-violet-700 text-white rounded-xl p-6 shadow-lg transition-all transform hover:-translate-y-1 text-left">
+                    <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold flex items-center gap-2"><span>🏭</span> Sektörel Analiz</h2></div>
+                    <p class="text-violet-100 text-sm leading-relaxed">Sektöre göre fiyatlandırma stratejileri, pazar analizi ve rekabet pozisyonu değerlendirmesi.</p>
+                </button>
+
+                <button id="btnGoTechSupport" class="cursor-pointer bg-red-600 hover:bg-red-700 text-white rounded-xl p-6 shadow-lg transition-all transform hover:-translate-y-1 text-left">
+                    <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold flex items-center gap-2"><span>🔧</span> Teknik Servis</h2></div>
+                    <p class="text-red-100 text-sm leading-relaxed">Kurulumcu firmalar olarak müşteri sistemlerindeki arızaları merkeze iletebilirsiniz.</p>
                 </button>
             </div>
         </div>
 
         <!-- ============================================================================ -->
-        <!-- M-1: CRM VE PROJE YÖNETİMİ MODÜLÜ (Tablo, Dashboard ve Iframe Entegrasyonu)  -->
+        <!-- M-1: CRM VE PROJE YÖNETİMİ MODÜLÜ                                         -->
         <!-- ============================================================================ -->
         <div id="crmModule" class="hidden bg-slate-50 p-6 md:p-8 rounded-xl shadow-lg w-full max-w-7xl mx-auto mt-4 animate-fade-in text-slate-800">
             
@@ -342,7 +377,7 @@
                 </div>
             </div>
 
-            <!-- FİLTRE VE MÜŞTERİ LİSTESİ TABLOSU -->
+            <!-- MÜŞTERİ LİSTESİ TABLOSU -->
             <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="p-5 bg-slate-100 border-b flex flex-col md:flex-row gap-4 items-center justify-between">
                     <h3 class="font-black text-slate-700 text-sm flex items-center gap-2"><span>📋</span> Satış ve Operasyon Tablosu</h3>
@@ -369,18 +404,17 @@
                             </tr>
                         </thead>
                         <tbody id="crmLeadsTableBody" class="divide-y divide-slate-100 text-slate-700">
-                            <!-- JS Dinamik Müşteri Satırları Buraya Gelecek -->
+                            <!-- Dinamik müşteri satırları buraya gelecek -->
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- M-1.1 CRM TEKNİK ANKET MODALI (Detaylı Müşteri Veri Kartı) -->
+        <!-- M-1.1 CRM TEKNİK ANKET MODALI -->
         <div id="crmDetailModal" class="hidden fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col animate-scale-in">
                 
-                <!-- Modal Başlığı -->
                 <div class="p-6 border-b bg-slate-900 text-white flex justify-between items-center rounded-t-2xl sticky top-0 z-10 shadow-md">
                     <div>
                         <h3 id="modalLeadName" class="font-black text-xl mb-1">Müşteri Yönetim Kartı</h3>
@@ -392,11 +426,9 @@
                     <button onclick="crmCloseModal()" class="text-slate-400 hover:text-white text-3xl font-light transition">&times;</button>
                 </div>
 
-                <!-- Modal Form Gövdesi -->
                 <div class="p-6 space-y-6 flex-1 bg-slate-50">
                     <input type="hidden" id="modalLeadId">
                     
-                    <!-- İletişim ve Süreç Aşaması Özeti -->
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6 items-center relative overflow-hidden">
                         <div class="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500"></div>
                         <div>
@@ -404,7 +436,7 @@
                             <p class="text-sm font-medium text-slate-700 leading-relaxed" id="modalLeadContact">📞 - <br>✉️ -</p>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-2">Projenin Güncel Aşaması (Buradan Güncelleyin)</label>
+                            <label class="block text-[10px] font-black text-emerald-600 uppercase tracking-wider mb-2">Projenin Güncel Aşaması</label>
                             <select id="modalStatusSelect" class="w-full bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-lg p-3 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-emerald-500 transition cursor-pointer">
                                 <option value="yeni_basvuru">1. Yeni Başvuru Bekliyor</option>
                                 <option value="arandi_gorusuldu">2. Arandı / İletişim Kuruldu</option>
@@ -417,10 +449,9 @@
                         </div>
                     </div>
 
-                    <!-- Teknik Detaylar Grid (Fatura & Yeni Teknolojiler) -->
+                    <!-- Teknik Detaylar Grid -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         
-                        <!-- Sol: Fatura ve Tüketim -->
                         <div class="space-y-5 bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:border-slate-300 transition">
                             <h4 class="font-black text-sm text-slate-800 border-b pb-2 flex items-center gap-2"><span>⚡</span> Tüketim & Fatura Profili</h4>
                             
@@ -434,7 +465,7 @@
                             
                             <div>
                                 <label class="block text-xs font-bold text-slate-600 mb-1.5">Evdeki Temel Tüketim Unsurları</label>
-                                <textarea id="fieldConsumptions" rows="2" class="w-full border border-slate-300 rounded-lg p-3 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition resize-none custom-scrollbar" placeholder="Örn: Yerden ısıtma, Havuz pompası, 3 adet Klima, Akıllı ev sistemi..."></textarea>
+                                <textarea id="fieldConsumptions" rows="2" class="w-full border border-slate-300 rounded-lg p-3 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition resize-none custom-scrollbar" placeholder="Yerden ısıtma, Havuz pompası, Klima vb..."></textarea>
                             </div>
                             
                             <div class="grid grid-cols-2 gap-4">
@@ -453,7 +484,6 @@
                             </div>
                         </div>
 
-                        <!-- Sağ: EV, Batarya ve Kesinti -->
                         <div class="space-y-5 bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:border-slate-300 transition">
                             <h4 class="font-black text-sm text-slate-800 border-b pb-2 flex items-center gap-2"><span>🚗</span> Yeni Nesil Teknolojiler & Yedekleme</h4>
                             
@@ -491,15 +521,14 @@
                         </div>
                     </div>
 
-                    <!-- Ortak: Müşteri Notları -->
+                    <!-- Müşteri Notları -->
                     <div class="bg-amber-50 p-6 rounded-xl border border-amber-200 shadow-sm relative overflow-hidden">
                         <div class="absolute left-0 top-0 bottom-0 w-1 bg-amber-400"></div>
                         <label class="block text-xs font-black text-amber-900 uppercase tracking-wider mb-2">Satış / Mühendislik Ek Notları</label>
-                        <textarea id="fieldNotes" rows="3" class="w-full border border-amber-300 bg-white rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-amber-500 transition resize-none custom-scrollbar" placeholder="Müşterinin özel bir çatı tipi (kiremit/sandviç panel), finansman/kredi talebi veya panel marka takıntısı var mı? Görüşme detaylarını buraya not alın..."></textarea>
+                        <textarea id="fieldNotes" rows="3" class="w-full border border-amber-300 bg-white rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-amber-500 transition resize-none custom-scrollbar" placeholder="Müşterinin özel bir çatı tipi, finansman talebi veya panel marka takıntısı var mı?"></textarea>
                     </div>
                 </div>
 
-                <!-- Modal İşlem Butonları -->
                 <div class="p-5 border-t bg-white flex justify-end gap-3 rounded-b-2xl sticky bottom-0 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <button onclick="crmCloseModal()" class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold transition">Değişiklikleri İptal Et</button>
                     <button onclick="crmSaveLeadDetails()" class="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition shadow-lg flex items-center gap-2">
@@ -509,7 +538,7 @@
             </div>
         </div>
 
-        <!-- M-1.2 CRM IFRAME ENTEGRASYON MODALI (Web Sitesine Ekleme Kodu) -->
+        <!-- M-1.2 CRM IFRAME ENTEGRASYON MODALI -->
         <div id="crmIntegrationModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-scale-in">
                 <div class="bg-slate-900 p-5 flex justify-between items-center text-white border-b border-slate-700">
@@ -517,7 +546,7 @@
                     <button onclick="document.getElementById('crmIntegrationModal').classList.add('hidden')" class="text-3xl font-light text-slate-400 hover:text-white transition">&times;</button>
                 </div>
                 <div class="p-8 text-slate-700 space-y-6 bg-slate-50">
-                    <p class="text-sm leading-relaxed text-slate-600">Firmanıza özel oluşturulmuş aşağıdaki HTML (Iframe) kodunu kopyalayıp kendi web sitenizin (WordPress, Wix, Özel Yazılım vb.) iletişim sayfasına yapıştırın. Sitenizden form dolduran tüm müşteriler <strong>otomatik olarak doğrudan bu CRM paneline düşecektir.</strong></p>
+                    <p class="text-sm leading-relaxed text-slate-600">Firmanıza özel oluşturulmuş aşağıdaki HTML (Iframe) kodunu kopyalayıp kendi web sitenizin iletişim sayfasına yapıştırın. Sitenizden form dolduran tüm müşteriler otomatik olarak bu CRM paneline düşecektir.</p>
                     
                     <div class="bg-slate-900 p-5 rounded-xl relative group shadow-inner border border-slate-700">
                         <button onclick="navigator.clipboard.writeText(document.getElementById('iframeCodeStr').innerText); alert('Iframe kodu başarıyla kopyalandı!');" class="absolute top-3 right-3 bg-slate-700 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition opacity-0 group-hover:opacity-100 shadow">Kodu Kopyala</button>
@@ -528,14 +557,14 @@
                     
                     <div class="bg-blue-50 p-4 rounded-xl text-xs text-blue-800 border border-blue-200 font-medium leading-relaxed flex gap-3">
                         <span class="text-xl">💡</span>
-                        <div><strong>Önemli Müşteri Deneyimi:</strong> Yatırımcılarınız bu formu doldurduğunda, onlara anında SMS veya E-posta ile benzersiz bir <strong>Proje Takip Kodu</strong> gider. Sizin CRM'de güncellediğiniz durum aşamalarını (Örn: Sözleşme imzalandı, TEDAŞ aşamasında vb.) kendi ekranlarından şeffafça izleyebilirler.</div>
+                        <div><strong>Önemli:</strong> Ziyaretçiler bu formu doldurduğunda anında SMS/E-posta ile benzersiz bir Proje Takip Kodu alırlar. Sizin CRM'de güncellediğiniz durum aşamalarını şeffafça izleyebilirler.</div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- ============================================================================ -->
-        <!-- M-2: SÜPER ADMİN PANELİ (SADECE SİSTEM YÖNETİCİSİ - ERDEM YAVUZ GÖREBİLİR)    -->
+        <!-- M-2: SÜPER ADMİN PANELİ                                                    -->
         <!-- ============================================================================ -->
         <div id="adminModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-7xl mx-auto mt-4 animate-fade-in border-t-4 border-red-600">
             <div class="mb-8 border-b border-slate-200 pb-4 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -547,13 +576,13 @@
             </div>
             
             <div class="space-y-12">
-                <!-- ADMİN: FİRMALAR TABLOSU -->
+                <!-- FİRMALAR TABLOSU -->
                 <section>
                     <h2 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2"><span>🏢</span> Sisteme Kayıtlı EPC Firmaları</h2>
                     <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-sm">
                         <table class="w-full text-left text-sm bg-white">
                             <thead class="bg-slate-900 text-white font-bold text-xs uppercase tracking-wider">
-                                <tr><th class="p-4 pl-6">Firma Resmî Adı</th><th class="p-4">Kayıtlı Yetkili</th><th class="p-4">İletişim (Tel & Mail)</th><th class="p-4">Veritabanı Rolü</th></tr>
+                                <tr><th class="p-4 pl-6">Yetkili Adı</th><th class="p-4">Firma Resmî Adı</th><th class="p-4">İletişim (Tel)</th><th class="p-4">Plan</th><th class="p-4">Abonelik Durumu</th><th class="p-4">Veritabanı Rolü</th><th class="p-4">İşlem</th></tr>
                             </thead>
                             <tbody id="usersTableBody" class="divide-y divide-slate-100">
                                 <!-- Firmalar dinamik olarak buraya basılır -->
@@ -562,33 +591,54 @@
                     </div>
                 </section>
 
-                <!-- ADMİN: GENEL YATIRIMCI HAVUZU (Landing'den doğrudan gelen organik talepler) -->
+                <!-- GENEL YATIRIMCI HAVUZU -->
                 <section>
                     <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 shadow-sm relative overflow-hidden">
                         <div class="absolute right-0 top-0 w-32 h-32 bg-blue-100 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
                         <h2 class="text-lg font-black text-blue-900 mb-1 flex items-center gap-2 relative z-10"><span>🌐</span> Genel Yatırımcı Başvuru Havuzu</h2>
-                        <p class="text-xs text-blue-700 mb-6 font-medium relative z-10">Herhangi bir EPC firmasının iframe'i üzerinden değil, doğrudan platform anasayfasından gelen genel organik kurulum başvuruları. (Bu talepler manuel olarak firmalara atanmalıdır).</p>
+                        <p class="text-xs text-blue-700 mb-6 font-medium relative z-10">Anasayfadan doğrudan gelen organik kurulum başvuruları (Bu talepler manuel olarak firmalara atanmalıdır).</p>
                         <div id="adminLeadsList" class="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
                             <!-- Havuz kayıtları dinamik basılır -->
                         </div>
                     </div>
                 </section>
 
-                <!-- ADMİN: TEKNİK SERVİS TALEPLERİ HAVUZU -->
+                <!-- TEKNİK SERVİS HAVUZU -->
                 <section>
                     <div class="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm relative overflow-hidden">
                         <div class="absolute right-0 top-0 w-32 h-32 bg-red-100 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
                         <h2 class="text-lg font-black text-red-900 mb-1 flex items-center gap-2 relative z-10"><span>🔧</span> Teknik Servis ve Arıza Havuzu</h2>
-                        <p class="text-xs text-red-700 mb-6 font-medium relative z-10">Kayıtlı EPC firmalarının veya son kullanıcıların kendi sistemleri (Victron, Fronius vb.) için açtıkları genel destek/servis biletleri (ticket).</p>
+                        <p class="text-xs text-red-700 mb-6 font-medium relative z-10">Firmalar tarafından açılan genel destek/servis biletleri (ticket).</p>
                         <div id="adminTicketsList" class="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
                             <!-- Arıza kayıtları dinamik basılır -->
                         </div>
                     </div>
                 </section>
+
+                <!-- FİYATLANDIRMA PLANLARI YÖNETİMİ -->
+                <section>
+                    <div class="bg-green-50 border border-green-200 rounded-xl p-6 shadow-sm relative overflow-hidden">
+                        <div class="absolute right-0 top-0 w-32 h-32 bg-green-100 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+                        <h2 class="text-lg font-black text-green-900 mb-1 flex items-center gap-2 relative z-10"><span>💰</span> Fiyatlandırma Planları</h2>
+                        <p class="text-xs text-green-700 mb-4 font-medium relative z-10">Paket fiyatlandırması ve özelliklerini buradan doğrudan yönetin. Değişiklikler anında web sitesine yansır.</p>
+                        <div class="overflow-x-auto border border-green-200 rounded-lg mb-4 relative z-10">
+                            <table class="w-full text-left text-xs bg-white">
+                                <thead class="bg-green-800 text-white font-bold uppercase tracking-wider">
+                                    <tr><th class="p-2 pl-4">Plan Adı</th><th class="p-2">Fiyat (USD)</th><th class="p-2">Dönem</th><th class="p-2">Sıra</th><th class="p-2">Popüler</th><th class="p-2">Aktif</th><th class="p-2 pr-4">İşlem</th></tr>
+                                </thead>
+                                <tbody id="adminPricingTableBody" class="divide-y divide-green-100">
+                                    <!-- Planlar dinamik olarak buraya basılır -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <button id="btnAdminAddPlan" class="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-2 rounded-lg text-sm transition shadow relative z-10">+ Yeni Plan Ekle</button>
+                    </div>
+                </section>
             </div>
         </div>
+
         <!-- ============================================================================ -->
-        <!-- M-3: GÜÇ VE FATURA HESAPLAYICI (Orijinal Modül)                              -->
+        <!-- M-3: GÜÇ VE FATURA HESAPLAYICI MODÜLÜ                                      -->
         <!-- ============================================================================ -->
         <div id="calculatorModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
@@ -648,7 +698,7 @@
         </div>
 
         <!-- ============================================================================ -->
-        <!-- M-4: 3D SİMÜLASYON MODÜLÜ (Eski Orijinal Modül Korundu)                      -->
+        <!-- M-4: 3D SİMÜLASYON MODÜLÜ                                                  -->
         <!-- ============================================================================ -->
         <div id="simulationModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center"><button id="btnBackToMenuFromSim" class="text-slate-500 hover:text-indigo-600 font-bold flex items-center transition">← Yönetim Paneli</button><span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">3D Enerji Simülasyonu</span></div>
@@ -658,7 +708,6 @@
             <div id="three-canvas-container" class="w-full bg-slate-900 rounded-xl flex items-center justify-center border-4 border-indigo-100 relative overflow-hidden shadow-inner" style="height: 65vh;">
                 <div id="loading3D" class="text-center z-10"><div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div><h3 class="text-indigo-400 font-bold text-xl">3D Render Motoru Başlatılıyor...</h3></div>
                 
-                <!-- Bağımsızlık Skorbordu -->
                 <div class="absolute top-4 left-4 bg-white/10 backdrop-blur-md p-5 rounded-xl border border-white/20 text-white w-72 shadow-2xl z-10 pointer-events-none">
                     <h4 class="font-bold mb-3 border-b border-white/20 pb-2 flex justify-between items-center"><span>Bağımsızlık Skoru</span><span id="scoreDisplay" class="text-xs bg-red-500 px-2 py-1 rounded text-white font-bold">%0</span></h4>
                     <div class="flex justify-between text-sm mb-2 font-medium"><span>Şebeke Bağımlılığı:</span><span id="gridDepDisplay" class="text-red-400 font-bold">%100</span></div>
@@ -666,18 +715,17 @@
                     <div class="flex justify-between text-sm font-medium"><span>Karbon Ayak İzi:</span><span id="carbonDisplay" class="text-yellow-400 font-bold">Yüksek Düzeyde</span></div>
                 </div>
                 
-                <!-- Alt Kontrol Paneli -->
                 <div class="absolute bottom-6 left-0 right-0 flex justify-center space-x-4 z-10 flex-wrap gap-y-2">
                     <button id="btnSimGES" class="bg-indigo-600 hover:bg-indigo-700 transition text-white px-5 py-2.5 rounded-lg shadow-lg border border-indigo-400 font-bold">☀️ Güneş Paneli</button>
                     <div class="flex items-center bg-indigo-600 rounded-lg border border-indigo-400 overflow-hidden shadow-lg"><button id="btnSimBatMinus" class="px-4 py-2.5 bg-indigo-800 hover:bg-indigo-900 transition text-white font-black">-</button><span class="px-4 text-white font-bold text-sm w-32 text-center">🔋 Batarya: <span id="batCountDisplay">0</span></span><button id="btnSimBatPlus" class="px-4 py-2.5 bg-indigo-800 hover:bg-indigo-900 transition text-white font-black">+</button></div>
-                    <div class="flex items-center bg-indigo-600 rounded-lg border border-indigo-400 overflow-hidden shadow-lg"><button id="btnSimEVMinus" class="px-4 py-2.5 bg-indigo-800 hover:bg-indigo-900 transition text-white font-black">-</button><span class="px-4 text-white font-bold text-sm w-32 text-center">🚗 Elektrikli Araç: <span id="evCountDisplay">0</span></span><button id="btnSimEVPlus" class="px-4 py-2.5 bg-indigo-800 hover:bg-indigo-900 transition text-white font-black">+</button></div>
+                    <div class="flex items-center bg-indigo-600 rounded-lg border border-indigo-400 overflow-hidden shadow-lg"><button id="btnSimEVMinus" class="px-4 py-2.5 bg-indigo-800 hover:bg-indigo-900 transition text-white font-black">-</button><span class="px-4 text-white font-bold text-sm w-32 text-center">🚗 Araç: <span id="evCountDisplay">0</span></span><button id="btnSimEVPlus" class="px-4 py-2.5 bg-indigo-800 hover:bg-indigo-900 transition text-white font-black">+</button></div>
                     <button id="btnSimHP" class="bg-indigo-600 hover:bg-indigo-700 transition text-white px-5 py-2.5 rounded-lg shadow-lg border border-indigo-400 font-bold">♨️ Isı Pompası</button>
                 </div>
             </div>
         </div>
 
         <!-- ============================================================================ -->
-        <!-- M-5: EV YÜK HESAPLAYICI                                                      -->
+        <!-- M-5: EV YÜK HESAPLAYICI                                                    -->
         <!-- ============================================================================ -->
         <div id="evCalcModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -744,7 +792,7 @@
         </div>
 
         <!-- ============================================================================ -->
-        <!-- M-6: TEKNİK SERVİS MODÜLÜ (Eski Orijinal Modül Korundu)                      -->
+        <!-- M-6: TEKNİK SERVİS MODÜLÜ                                                  -->
         <!-- ============================================================================ -->
         <div id="techSupportModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center"><button id="btnBackToMenuFromSupport" class="text-slate-500 hover:text-red-600 font-bold flex items-center transition">← Yönetim Paneli</button><span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Teknik Servis ve Müdahale</span></div>
@@ -753,7 +801,7 @@
                 <h3 class="text-red-900 font-black text-lg mb-2 flex items-center gap-2"><span>⚠️</span> Lütfen Talep Oluşturmadan Önce Okuyun</h3>
                 <ul class="list-disc ml-6 text-sm text-red-800 font-medium space-y-1 mt-3">
                     <li>Sistemimiz üzerinden <strong>10 kW altındaki</strong> şebeke bağlantısız hobi tesislerine hizmet verilmemektedir.</li>
-                    <li>Alt segment (Solinved, Tommatech vb.) markalarına teknik hizmet sağlanmaz. Yalnızca profesyonel <strong>Victron, Fronius, Pylontech, Deye ve Solax</strong> sistemleri desteklenir.</li>
+                    <li>Alt segment markalarına teknik hizmet sağlanmaz. Yalnızca profesyonel <strong>Victron, Fronius, Pylontech, Deye ve Solax</strong> sistemleri desteklenir.</li>
                 </ul>
             </div>
             
@@ -791,13 +839,13 @@
             
             <div id="myTicketsArea" class="hidden">
                 <div id="myTicketsList" class="grid grid-cols-1 gap-5">
-                    <!-- Javascript ile geçmiş biletler (tickets) buraya basılacak -->
+                    <!-- Javascript ile geçmiş biletler buraya basılacak -->
                 </div>
             </div>
         </div>
 
         <!-- ============================================================================ -->
-        <!-- M-7: SATIŞ ASİSTANI (COPİLOT) MODÜLÜ (Eski Orijinal Modül Korundu)           -->
+        <!-- M-7: SATIŞ ASİSTANI (COPİLOT) MODÜLÜ                                       -->
         <!-- ============================================================================ -->
         <div id="salesAssistantModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             
@@ -808,7 +856,7 @@
             
             <div id="salesSetupArea" class="max-w-2xl mx-auto bg-slate-50 p-8 rounded-2xl border border-slate-200 shadow-sm">
                 <h2 class="text-2xl font-black text-slate-800 mb-2 text-center">Görüşme Öncesi Strateji Belirleme</h2>
-                <p class="text-sm text-center text-slate-500 mb-8">Müşteri karşısına çıkmadan önce firmanızın genel fiyatlama politikasını girin. Yapay zeka itiraz cevaplarını buna göre şekillendirecektir.</p>
+                <p class="text-sm text-center text-slate-500 mb-8">Müşteri karşısına çıkmadan önce firmanızın genel fiyatlama politikasını girin.</p>
                 
                 <div class="space-y-8">
                     <div>
@@ -841,7 +889,7 @@
                 </div>
             </div>
 
-            <!-- COPİLOT İTİRAZ YÖNETİM (AKTİF ÇAĞRI EKRANI) -->
+            <!-- Görüşme Ekranı -->
             <div id="activeCallArea" class="hidden">
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6 bg-orange-50 p-5 rounded-xl border border-orange-200 shadow-sm gap-4">
                     <div>
@@ -855,7 +903,6 @@
                 </div>
                 
                 <div class="flex flex-col lg:flex-row gap-8">
-                    <!-- Sol Taraf: Müşterinin Söyledikleri Butonlar -->
                     <div class="w-full lg:w-1/3 bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-inner">
                         <h3 class="font-black text-slate-800 mb-5 flex items-center gap-2 border-b pb-2"><span>👤</span> Müşteri Şunu Dedi:</h3>
                         <div id="objectionButtonsContainer" class="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
@@ -863,53 +910,207 @@
                         </div>
                     </div>
                     
-                    <!-- Sağ Taraf: Asistanın Prompter Ekranı -->
                     <div class="w-full lg:w-2/3 bg-slate-900 rounded-2xl p-8 shadow-2xl flex flex-col justify-center min-h-[500px] text-center relative overflow-hidden border-4 border-slate-800">
                         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 via-orange-600 to-orange-400"></div>
                         <div class="absolute top-4 right-6 text-slate-700 text-xs font-mono tracking-widest font-bold">PROMPTER EKRANI</div>
                         <div id="scriptDisplayArea" class="text-center mt-6 p-6">
-                            <!-- Satıcıya verilen cevap burada devasa harflerle çıkar -->
                             <p class="text-slate-600 text-lg font-medium italic animate-pulse">Sol taraftan müşterinin söylediği itirazı seçtiğinizde, okumanız gereken psikolojik yanıt burada belirecektir.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Yeni İtiraz Ekleme Bölümü (Veritabanı İçin) -->
+            <!-- Yeni İtiraz Ekleme -->
             <div class="mt-8 pt-8 border-t border-slate-200 max-w-2xl mx-auto">
                 <h4 class="text-sm font-black text-slate-800 mb-4 flex items-center justify-center gap-2 bg-slate-100 py-2 rounded-lg">
                     <span>➕</span> Sektörel Ortak Havuza Yeni Bir İtiraz Cevabı Ekle
                 </h4>
                 <div class="space-y-4 bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm">
                     <div>
-                        <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Müşterinin Olası Cümlesi / Beklenmedik İtirazı</label>
+                        <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Müşterinin Olası Cümlesi</label>
                         <input type="text" id="newObjectionInput" placeholder="Örn: X firması Çin malı panelle yarı fiyat verdi..." class="w-full p-3 border border-slate-300 bg-white rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 font-medium shadow-inner">
                     </div>
                     <div>
-                        <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Satış Ekibine Verilecek Tüyo / Psikolojik Hazır Cevap</label>
-                        <textarea id="newResponseInput" rows="3" placeholder="Örn: Haklısınız ucuz görünüyor. Ancak güneş paneli çatınızda 25 yıl duracak bir yatırımdır. X firmasından 3 yıl sonra muhatap bulamadığınızda..." class="w-full p-3 border border-slate-300 bg-white rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 font-medium shadow-inner resize-none"></textarea>
+                        <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Satış Ekibine Verilecek Hazır Cevap</label>
+                        <textarea id="newResponseInput" rows="3" placeholder="Örn: Haklısınız ucuz görünüyor. Ancak güneş paneli çatınızda 25 yıl duracak bir yatırımdır..." class="w-full p-3 border border-slate-300 bg-white rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 font-medium shadow-inner resize-none"></textarea>
                     </div>
                     <button type="button" id="btnSaveNewObjection" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg text-sm transition shadow-md flex items-center justify-center gap-2">
                         <span>☁️</span> Cevabı Tüm Satış Ekipleri İçin Kaydet
                     </button>
                 </div>
             </div>
-            
         </div>
-        
-        <!-- Diğer Tüm Sektörel ve Mevzuat Modülleri (Firma ve Kurumsal Zeka, Eğitim vs.)
-             Bu alandan sonra eskisi gibi çalışmaya devam edecektir. Yukarıdaki Part 1 ve Part 2 içindeki iskeletleri koruduğumuz için tasarımlar sorunsuz yüklenir. -->
-        
-        <!-- SADECE FİRMA YÖNETİM MODÜLÜ VE ŞİRKET ZEKASI (PART 1 VE 2'DE ZATEN TASARIMI VERİLMİŞTİ - İskeletleri orada) -->
+
+        <!-- ============================================================================ -->
+        <!-- M-8: KURUMSAL ZEKA & YZ MODÜLÜ                                            -->
+        <!-- ============================================================================ -->
+        <div id="companyManagementModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 border-b pb-4 flex items-center">
+                <button id="btnBackToMenuFromCompanyMgmt" class="text-slate-500 hover:text-slate-600 font-bold flex items-center transition">← Yönetim Paneli</button>
+                <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Kurumsal Zeka & Yapay Zeka Danışmanı</span>
+            </div>
+            
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-8 rounded-2xl mb-8 shadow-xl border border-slate-700">
+                <h2 class="text-3xl font-black mb-2">Michael Gerber & StoryBrand Reçetesi</h2>
+                <p class="text-slate-300 text-sm leading-relaxed max-w-3xl">Firmanızın kurumsal profili ve pazarlama stratejisini analiz edip, E-Myth prensipleri ve StoryBrand çerçevesine göre kişiye özel iyileştirme önerileri sunun.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Firma Adı</label>
+                    <input type="text" id="cmName" placeholder="Örn: ABC Enerji Kurulum Ltd." class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-slate-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Temel Vaat (Elevator Pitch)</label>
+                    <input type="text" id="cmPitch" placeholder="Örn: Evlerinizi 25 yıl garanti güneş enerjisine çeviririz" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-slate-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Eşsiz Satış Teklifi (USP)</label>
+                    <input type="text" id="cmUSP" placeholder="Örn: Sektördeki tek 3D simülasyon teknolojisi" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-slate-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Müşterinde Çözdüğünüz Ana Acı / Sorun</label>
+                    <input type="text" id="cmPain" placeholder="Örn: Artan elektrik faturalarından kurtulma" class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-slate-600">
+                </div>
+            </div>
+
+            <button id="btnRunAI" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-black text-lg py-4 rounded-xl shadow-lg mb-8 transition">✨ Yapay Zeka Kurumsal Analiz Oluştur</button>
+
+            <div id="cmMarketing" class="bg-slate-50 border border-slate-200 p-6 rounded-xl min-h-[300px] shadow-sm text-slate-700">
+                <p class="text-center text-slate-400 italic">Firma bilgilerini girdikten sonra yapay zeka tarafından oluşturulan kişiselleştirilmiş kurumsal danışmanlık raporu burada görüntülenecektir.</p>
+            </div>
+        </div>
+
+        <!-- ============================================================================ -->
+        <!-- M-9: TEDAŞ MEVZUATI & SÜREÇLERİ MODÜLÜ                                    -->
+        <!-- ============================================================================ -->
+        <div id="regulationsModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 border-b pb-4 flex items-center">
+                <button id="btnBackToMenuFromReg" class="text-slate-500 hover:text-slate-600 font-bold flex items-center transition">← Yönetim Paneli</button>
+                <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">TEDAŞ Mevzuatı & Teknik Süreçler</span>
+            </div>
+            
+            <div class="space-y-8">
+                <section class="bg-blue-50 p-6 rounded-xl border border-blue-200">
+                    <h3 class="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2"><span>📋</span> GES Kurulumu İçin Gerekli Yasal İzin Adımları</h3>
+                    <div class="space-y-3 text-sm text-blue-800">
+                        <p><strong>1. Mühendislik Projesinin Hazırlanması:</strong> Lisanslı elektrik mühendisinin tarafından projelendirilir.</p>
+                        <p><strong>2. Yapı Denetim Elemanı Onayı (YDE):</strong> Mevcutsa yapı denetim elemanından onay alınır.</p>
+                        <p><strong>3. Elektrik Denetim Elemanı (EDE) Onayı:</strong> Mevcutsa elektrik denetim elemanından onay alınır.</p>
+                        <p><strong>4. TEDAŞ / EDAŞ Bağlantı Başvurusu:</strong> TEDAŞ/EDAŞ'a başvuru yapılır.</p>
+                        <p><strong>5. Sistem Kurulumu ve Montajı:</strong> Lisanslı firma tarafından kurulum ve montaj yapılır.</p>
+                        <p><strong>6. TEDAŞ / EDAŞ Denetimi ve Işık Kabulu:</strong> Sistem TEDAŞ/EDAŞ tarafından denetlenir ve işık kabulü sağlanır.</p>
+                    </div>
+                </section>
+
+                <section class="bg-green-50 p-6 rounded-xl border border-green-200">
+                    <h3 class="text-xl font-bold text-green-900 mb-4 flex items-center gap-2"><span>💡</span> YEKDEM (Yenilenebilir Enerji Kaynaklarından Elektrik Üretimi) Tarife Tablosu (2026)</h3>
+                    <div class="space-y-2 text-sm text-green-800 font-mono">
+                        <p><strong>Sistem Kapasitesi 10 kW'dan Az:</strong> 1.03 TL/kWh (Sabit)</p>
+                        <p><strong>Sistem Kapasitesi 10-100 kW:</strong> 0.95 TL/kWh (Sabit)</p>
+                        <p><strong>Sistem Kapasitesi 100 kW-1 MW:</strong> 0.88 TL/kWh (Sabit)</p>
+                        <p class="text-[11px] text-gray-600 mt-4">* Tarifeler YEKDEM tarafından belirlenir ve yıllık olarak güncellenir.</p>
+                    </div>
+                </section>
+
+                <section class="bg-amber-50 p-6 rounded-xl border border-amber-200">
+                    <h3 class="text-xl font-bold text-amber-900 mb-4 flex items-center gap-2"><span>🌍</span> Bölgesel EDAŞ Sistemi Kontaklı</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-amber-800">
+                        <div><strong>Türkiye'nin Batı Bölgesi:</strong> Batı EDAŞ (İzmir ve çevresi) → Tel: (232) XXX-XXXX</div>
+                        <div><strong>Türkiye'nin Merkez Bölgesi:</strong> Orta Anadolu EDAŞ (Ankara ve çevresi) → Tel: (312) XXX-XXXX</div>
+                        <div><strong>Türkiye'nin Karadeniz Bölgesi:</strong> Karadeniz EDAŞ (Trabzon ve çevresi) → Tel: (462) XXX-XXXX</div>
+                        <div><strong>Merkezi Sistem (Ulusal):</strong> TEDAŞ Genel Müdürlüğü → Tel: (312) 310-1100</div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- ============================================================================ -->
+        <!-- M-10: SEKTÖREL ANALİZ MODÜLÜ                                              -->
+        <!-- ============================================================================ -->
+        <div id="sectoralModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 border-b pb-4 flex items-center">
+                <button id="btnBackToMenuFromSectoral" class="text-slate-500 hover:text-slate-600 font-bold flex items-center transition">← Yönetim Paneli</button>
+                <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Sektörel Analiz & Pazarlama Stratejileri</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <section class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><span>📊</span> GES Pazar Segmentasyonu (Türkiye 2026)</h3>
+                    <div class="space-y-3 text-sm text-slate-700">
+                        <p><strong>Konut Segmenti (Çatı Sistemi):</strong> %45 pazar payı — Kişisel kaymakçılar, 3-10 kW sistemler</p>
+                        <p><strong>Ticari / Endüstriyel:</strong> %35 pazar payı — İşletmeler, fabrikalar, 10-100 kW+ sistemler</p>
+                        <p><strong>Tarım ve Sera:</strong> %12 pazar payı — Tarım işletmeleri, elektrikli pompa sistemleri</p>
+                        <p><strong>Kamu ve Kuruluşlar:</strong> %8 pazar payı — Belediyeler, okul, hastahane</p>
+                    </div>
+                </section>
+
+                <section class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><span>💰</span> Sektördeki Ortalama Fiyatlandırma (2026)</h3>
+                    <div class="space-y-3 text-sm text-slate-700 font-mono">
+                        <p><strong>Konut (10 kW Sistem):</strong> 90,000 - 130,000 TL (Bataryasız)</p>
+                        <p><strong>Konut (10 kW + 5 kWh Batarya):</strong> 140,000 - 180,000 TL</p>
+                        <p><strong>Ticari (50 kW Sistem):</strong> 350,000 - 450,000 TL (Bataryasız)</p>
+                        <p class="text-[11px] text-gray-600 mt-4">Fiyatlar malzeme, kurulum zorluk derecesi ve coğrafi konuma göre değişebilir.</p>
+                    </div>
+                </section>
+
+                <section class="bg-slate-50 p-6 rounded-xl border border-slate-200 md:col-span-2">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><span>🎯</span> Rekabet Analizi - Türkiye'deki Başlıca EPC Firmalar</h3>
+                    <div class="space-y-3 text-sm text-slate-700">
+                        <p><strong>Yüksek Kapasiteli (100+ Kurulum/Yıl):</strong> Turboelectric, SolarTurk, Enerjisa vb. — Agresif fiyatlandırma, toptan alanlar</p>
+                        <p><strong>Orta Seviye (30-100 Kurulum/Yıl):</strong> Yerel ve bölgesel firmalar — Özel hizmet, esnek fiyat</p>
+                        <p><strong>Nişe / Yüksek-End (< 30 Kurulum/Yıl):</strong> Lüks konut, danışmanlık yoğun — Yüksek marjlar, müşteri memnuniyeti</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- ============================================================================ -->
+        <!-- M-11: EĞİTİM & SEKTÖR SÖZLÜĞÜ MODÜLÜ                                      -->
+        <!-- ============================================================================ -->
+        <div id="educationModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 border-b pb-4 flex items-center">
+                <button id="btnBackToMenuFromEdu" class="text-slate-500 hover:text-slate-600 font-bold flex items-center transition">← Yönetim Paneli</button>
+                <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Sektör Sözlüğü & Eğitim</span>
+            </div>
+            
+            <div class="space-y-6">
+                <section class="bg-blue-50 p-6 rounded-xl border border-blue-200">
+                    <h3 class="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2"><span>⚡</span> kW (Kilowatt) vs kWh (Kilowatt-Saat)</h3>
+                    <div class="text-sm text-blue-800 space-y-3">
+                        <p><strong>kW = Anlık Güç Kapasitesi</strong> — "Bu ampülün parlaklığı kaç watt?)" gibi — Sisteminizin maksimum ne kadar enerji üretip veya tüketebileceği.</p>
+                        <p><strong>kWh = Zaman İçinde Üretilen/Tüketilen Enerji</strong> — "Bu ampül 1 saat içinde kaç watt-saat enerji tüketir?" gibi — Faturanıza "250 kWh/ay" yazılı ise, bu aylık tüketilen toplam enerjinizdir.</p>
+                        <p class="italic text-[12px]">Basit Analoji: kW = arabanızın hızı (km/saat), kWh = katettiğiniz mesafe (km).</p>
+                    </div>
+                </section>
+
+                <section class="bg-green-50 p-6 rounded-xl border border-green-200">
+                    <h3 class="text-lg font-bold text-green-900 mb-4 flex items-center gap-2"><span>🔄</span> Aktif Güç (Real) vs Reaktif Güç (Reactive)</span></h3>
+                    <div class="text-sm text-green-800 space-y-3">
+                        <p><strong>Aktif Güç (P) = Gerçek Çalışma Yapan Güç</strong> — Ampülün parlaması, motorun döner, ısı üretmesi gibi faydalı iş yapan güç. (Birimi: kW)</p>
+                        <p><strong>Reaktif Güç (Q) = Depolanan Güç (Saçılan Enerji)</strong> — Şebekeyi "meşgul" eden ama iş yapmayan güç (elektrik motorlarındaki manyetik alan gibi). (Birimi: kVAR)</p>
+                        <p class="italic text-[12px]">Dikkat: Yüksek reaktif güç faturanızda "ek ücretler" (Power Factor cezası) sebep olur!</p>
+                    </div>
+                </section>
+
+                <section class="bg-amber-50 p-6 rounded-xl border border-amber-200">
+                    <h3 class="text-lg font-bold text-amber-900 mb-4 flex items-center gap-2"><span>📈</span> Kapacite vs Verimlilik</span></h3>
+                    <div class="text-sm text-amber-800 space-y-3">
+                        <p><strong>Kapacite = Maksimum Potansiyel</strong> — "10 kW'lık bir sistem, maksimum 10 kW üretebilir" — Güneş panelinin nominal gücü.</p>
+                        <p><strong>Verimlilik = Potansiyelinden Ne Kadarını Gerçekten Kullanır</strong> — Aynı sistem, kötü havalarda ya da bataryalar doluysa, potansiyelinin yalnızca %20-50'sini üretir.</p>
+                        <p class="italic text-[12px]">Örnek: 100 kW'lık bir rüzgar türbini, her zaman 100 kW üretmez; yıllık ortalama verimlilik %25-35 arasıdır.</p>
+                    </div>
+                </section>
+            </div>
+        </div>
 
     </div> <!-- APP CONTAINER BİTİŞİ -->
 
-    <!-- ============================================================================ -->
-    <!-- PDF YAZDIRMA (PDF EXPORT) İÇİN GİZLİ ALAN                                    -->
-    <!-- ============================================================================ -->
+    <!-- PDF YAZDIRMA (PDF EXPORT) İÇİN GİZLİ ALAN -->
     <div id="printArea"></div>
 
     <!-- ANA JAVASCRIPT DOSYASI BAĞLANTISI -->
-    <script src="app.js"></script>
+    <script src="new_app.js"></script>
 </body>
 </html>
