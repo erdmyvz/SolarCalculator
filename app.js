@@ -76,31 +76,57 @@ window.addEventListener('load', async () => {
     handleSPA_Routing();
 });
 
+// Ziyaretçilerin landing page'den public hesaplayıcılara erişmesini sağlar
 window.openPublicModule = function(moduleId) {
     document.getElementById('landingContainer').classList.add('hidden');
     document.getElementById('appContainer').classList.remove('hidden');
     document.getElementById('mainMenu').classList.add('hidden');
     
-    // ZİYARETÇİ EKRANINDA PROFİL ÜST ÇUBUĞUNU GİZLE
-    document.getElementById('dashboardHeader').classList.add('hidden'); 
-    
+    // YENİ: Ziyaretçi ekranındayken üstteki logolu/profilli barı tamamen gizle
+    const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');
+    if(header) header.classList.add('hidden');
+
+    // YENİ: Ziyaretçi girdiği için buton metinlerini dinamik olarak "Ana Sayfa" yap
+    const btnTexts = {
+        'calculatorModule': 'btnBackToMenu',
+        'simulationModule': 'btnBackToMenuFromSim',
+        'evCalcModule': 'btnBackToMenuFromEV'
+    };
+    const btnId = btnTexts[moduleId];
+    if(btnId && document.getElementById(btnId)) {
+        document.getElementById(btnId).textContent = "← Ana Sayfaya Dön";
+    }
+
     document.getElementById(moduleId).classList.remove('hidden');
+    
     if(moduleId === 'simulationModule' && !window.isApp3DInitialized && typeof initApp3DScene === 'function') {
-        initApp3DScene(); window.isApp3DInitialized = true;
+        initApp3DScene(); 
+        window.isApp3DInitialized = true;
     }
 }
 
+// Uygulama içindeki tüm modülleri kapatıp ana paneli veya ana sayfayı gösterir
 window.closeAllAndShowMenu = function() {
     const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'sectoralModule', 'educationModule', 'regulationsModule'];
     mods.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
     
-    if(currentUserProfile || !supabaseClient) { 
-        document.getElementById('mainMenu').classList.remove('hidden'); 
+    const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');
+    
+    // Sadece giriş yapmış yetkili kullanıcılar Main Menu'yü görebilir.
+    if(currentUserProfile || !supabaseClient) {
+        document.getElementById('mainMenu').classList.remove('hidden');
+        // YENİ: Kurumsal paneldeyken üstteki barı geri getir
+        if(header) header.classList.remove('hidden');
         
-        // YÖNETİM PANELİNDE PROFİL ÜST ÇUBUĞUNU GERİ GETİR
-        document.getElementById('dashboardHeader').classList.remove('hidden'); 
-    } 
-    else { window.location.hash = '#home'; }
+        // YENİ: Buton metinlerini kurumlar için tekrar "Yönetim Paneli"ne çevir
+        if(document.getElementById('btnBackToMenu')) document.getElementById('btnBackToMenu').textContent = "← Yönetim Paneli";
+        if(document.getElementById('btnBackToMenuFromSim')) document.getElementById('btnBackToMenuFromSim').textContent = "← Yönetim Paneli";
+        if(document.getElementById('btnBackToMenuFromEV')) document.getElementById('btnBackToMenuFromEV').textContent = "← Yönetim Paneli";
+        
+    } else {
+        // YENİ: Giriş yapmamış biriyse onu direkt Landing Page'e geri ışınla!
+        window.location.hash = '#home';
+    }
 }
 
 // ============================================================================
