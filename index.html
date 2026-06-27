@@ -50,20 +50,28 @@
 
         <div class="tech-gradient text-white pt-32 pb-20 px-6 border-b border-slate-800">
             <div class="max-w-6xl mx-auto text-center">
-                <div class="inline-block bg-slate-800 text-emerald-400 font-mono text-xs font-bold px-3 py-1 rounded-full mb-6 border border-slate-700">Sistem Mimarı: ERDEM YAVUZ</div>
                 <h1 class="text-4xl md:text-7xl font-black mb-6 leading-tight">Enerji Dönüşümünüzü <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500">Dijitalde Başlatın</span></h1>
-                <p class="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-12">Evinizin güneş enerjisi potansiyelini hesaplayın, 3D ortamda simüle edin ve anında teklif alın.</p>
+                <p class="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-12">Güneş enerjisi sektöründe dijitalleşen çözümler sunuyoruz.</p>
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
+                    
+                    
                     <button onclick="openPublicModule('calculatorModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">📊</div><h3 class="text-xl font-bold text-white mb-2">Çatı Güç Hesaplayıcı</h3><p class="text-sm text-slate-400">Faturanıza göre ihtiyacınız olan GES kapasitesini hesaplayın.</p>
                     </button>
+                    
+                    
                     <button onclick="openPublicModule('simulationModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">🏠</div><h3 class="text-xl font-bold text-white mb-2">3D Simülasyon</h3><p class="text-sm text-slate-400">Evinizin enerji bağımsızlığını 3D ortamda görselleştirin.</p>
                     </button>
+                    
+                    
                     <button onclick="openPublicModule('evCalcModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">🚗</div><h3 class="text-xl font-bold text-white mb-2">EV & Solar Analizi</h3><p class="text-sm text-slate-400">Elektrikli aracınızın güneşten nasıl şarj olacağını planlayın.</p>
                     </button>
+
+
+
                 </div>
             </div>
         </div>
@@ -72,13 +80,15 @@
             <div class="max-w-5xl mx-auto text-center">
                 <h2 class="text-3xl font-black text-slate-800 mb-4">Profesyonel Destek Alın</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+                    
                     <div onclick="openLeadModal('kurulum')" class="bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-emerald-300 transition cursor-pointer text-left relative overflow-hidden">
-                        <div class="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">ÜCRETSİZ KEŞİF</div>
                         <div class="text-4xl mb-4">☀️</div><h3 class="text-2xl font-bold text-slate-800 mb-2">Sıfırdan GES Kurulumu</h3><p class="text-slate-500 text-sm">Uzmanlardan çatı analizi ve kurulum teklifi almak için formu doldurun.</p>
                     </div>
+                    
                     <div onclick="openLeadModal('servis')" class="bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-red-300 transition cursor-pointer text-left">
                         <div class="text-4xl mb-4">🔧</div><h3 class="text-2xl font-bold text-slate-800 mb-2">Teknik Servis & Arıza</h3><p class="text-slate-500 text-sm">Mevcut inverter/batarya arızaları için destek talebi oluşturun.</p>
                     </div>
+
                 </div>
 
                 <div id="trackingSection" class="bg-slate-900 text-white p-8 rounded-3xl max-w-2xl mx-auto shadow-2xl">
@@ -147,7 +157,7 @@
     <div id="appContainer" class="hidden w-full px-4 md:px-8 pb-10 bg-slate-50 min-h-screen">
         
         <div id="dashboardHeader" class="w-full max-w-7xl mx-auto mt-4 mb-8 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <a href="#home" class="text-xl font-extrabold text-slate-800">☀️ EPC <span class="text-emerald-600">Merkezim</span></a>
+            <a href="#home" class="text-xl font-extrabold text-slate-800"> EPC <span class="text-emerald-600">Merkezim</span></a>
             
             <div class="flex items-center gap-4"> <button onclick="backToLanding()" class="hidden md:flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
                     🏠 Ziyaretçi Arayüzüne Dön
