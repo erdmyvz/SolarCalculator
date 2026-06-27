@@ -148,8 +148,15 @@
         
         <div id="dashboardHeader" class="w-full max-w-7xl mx-auto mt-4 mb-8 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <a href="#home" class="text-xl font-extrabold text-slate-800">☀️ EPC <span class="text-emerald-600">Merkezim</span></a>
-            <div class="relative">
-                <button id="btnProfile" class="flex items-center space-x-3 hover:bg-slate-50 p-2 rounded-lg">
+            
+            <div class="flex items-center gap-4"> <button onclick="backToLanding()" class="hidden md:flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+                    🏠 Ziyaretçi Arayüzüne Dön
+                </button>
+                
+                <div class="relative">
+                    <button id="btnProfile" class="flex items-center space-x-3 hover:bg-slate-50 p-2 rounded-lg">
+
+
                     <div class="text-right hidden md:block"><p id="userNameDisplay" class="text-sm font-bold text-slate-800"></p><p id="userCompanyDisplay" class="text-xs text-slate-500"></p></div>
                     <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg"><span id="userInitials">?</span></div>
                 </button>
@@ -252,7 +259,7 @@
         </div>
         <div id="calculatorModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
-                <button id="btnBackToMenu" class="text-slate-500 hover:text-blue-600 font-bold flex items-center transition">← Geri Dön</button>
+                <button onclick="backToLanding()" class="text-slate-500 hover:text-blue-600 font-bold flex items-center transition">← Ana Sayfaya Dön</button>
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Güç Hesaplayıcı</span>
             </div>
             
@@ -308,7 +315,11 @@
         </div>
 
         <div id="simulationModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
-            <div class="mb-6 border-b pb-4 flex items-center"><button id="btnBackToMenuFromSim" class="text-slate-500 hover:text-indigo-600 font-bold flex items-center transition">← Geri Dön</button><span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">3D Enerji Simülasyonu</span></div>
+            <div class="mb-6 border-b pb-4 flex items-center">
+                <button onclick="backToLanding()" class="text-slate-500 hover:text-indigo-600 font-bold flex items-center transition">← Ana Sayfaya Dön</button>
+                <span class="mx-2 text-slate-300">/</span>
+                <span class="text-slate-800 font-black text-xl">3D Enerji Simülasyonu</span>
+            </div>
             
             <h1 class="text-2xl font-black text-slate-800 mb-4">İnteraktif Enerji Bağımsızlığı Görselleştirmesi</h1>
             
@@ -653,7 +664,7 @@
 
         <div id="educationModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
-                <button id="btnBackToMenuFromEdu" class="text-slate-500 hover:text-slate-600 font-bold flex items-center transition">← Yönetim Paneli</button>
+                <button id="btnBackToMenuFromEdu" class="text-slate-500 hover:text-amber-600 font-bold flex items-center transition">← Yönetim Paneline Dön</button>
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Sektör Sözlüğü & Eğitim</span>
             </div>
             
