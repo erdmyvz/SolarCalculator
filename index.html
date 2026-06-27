@@ -301,15 +301,183 @@
 
 
         
-        <div id="crmModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in">
-            <div class="mb-6 border-b pb-4 flex items-center">
-                <button id="btnBackToMenuFromCRM" class="text-gray-500 hover:text-indigo-600 font-medium flex items-center transition">← Ana Menü</button>
-                <span class="mx-2 text-gray-400">/</span><span class="text-gray-800 font-bold">CRM Merkezi</span>
+<div id="crmModule" class="hidden bg-slate-50 p-6 md:p-8 rounded-xl shadow-lg w-full max-w-7xl mx-auto mt-4 animate-fade-in text-slate-800">
+            
+            <div class="mb-6 border-b pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center">
+                    <button id="btnBackToMenuFromCRM" class="text-gray-500 hover:text-emerald-600 font-medium flex items-center transition">← Ana Menü</button>
+                    <span class="mx-2 text-gray-400">/</span><span class="text-gray-900 font-black text-xl">Solar Proje & CRM Yönetimi</span>
+                </div>
+                <button onclick="crmOpenNewLeadModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow flex items-center gap-2">
+                    <span>➕</span> Yeni Müşteri / Başvuru Ekle
+                </button>
             </div>
-            <div class="text-center py-20 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                <span class="text-6xl block mb-4">⏳</span>
-                <h2 class="text-2xl font-bold text-slate-800 mb-2">CRM Modülü Yakında Aktif!</h2>
-                <p class="text-slate-500 max-w-md mx-auto">Müşteri takibi, otomatik satış hunisi ve müşteri ilişkileri yönetim sistemleri (CRM) geliştirme aşamasındadır.</p>
+
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Bekleyen Başvurular</div>
+                    <div id="crmStatNew" class="text-2xl font-black text-blue-600 mt-1">0</div>
+                    <div class="text-[11px] text-slate-500 mt-1">İletişime geçilmeyi bekleyen</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Dönüş Yapılacaklar</div>
+                    <div id="crmStatFollowUp" class="text-2xl font-black text-amber-500 mt-1">0</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Karar aşamasında / Takipte</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Devam Eden Kurulumlar</div>
+                    <div id="crmStatActive" class="text-2xl font-black text-emerald-600 mt-1">0</div>
+                    <div class="text-[11px] text-slate-500 mt-1">Sahada montajı süren projeler</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Mevzuat / Onay Süreci</div>
+                    <div id="crmStatOfficial" class="text-2xl font-black text-purple-600 mt-1">0</div>
+                    <div class="text-[11px] text-slate-500 mt-1">TEDAŞ / EDAŞ onay aşamaları</div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-4 bg-slate-100 border-b flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <h3 class="font-bold text-slate-700 text-sm flex items-center gap-2">📋 Proje Boru Hattı (Pipeline) Listesi</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <select id="crmFilterStatus" onchange="crmRenderLeads()" class="bg-white border rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                            <option value="all">Tüm Durumlar</option>
+                            <option value="yeni_basvuru">1. Yeni Başvuru</option>
+                            <option value="arandi_gorusuldu">2. Arandı / İletişimde</option>
+                            <option value="teklif_gonderildi">3. Teklif Gönderildi</option>
+                            <option value="sozlesme_imzalandi">4. Sözleşme İmzalandı</option>
+                            <option value="kurulum_basladi">5. Kurulum Başladı</option>
+                            <option value="resmi_surec">6. Resmi Süreç / Kabulde</option>
+                            <option value="tamamlandi">7. Tamamlandı 🚀</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="bg-slate-50 text-slate-500 uppercase tracking-wider font-bold border-b">
+                            <tr>
+                                <th class="p-4">Müşteri / Firma</th>
+                                <th class="p-4">Aylık Fatura</th>
+                                <th class="p-4">Mevcut Aşama</th>
+                                <th class="p-4">Kritik Donanımlar</th>
+                                <th class="p-4 text-right">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="crmLeadsTableBody" class="divide-y divide-slate-100 text-slate-700">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="crmDetailModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col animate-scale-in">
+                <div class="p-5 border-b bg-slate-900 text-white flex justify-between items-center rounded-t-xl">
+                    <div>
+                        <h3 id="modalLeadName" class="font-black text-lg">Müşteri Detay ve Teknik Analiz</h3>
+                        <p class="text-xs text-slate-400">Güneş enerjisi mühendislik ve süreç veri kartı</p>
+                    </div>
+                    <button onclick="crmCloseModal()" class="text-slate-400 hover:text-white text-xl font-bold">✕</button>
+                </div>
+
+                <div class="p-6 space-y-6 flex-1">
+                    <input type="hidden" id="modalLeadId">
+                    
+                    <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100 grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div>
+                            <label class="block text-xs font-black text-emerald-900 uppercase">Projenin Güncel Aşaması</label>
+                            <p class="text-xs text-slate-500">Süreci ilerlettikçe buradan güncelleyin</p>
+                        </div>
+                        <select id="modalStatusSelect" class="w-full bg-white border border-emerald-300 rounded-lg p-2 text-sm font-bold shadow-sm">
+                            <option value="yeni_basvuru">1. Yeni Başvuru (Beklemede)</option>
+                            <option value="arandi_gorusuldu">2. Arandı / Bilgi Alındı</option>
+                            <option value="teklif_gonderildi">3. Teklif Gönderildi</option>
+                            <option value="sozlesme_imzalandi">4. Sözleşme İmzalandı</option>
+                            <option value="kurulum_basladi">5. Kurulum / Montaj Başladı</option>
+                            <option value="resmi_surec">6. Resmi Süreç / Geçici Kabulde</option>
+                            <option value="tamamlandi">7. Sistem Devreye Alındı 🚀</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <h4 class="font-black text-sm text-slate-800 border-b pb-1">⚡ Tüketif Profil Analizi</h4>
+                            
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">Aylık Ortalama Elektrik Faturası (TL)</label>
+                                <input type="number" id="fieldBill" class="w-full border rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500" placeholder="Örn: 4500">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">Evdeki Temel Tüketim Unsurları</label>
+                                <textarea id="fieldConsumptions" rows="2" class="w-full border rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500" placeholder="Örn: Yerden ısıtma, Havuz pompası, 3 adet Klima, Akıllı ev sistemi..."></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">Isı Pompası Var mı?</label>
+                                    <select id="fieldHeatPump" class="w-full border rounded-lg p-2 text-xs">
+                                        <option value="Yok">Hayır / Yok</option>
+                                        <option value="Var">Evet, Aktif Kullanıyor</option>
+                                        <option value="Planlıyor">Gelecekte Kuracak</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">Isı Pompası Tüketimi/Gücü</label>
+                                    <input type="text" id="fieldHeatPumpPower" class="w-full border rounded-lg p-2 text-xs" placeholder="Örn: 9 kW veya Bilinmiyor">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h4 class="font-black text-sm text-slate-800 border-b pb-1">🚗 Yeni Nesil Teknolojiler & Yedekleme</h4>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">Elektrikli Araç (EV)</label>
+                                    <select id="fieldEV" class="w-full border rounded-lg p-2 text-xs">
+                                        <option value="Yok">Hayır / Yok</option>
+                                        <option value="Var">Evet, Aracı Var</option>
+                                        <option value="Yakında">1 Yıl İçinde Alacak</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">Şebeke Kesinti Sıklığı</label>
+                                    <select id="fieldBlackout" class="w-full border rounded-lg p-2 text-xs">
+                                        <option value="Seyrek">Seyrek (Yılda 1-2)</option>
+                                        <option value="Sık">Sık Yaşanıyor (Haftalık)</option>
+                                        <option value="Çok Sık">Çok Sık (Kritik Bölge)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">Depolama (Batarya) Sistemi İstiyor mu?</label>
+                                <select id="fieldStorageIntent" class="w-full border rounded-lg p-2 text-xs">
+                                    <option value="Hayır">Hayır, Sadece On-Grid (Şebekeye Bağlı)</option>
+                                    <option value="Evet">Evet, Hibrit Sistem (Bataryalı) İstiyor</option>
+                                    <option value="Kararsız">Kararsız / Fiyata Göre Bakacak</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">Kesinti Anında İstenen Yedekleme Süresi & Yükü</label>
+                                <input type="text" id="fieldBackupDetails" class="w-full border rounded-lg p-2 text-xs" placeholder="Örn: Elektrik kesilince buzdolabı ve aydınlatma 6 saat çalışsın.">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Görüşme Notları / Özel İstekler</label>
+                        <textarea id="fieldNotes" rows="2" class="w-full border rounded-lg p-2 text-xs focus:ring-1 focus:ring-emerald-500" placeholder="Müşterinin çatı tipi, marka hassasiyeti veya eklemek istediğiniz kritik notlar..."></textarea>
+                    </div>
+                </div>
+
+                <div class="p-4 border-t bg-slate-50 flex justify-end gap-2 rounded-b-xl">
+                    <button onclick="crmCloseModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-xs font-bold transition">Vazgeç</button>
+                    <button onclick="crmSaveLeadDetails()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow">Kartı Kaydet ve Güncelle</button>
+                </div>
             </div>
         </div>
 
