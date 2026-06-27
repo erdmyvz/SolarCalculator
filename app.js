@@ -3,6 +3,62 @@
    Yazan / Geliştiren: ERDEM YAVUZ
    Açıklama: Bu dosya, tüm uygulamanın iş mantığını, veritabanı bağlantılarını,
    hesaplama motorlarını ve kullanıcı etkileşimlerini yönetir.
+
+   --------------------------------------------------------------------------
+   BU SÜRÜMDE YAPILAN DÜZELTMELER (ÖZET):
+   1) crmStatusLabels objesi tanımsızdı -> CRM tablosu ve takip sorgusu hata
+      verip çöküyordu. Şimdi tanımlandı (Bölüm 5).
+   2) GÜVENLİK AÇIĞI: Kayıt formunda "Ad" alanına "ERDEM" yazan HERKES admin
+      yetkisi alabiliyordu. Bu istemci-taraflı kontrol kaldırıldı; admin rolü
+      artık sadece sabit kurucu e-postasıyla eşleşince atanıyor (Bölüm 3).
+   3) "12 Aylık Detaylı" fatura girişi sekmesi hiçbir input üretmiyordu
+      (monthsGrid boştu). Şimdi 12 ay için otomatik alan oluşturuluyor (Bölüm 8).
+   4) "PDF İndir" ve "Teklifi Mail At" butonları arayüzde vardı ama hiçbir
+      JS karşılığı yoktu. html2pdf / EmailJS ile çalışır hale getirildi (Bölüm 8).
+   5) Satış Copilot ekranında "Kurulum" / "Danışmanlık" seçimi fiyat alanlarını
+      hiç değiştirmiyordu. Artık seçime göre doğru fiyat kutusu gösteriliyor (Bölüm 12).
+   6) Ana sayfadan (ziyaretçi olarak) açılan EV Hesaplayıcı ilk açılışta hesap
+      yapmıyordu. Artık modül açılır açılmaz otomatik hesaplanıyor (Bölüm 2).
+   7) Menüden "Kurumsal Zeka", "Mevzuat", "Eğitim" ve "Sektörel" butonlarına
+      basıldığında karşılık gelen modül HTML'de mevcut olmadığından sayfa
+      hata verip kilitleniyordu. Eksik modüller index.html'e eklendi.
+   8) "Teknik Servis" modülü hazırdı ama panelde açan bir menü kartı yoktu;
+      "Sektörel" için de hem kart hem modül eksikti. İkisi de eklendi.
+   9) Admin panelinde arıza biletine yanıt veren buton, UUID tipindeki bilet
+      ID'lerini tırnaksız HTML içine gömdüğü için JavaScript hatası
+      veriyordu (adminRespondTicket(3fa85f64-...)). Artık olay dinleyicisi
+      (addEventListener) ile güvenli şekilde çalışıyor (Bölüm 7).
+   10) GÜVENLİK AÇIĞI: Ziyaretçi formundan (isim, telefon, not vb.) gelen
+       veriler hiç süzülmeden innerHTML ile ekrana basılıyordu; kötü niyetli
+       bir ziyaretçi bu alanlara kod yazarak admin/şirket panelinde çalıştırabilirdi
+       (stored XSS). Tüm dinamik alanlar artık escapeHTML() ile temizleniyor.
+   11) Kayıt formunda, Supabase'e profil eklenirken oluşan hata önceden hiç
+       kontrol edilmiyordu; profil kaydı başarısız olsa da kullanıcıya "başarılı"
+       deniyordu. Şimdi hata kontrol ediliyor (Bölüm 3).
+   12) Arıza formu ve "Geçmiş Taleplerim" ekranı, oturum süresi dolmuşsa
+       (getUser() boş dönerse) çökme hatası veriyordu; artık güvenli kontrol var.
+   13) 3D sahnedeki şebeke kablosu animasyonu (dashOffset), kullanılan
+       three.js r128 sürümünde desteklenmediği için sessizce hiçbir şey
+       yapmıyordu; opaklık nabzı (pulse) ile gerçek bir animasyona çevrildi.
+   14) Admin panelindeki "Sisteme Kayıtlı Firmalar" tablosunda başlıklar
+       (Firma / Yetkili sırası) ile asıl basılan veriler birbirini tutmuyordu;
+       sıralama düzeltildi ve tabloya Plan + Abonelik Durumu sütunları eklendi.
+
+   YENİ EKLENEN ÖZELLİKLER:
+   - Aylık $20'dan başlayan, aylık/yıllık seçenekli, 3 katmanlı abonelik/
+     fiyatlandırma altyapısı (Bölüm 13). Fiyatlar Supabase 'pricing_plans'
+     tablosundan okunuyor; admin panelinden doğrudan değiştirilebiliyor.
+   - Admin panelinden firmalara doğrudan plan/abonelik durumu atama.
+   - Ödeme adımı için /api/create-checkout-session sunucu uç noktasına
+     (Stripe Checkout) istek atan örnek bir akış (gerçek tahsilat için
+     ayrıca paylaşılan api-create-checkout-session.js dosyasını kendi
+     sunucunuza (Vercel vb.) eklemeniz gerekir).
+   - Açılış sayfası için kaydırma (scroll) animasyonları.
+
+   GEREKLİ VERİTABANI DEĞİŞİKLİKLERİ (ayrıca supabase_schema.sql dosyasında):
+     alter table profiles add column if not exists plan_id text default 'baslangic';
+     alter table profiles add column if not exists subscription_status text default 'deneme';
+     create table if not exists pricing_plans ( ... ); -- detaylar SQL dosyasında
    ============================================================================ */
 
 // ============================================================================
@@ -16,10 +72,31 @@ const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_U
 let currentUserProfile = null; // Sisteme giriş yapan firmanın bilgilerini tutar
 
 // CRM Müşteri Listesi İçin Küresel Hafıza (Veritabanı Simülasyonu)
-let crmLeads = []; 
+let crmLeads = [];
 
 // 3D Motorunun gereksiz yere birden fazla kez yüklenmesini engelleyen kontrol bayrakları
 window.isApp3DInitialized = false;
+
+// E-posta (EmailJS) Ayarları — Teklif gönderme özelliğinin çalışması için kendi
+// EmailJS hesabınızdan aldığınız bilgileri buraya girmeniz gerekir (www.emailjs.com).
+const EMAILJS_PUBLIC_KEY = "";      // TODO: EmailJS Public Key
+const EMAILJS_SERVICE_ID = "";      // TODO: EmailJS Service ID
+const EMAILJS_QUOTE_TEMPLATE_ID = ""; // TODO: EmailJS Template ID
+
+/**
+ * Kullanıcıdan/ziyaretçiden gelen serbest metni güvenli şekilde HTML içine basmak için kullanılır.
+ * Bu fonksiyon olmadan, ziyaretçi formundan gelen bir isim veya not alanına yazılan
+ * kötü amaçlı kod (XSS) admin veya firma panelinde çalışabilirdi.
+ */
+function escapeHTML(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 
 // ============================================================================
@@ -62,6 +139,10 @@ window.addEventListener('hashchange', handleSPA_Routing);
 
 // Sayfa ilk yüklendiğinde oturum kontrolü yap
 window.addEventListener('load', async () => {
+    if (typeof emailjs !== 'undefined' && EMAILJS_PUBLIC_KEY) {
+        try { emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY }); } catch (err) { console.warn('EmailJS başlatılamadı:', err); }
+    }
+
     if(supabaseClient) {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
@@ -69,9 +150,14 @@ window.addEventListener('load', async () => {
             if (window.location.hash === '#auth' || window.location.hash === '') {
                 window.location.hash = '#app'; // Zaten giriş yapmışsa direkt panele al
             }
+            await resumePendingCheckoutIfAny();
         }
     }
     handleSPA_Routing();
+
+    // Açılış sayfasındaki fiyatlandırma kartlarını ve kaydırma animasyonlarını başlat
+    renderPublicPricingSection();
+    initScrollReveal();
 });
 
 // Ziyaretçilerin landing page'den public (herkese açık) hesaplayıcılara erişmesini sağlar
@@ -86,11 +172,16 @@ window.openPublicModule = function(moduleId) {
         initApp3DScene(); 
         window.isApp3DInitialized = true;
     }
+    // DÜZELTME: EV Hesaplayıcı ziyaretçi tarafından doğrudan açıldığında sonuçlar
+    // boş kalıyordu çünkü hesaplama hiç tetiklenmiyordu. Artık otomatik çalışıyor.
+    if(moduleId === 'evCalcModule' && typeof calculateEVSolar === 'function') {
+        calculateEVSolar();
+    }
 }
 
 // Uygulama içindeki tüm modülleri kapatıp ana paneli (Dashboard) gösterir
 window.closeAllAndShowMenu = function() {
-    const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'sectoralModule', 'educationModule'];
+    const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'sectoralModule', 'educationModule', 'regulationsModule'];
     mods.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
     
     // Sadece giriş yapmış yetkili kullanıcılar Main Menu'yü görebilir. Aksi halde landing'e atılır.
@@ -142,18 +233,28 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
         const { data, error } = await supabaseClient.auth.signUp({ email, password });
         if (error) { alert("Kayıt Hatası: " + error.message); } 
         else if (data.user) {
-            // ERDEM YAVUZ kontrolü: Sadece kurucu admin olabilir. Diğerleri 'company' olur.
-            const role = (email === 'erdem.yvz@hotmail.com' || document.getElementById('regName').value.toUpperCase() === 'ERDEM') ? 'admin' : 'company';
-            await supabaseClient.from('profiles').insert([{ 
+            // GÜVENLİK DÜZELTMESİ: Daha önce "Ad" alanına "ERDEM" yazan herkes admin
+            // yetkisi alabiliyordu. Bu açık kapatıldı — admin rolü artık SADECE
+            // sabit kurucu e-postasıyla eşleşirse atanır.
+            const role = (email === 'erdem.yvz@hotmail.com') ? 'admin' : 'company';
+            const { error: profileError } = await supabaseClient.from('profiles').insert([{ 
                 id: data.user.id, 
                 first_name: document.getElementById('regName').value, 
                 last_name: document.getElementById('regSurname').value, 
                 company_name: company, 
                 phone: document.getElementById('regPhone').value, 
-                role: role 
+                role: role,
+                plan_id: 'baslangic',
+                subscription_status: 'deneme'
             }]);
-            alert("Firma Kaydı Başarılı! Sisteme giriş yapabilirsiniz."); 
-            document.getElementById('registerForm').reset(); document.getElementById('tabLogin').click();
+            // DÜZELTME: Önceden bu hata kontrol edilmiyor, kullanıcıya her zaman
+            // "başarılı" mesajı gösteriliyordu; profil kaydı sessizce başarısız olabiliyordu.
+            if (profileError) {
+                alert("Hesabınız oluşturuldu ancak firma profiliniz kaydedilirken bir hata oluştu: " + profileError.message + "\nLütfen sistem yöneticisiyle iletişime geçin.");
+            } else {
+                alert("Firma Kaydı Başarılı! Sisteme giriş yapabilirsiniz. (14 günlük ücretsiz deneme süreniz başladı)");
+                document.getElementById('registerForm').reset(); document.getElementById('tabLogin').click();
+            }
         }
     } else {
         alert("Supabase veritabanı aktif değil, form simüle edildi.");
@@ -174,6 +275,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         else if (data.user) {
             await fetchUserProfile(data.user.id, data.user.email);
             window.location.hash = '#app'; document.getElementById('loginForm').reset();
+            await resumePendingCheckoutIfAny(); // Girişten önce bir plan seçilmişse ödeme adımına devam et
         }
     }
     btn.textContent = "Yönetim Paneline Gir"; btn.disabled = false;
@@ -197,6 +299,21 @@ async function fetchUserProfile(userId, displayEmail) {
         // Iframe kodu için firma ID'sini güncelle (Firmalar CRM formunu sitelerine ekleyebilsin diye)
         if(document.getElementById('iframeCompanyId')) {
             document.getElementById('iframeCompanyId').textContent = data.id;
+        }
+
+        // Abonelik durumu rozetini güncelle (plan_id / subscription_status sütunları
+        // yoksa varsayılan değerlerle nazikçe devam eder, hata vermez)
+        const planBadge = document.getElementById('userPlanBadge');
+        if (planBadge) {
+            const planNames = { baslangic: 'Başlangıç', profesyonel: 'Profesyonel', kurumsal: 'Kurumsal' };
+            const statusNames = { deneme: 'Deneme Sürümü', aktif: 'Aktif Abonelik', pasif: 'Pasif', iptal: 'İptal Edildi' };
+            const planName = planNames[data.plan_id] || 'Başlangıç';
+            const statusName = statusNames[data.subscription_status] || 'Deneme Sürümü';
+            planBadge.textContent = `${planName} Planı · ${statusName}`;
+            planBadge.classList.toggle('bg-amber-100', data.subscription_status === 'deneme');
+            planBadge.classList.toggle('text-amber-800', data.subscription_status === 'deneme');
+            planBadge.classList.toggle('bg-emerald-100', data.subscription_status === 'aktif');
+            planBadge.classList.toggle('text-emerald-800', data.subscription_status === 'aktif');
         }
     }
 }
@@ -313,12 +430,12 @@ document.getElementById('btnTrackQuery')?.addEventListener('click', async () => 
         display.innerHTML = `
             <div class="flex flex-col space-y-2">
                 <div class="flex justify-between border-b pb-2">
-                    <span class="text-slate-500">Sayın ${localLead.name.split(' ')[0]}</span>
-                    <span class="text-xs text-slate-400">${localLead.date}</span>
+                    <span class="text-slate-500">Sayın ${escapeHTML(localLead.name.split(' ')[0])}</span>
+                    <span class="text-xs text-slate-400">${escapeHTML(localLead.date)}</span>
                 </div>
                 <div class="flex items-center gap-2 mt-2">
                     <span class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded border border-emerald-200 text-xs uppercase tracking-wider">Durum:</span>
-                    <span class="font-black text-slate-700">${statusObj.text}</span>
+                    <span class="font-black text-slate-700">${escapeHTML(statusObj.text)}</span>
                 </div>
                 <p class="text-xs text-slate-500 mt-2 italic">Müşteri temsilcimiz dosyanız üzerinde çalışıyor, size en kısa sürede ulaşılacaktır.</p>
             </div>
@@ -381,6 +498,19 @@ backButtons.forEach(id => {
 // ============================================================================
 // 5. SATIŞ CRM VE PROJE TAKİP MOTORU (SOLAR PIPELINE ENGINE)
 // ============================================================================
+
+// DÜZELTME: Bu obje daha önce hiçbir yerde tanımlanmamıştı. crmRenderLeads() ve
+// takip sorgusu bu objeyi çağırdığı anda "crmStatusLabels is not defined" hatası
+// alıp tüm CRM modülünü ve anasayfadaki takip kutusunu çökertiyordu.
+const crmStatusLabels = {
+    yeni_basvuru: { text: "Yeni Başvuru", css: "bg-blue-100 text-blue-800" },
+    arandi_gorusuldu: { text: "Arandı / Görüşüldü", css: "bg-amber-100 text-amber-800" },
+    teklif_gonderildi: { text: "Teklif Gönderildi", css: "bg-amber-100 text-amber-800" },
+    sozlesme_imzalandi: { text: "Sözleşme İmzalandı", css: "bg-emerald-100 text-emerald-800" },
+    kurulum_basladi: { text: "Kurulum Başladı", css: "bg-emerald-100 text-emerald-800" },
+    resmi_surec: { text: "TEDAŞ Resmi Süreci", css: "bg-purple-100 text-purple-800" },
+    tamamlandi: { text: "Tamamlandı 🚀", css: "bg-slate-800 text-white" }
+};
 
 /**
  * CRM Modülü ilk açıldığında veya bir veri güncellendiğinde tetiklenen ana fonksiyon.
@@ -454,14 +584,15 @@ function crmRenderLeads() {
             if(e.target.tagName !== 'BUTTON') crmOpenLeadDetails(lead.id);
         };
 
-        // Satırın içindeki HTML hücrelerini doldur
+        // Satırın içindeki HTML hücrelerini doldur (DÜZELTME: kullanıcı/ziyaretçi
+        // verisi artık escapeHTML() ile temizlenip basılıyor - stored XSS önlendi)
         tr.innerHTML = `
-            <td class="p-4 pl-6 font-mono text-slate-400 text-[11px]">${lead.date || '-'}</td>
+            <td class="p-4 pl-6 font-mono text-slate-400 text-[11px]">${escapeHTML(lead.date) || '-'}</td>
             <td class="p-4">
-                <div class="font-black text-slate-900 text-sm mb-0.5">${lead.name}</div>
-                <div class="text-[10px] text-slate-400 font-mono tracking-wider">Takip ID: ${lead.id} | Tel: ${lead.phone || '-'}</div>
+                <div class="font-black text-slate-900 text-sm mb-0.5">${escapeHTML(lead.name)}</div>
+                <div class="text-[10px] text-slate-400 font-mono tracking-wider">Takip ID: ${escapeHTML(lead.id)} | Tel: ${escapeHTML(lead.phone) || '-'}</div>
             </td>
-            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.css}">${badge.text}</span></td>
+            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.css}">${escapeHTML(badge.text)}</span></td>
             <td class="p-4 text-slate-600 font-bold text-[11px]">${techSummary}</td>
             <td class="p-4 text-right pr-6">
                 <button class="bg-white hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm transition text-xs">Müşteri Kartı</button>
@@ -483,7 +614,8 @@ window.crmOpenLeadDetails = function(id) {
     document.getElementById('modalLeadName').textContent = lead.name;
     document.getElementById('modalLeadDate').textContent = "Başvuru Tarihi: " + (lead.date || '-');
     document.getElementById('modalLeadIdDisplay').textContent = "ID: " + lead.id;
-    document.getElementById('modalLeadContact').innerHTML = `📞 <strong>Tel:</strong> ${lead.phone || '-'} &nbsp;|&nbsp; ✉️ <strong>E-posta:</strong> ${lead.email || '-'}<br>📍 <strong>Konum:</strong> ${lead.address || '-'}`;
+    // DÜZELTME: telefon/e-posta/adres artık escapeHTML() ile basılıyor
+    document.getElementById('modalLeadContact').innerHTML = `📞 <strong>Tel:</strong> ${escapeHTML(lead.phone) || '-'} &nbsp;|&nbsp; ✉️ <strong>E-posta:</strong> ${escapeHTML(lead.email) || '-'}<br>📍 <strong>Konum:</strong> ${escapeHTML(lead.address) || '-'}`;
     
     // Anket verilerini form elemanlarına eşle
     document.getElementById('modalStatusSelect').value = lead.status;
@@ -606,14 +738,14 @@ document.getElementById('btnRunAI')?.addEventListener('click', async () => {
     btn.textContent = "Yapay Zeka Analiz Ediyor..."; btn.disabled = true;
     btn.classList.add('opacity-70', 'cursor-not-allowed');
     
-    // Sağ taraftaki sonuç alanını yakala
-    const resultArea = document.querySelector('.bg-slate-800.text-white.p-6.rounded-xl.shadow-sm') || document.getElementById('cmMarketing');
+    // Sonuç alanını yakala
+    const resultArea = document.getElementById('cmMarketing');
     
     if (resultArea) {
         resultArea.innerHTML = `
             <div class="flex flex-col items-center justify-center py-12">
                 <div class="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p class="text-emerald-400 font-bold animate-pulse">Gemini firmanızı analiz ediyor, lütfen bekleyin...</p>
+                <p class="text-emerald-400 font-bold animate-pulse">Yapay zeka firmanızı analiz ediyor, lütfen bekleyin...</p>
             </div>
         `;
     }
@@ -647,7 +779,7 @@ document.getElementById('btnRunAI')?.addEventListener('click', async () => {
     } catch (error) {
         console.error("AI Motoru Hatası:", error);
         if (resultArea) {
-            resultArea.innerHTML = `<div class="text-red-400 font-bold p-4 bg-red-900/30 border border-red-800 rounded-lg">⚠️ Bir hata oluştu: ${error.message}</div>`;
+            resultArea.innerHTML = `<div class="text-red-400 font-bold p-4 bg-red-900/30 border border-red-800 rounded-lg">⚠️ Bir hata oluştu: ${escapeHTML(error.message)}</div>`;
         }
     } finally {
         btn.textContent = "Yeni Bir Rapor Oluştur";
@@ -668,53 +800,76 @@ document.getElementById('btnBackToMenuFromAdmin')?.addEventListener('click', clo
 document.getElementById('btnRefreshAdmin')?.addEventListener('click', fetchAdminData);
 
 /**
- * Süper Admin paneli açıldığında tüm firmaları, organik havuz başvurularını ve biletleri Supabase'den çeker.
+ * Süper Admin paneli açıldığında tüm firmaları, organik havuz başvurularını,
+ * biletleri ve fiyatlandırma planlarını Supabase'den çeker.
  */
 async function fetchAdminData() {
     const usersBody = document.getElementById('usersTableBody');
     const leadsBox = document.getElementById('adminLeadsList');
     const ticketsBox = document.getElementById('adminTicketsList');
     
-    // 1. ADMİN: SİSTEME KAYITLI FİRMALARI LİSTELE
+    // 1. ADMİN: SİSTEME KAYITLI FİRMALARI LİSTELE (+ Plan / Abonelik Durumu Yönetimi)
     if(usersBody) {
-        usersBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-xs text-slate-400">Veritabanına bağlanılıyor...</td></tr>';
+        usersBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">Veritabanına bağlanılıyor...</td></tr>';
         if(supabaseClient) {
             const { data } = await supabaseClient.from('profiles').select('*');
             if(data) {
-                usersBody.innerHTML = '';
-                data.forEach(u => {
-                    usersBody.innerHTML += `
-                        <tr class="hover:bg-slate-50 text-xs">
-                            <td class="p-3 pl-6 font-bold text-slate-800">${u.first_name} ${u.last_name}</td>
-                            <td class="p-3 font-black text-emerald-700">${u.company_name}</td>
-                            <td class="p-3 font-mono text-slate-500">${u.phone || '-'}</td>
-                            <td class="p-3"><span class="bg-slate-900 text-white font-mono text-[10px] px-2 py-0.5 rounded">${u.role}</span></td>
-                        </tr>`;
+                // DÜZELTME: Önceden tablo başlıkları (Firma/Yetkili sırası) ile
+                // basılan veri sırası birbirini tutmuyordu; aşağıdaki sıralama
+                // index.html'deki yeni başlık sırasıyla birebir eşleşiyor.
+                usersBody.innerHTML = data.map(u => `
+                    <tr class="hover:bg-slate-50 text-xs" data-user-row="${escapeHTML(u.id)}">
+                        <td class="p-3 pl-6 font-bold text-slate-800">${escapeHTML(u.first_name)} ${escapeHTML(u.last_name)}</td>
+                        <td class="p-3 font-black text-emerald-700">${escapeHTML(u.company_name)}</td>
+                        <td class="p-3 font-mono text-slate-500">${escapeHTML(u.phone) || '-'}</td>
+                        <td class="p-3">
+                            <select data-field="plan_id" class="border border-slate-200 rounded p-1.5 text-[11px] font-bold bg-white outline-none">
+                                <option value="baslangic" ${u.plan_id === 'baslangic' ? 'selected' : ''}>Başlangıç ($20)</option>
+                                <option value="profesyonel" ${u.plan_id === 'profesyonel' ? 'selected' : ''}>Profesyonel ($49)</option>
+                                <option value="kurumsal" ${u.plan_id === 'kurumsal' ? 'selected' : ''}>Kurumsal ($99)</option>
+                            </select>
+                        </td>
+                        <td class="p-3">
+                            <select data-field="subscription_status" class="border border-slate-200 rounded p-1.5 text-[11px] font-bold bg-white outline-none">
+                                <option value="deneme" ${u.subscription_status === 'deneme' ? 'selected' : ''}>Deneme</option>
+                                <option value="aktif" ${u.subscription_status === 'aktif' ? 'selected' : ''}>Aktif</option>
+                                <option value="pasif" ${u.subscription_status === 'pasif' ? 'selected' : ''}>Pasif</option>
+                                <option value="iptal" ${u.subscription_status === 'iptal' ? 'selected' : ''}>İptal</option>
+                            </select>
+                        </td>
+                        <td class="p-3"><span class="bg-slate-900 text-white font-mono text-[10px] px-2 py-0.5 rounded">${escapeHTML(u.role)}</span></td>
+                        <td class="p-3 pr-6 text-right"><button class="btnAdminSaveUserPlan bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded text-[11px] transition">Kaydet</button></td>
+                    </tr>`).join('');
+
+                // Olay dinleyicileri innerHTML basıldıktan SONRA tek seferde ekleniyor
+                // (DÜZELTME: eskiden döngü içinde += ile satır eklendiğinde, daha önce
+                // bağlanan olay dinleyicileri her yeni satırda sıfırlanıyordu)
+                usersBody.querySelectorAll('tr[data-user-row]').forEach(row => {
+                    const uid = row.getAttribute('data-user-row');
+                    row.querySelector('.btnAdminSaveUserPlan')?.addEventListener('click', () => adminSaveUserPlan(uid, row));
                 });
             }
         } else {
-            usersBody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-red-500">Veritabanı bağlantısı yok (Lokal Simülasyon).</td></tr>';
+            usersBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Veritabanı bağlantısı yok (Lokal Simülasyon).</td></tr>';
         }
     }
     
     // 2. ADMİN: ANASAYFADAN GELEN ORGANİK BAŞVURULARI LİSTELE
     if(leadsBox) {
-        leadsBox.innerHTML = '';
         const organikLeads = crmLeads.filter(l => l.id && !l.id.includes('MANUAL'));
         if(organikLeads.length === 0) {
             leadsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Genel havuzda şu an işlenmemiş organik başvuru bulunmuyor.</p>';
         } else {
-            organikLeads.forEach(l => {
-                leadsBox.innerHTML += `
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center text-xs">
-                        <div>
-                            <div class="flex items-center gap-2"><strong class="text-sm text-slate-800">${l.name}</strong> <span class="font-mono text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">${l.id}</span></div>
-                            <p class="text-slate-500 mt-1 font-medium">📞 ${l.phone} | ✉️ ${l.email} | 📍 ${l.address}</p>
-                            <p class="text-slate-400 mt-2 bg-slate-50 p-2 rounded text-[11px] font-medium border border-slate-100">${l.notes}</p>
-                        </div>
-                        <span class="bg-slate-100 text-slate-700 px-3 py-1 rounded-full font-bold uppercase text-[9px] tracking-wider">Aşama: ${l.status}</span>
-                    </div>`;
-            });
+            // DÜZELTME: Ziyaretçi verisi artık escapeHTML() ile basılıyor (stored XSS önlendi)
+            leadsBox.innerHTML = organikLeads.map(l => `
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center text-xs">
+                    <div>
+                        <div class="flex items-center gap-2"><strong class="text-sm text-slate-800">${escapeHTML(l.name)}</strong> <span class="font-mono text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">${escapeHTML(l.id)}</span></div>
+                        <p class="text-slate-500 mt-1 font-medium">📞 ${escapeHTML(l.phone)} | ✉️ ${escapeHTML(l.email)} | 📍 ${escapeHTML(l.address)}</p>
+                        <p class="text-slate-400 mt-2 bg-slate-50 p-2 rounded text-[11px] font-medium border border-slate-100">${escapeHTML(l.notes)}</p>
+                    </div>
+                    <span class="bg-slate-100 text-slate-700 px-3 py-1 rounded-full font-bold uppercase text-[9px] tracking-wider">Aşama: ${escapeHTML(l.status)}</span>
+                </div>`).join('');
         }
     }
 
@@ -723,40 +878,63 @@ async function fetchAdminData() {
         ticketsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Arıza biletleri taranıyor...</p>';
         if(supabaseClient) {
             const { data } = await supabaseClient.from('support_tickets').select('*').neq('user_id', '00000000-0000-0000-0000-000000000000');
-            ticketsBox.innerHTML = '';
             if(!data || data.length === 0) {
-                ticketsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Sistemde kayıtlı arıza/servis talebi bulunmuyor.</p>'; return;
-            }
-            data.forEach(t => {
-                ticketsBox.innerHTML += `
-                    <div class="p-4 border border-slate-200 rounded-xl bg-white shadow-sm text-xs">
+                ticketsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Sistemde kayıtlı arıza/servis talebi bulunmuyor.</p>';
+            } else {
+                // DÜZELTME: Hem veri escapeHTML() ile temizlendi hem de bilet ID'si
+                // tırnaksız bir şekilde onclick içine gömülmediği için (eski hâliyle
+                // UUID'lerde JS hatası veriyordu) artık data-attribute + addEventListener kullanılıyor.
+                ticketsBox.innerHTML = data.map(t => `
+                    <div class="p-4 border border-slate-200 rounded-xl bg-white shadow-sm text-xs" data-ticket-row="${escapeHTML(t.id)}">
                         <div class="flex justify-between items-center border-b pb-2 mb-2">
-                            <strong class="text-slate-800 text-sm">${t.full_name} (${t.inverter_model})</strong>
-                            <span class="bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded text-[10px]">Durum: ${t.status}</span>
+                            <strong class="text-slate-800 text-sm">${escapeHTML(t.full_name)} (${escapeHTML(t.inverter_model)})</strong>
+                            <span class="bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded text-[10px]">Durum: ${escapeHTML(t.status)}</span>
                         </div>
-                        <p class="text-slate-600 mb-3 bg-slate-50 p-2 rounded font-medium">${t.problem_desc}</p>
+                        <p class="text-slate-600 mb-3 bg-slate-50 p-2 rounded font-medium">${escapeHTML(t.problem_desc)}</p>
                         <div class="flex gap-2">
-                            <input type="text" id="adm_resp_${t.id}" placeholder="Teknisyen yanıtı..." value="${t.admin_response||''}" class="flex-1 p-2 border rounded-lg text-xs outline-none">
-                            <button onclick="adminRespondTicket(${t.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 rounded-lg text-xs transition shadow">Gönder</button>
+                            <input type="text" data-ticket-response-input placeholder="Teknisyen yanıtı..." value="${escapeHTML(t.admin_response || '')}" class="flex-1 p-2 border rounded-lg text-xs outline-none">
+                            <button data-ticket-respond-btn class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 rounded-lg text-xs transition shadow">Gönder</button>
                         </div>
-                    </div>`;
-            });
+                    </div>`).join('');
+
+                ticketsBox.querySelectorAll('[data-ticket-row]').forEach(row => {
+                    const tId = row.getAttribute('data-ticket-row');
+                    row.querySelector('[data-ticket-respond-btn]')?.addEventListener('click', () => {
+                        const input = row.querySelector('[data-ticket-response-input]');
+                        adminRespondTicket(tId, input.value.trim());
+                    });
+                });
+            }
         } else {
             ticketsBox.innerHTML = '<p class="text-xs text-red-500 font-bold">Veritabanı bağlantısı kapalı.</p>';
         }
     }
+
+    // 4. ADMİN: FİYATLANDIRMA PLANLARI YÖNETİMİ
+    adminFetchAndRenderPricingPlans();
 }
 
 // Süper Admin'in arıza biletlerine yanıt yazmasını sağlayan fonksiyon
-window.adminRespondTicket = async function(id) {
-    const respValue = document.getElementById(`adm_resp_${id}`).value.trim();
-    if(!respValue) return;
+// (DÜZELTME: artık inline onclick yerine olay dinleyicisi ile id ve yanıt metni güvenli şekilde aktarılıyor)
+async function adminRespondTicket(id, respValue) {
+    if(!respValue) { alert("Lütfen göndermeden önce bir yanıt metni yazın."); return; }
     if(supabaseClient) {
-        await supabaseClient.from('support_tickets').update({ admin_response: respValue, status: 'Dönüş Yapıldı' }).eq('id', id);
+        const { error } = await supabaseClient.from('support_tickets').update({ admin_response: respValue, status: 'Dönüş Yapıldı' }).eq('id', id);
+        if (error) { alert("Yanıt kaydedilemedi: " + error.message); return; }
         alert("Teknik servis yanıtı müşteriye başarıyla iletildi!");
         fetchAdminData();
     }
-};
+}
+
+// Admin'in bir firmaya doğrudan plan / abonelik durumu ataması
+async function adminSaveUserPlan(userId, rowEl) {
+    if (!supabaseClient) return;
+    const updates = {};
+    rowEl.querySelectorAll('[data-field]').forEach(sel => { updates[sel.dataset.field] = sel.value; });
+    const { error } = await supabaseClient.from('profiles').update(updates).eq('id', userId);
+    if (error) alert("Güncellenemedi: " + error.message);
+    else alert("✅ Firmanın plan / abonelik bilgisi güncellendi.");
+}
 // ============================================================================
 // 8. GÜÇ VE FATURA HESAPLAYICI MODÜLÜ (Çekirdek Algoritma)
 // Yazan: ERDEM YAVUZ
@@ -773,7 +951,7 @@ function addApplianceRow(name = "", qty = 1, kw = "", hrs = "") {
     const row = document.createElement('div'); 
     row.className = "appliance-row grid grid-cols-12 gap-2 items-center mt-2 bg-white p-2 rounded-lg border border-slate-200 shadow-sm";
     row.innerHTML = `
-        <div class="col-span-4"><input type="text" placeholder="Cihaz Adı" value="${name}" class="w-full p-2 border border-slate-300 rounded text-sm outline-none focus:border-blue-500"></div>
+        <div class="col-span-4"><input type="text" placeholder="Cihaz Adı" value="${escapeHTML(name)}" class="w-full p-2 border border-slate-300 rounded text-sm outline-none focus:border-blue-500"></div>
         <div class="col-span-2"><input type="number" value="${qty}" class="app-qty w-full p-2 border border-slate-300 rounded text-sm text-center outline-none focus:border-blue-500" title="Adet"></div>
         <div class="col-span-3"><input type="number" placeholder="Gücü (kW)" value="${kw}" step="0.01" class="app-kw w-full p-2 border border-slate-300 rounded text-sm text-center outline-none focus:border-blue-500"></div>
         <div class="col-span-2"><input type="number" placeholder="Aylık Saat" value="${hrs}" class="app-hrs w-full p-2 border border-slate-300 rounded text-sm text-center outline-none focus:border-blue-500"></div>
@@ -794,6 +972,22 @@ if(document.getElementById('btnAddAppliance')) {
             addApplianceRow(n, q, k, h); 
             e.target.value = ""; 
         } 
+    });
+}
+
+// DÜZELTME: "12 Aylık Detaylı" sekmesi seçildiğinde girilecek input alanları
+// hiçbir zaman üretilmiyordu (monthsGrid boş kalıyordu, hesaplama hep 0 dönüyordu).
+// Sayfa yüklenirken 12 ay için otomatik olarak giriş kutuları oluşturuluyor.
+const monthsGridContainer = document.getElementById('monthsGrid');
+if (monthsGridContainer) {
+    const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    monthNames.forEach(monthName => {
+        const wrap = document.createElement('div');
+        wrap.innerHTML = `
+            <label class="block text-[11px] font-bold text-slate-500 mb-1">${monthName}</label>
+            <input type="number" class="month-input w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500" placeholder="kWh" value="350">
+        `;
+        monthsGridContainer.appendChild(wrap);
     });
 }
 
@@ -857,6 +1051,49 @@ document.getElementById('btnCalculate')?.addEventListener('click', () => {
     document.getElementById('resultsModule').scrollIntoView({ behavior: 'smooth' });
 });
 
+// DÜZELTME: Bu iki buton (PDF indir / Mail at) arayüzde mevcuttu ve gerekli
+// kütüphaneler (html2pdf.js, EmailJS) index.html'de zaten yükleniyordu, ama
+// hiçbir JS karşılığı yazılmamıştı; basıldığında hiçbir şey olmuyordu.
+
+document.getElementById('btnDownloadPDF')?.addEventListener('click', () => {
+    const element = document.getElementById('reportContent');
+    if (!element) return;
+    if (typeof html2pdf === 'undefined') { alert('PDF kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edin.'); return; }
+    const opt = {
+        margin: 0.4,
+        filename: 'Solar_GES_Teklif_Raporu.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+});
+
+document.getElementById('btnSendEmail')?.addEventListener('click', async () => {
+    const toEmail = document.getElementById('customerEmail').value.trim();
+    if (!toEmail) { alert('Lütfen müşterinin e-posta adresini girin.'); return; }
+    if (!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_QUOTE_TEMPLATE_ID || typeof emailjs === 'undefined') {
+        alert('✉️ E-posta gönderimi için app.js dosyasının en üstündeki EMAILJS_PUBLIC_KEY, EMAILJS_SERVICE_ID ve EMAILJS_QUOTE_TEMPLATE_ID alanlarını kendi EmailJS hesap bilgilerinizle doldurmanız gerekiyor.');
+        return;
+    }
+    const btn = document.getElementById('btnSendEmail'); const originalText = btn.innerHTML;
+    btn.textContent = 'Gönderiliyor...'; btn.disabled = true;
+    try {
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_QUOTE_TEMPLATE_ID, {
+            to_email: toEmail,
+            monthly_kwh: document.getElementById('finalMonthlyLoad').textContent,
+            yearly_kwh: document.getElementById('finalYearlyLoad').textContent,
+            monthly_bill: document.getElementById('finalMonthlyBill').textContent
+        });
+        alert('✅ Teklif müşteriye başarıyla e-posta ile iletildi!');
+    } catch (err) {
+        console.error(err);
+        alert('⚠️ E-posta gönderilemedi: ' + (err && (err.text || err.message) || 'Bilinmeyen hata'));
+    } finally {
+        btn.innerHTML = originalText; btn.disabled = false;
+    }
+});
+
 
 // ============================================================================
 // 9. 3D MİMARİ VE ENERJİ BAĞIMSIZLIK SİMÜLASYONU (Three.js Motoru)
@@ -897,7 +1134,7 @@ function createEcoSystem(scene) {
 
     const cableCurve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-12, 9, -5), new THREE.Vector3(-9, 6.5, -2.5), new THREE.Vector3(-6, 4.5, 0));
     const cableGeo = new THREE.BufferGeometry().setFromPoints(cableCurve.getPoints(20));
-    objs.gridCableMat = new THREE.LineDashedMaterial({ color: 0xef4444, linewidth: 2, dashSize: 0.4, gapSize: 0.3 });
+    objs.gridCableMat = new THREE.LineDashedMaterial({ color: 0xef4444, linewidth: 2, dashSize: 0.4, gapSize: 0.3, transparent: true });
     objs.gridCable = new THREE.Line(cableGeo, objs.gridCableMat);
     objs.gridCable.computeLineDistances(); scene.add(objs.gridCable);
 
@@ -1013,7 +1250,13 @@ window.initApp3DScene = function() {
             appObjs.evs.forEach((v, i) => v.scale.lerp(new THREE.Vector3(i<countEV?1:0, i<countEV?1:0, i<countEV?1:0), 0.1));
             
             // Şebeke kablosu animasyonu (Enerji aktığını simüle eder)
-            if(appObjs.gridCableMat) appObjs.gridCableMat.dashOffset -= 0.05; 
+            // DÜZELTME: "dashOffset" özelliği kullanılan three.js r128 sürümünde
+            // desteklenmiyordu; atama sessizce hiçbir görsel etki yaratmıyordu.
+            // Bunun yerine, gerçekten çalışan bir opaklık-nabzı (pulse) animasyonu kullanıyoruz.
+            if(appObjs.gridCableMat) {
+                const pulse = 0.55 + Math.sin(Date.now() * 0.004) * 0.35;
+                appObjs.gridCableMat.opacity = Math.max(0.2, Math.min(1, pulse));
+            }
             if(appObjs.gridCable) {
                 appObjs.gridCable.visible = currentGrid > 0;
                 // Şebekeden ne kadar bağımsızsak, kablo o kadar yeşile/maviye döner
@@ -1192,13 +1435,21 @@ document.getElementById('tabMyTickets')?.addEventListener('click', () => {
 document.getElementById('ticketForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if(!supabaseClient) { alert("Supabase veritabanı aktif değil. Test ortamındasınız."); return; }
+
+    // DÜZELTME: Oturum süresi dolmuşsa getUser() boş dönüp çökme hatasına yol açıyordu.
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !userData?.user) {
+        alert("Oturumunuz sona ermiş görünüyor. Lütfen tekrar giriş yapın.");
+        window.location.hash = '#auth';
+        return;
+    }
     
     const btn = document.getElementById('btnSubmitTicket'); 
     btn.innerHTML = "Gönderiliyor..."; btn.disabled = true;
 
     // Firmaya ait arıza kaydını (Ticket) veritabanına işle
     const { error } = await supabaseClient.from('support_tickets').insert([{
-        user_id: (await supabaseClient.auth.getUser()).data.user.id,
+        user_id: userData.user.id,
         full_name: document.getElementById('tsName').value,
         phone: document.getElementById('tsPhone').value,
         email: document.getElementById('tsEmail').value,
@@ -1228,33 +1479,40 @@ async function fetchMyTickets() {
     if(!list) return;
     
     list.innerHTML = '<p class="text-slate-500 text-sm font-medium">Biletleriniz veritabanından çekiliyor...</p>';
-    const userId = (await supabaseClient.auth.getUser()).data.user.id;
-    const { data, error } = await supabaseClient.from('support_tickets').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+
+    // DÜZELTME: Oturum süresi dolmuşsa getUser() boş dönüp çökme hatasına yol açıyordu.
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !userData?.user) {
+        list.innerHTML = '<p class="text-red-500 text-sm font-medium">Oturumunuz bulunamadı, lütfen tekrar giriş yapın.</p>';
+        return;
+    }
+
+    const { data, error } = await supabaseClient.from('support_tickets').select('*').eq('user_id', userData.user.id).order('created_at', { ascending: false });
 
     if (error || !data || data.length === 0) { 
         list.innerHTML = '<p class="text-slate-500 text-sm font-medium">Daha önce açılmış bir arıza kaydınız (biletiniz) bulunmuyor.</p>'; 
         return; 
     }
-    list.innerHTML = '';
-    data.forEach(t => {
+    // DÜZELTME: Tüm metin alanları escapeHTML() ile temizlendi
+    list.innerHTML = data.map(t => {
         let sc = "bg-slate-100 text-slate-800"; 
         if(t.status === "Değerlendiriliyor") sc = "bg-blue-100 text-blue-800 border border-blue-200"; 
         if(t.status === "Dönüş Yapıldı") sc = "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm";
         
-        list.innerHTML += `
+        return `
             <div class="p-6 bg-white border border-slate-200 rounded-xl mb-3 shadow-sm hover:shadow transition">
                 <div class="flex justify-between items-start mb-3 border-b border-slate-100 pb-3">
-                    <h4 class="font-black text-slate-800 text-lg">${t.inverter_model} <span class="text-xs text-slate-400 font-normal tracking-widest block mt-1">${new Date(t.created_at).toLocaleDateString('tr-TR')}</span></h4>
-                    <span class="${sc} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${t.status}</span>
+                    <h4 class="font-black text-slate-800 text-lg">${escapeHTML(t.inverter_model)} <span class="text-xs text-slate-400 font-normal tracking-widest block mt-1">${new Date(t.created_at).toLocaleDateString('tr-TR')}</span></h4>
+                    <span class="${sc} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${escapeHTML(t.status)}</span>
                 </div>
-                <p class="text-sm bg-slate-50 border border-slate-100 p-3 rounded-lg text-slate-600 mb-2 font-medium">${t.problem_desc}</p>
+                <p class="text-sm bg-slate-50 border border-slate-100 p-3 rounded-lg text-slate-600 mb-2 font-medium">${escapeHTML(t.problem_desc)}</p>
                 ${t.admin_response ? `
                 <div class="mt-4 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
-                    <p class="text-sm text-emerald-900 leading-relaxed"><strong>🔧 Merkez Yanıtı:</strong> ${t.admin_response}</p>
+                    <p class="text-sm text-emerald-900 leading-relaxed"><strong>🔧 Merkez Yanıtı:</strong> ${escapeHTML(t.admin_response)}</p>
                 </div>` : '<p class="text-xs text-slate-400 mt-2 italic flex items-center gap-1"><span>⏳</span> Henüz teknisyen yanıtı bekleniyor...</p>'}
             </div>
         `;
-    });
+    }).join('');
 }
 
 
@@ -1280,6 +1538,16 @@ const salesScenarios = {
         "Eşimle görüşmem gerekiyor": "İsterseniz ödemeyi aldıktan sonra hemen bir e-toplantı organize edelim. Eşiniz de katılsın ve aklındaki tüm soru işaretlerini ben doğrudan cevaplayayım."
     }
 };
+
+// DÜZELTME: "Anahtar Teslim Kurulum" / "Sadece Danışmanlık" seçimi yapıldığında
+// ilgili fiyat kutuları (kW/Batarya fiyatı veya Danışmanlık fiyatı) hiç değişmiyordu.
+document.querySelectorAll('input[name="companyType"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        const isKurulum = e.target.value === 'kurulum';
+        document.getElementById('setupKurulumPrices')?.classList.toggle('hidden', !isKurulum);
+        document.getElementById('setupDanismanlikPrices')?.classList.toggle('hidden', isKurulum);
+    });
+});
 
 // Satış ekibinin ortak havuza yeni bir itiraz senaryosu kaydetmesi
 document.getElementById('btnSaveNewObjection')?.addEventListener('click', async () => {
@@ -1339,7 +1607,7 @@ document.getElementById('btnStartCall')?.addEventListener('click', async () => {
     for (const [objection, response] of Object.entries(mergedScenarios)) {
         const btn = document.createElement('button');
         btn.className = "text-left w-full bg-white hover:bg-orange-50 border border-slate-200 p-4 rounded-xl shadow-sm font-bold text-slate-700 transition-all text-sm leading-relaxed";
-        btn.innerHTML = `💬 "${objection}"`;
+        btn.innerHTML = `💬 "${escapeHTML(objection)}"`;
         
         // Müşteri itirazına tıklandığında prompter ekranına metni basan dinleyici
         btn.addEventListener('click', () => {
@@ -1360,3 +1628,250 @@ document.getElementById('btnEndCall')?.addEventListener('click', () => {
     document.getElementById('salesSetupArea').classList.remove('hidden');
     document.getElementById('scriptDisplayArea').innerHTML = `<p class="text-slate-600 text-lg font-medium italic animate-pulse">Sol taraftan müşterinin söylediği itirazı seçtiğinizde, okumanız gereken psikolojik yanıt burada belirecektir.</p>`;
 });
+
+
+// ============================================================================
+// 13. ABONELİK PAKETLERİ VE ÖDEME ALT YAPISI (PRICING & SUBSCRIPTION ENGINE)
+// ============================================================================
+// NOT: Bu bölüm sadece İSTEMCİ (client) tarafını hazırlar:
+//   1) Fiyat planlarını Supabase 'pricing_plans' tablosundan çeker — admin
+//      panelinden (Bölüm 7) bu tabloyu doğrudan düzenleyebilir.
+//   2) Ziyaretçiye anasayfada fiyat kartlarını gösterir (aylık/yıllık seçenekli).
+//   3) "Bu Paketi Seç" butonuna basıldığında /api/create-checkout-session adlı
+//      sunucu uç noktasına istek atar (örnek sunucu kodu ayrıca paylaşıldı:
+//      api-create-checkout-session.js — gerçek tahsilat için Vercel/Stripe
+//      hesabınıza kurmanız gerekir).
+// 'pricing_plans' tablosu henüz yoksa veya boşsa, site PRICING_PLANS_FALLBACK
+// içindeki varsayılan paketleri gösterir; sayfa asla boş/kırık kalmaz.
+
+const PRICING_PLANS_FALLBACK = [
+    { id: 'baslangic-monthly', plan_key: 'baslangic', name: 'Başlangıç', price_usd: 20, billing_period: 'monthly', description: 'Tek şube, yeni kurulan EPC firmaları için', features: ['1 Kullanıcı Hesabı', 'Sınırsız Lead / CRM Kaydı', 'Güç & Fatura Hesaplayıcı', 'PDF Teklif & E-posta Gönderimi'], is_popular: false, is_active: true, sort_order: 1 },
+    { id: 'profesyonel-monthly', plan_key: 'profesyonel', name: 'Profesyonel', price_usd: 49, billing_period: 'monthly', description: 'Büyüyen satış ekipleri için', features: ['5 Kullanıcı Hesabı', 'Tüm Başlangıç Özellikleri', '3D Enerji Simülasyonu', 'Satış Copilot & İtiraz Yönetimi', 'Web Sitenize Iframe Entegrasyonu'], is_popular: true, is_active: true, sort_order: 2 },
+    { id: 'kurumsal-monthly', plan_key: 'kurumsal', name: 'Kurumsal', price_usd: 99, billing_period: 'monthly', description: 'Çok şubeli firmalar ve bayilik ağları için', features: ['Sınırsız Kullanıcı', 'Tüm Profesyonel Özellikleri', 'Öncelikli Teknik Servis Hattı', 'Özel Marka (White-Label) Seçeneği'], is_popular: false, is_active: true, sort_order: 3 },
+    { id: 'baslangic-yearly', plan_key: 'baslangic', name: 'Başlangıç', price_usd: 192, billing_period: 'yearly', description: 'Tek şube, yeni kurulan EPC firmaları için (Yıllıkta 2 ay hediye)', features: ['1 Kullanıcı Hesabı', 'Sınırsız Lead / CRM Kaydı', 'Güç & Fatura Hesaplayıcı', 'PDF Teklif & E-posta Gönderimi'], is_popular: false, is_active: true, sort_order: 1 },
+    { id: 'profesyonel-yearly', plan_key: 'profesyonel', name: 'Profesyonel', price_usd: 470, billing_period: 'yearly', description: 'Büyüyen satış ekipleri için (Yıllıkta 2 ay hediye)', features: ['5 Kullanıcı Hesabı', 'Tüm Başlangıç Özellikleri', '3D Enerji Simülasyonu', 'Satış Copilot & İtiraz Yönetimi', 'Web Sitenize Iframe Entegrasyonu'], is_popular: true, is_active: true, sort_order: 2 },
+    { id: 'kurumsal-yearly', plan_key: 'kurumsal', name: 'Kurumsal', price_usd: 950, billing_period: 'yearly', description: 'Çok şubeli firmalar ve bayilik ağları için (Yıllıkta 2 ay hediye)', features: ['Sınırsız Kullanıcı', 'Tüm Profesyonel Özellikleri', 'Öncelikli Teknik Servis Hattı', 'Özel Marka (White-Label) Seçeneği'], is_popular: false, is_active: true, sort_order: 3 }
+];
+
+let activeBillingPeriod = 'monthly';
+window._cachedPricingPlans = null;
+
+async function fetchPricingPlans() {
+    if (supabaseClient) {
+        try {
+            const { data, error } = await supabaseClient.from('pricing_plans').select('*').eq('is_active', true).order('sort_order', { ascending: true });
+            if (!error && data && data.length > 0) { window._cachedPricingPlans = data; return data; }
+        } catch (err) {
+            console.warn("Fiyat planları Supabase'den çekilemedi, varsayılan paketler gösteriliyor.", err);
+        }
+    }
+    window._cachedPricingPlans = PRICING_PLANS_FALLBACK;
+    return PRICING_PLANS_FALLBACK;
+}
+
+async function renderPublicPricingSection() {
+    const container = document.getElementById('pricingCardsContainer');
+    if (!container) return;
+    container.innerHTML = '<p class="text-center text-slate-400 col-span-3 py-10">Fiyatlandırma paketleri yükleniyor...</p>';
+
+    const allPlans = await fetchPricingPlans();
+    const plansToShow = allPlans.filter(p => p.billing_period === activeBillingPeriod);
+    container.innerHTML = '';
+
+    if (plansToShow.length === 0) {
+        container.innerHTML = '<p class="text-center text-slate-400 col-span-3 py-10">Bu dönem için aktif bir paket bulunamadı.</p>';
+        return;
+    }
+
+    plansToShow.forEach(plan => {
+        const card = document.createElement('div');
+        card.className = `reveal relative rounded-3xl p-8 flex flex-col ${plan.is_popular ? 'bg-slate-900 text-white border-2 border-amber-400 shadow-2xl md:scale-105 z-10' : 'bg-white text-slate-800 border border-slate-200 shadow-sm'}`;
+        const periodLabel = plan.billing_period === 'yearly' ? '/yıl' : '/ay';
+        const featureColor = plan.is_popular ? 'text-slate-200' : 'text-slate-600';
+        const tickColor = plan.is_popular ? 'text-amber-400' : 'text-emerald-500';
+        card.innerHTML = `
+            ${plan.is_popular ? '<div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 text-xs font-black px-4 py-1 rounded-full shadow whitespace-nowrap">EN ÇOK TERCİH EDİLEN</div>' : ''}
+            <h3 class="font-display text-xl font-bold mb-1">${escapeHTML(plan.name)}</h3>
+            <p class="text-sm ${plan.is_popular ? 'text-slate-300' : 'text-slate-500'} mb-6 min-h-[40px]">${escapeHTML(plan.description || '')}</p>
+            <div class="flex items-baseline mb-6">
+                <span class="text-2xl font-bold mr-1">$</span>
+                <span class="font-display text-5xl font-bold">${Math.round(plan.price_usd)}</span>
+                <span class="ml-1 text-sm font-bold text-slate-400">${periodLabel}</span>
+            </div>
+            <ul class="space-y-3 mb-8 flex-1">
+                ${(plan.features || []).map(f => `<li class="flex items-start gap-2 text-sm ${featureColor}"><span class="${tickColor} font-bold">✓</span><span>${escapeHTML(f)}</span></li>`).join('')}
+            </ul>
+            <button data-plan-id="${escapeHTML(plan.id)}" data-plan-key="${escapeHTML(plan.plan_key)}" class="btnSubscribePlan w-full py-3 rounded-xl font-bold transition ${plan.is_popular ? 'bg-amber-400 hover:bg-amber-300 text-slate-900' : 'bg-slate-900 hover:bg-slate-800 text-white'}">Bu Paketi Seç</button>
+        `;
+        container.appendChild(card);
+    });
+
+    container.querySelectorAll('.btnSubscribePlan').forEach(btn => {
+        btn.addEventListener('click', () => startCheckout(btn.dataset.planKey, btn.dataset.planId));
+    });
+
+    initScrollReveal();
+}
+
+function switchBillingPeriod(period) {
+    activeBillingPeriod = period;
+    const mBtn = document.getElementById('btnBillingMonthly');
+    const yBtn = document.getElementById('btnBillingYearly');
+    if (mBtn && yBtn) {
+        mBtn.classList.toggle('bg-slate-900', period === 'monthly');
+        mBtn.classList.toggle('text-white', period === 'monthly');
+        mBtn.classList.toggle('text-slate-500', period !== 'monthly');
+        yBtn.classList.toggle('bg-slate-900', period === 'yearly');
+        yBtn.classList.toggle('text-white', period === 'yearly');
+        yBtn.classList.toggle('text-slate-500', period !== 'yearly');
+    }
+    renderPublicPricingSection();
+}
+document.getElementById('btnBillingMonthly')?.addEventListener('click', () => switchBillingPeriod('monthly'));
+document.getElementById('btnBillingYearly')?.addEventListener('click', () => switchBillingPeriod('yearly'));
+
+// "Bu Paketi Seç" akışı: giriş yapılmamışsa önce kayıt/girişe yönlendirir,
+// ardından ödeme adımına otomatik devam eder.
+window.startCheckout = async function(planKey, planId) {
+    if (!supabaseClient) { alert('Ödeme altyapısı için veritabanı bağlantısı aktif değil (test ortamı).'); return; }
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) {
+        localStorage.setItem('pendingPlanKey', planKey);
+        localStorage.setItem('pendingBillingPeriod', activeBillingPeriod);
+        alert('Devam etmek için lütfen önce ücretsiz firma hesabınızı oluşturun veya giriş yapın. Seçtiğiniz paket hatırlanacak.');
+        window.location.hash = '#auth';
+        document.getElementById('tabRegister')?.click();
+        return;
+    }
+    await proceedToCheckout(planKey, planId, session);
+};
+
+async function proceedToCheckout(planKey, planId, session) {
+    try {
+        const resp = await fetch('/api/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ planKey, planId, userId: session.user.id, email: session.user.email })
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.url) throw new Error(data.error || 'Ödeme oturumu oluşturulamadı.');
+        window.location.href = data.url; // Stripe Checkout'a yönlendir
+    } catch (err) {
+        console.error(err);
+        alert('⚠️ Ödeme sayfası henüz bağlanmadı. Sunucunuzda /api/create-checkout-session uç noktasını devreye almanız gerekiyor (örnek kod ayrıca paylaşıldı: api-create-checkout-session.js).');
+    }
+}
+
+// Kayıt/Giriş sonrası bekleyen bir plan seçimi varsa otomatik olarak ödeme adımına devam eder
+async function resumePendingCheckoutIfAny() {
+    const pendingKey = localStorage.getItem('pendingPlanKey');
+    if (!pendingKey || !supabaseClient) return;
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return;
+
+    const pendingPeriod = localStorage.getItem('pendingBillingPeriod') || 'monthly';
+    localStorage.removeItem('pendingPlanKey');
+    localStorage.removeItem('pendingBillingPeriod');
+
+    const plans = window._cachedPricingPlans || await fetchPricingPlans();
+    const plan = plans.find(p => p.plan_key === pendingKey && p.billing_period === pendingPeriod) || plans.find(p => p.plan_key === pendingKey);
+    if (plan) await proceedToCheckout(plan.plan_key, plan.id, session);
+}
+
+// ---- ADMİN: FİYATLANDIRMA YÖNETİMİ (Bölüm 7'deki fetchAdminData tarafından çağrılır) ----
+async function adminFetchAndRenderPricingPlans() {
+    const box = document.getElementById('adminPricingTableBody');
+    if (!box) return;
+    if (!supabaseClient) { box.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500 text-xs">Veritabanı bağlantısı yok.</td></tr>'; return; }
+
+    const { data, error } = await supabaseClient.from('pricing_plans').select('*').order('sort_order', { ascending: true });
+    if (error || !data) {
+        box.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-xs text-red-500">Fiyat planları yüklenemedi. 'pricing_plans' tablosunun oluşturulduğundan emin olun (bkz. supabase_schema.sql).</td></tr>`;
+        return;
+    }
+    if (data.length === 0) {
+        box.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">Henüz bir fiyat planı eklenmemiş. Aşağıdan ekleyin.</td></tr>';
+        return;
+    }
+
+    box.innerHTML = data.map(plan => `
+        <tr class="border-b border-slate-100 hover:bg-slate-50 text-xs" data-plan-row="${escapeHTML(plan.id)}">
+            <td class="p-2 pl-4"><input type="text" value="${escapeHTML(plan.name)}" data-field="name" class="w-28 p-1.5 border border-slate-200 rounded font-bold outline-none"></td>
+            <td class="p-2"><input type="number" step="0.01" value="${plan.price_usd}" data-field="price_usd" class="w-20 p-1.5 border border-slate-200 rounded text-center font-bold text-emerald-700 outline-none"></td>
+            <td class="p-2">
+                <select data-field="billing_period" class="p-1.5 border border-slate-200 rounded outline-none">
+                    <option value="monthly" ${plan.billing_period === 'monthly' ? 'selected' : ''}>Aylık</option>
+                    <option value="yearly" ${plan.billing_period === 'yearly' ? 'selected' : ''}>Yıllık</option>
+                </select>
+            </td>
+            <td class="p-2"><input type="number" value="${plan.sort_order || 0}" data-field="sort_order" class="w-14 p-1.5 border border-slate-200 rounded text-center outline-none"></td>
+            <td class="p-2 text-center"><input type="checkbox" data-field="is_popular" ${plan.is_popular ? 'checked' : ''} class="w-4 h-4"></td>
+            <td class="p-2 text-center"><input type="checkbox" data-field="is_active" ${plan.is_active ? 'checked' : ''} class="w-4 h-4"></td>
+            <td class="p-2 pr-4 text-right whitespace-nowrap">
+                <button class="btnAdminSavePlan bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded mr-1">Kaydet</button>
+                <button class="btnAdminDeletePlan bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1.5 rounded border border-red-200">Sil</button>
+            </td>
+        </tr>
+    `).join('');
+
+    box.querySelectorAll('tr[data-plan-row]').forEach(row => {
+        const planId = row.getAttribute('data-plan-row');
+        row.querySelector('.btnAdminSavePlan')?.addEventListener('click', () => adminSavePricingPlan(planId, row));
+        row.querySelector('.btnAdminDeletePlan')?.addEventListener('click', () => adminDeletePricingPlan(planId));
+    });
+}
+
+async function adminSavePricingPlan(id, rowEl) {
+    if (!supabaseClient) return;
+    const updates = {};
+    rowEl.querySelectorAll('[data-field]').forEach(input => {
+        const field = input.dataset.field;
+        if (input.type === 'checkbox') updates[field] = input.checked;
+        else if (field === 'price_usd' || field === 'sort_order') updates[field] = parseFloat(input.value) || 0;
+        else updates[field] = input.value;
+    });
+    const { error } = await supabaseClient.from('pricing_plans').update(updates).eq('id', id);
+    if (error) { alert('Güncellenemedi: ' + error.message); }
+    else { alert('✅ Plan güncellendi. Web sitesindeki fiyatlandırma anında yenilendi.'); renderPublicPricingSection(); }
+}
+
+async function adminDeletePricingPlan(id) {
+    if (!supabaseClient) return;
+    if (!confirm('Bu planı kalıcı olarak silmek istediğinize emin misiniz?')) return;
+    const { error } = await supabaseClient.from('pricing_plans').delete().eq('id', id);
+    if (error) alert('Silinemedi: ' + error.message);
+    else { adminFetchAndRenderPricingPlans(); renderPublicPricingSection(); }
+}
+
+document.getElementById('btnAdminAddPlan')?.addEventListener('click', async () => {
+    if (!supabaseClient) { alert('Veritabanı bağlantısı yok.'); return; }
+    const { error } = await supabaseClient.from('pricing_plans').insert([{
+        plan_key: 'yeni-plan-' + Date.now(),
+        name: 'Yeni Plan',
+        price_usd: 20,
+        billing_period: 'monthly',
+        description: 'Açıklamayı buradan düzenleyin',
+        features: ['Özellik 1', 'Özellik 2'],
+        is_popular: false,
+        is_active: true,
+        sort_order: 99
+    }]);
+    if (error) alert('Eklenemedi: ' + error.message);
+    else adminFetchAndRenderPricingPlans();
+});
+
+
+// ============================================================================
+// 14. ARAYÜZ CİLASI: AÇILIŞ SAYFASI KAYDIRMA (SCROLL) ANİMASYONLARI
+// ============================================================================
+function initScrollReveal() {
+    const revealEls = document.querySelectorAll('.reveal:not(.is-visible)');
+    if (!revealEls.length) return;
+    if (!('IntersectionObserver' in window)) { revealEls.forEach(el => el.classList.add('is-visible')); return; }
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); }
+        });
+    }, { threshold: 0.12 });
+    revealEls.forEach(el => observer.observe(el));
+}
