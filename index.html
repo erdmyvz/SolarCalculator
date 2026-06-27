@@ -146,7 +146,7 @@
 
     <div id="appContainer" class="hidden w-full px-4 md:px-8 pb-10 bg-slate-50 min-h-screen">
         
-        <div class="w-full max-w-7xl mx-auto mt-4 mb-8 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <div id="dashboardHeader" class="w-full max-w-7xl mx-auto mt-4 mb-8 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <a href="#home" class="text-xl font-extrabold text-slate-800">☀️ EPC <span class="text-emerald-600">Merkezim</span></a>
             <div class="relative">
                 <button id="btnProfile" class="flex items-center space-x-3 hover:bg-slate-50 p-2 rounded-lg">
@@ -176,16 +176,7 @@
                 <button id="btnGoCompanyMgmt" class="bg-slate-800 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
                     <h2 class="text-xl font-bold mb-4">🏢 Kurumsal Zeka & YZ</h2><p class="text-slate-300 text-sm">Yapay zekadan süreç reçetesi alın.</p>
                 </button>
-                
-                <div id="btnGoCalculator" class="bg-blue-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 cursor-pointer">
-                    <h2 class="text-xl font-bold mb-4">⚡ Güç & Fatura Hesaplayıcı</h2><p class="text-blue-100 text-sm">Tüketim analizi yapıp PDF teklifi sunun.</p>
-                </div>
-                <div id="btnGoSimulation" class="bg-indigo-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 cursor-pointer">
-                    <h2 class="text-xl font-bold mb-4">🏠 3D Mimari Simülasyon</h2><p class="text-indigo-100 text-sm">Müşteriye 3D ortamda bağımsızlığı gösterin.</p>
-                </div>
-                <div id="btnGoEVCalc" class="bg-teal-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 cursor-pointer">
-                    <h2 class="text-xl font-bold mb-4">🚗 EV Şarj Mühendisliği</h2><p class="text-teal-100 text-sm">Araç menziline göre panel hesabını yapın.</p>
-                </div>
+
                 <button id="btnGoSalesAssistant" class="bg-orange-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
                     <h2 class="text-xl font-bold mb-4">🧠 Satış Copilot (İtiraz)</h2><p class="text-orange-100 text-sm">Müşteri itirazlarına psikolojik hazır cevaplar.</p>
                 </button>
@@ -261,7 +252,7 @@
         </div>
         <div id="calculatorModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
-                <button id="btnBackToMenu" class="text-slate-500 hover:text-blue-600 font-bold flex items-center transition">← Yönetim Paneli</button>
+                <a href="#home" class="inline-block text-slate-500 font-bold mb-4">← Ana Sayfaya Dön</a>
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Güç Hesaplayıcı</span>
             </div>
             
@@ -317,7 +308,7 @@
         </div>
 
         <div id="simulationModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
-            <div class="mb-6 border-b pb-4 flex items-center"><button id="btnBackToMenuFromSim" class="text-slate-500 hover:text-indigo-600 font-bold flex items-center transition">← Yönetim Paneli</button><span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">3D Enerji Simülasyonu</span></div>
+            <div class="mb-6 border-b pb-4 flex items-center"><a href="#home" class="inline-block text-slate-500 font-bold mb-4">← Ana Sayfaya Dön</a><span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">3D Enerji Simülasyonu</span></div>
             
             <h1 class="text-2xl font-black text-slate-800 mb-4">İnteraktif Enerji Bağımsızlığı Görselleştirmesi</h1>
             
@@ -342,7 +333,7 @@
 
         <div id="evCalcModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div class="flex items-center"><button id="btnBackToMenuFromEV" class="text-slate-500 hover:text-teal-600 font-bold flex items-center transition">← Yönetim Paneli</button><span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">EV & Solar Entegrasyon Analizi</span></div>
+                <div class="flex items-center"><a href="#home" class="inline-block text-slate-500 font-bold mb-4">← Ana Sayfaya Dön</a><span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">EV & Solar Entegrasyon Analizi</span></div>
                 <div class="flex items-center bg-teal-50 px-4 py-2 rounded-lg border border-teal-200 shadow-sm"><label class="text-xs font-black text-teal-900 mr-2">Şebeke Elektrik Birim Fiyatı (TL/kWh):</label><input type="number" id="evCalcTariff" value="2.50" step="0.10" class="ev-reactive-input w-24 p-1.5 border border-teal-300 rounded text-sm text-center font-bold outline-none focus:ring-1 focus:ring-teal-500"></div>
             </div>
             

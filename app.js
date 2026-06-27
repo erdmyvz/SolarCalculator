@@ -76,30 +76,31 @@ window.addEventListener('load', async () => {
     handleSPA_Routing();
 });
 
-// Ziyaretçilerin landing page'den public (herkese açık) hesaplayıcılara erişmesini sağlar
 window.openPublicModule = function(moduleId) {
     document.getElementById('landingContainer').classList.add('hidden');
     document.getElementById('appContainer').classList.remove('hidden');
     document.getElementById('mainMenu').classList.add('hidden');
-    document.getElementById(moduleId).classList.remove('hidden');
     
+    // ZİYARETÇİ EKRANINDA PROFİL ÜST ÇUBUĞUNU GİZLE
+    document.getElementById('dashboardHeader').classList.add('hidden'); 
+    
+    document.getElementById(moduleId).classList.remove('hidden');
     if(moduleId === 'simulationModule' && !window.isApp3DInitialized && typeof initApp3DScene === 'function') {
-        initApp3DScene(); 
-        window.isApp3DInitialized = true;
+        initApp3DScene(); window.isApp3DInitialized = true;
     }
 }
 
-// Uygulama içindeki tüm modülleri kapatıp ana paneli (Dashboard) gösterir
 window.closeAllAndShowMenu = function() {
-    const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'sectoralModule', 'educationModule'];
+    const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'sectoralModule', 'educationModule', 'regulationsModule'];
     mods.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
     
-    // Sadece giriş yapmış yetkili kullanıcılar Main Menu'yü görebilir. Aksi halde landing'e atılır.
-    if(currentUserProfile || !supabaseClient) {
-        document.getElementById('mainMenu').classList.remove('hidden');
-    } else {
-        window.location.hash = '#home';
-    }
+    if(currentUserProfile || !supabaseClient) { 
+        document.getElementById('mainMenu').classList.remove('hidden'); 
+        
+        // YÖNETİM PANELİNDE PROFİL ÜST ÇUBUĞUNU GERİ GETİR
+        document.getElementById('dashboardHeader').classList.remove('hidden'); 
+    } 
+    else { window.location.hash = '#home'; }
 }
 
 // ============================================================================
