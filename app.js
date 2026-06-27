@@ -1039,3 +1039,186 @@ window.respondTicket = async function(id, isPublic) {
 };
 
 document.getElementById('adminPanelCard')?.addEventListener('click', () => { fetchUsersForAdmin(); fetchTicketsForAdmin(); });
+
+
+// ============================================================================
+// EPC MERKEZİM ADVANCED SOLAR CRM ENGINE
+// ============================================================================
+
+// Sektörel Durum Etiketleri Eşleşme Sözlüğü
+const crmStatusLabels = {
+    'yeni_basvuru': { text: '1. Yeni Başvuru', css: 'bg-blue-100 text-blue-700' },
+    'arandi_gorusuldu': { text: '2. Arandı / İletişimde', css: 'bg-amber-100 text-amber-700' },
+    'teklif_gonderildi': { text: '3. Teklif Gönderildi', css: 'bg-indigo-100 text-indigo-700' },
+    'sozlesme_imzalandi': { text: '4. Sözleşme İmzalandı', css: 'bg-purple-100 text-purple-700' },
+    'kurulum_basladi': { text: '5. Kurulum Başladı', css: 'bg-orange-100 text-orange-700' },
+    'resmi_surec': { text: '6. Resmi Süreç / Kabulde', css: 'bg-cyan-100 text-cyan-700' },
+    'tamamlandi': { text: '7. Tamamlandı 🚀', css: 'bg-emerald-100 text-emerald-700' }
+};
+
+// Test ve Başlangıç Veri Seti (Gerçek süreçte veri tabanından beslenecek)
+let crmLeads = [
+    {
+        id: 1,
+        name: "Ahmet Yılmaz (Yılmaz Villa Projesi)",
+        status: "yeni_basvuru",
+        bill: 5200,
+        consumptions: "Yerden ısıtma, 2 adet merkezi klima, havuz filtrasyonu",
+        heatPump: "Var",
+        heatPumpPower: "12 kW",
+        ev: "Yakında",
+        blackout: "Sık",
+        storageIntent: "Evet",
+        backupDetails: "Kesintide havuz hariç tüm ev 4 saat beslensin",
+        notes: "Müşteri premium panel markaları (örn. Maxeon veya Jinko Tiger Neo) talep ediyor."
+    },
+    {
+        id: 2,
+        name: "Kamil Yapı Mühendislik (Fabrika Çatı GES)",
+        status: "teklif_gonderildi",
+        bill: 85000,
+        consumptions: "Endüstriyel kompresörler, CNC tezgahları, aydınlatma hatları",
+        heatPump: "Yok",
+        heatPumpPower: "-",
+        ev: "Yok",
+        blackout: "Seyrek",
+        storageIntent: "Hayır",
+        backupDetails: "-",
+        notes: "Yatırım teşvik belgesi kapsamına alınması planlanıyor. Mahsuplaşma takibi kritik."
+    }
+];
+
+// CRM Başlatıcı Fonksiyonu (Modül açıldığında tetiklenir)
+function initCRMModule() {
+    crmCalculateStats();
+    crmRenderLeads();
+}
+
+// 1. Dashboard Kokpit Metrik Hesaplayıcı
+function crmCalculateStats() {
+    const statNew = crmLeads.filter(l => l.status === 'yeni_basvuru').length;
+    const statFollowUp = crmLeads.filter(l => l.status === 'arandi_gorusuldu' || l.status === 'teklif_gonderildi').length;
+    const statActive = crmLeads.filter(l => l.status === 'kurulum_basladi').length;
+    const statOfficial = crmLeads.filter(l => l.status === 'resmi_surec').length;
+
+    if(document.getElementById('crmStatNew')) document.getElementById('crmStatNew').textContent = statNew;
+    if(document.getElementById('crmStatFollowUp')) document.getElementById('crmStatFollowUp').textContent = statFollowUp;
+    if(document.getElementById('crmStatActive')) document.getElementById('crmStatActive').textContent = statActive;
+    if(document.getElementById('crmStatOfficial')) document.getElementById('crmStatOfficial').textContent = statOfficial;
+}
+
+// 2. Müşteri Listesini Tabloya Basan Mimari
+function crmRenderLeads() {
+    const tableBody = document.getElementById('crmLeadsTableBody');
+    const filterValue = document.getElementById('crmFilterStatus')?.value || 'all';
+    
+    if(!tableBody) return;
+    tableBody.innerHTML = '';
+
+    const filteredLeads = crmLeads.filter(lead => filterValue === 'all' || lead.status === filterValue);
+
+    if(filteredLeads.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">Seçili aşamada kayıtlı proje bulunamadı.</td></tr>`;
+        return;
+    }
+
+    filteredLeads.forEach(lead => {
+        const badge = crmStatusLabels[lead.status] || { text: lead.status, css: 'bg-slate-100' };
+        
+        // Hızlı donanım ikonları özeti
+        let techBadges = [];
+        if(lead.ev === 'Var' || lead.ev === 'Yakında') techBadges.push('🚗 EV');
+        if(lead.heatPump === 'Var') techBadges.push('🔥 Isı P.');
+        if(lead.storageIntent === 'Evet') techBadges.push('🔋 Batarya');
+        const techSummary = techBadges.length > 0 ? techBadges.join(' | ') : 'Standart Yük';
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 transition cursor-pointer";
+        tr.onclick = (e) => {
+            // Butona tıklandıysa satır tetiklenmesin
+            if(e.target.tagName !== 'BUTTON') crmOpenLeadDetails(lead.id);
+        };
+
+        tr.innerHTML = `
+            <td class="p-4">
+                <div class="font-bold text-slate-900 text-sm">${lead.name}</div>
+                <div class="text-[10px] text-slate-400">ID: #GES-${lead.id}</div>
+            </td>
+            <td class="p-4 font-semibold text-slate-800">${lead.bill ? lead.bill.toLocaleString('tr-TR') + ' TL' : '-'}</td>
+            <td class="p-4"><span class="px-2.5 py-1 rounded-full font-bold text-[10px] ${badge.css}">${badge.text}</span></td>
+            <td class="p-4 text-slate-500 font-medium">${techSummary}</td>
+            <td class="p-4 text-right">
+                <button onclick="crmOpenLeadDetails(${lead.id})" class="bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 font-bold px-3 py-1.5 rounded-lg border transition">İncele / Düzenle</button>
+            </td>
+        `;
+        tableBody.appendChild(tr);
+    });
+}
+
+// 3. Detay Görünümü ve Teknik Anket Kartını Açma
+function crmOpenLeadDetails(id) {
+    const lead = crmLeads.find(l => l.id === id);
+    if(!lead) return;
+
+    document.getElementById('modalLeadId').value = lead.id;
+    document.getElementById('modalLeadName').textContent = lead.name;
+    document.getElementById('modalStatusSelect').value = lead.status;
+    document.getElementById('fieldBill').value = lead.bill || '';
+    document.getElementById('fieldConsumptions').value = lead.consumptions || '';
+    document.getElementById('fieldHeatPump').value = lead.heatPump || 'Yok';
+    document.getElementById('fieldHeatPumpPower').value = lead.heatPumpPower || '';
+    document.getElementById('fieldEV').value = lead.ev || 'Yok';
+    document.getElementById('fieldBlackout').value = lead.blackout || 'Seyrek';
+    document.getElementById('fieldStorageIntent').value = lead.storageIntent || 'Hayır';
+    document.getElementById('fieldBackupDetails').value = lead.backupDetails || '';
+    document.getElementById('fieldNotes').value = lead.notes || '';
+
+    document.getElementById('crmDetailModal').classList.remove('hidden');
+}
+
+// 4. Yeni Müşteri Ekleme Sihirbazı (Boş Kart Açar)
+function crmOpenNewLeadModal() {
+    const newId = crmLeads.length > 0 ? Math.max(...crmLeads.map(l=>l.id)) + 1 : 1;
+    const name = prompt("Lütfen Müşteri Adı / Proje Başlığı giriniz:");
+    if(!name || !name.trim()) return;
+
+    const newLead = {
+        id: newId,
+        name: name.trim(),
+        status: "yeni_basvuru",
+        bill: "", consumptions: "", heatPump: "Yok", heatPumpPower: "", ev: "Yok", blackout: "Seyrek", storageIntent: "Hayır", backupDetails: "", notes: ""
+    };
+
+    crmLeads.push(newLead);
+    crmCalculateStats();
+    crmRenderLeads();
+    crmOpenLeadDetails(newId);
+}
+
+// 5. Değişiklikleri Kaydetme ve Çıktıları Güncelleme
+function crmSaveLeadDetails() {
+    const id = parseInt(document.getElementById('modalLeadId').value);
+    const leadIndex = crmLeads.findIndex(l => l.id === id);
+    
+    if(leadIndex === -1) return;
+
+    // Verileri form elemanlarından çekip güncelleme
+    crmLeads[leadIndex].status = document.getElementById('modalStatusSelect').value;
+    crmLeads[leadIndex].bill = document.getElementById('fieldBill').value ? parseInt(document.getElementById('fieldBill').value) : "";
+    crmLeads[leadIndex].consumptions = document.getElementById('fieldConsumptions').value;
+    crmLeads[leadIndex].heatPump = document.getElementById('fieldHeatPump').value;
+    crmLeads[leadIndex].heatPumpPower = document.getElementById('fieldHeatPumpPower').value;
+    crmLeads[leadIndex].ev = document.getElementById('fieldEV').value;
+    crmLeads[leadIndex].blackout = document.getElementById('fieldBlackout').value;
+    crmLeads[leadIndex].storageIntent = document.getElementById('fieldStorageIntent').value;
+    crmLeads[leadIndex].backupDetails = document.getElementById('fieldBackupDetails').value;
+    crmLeads[leadIndex].notes = document.getElementById('fieldNotes').value;
+
+    crmCloseModal();
+    crmCalculateStats();
+    crmRenderLeads();
+}
+
+function crmCloseModal() {
+    document.getElementById('crmDetailModal').classList.add('hidden');
+}
