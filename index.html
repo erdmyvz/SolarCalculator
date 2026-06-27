@@ -889,27 +889,551 @@
                         <label class="block text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Satış Ekibine Verilecek Tüyo / Psikolojik Hazır Cevap</label>
                         <textarea id="newResponseInput" rows="3" placeholder="Örn: Haklısınız ucuz görünüyor. Ancak güneş paneli çatınızda 25 yıl duracak bir yatırımdır. X firmasından 3 yıl sonra muhatap bulamadığınızda..." class="w-full p-3 border border-slate-300 bg-white rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500 text-slate-800 font-medium shadow-inner resize-none"></textarea>
                     </div>
-                    <button type="button" id="btnSaveNewObjection" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg text-sm transition shadow-md flex items-center justify-center gap-2">
-                        <span>☁️</span> Cevabı Tüm Satış Ekipleri İçin Kaydet
-                    </button>
+                  <!-- ============================================================================ -->
+        <!-- M-8: KURUMSAL ZEKA & YZ MODÜLÜ                                            -->
+        <!-- ============================================================================ -->
+        <div id="companyManagementModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 border-b pb-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <button id="btnBackToMenuFromCompanyMgmt" class="text-slate-500 hover:text-emerald-600 font-bold flex items-center transition">← Yönetim Paneli</button>
+                    <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Firma Yönetimi & YZ Analizi</span>
+                </div>
+                <div class="text-xs font-bold text-slate-400 italic hidden md:block">"Sistemi olmayan işletme, sahibinin köleliğidir."</div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-emerald-50 p-6 rounded-xl border border-emerald-100 shadow-sm">
+                        <h3 class="font-black text-emerald-900 mb-2 text-lg">Yapay Zeka Kurumsal Analizi</h3>
+                        <p class="text-xs text-emerald-700 mb-4">Aşağıdaki bilgileri doldurduğunuzda, arka planda çalışan danışman yapay zeka motorumuz firmanızı 7 fonksiyonda analiz edip size özel reçete sunacaktır.</p>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Firma İsmi</label>
+                                <input type="text" id="cmName" placeholder="Örn: EPC Merkezim" class="w-full p-2 border border-slate-300 rounded text-sm outline-none focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Temel Vaat (Elevator Pitch)</label>
+                                <textarea id="cmPitch" rows="2" placeholder="Sadece 2 cümlede, teknik jargon kullanmadan ne yaptığınızı nasıl anlatırsınız?" class="w-full p-2 border border-slate-300 rounded text-sm outline-none focus:border-emerald-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Eşsiz Satış Teklifi (USP)</label>
+                                <textarea id="cmUSP" rows="2" placeholder="Fiyat haricinde sizi neden seçmeliler?" class="w-full p-2 border border-slate-300 rounded text-sm outline-none focus:border-emerald-500"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Çözdüğünüz "Acı"</label>
+                                <textarea id="cmPain" rows="2" placeholder="Müşterinin geceleri uykusunu kaçıran o temel sorun nedir?" class="w-full p-2 border border-slate-300 rounded text-sm outline-none focus:border-emerald-500"></textarea>
+                            </div>
+                            <button id="btnRunAI" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded shadow transition">YZ İle Reçete Oluştur</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800 text-white p-6 rounded-xl shadow-sm">
+                        <h4 class="font-bold text-center mb-4 text-emerald-400 border-b border-slate-700 pb-2">Şirketlerin 3 Temel İhtiyacı</h4>
+                        <ul class="space-y-3 text-sm">
+                            <li><strong class="text-white">1. Gelir Üretmek:</strong> İlk müşteri yok, teklif yanlış. <br><em class="text-emerald-300">Çözüm: Mesaj şablonu, otomatik huni.</em></li>
+                            <li><strong class="text-white">2. Sistem Kurmak:</strong> Gelir var ama müşteri tutulmuyor. <br><em class="text-emerald-300">Çözüm: CRM, süreç dokümanı.</em></li>
+                            <li><strong class="text-white">3. Ölçeklemek:</strong> Yapıyı büyütmek.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2">
+                    <h3 class="font-black text-slate-800 mb-4 text-xl flex items-center gap-2">
+                        <span>📚</span> Kurumsal Operasyon Kılavuzu (7 Fonksiyon)
+                    </h3>
+                    
+                    <div class="flex flex-wrap gap-2 mb-4 border-b pb-4" id="cmTabButtons">
+                        <button data-target="cmMarketing" class="cm-tab-btn active bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition">Marketing</button>
+                        <button data-target="cmSales" class="cm-tab-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-lg text-sm font-bold transition">Satış</button>
+                        <button data-target="cmManagement" class="cm-tab-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-lg text-sm font-bold transition">Yönetim</button>
+                        <button data-target="cmOps" class="cm-tab-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-lg text-sm font-bold transition">Operasyon</button>
+                        <button data-target="cmFinance" class="cm-tab-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-lg text-sm font-bold transition">Finans</button>
+                        <button data-target="cmRD" class="cm-tab-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-lg text-sm font-bold transition">Ar-Ge</button>
+                        <button data-target="cmHR" class="cm-tab-btn bg-slate-100 text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-lg text-sm font-bold transition">İnsan Kaynakları</button>
+                    </div>
+
+                    <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 h-[600px] overflow-y-auto">
+                        
+                        <div id="cmMarketing" class="cm-tab-content space-y-4">
+                            <h2 class="text-xl font-black text-emerald-700">Pazarlamaya İçeriden Başlayın</h2>
+                            <p class="text-sm text-slate-600">İnsanlar ürün almazlar; statü, zaman, huzur veya acıdan kurtuluş alırlar. Pazarlama dışarıdan değil, içeriden başlar.</p>
+                            
+                            <div class="bg-white p-4 rounded border-l-4 border-emerald-500 shadow-sm mt-4">
+                                <h4 class="font-bold text-slate-800 mb-2">Psikolojik Hedef Kitle (3 Aşama)</h4>
+                                <ul class="list-disc pl-5 text-sm space-y-2 text-slate-600">
+                                    <li><strong>Soğuk Kitle:</strong> Sorunun farkında değil. Ürün satma, eğit! "Kanca" atıp problemi hissettir.</li>
+                                    <li><strong>Ilık Kitle:</strong> Çözüm arıyor, seni kıyaslıyor. Otorite ve empati göster. Ücretsiz rehberler ve vaka analizleri sun.</li>
+                                    <li><strong>Sıcak Kitle:</strong> Karar aşamasında. Güçlü eylem çağrısı, net garanti ve aciliyet hissi ile doğrudan satışı kapat (Direct Response).</li>
+                                </ul>
+                            </div>
+                            <div class="bg-white p-4 rounded border-l-4 border-emerald-500 shadow-sm">
+                                <h4 class="font-bold text-slate-800 mb-2">Hikaye Kurgusu (Hero & Guide)</h4>
+                                <p class="text-sm text-slate-600">Markalar kendini "Kahraman" ilan etme hatasına düşer. Oysa <strong>Müşteri Kahramandır</strong>. Şirketimiz, onu anlayan ve sorunu çözme otoritesine sahip bir <strong>Rehber</strong> olarak konumlanmalıdır. Başarı senaryosu kadar, bizimle çalışmazsa yaşayacağı başarısızlık senaryosu da net çizilmelidir.</p>
+                            </div>
+                            <div class="bg-white p-4 rounded border-l-4 border-emerald-500 shadow-sm">
+                                <h4 class="font-bold text-slate-800 mb-2">Dönüşüm Hunisi (Sales Funnel) & Ölçümleme</h4>
+                                <p class="text-sm text-slate-600">Dikkat çek (Reklam) ➔ Veri Topla (Lead Gen) ➔ Besle (Otomasyon/E-posta) ➔ Satış. Duygulara değil verilere bakın: Müşteri Edinme Maliyeti (CAC) nedir? Lead'lerin yüzde kaçı satışa döndü?</p>
+                            </div>
+                        </div>
+
+                        <div id="cmSales" class="cm-tab-content hidden space-y-4">
+                            <h2 class="text-xl font-black text-emerald-700">Psikolojik Satış ve Danışmanlık</h2>
+                            <p class="text-sm text-slate-600">Ürün değişir, insan psikolojisi değişmez. Müşteri kendine bir şey iteleyen satıcı değil, problemini çözecek güvenilir danışman arar.</p>
+                            
+                            <table class="w-full text-sm text-left border-collapse mt-4 shadow-sm bg-white rounded overflow-hidden">
+                                <thead class="bg-slate-200">
+                                    <tr><th class="p-3 border">Kriter</th><th class="p-3 border">Geleneksel Satıcı</th><th class="p-3 border">Uzman (Psikolojik) Satıcı</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td class="p-3 border font-bold">Odak Noktası</td><td class="p-3 border">Ürün ve Kota</td><td class="p-3 border bg-emerald-50 text-emerald-800 font-bold">Müşteri ve Çözüm</td></tr>
+                                    <tr><td class="p-3 border font-bold">Konuşma Oranı</td><td class="p-3 border">%80 Satıcı / %20 Müşteri</td><td class="p-3 border bg-emerald-50 text-emerald-800 font-bold">%20 Satıcı / %80 Müşteri</td></tr>
+                                    <tr><td class="p-3 border font-bold">İtirazlara Tepki</td><td class="p-3 border">Savunmaya geçmek, fiyat kırmak</td><td class="p-3 border bg-emerald-50 text-emerald-800 font-bold">İtirazın altındaki asıl korkuyu bulmak</td></tr>
+                                </tbody>
+                            </table>
+
+                            <div class="bg-white p-4 rounded border-l-4 border-emerald-500 shadow-sm mt-4">
+                                <h4 class="font-bold text-slate-800 mb-2">Sokratik Sorgulama ve 80/20 Kuralı</h4>
+                                <p class="text-sm text-slate-600">Müşteriye doğru soruları sorarak sorununun ciddiyetini <strong>kendi kendine</strong> fark etmesi sağlanır. İtiraz geldiğinde gardı indirmek için duygu doğrulanır ("Haklısınız..."). Ardından mikro kapanışlarla (küçük "evet"ler alarak) asıl satışa giden psikolojik zemin pürüzsüzleştirilir.</p>
+                            </div>
+                        </div>
+
+                        <div id="cmManagement" class="cm-tab-content hidden space-y-4">
+                            <h2 class="text-xl font-black text-emerald-700">İnsan Odaklı Evrensel Yönetim</h2>
+                            <p class="text-sm text-slate-600">Başarılı yönetim, otorite kurmakla değil, psikolojik güven ortamı yaratarak insanların potansiyelini açığa çıkarmakla başlar.</p>
+                            
+                            <div class="bg-white p-4 rounded border-l-4 border-emerald-500 shadow-sm mt-4">
+                                <ul class="list-disc pl-5 text-sm space-y-3 text-slate-600">
+                                    <li><strong>Teşhis ve Güven:</strong> İlk haftalarda her şeyi değiştirme. İnsanlar dinlenildiğini hissetmeden değişime onay vermez. Şirketin gerçek kültürü, kriz anındaki reflekslerinde gizlidir.</li>
+                                    <li><strong>İçsel Motivasyon:</strong> İnsanlar sadece maaş için potansiyellerini harcamaz. "Neden" sorusunun cevabını ver. Amaca hizmet ettiklerini hissettir.</li>
+                                    <li><strong>Otonomi (Özerklik):</strong> Mikro yönetim yaratıcılığı öldürür. İşi yapan en iyi bilendir. Bürokratik engelleri buda, sorumlulukla birlikte yetkiyi de devret.</li>
+                                    <li><strong>Radikal Şeffaflık:</strong> Geri bildirim ceza mekanizması değil, gelişim kültürü olmalıdır. Kriz anında suçlanacak kişiyi değil, sistemdeki hatayı ara.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div id="cmOps" class="cm-tab-content hidden space-y-4">
+                            <h2 class="text-xl font-black text-emerald-700">Sürtünmesiz Akış ve IKEA Etkisi</h2>
+                            <p class="text-sm text-slate-600">Her operasyonun kalbinde insan vardır. İnsan psikolojisini (bilişsel yükü) hesaba katmayan mükemmel sistem, gerçek hayatta çöker.</p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                <div class="bg-white p-4 rounded border-t-4 border-emerald-500 shadow-sm">
+                                    <h4 class="font-bold text-slate-800 mb-2">Gemba (Sahaya İnme)</h4>
+                                    <p class="text-xs text-slate-600">Raporlardan değil, insanların gözlerinden süreci oku. Resmi anayasa ile gerçek "sokak kuralları" arasındaki Gizli Fabrika'yı bul.</p>
+                                </div>
+                                <div class="bg-white p-4 rounded border-t-4 border-emerald-500 shadow-sm">
+                                    <h4 class="font-bold text-slate-800 mb-2">IKEA Etkisi</h4>
+                                    <p class="text-xs text-slate-600">Süreci tek başına tasarlama. İşi yapanı haritalamaya dahil et; inşasında emeği olan süreci daha çok sahiplenirler.</p>
+                                </div>
+                                <div class="bg-white p-4 rounded border-t-4 border-emerald-500 shadow-sm">
+                                    <h4 class="font-bold text-slate-800 mb-2">Hızlı Kazanımlar (Quick Wins)</h4>
+                                    <p class="text-xs text-slate-600">Sistemi aniden değiştirmek yerine, en sinir bozucu küçük problemi hemen çözerek dopamin ve "yeni sistem işe yarıyor" inancı yarat.</p>
+                                </div>
+                                <div class="bg-white p-4 rounded border-t-4 border-emerald-500 shadow-sm">
+                                    <h4 class="font-bold text-slate-800 mb-2">Poka-Yoke (Hatasızlaştırma)</h4>
+                                    <p class="text-xs text-slate-600">Çalışanı hata yaptı diye cezalandırmak yerine, sistemi hata yapılamayacak kadar akıcı ve standart hale getir.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="cmFinance" class="cm-tab-content hidden space-y-4">
+                            <h2 class="text-xl font-black text-emerald-700">Para Psikolojisi ve Bolluk Bilinci</h2>
+                            <p class="text-sm text-slate-600">Finans sadece bilançolar değil; insan davranışları, risk algısı ve güvenin rakamlara dökülmüş halidir.</p>
+                            
+                            <div class="bg-white p-4 rounded border-l-4 border-emerald-500 shadow-sm mt-4">
+                                <h4 class="font-bold text-slate-800 mb-2">Hayatta Kalma Psikolojisini Kırmak</h4>
+                                <p class="text-sm text-slate-600">Maaş ödeme korkusu (nakit akışı stresi) olan bir beyin uzun vadeli vizyon kuramaz. Önce "oksijen maskesini" takıp tahsilat dengesini kur. Bütçeyi körü körüne keserek <strong>Kıtlık Psikolojisi</strong> yaratma; sadece gereksiz yağı (israfı) yak, kası (değeri) koru.</p>
+                            </div>
+                            <div class="bg-white p-4 rounded border-l-4 border-emerald-500 shadow-sm mt-4">
+                                <h4 class="font-bold text-slate-800 mb-2">Davranışsal Bütçeleme</h4>
+                                <p class="text-sm text-slate-600">Bütçeyi finans dikte etmemeli. Departmanlar kendi bütçelerini IKEA etkisiyle kendileri tasarlarsa, o bütçeye sadık kalırlar. Çalışana "Ne kadar harcadın?" değil, "Harcadığınla ne kadarlık Değer/ROI yarattın?" diye sor.</p>
+                            </div>
+                        </div>
+
+                        <div id="cmRD" class="cm-tab-content hidden space-y-4">
+                            <h2 class="text-xl font-black text-emerald-700">Belirsizlik Yönetimi ve Çevik Öğrenme</h2>
+                            <p class="text-sm text-slate-600">Ar-Ge dahi mühendisler değil, hata yapma korkusunu yenip bilinmeze adım atan bir psikolojik altyapı meselesidir.</p>
+                            
+                            <ul class="list-disc pl-5 text-sm space-y-3 text-slate-600 mt-4 bg-white p-4 rounded border border-slate-200">
+                                <li><strong>Mühendislik Kibrini Yıkmak:</strong> "Ne üretebiliriz?" yerine, "Müşterinin hangi acısını, zaman kaybını yok edebiliriz?" sorusuna odaklan.</li>
+                                <li><strong>Psikolojik Güvenlik:</strong> "Ya saçma bulunursa?" korkusunun olduğu yerde inovasyon yeşermez. Akılcı hataları öğrenilmiş ders olarak kutla.</li>
+                                <li><strong>Siloları Yıkmak:</strong> Ar-Ge'yi izole etme. Satış, pazarlama ve operasyonu ilk günden masaya dahil et ki ürünü "Bizim eserimiz" diye sahiplensinler.</li>
+                                <li><strong>Ucuz ve Hızlı Yanılmak (MVP):</strong> Mükemmel ürünü yıllarca beklemek (mükemmeliyetçilik zehri) yerine, hızlı prototiplerle sahaya çık, geri bildirimle rotayı düzelt.</li>
+                            </ul>
+                        </div>
+
+                        <div id="cmHR" class="cm-tab-content hidden space-y-4">
+                            <h2 class="text-xl font-black text-emerald-700">Kurumsal Maslow ve Psikolojik Sözleşme</h2>
+                            <p class="text-sm text-slate-600">İK disiplin polisi değildir. İnsanlar mantıklarıyla işe girer, duygularıyla veya kötü yöneticileri yüzünden işten ayrılırlar.</p>
+                            
+                            <div class="bg-white p-4 rounded border-l-4 border-emerald-500 shadow-sm mt-4">
+                                <h4 class="font-bold text-slate-800 mb-2">Adalet ve Aidiyet Sistemi</h4>
+                                <p class="text-sm text-slate-600">Yıkıcı olan en güçlü his "adaletsizliktir". Kişisel ilişkilere değil, objektif kriterlere dayalı bir sistem kur. İşveren ile çalışan arasındaki yazılı iş akdinden çok, görünmez "psikolojik sözleşmeye" (beklentilere) odaklan.</p>
+                            </div>
+                            <div class="bg-white p-4 rounded border-l-4 border-emerald-500 shadow-sm mt-4">
+                                <h4 class="font-bold text-slate-800 mb-2">Dopamin Döngüsü (Geri Bildirim)</h4>
+                                <p class="text-sm text-slate-600">Yılda bir kez yapılan stresli performans sınavlarını çöpe at. Sürekli ve anlık check-in'ler ile dopamin salgılat. Eleştiri kişiliğe değil, sürece yapılsın.</p>
+                            </div>
+                            <div class="bg-white p-4 rounded border-l-4 border-emerald-500 shadow-sm mt-4">
+                                <h4 class="font-bold text-slate-800 mb-2">Anlam İnşası</h4>
+                                <p class="text-sm text-slate-600">Çalışanlara sadece mesai saatini dolduracakları bir görev değil, daha büyük bir vizyona nasıl hizmet ettiklerini göster. Maaş için gelirler, anlam için kalırlar.</p>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
-            
         </div>
-        
-        <!-- Diğer Tüm Sektörel ve Mevzuat Modülleri (Firma ve Kurumsal Zeka, Eğitim vs.)
-             Bu alandan sonra eskisi gibi çalışmaya devam edecektir. Yukarıdaki Part 1 ve Part 2 içindeki iskeletleri koruduğumuz için tasarımlar sorunsuz yüklenir. -->
-        
-        <!-- SADECE FİRMA YÖNETİM MODÜLÜ VE ŞİRKET ZEKASI (PART 1 VE 2'DE ZATEN TASARIMI VERİLMİŞTİ - İskeletleri orada) -->
+
+        <!-- ============================================================================ -->
+        <!-- M-9: TEDAŞ MEVZUATI & SÜREÇLERİ MODÜLÜ                                    -->
+        <!-- ============================================================================ -->
+        <div id="regulationsModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 border-b pb-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <button id="btnBackToMenuFromReg" class="text-slate-500 hover:text-slate-800 font-bold flex items-center transition">← Yönetim Paneli</button>
+                    <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Güncel Mevzuatlar & GES Süreçleri</span>
+                </div>
+                <div class="text-xs font-bold text-slate-400 italic hidden md:block">"Süreç takibi projenin can damarıdır."</div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <div class="lg:col-span-2 space-y-8">
+                    
+                    <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                            <span>📋</span> Adım Adım 25 kW Altı GES İzin Süreci
+                        </h3>
+                        
+                        <div class="space-y-6 relative border-l-2 border-slate-300 ml-3 pl-6">
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">1. Evrak Hazırlığı ve Çağrı Mektubu Başvurusu</h4>
+                                <p class="text-xs text-slate-600 mt-1">Sürecin ilk adımı, sistemin kurulacağı bölgedeki görevli elektrik dağıtım şirketine (EDAŞ) kapasite tahsisi için başvurmaktır.</p>
+                                <p class="text-xs text-slate-500 bg-white p-2 rounded border mt-2"><strong>Gerekli Temel Evraklar:</strong> Tapu veya kira sözleşmesi, başvuru formu, güncel abonelik bilgileri, tek hat şeması, yetki belgesi/vekaletname.</p>
+                                <p class="text-[11px] text-blue-700 font-semibold mt-1">🎯 Amaç: Kurulacak tesisin şebekeye bağlanabilmesi için trafo kapasitesinin uygun olup olmadığının onaylanması.</p>
+                            </div>
+
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">2. Çağrı Mektubunun Alınması</h4>
+                                <p class="text-xs text-slate-600 mt-1">Dağıtım şirketi teknik değerlendirmeyi yapar (genellikle takip eden ayın 20'sine kadar sonuçlanır). Kapasite uygunsa firmaya Çağrı Mektubu (Bağlantı Anlaşmasına Çağrı Mektubu) verilir. Bu belge, <em>"Sisteminizi kurabilirsiniz, şebekemizde size yer ayırdık"</em> anlamına gelir.</p>
+                            </div>
+
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">3. TEDAŞ Proje Onayı</h4>
+                                <p class="text-xs text-slate-600 mt-1">Çağrı mektubu alındıktan sonra (genellikle 90 gün içinde) tesisin detaylı mühendislik projelerinin çizilip onaylatılması gerekir.</p>
+                                <p class="text-xs text-slate-500 bg-white p-2 rounded border mt-2"><strong>Elektrik ve Statik Projeler:</strong> Hazırlanan detaylı tek hat şemaları, yerleşim planları ve statik hesaplamalar TEDAŞ'a veya TEDAŞ'ın bölgede yetkilendirdiği kuruluşa sunularak onaylatılır.</p>
+                            </div>
+
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">4. Bağlantı Anlaşmasının İmzalanması</h4>
+                                <p class="text-xs text-slate-600 mt-1">Proje onayı alındıktan sonra ilgili EDAŞ ile Bağlantı Anlaşması imzalanır. Bu aşamadan itibaren tesisin fiziksel kurulum (panel, inverter, konstrüksiyon montajı ve kablolama) işlemleri başlayabilir.</p>
+                            </div>
+
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">5. Geçici Kabul İşlemleri</h4>
+                                <p class="text-xs text-slate-600 mt-1">Sahadaki kurulum tamamlandığında, tesisin projeye ve standartlara uygun inşa edildiğinin resmen tescillenmesi gerekir. TEDAŞ heyeti sahaya gelerek test ve kontrolleri yapar. Uygun bulunursa Geçici Kabul Tutanağı imzalanır. Tesis artık yasal olarak elektrik üretmeye hazırdır.</p>
+                            </div>
+
+                            <div class="relative">
+                                <div class="absolute -left-[31px] top-0 bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow"></div>
+                                <h4 class="font-bold text-slate-900 text-sm">6. Sistem Kullanım Anlaşması ve İşletmeye Alma (Çift Yönlü Sayaç)</h4>
+                                <p class="text-xs text-slate-600 mt-1">Geçici kabulden sonra EDAŞ ile Sistem Kullanım Anlaşması imzalanır. Mevcut elektrik sayacı, üretimi ve tüketimi ayrı ayrı okuyabilen çift yönlü sayaç ile değiştirilir. Bu adımdan sonra aylık mahsuplaşma süreci resmi olarak başlar.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-xl font-black text-slate-800 mb-2 flex items-center gap-2">
+                            <span>🗺️</span> Bölgelere Göre Görevli Elektrik Dağıtım Şirketleri (EDAŞ)
+                        </h3>
+                        <p class="text-xs text-slate-500 mb-4">Türkiye'deki elektrik dağıtımı, 21 farklı bölgeye ayrılmış lisanslı şirketler tarafından sağlanmaktadır. Süreç başvurusu kurulum yapılacak ile göre belirlenir.</p>
+                        
+                        <div class="overflow-x-auto max-h-[350px] custom-scrollbar border rounded-lg">
+                            <table class="w-full text-xs text-left border-collapse bg-white">
+                                <thead class="bg-slate-100 sticky top-0 border-b shadow-sm z-10">
+                                    <tr>
+                                        <th class="p-3 font-bold text-slate-700">Bölge / İller</th>
+                                        <th class="p-3 font-bold text-slate-700">Dağıtım Şirketi (EDAŞ)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-slate-600">
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">İstanbul (Anadolu Yakası)</td><td class="p-3 font-bold text-blue-600">AYEDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">İstanbul (Avrupa Yakası)</td><td class="p-3 font-bold text-blue-600">BEDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Bursa, Balıkesir, Çanakkale, Yalova</td><td class="p-3 font-bold text-slate-700">UEDAŞ (Uludağ EDAŞ)</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Kocaeli, Sakarya, Bolu, Düzce</td><td class="p-3 font-bold text-slate-700">SEDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Edirne, Tekirdağ, Kırklareli</td><td class="p-3 font-bold text-slate-700">TREDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">İzmir, Manisa</td><td class="p-3 font-bold text-slate-700">GDZ EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Aydın, Denizli, Muğla</td><td class="p-3 font-bold text-slate-700">ADM EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Ankara, Kırıkkale, Zonguldak, Bartın, Karabük, Çankırı, Kastamonu</td><td class="p-3 font-bold text-slate-700">Başkent EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Antalya, Burdur, Isparta</td><td class="p-3 font-bold text-slate-700">Akdeniz EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Adana, Mersin, Osmaniye, Hatay, Kilis, Gaziantep</td><td class="p-3 font-bold text-slate-700">Toroslar EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Konya, Karaman, Aksaray, Niğde, Nevşehir, Kırşehir</td><td class="p-3 font-bold text-slate-700">MEDAŞ (Meram EDAŞ)</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Sivas, Tokat, Yozgat</td><td class="p-3 font-bold text-slate-700">ÇEDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Samsun, Amasya, Çorum, Ordu, Sinop</td><td class="p-3 font-bold text-slate-700">YEDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Trabzon, Rize, Giresun, Gümüşhane, Artvin</td><td class="p-3 font-bold text-slate-700">Çoruh EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Erzurum, Ağrı, Ardahan, Bayburt, Erzincan, Iğdır, Kars</td><td class="p-3 font-bold text-slate-700">Aras EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Diyarbakır, Şanlıurfa, Mardin, Batman, Siirt, Şırnak</td><td class="p-3 font-bold text-slate-700">Dicle EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Elazığ, Malatya, Bingöl, Tunceli</td><td class="p-3 font-bold text-slate-700">Fırat EDAŞ</td></tr>
+                                    <tr class="hover:bg-slate-50"><td class="p-3 font-medium">Van, Bitlis, Hakkari, Muş</td><td class="p-3 font-bold text-slate-700">VEDAŞ</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-slate-800 text-white p-6 rounded-xl shadow-sm">
+                        <h4 class="font-bold text-emerald-400 border-b border-slate-700 pb-2 mb-4 flex items-center gap-1.5">
+                            <span>🔗</span> Resmi Kurum Kısayolları
+                        </h4>
+                        <div class="space-y-3">
+                            <a href="http://tedas.gov.tr/tr/1" target="_blank" class="block w-full text-center bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded text-xs transition">
+                                TEDAŞ Resmi Web Sitesi
+                            </a>
+                            <a href="http://epdk.gov.tr/Anasayfa/Anasayfa" target="_blank" class="block w-full text-center bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded text-xs transition">
+                                EPDK Anasayfa
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-200 p-6 rounded-xl shadow-sm">
+                        <h4 class="font-bold text-slate-800 border-b pb-2 mb-4 flex items-center gap-1.5">
+                            <span>📜</span> Önemli Mevzuat ve Tarifeler
+                        </h4>
+                        <div class="space-y-3">
+                            <a href="https://www.epdk.gov.tr/Detay/Icerik/3-1327/elektrik-faturalarina-esas-tarife-tablolari" target="_blank" class="block w-full bg-white hover:bg-slate-100 border text-slate-700 font-bold p-3 rounded-lg text-xs transition shadow-sm text-left flex items-center justify-between">
+                                <span>⚡ Elektrik Esas Tarife Tabloları</span>
+                                <span class="text-slate-400">➔</span>
+                            </a>
+                            <a href="https://www.epdk.gov.tr/Detay/Icerik/3-0-92-3/elektriklisanssiz-uretim" target="_blank" class="block w-full bg-white hover:bg-slate-100 border text-slate-700 font-bold p-3 rounded-lg text-xs transition shadow-sm text-left flex items-center justify-between">
+                                <span>☀️ Lisanssız Elektrik Üretim Yönetmeliği</span>
+                                <span class="text-slate-400">➔</span>
+                            </a>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-4 italic leading-tight">Bir proje geliştirirken, trafo kapasitelerinin doluluk oranları en kritik değişkendir. Kurulumdan önce mutlaka ilgili EDAŞ sistemlerinden sorgulama yapılması tavsiye edilir.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ============================================================================ -->
+        <!-- M-10: SEKTÖREL ANALİZ MODÜLÜ                                              -->
+        <!-- ============================================================================ -->
+        <div id="sectoralModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 border-b pb-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <button id="btnBackToMenuFromSectoral" class="text-slate-500 hover:text-sky-700 font-bold flex items-center transition">← Yönetim Paneli</button>
+                    <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Sektörel Gelişmeler ve Faydalı Siteler</span>
+                </div>
+                <div class="text-xs font-bold text-slate-400 italic hidden md:block">"Bilgi, en güçlü yatırımdır."</div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                        <span>🌍</span> Temel Mühendislik Araçları
+                    </h3>
+                    <div class="space-y-4 flex-1">
+                        <div class="bg-white p-4 rounded-lg border shadow-sm hover:border-sky-400 transition">
+                            <a href="https://globalsolaratlas.info/map" target="_blank" class="block">
+                                <h4 class="font-bold text-sky-700 mb-1 flex justify-between items-center">Global Solar Atlas (GSA) <span class="text-xs">↗</span></h4>
+                                <p class="text-xs text-slate-600">Dünya üzerindeki herhangi bir noktanın güneş enerjisi potansiyelini harita üzerinde sunan web tabanlı, ücretsiz bir platformdur. PVsyst gibi detaylı yazılımlara girmeden önce, "Bu lokasyona GES kurmak ne kadar verimli olur?" sorusunun en hızlı ve uluslararası geçerliliği olan cevabıdır.</p>
+                            </a>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg border shadow-sm hover:border-sky-400 transition">
+                            <a href="https://www.nrel.gov/pv/cell-efficiency.html" target="_blank" class="block">
+                                <h4 class="font-bold text-sky-700 mb-1 flex justify-between items-center">NREL Cell Efficiency Chart <span class="text-xs">↗</span></h4>
+                                <p class="text-xs text-slate-600">Güneş pili (hücre) verimliliğindeki tarihi gelişimi ve laboratuvar rekorlarını takip edebileceğiniz, sektörün en prestijli resmi referans grafiği.</p>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                        <span>🔬</span> Hücre Teknolojisi & Ar-Ge Takibi
+                    </h3>
+                    <div class="space-y-4 flex-1">
+                        <div class="bg-white p-4 rounded-lg border shadow-sm hover:border-sky-400 transition">
+                            <a href="https://www.ise.fraunhofer.de/en/publications/studies/photovoltaics-report.html" target="_blank" class="block">
+                                <h4 class="font-bold text-sky-700 mb-1 flex justify-between items-center">Fraunhofer ISE <span class="text-xs">↗</span></h4>
+                                <p class="text-xs text-slate-600">Avrupa'nın en büyük güneş enerjisi araştırma enstitüsü. "Photovoltaics Report" dokümanı; hücre tiplerinin pazar paylarını ve laboratuvar-seri üretim farklarını özetler.</p>
+                            </a>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg border shadow-sm hover:border-sky-400 transition">
+                            <a href="https://itrpv.vdma.org/" target="_blank" class="block">
+                                <h4 class="font-bold text-sky-700 mb-1 flex justify-between items-center">ITRPV (Teknoloji Yol Haritası) <span class="text-xs">↗</span></h4>
+                                <p class="text-xs text-slate-600">Önümüzdeki 10 yıl boyunca hücre/modül teknolojilerinde (wafer boyutları, gümüş kullanımı, hücre mimarileri) sektörün nereye evrileceğini gösteren net projeksiyon rehberidir.</p>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 text-white p-6 rounded-xl shadow-sm flex flex-col">
+                    <h3 class="text-lg font-black text-sky-300 mb-4 flex items-center gap-2">
+                        <span>📈</span> Küresel Pazar Analizleri & Haberler
+                    </h3>
+                    <div class="space-y-3 flex-1">
+                        <a href="https://www.pv-magazine.com/" target="_blank" class="block bg-slate-700 hover:bg-slate-600 p-3 rounded border border-slate-600 transition">
+                            <h4 class="font-bold text-sky-100 text-sm mb-1 flex justify-between">pv magazine International <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-300">Güneş enerjisi sektörünün "New York Times"ıdır. Haberler, teknoloji incelemeleri ve fiyat endeksleri.</p>
+                        </a>
+                        <a href="https://about.bnef.com/" target="_blank" class="block bg-slate-700 hover:bg-slate-600 p-3 rounded border border-slate-600 transition">
+                            <h4 class="font-bold text-sky-100 text-sm mb-1 flex justify-between">BNEF - BloombergNEF <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-300">Finansal otorite. "Tier 1 Modül Üreticileri Listesi" finansman sağlayan kurumlar için referans kabul edilir.</p>
+                        </a>
+                        <a href="https://taiyangnews.info/" target="_blank" class="block bg-slate-700 hover:bg-slate-600 p-3 rounded border border-slate-600 transition">
+                            <h4 class="font-bold text-sky-100 text-sm mb-1 flex justify-between">TaiyangNews <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-300">Derinlemesine teknik üretim raporları sunan mükemmel ve ücretsiz bir kaynaktır.</p>
+                        </a>
+                        <a href="https://www.pv-tech.org/" target="_blank" class="block bg-slate-700 hover:bg-slate-600 p-3 rounded border border-slate-600 transition">
+                            <h4 class="font-bold text-sky-100 text-sm mb-1 flex justify-between">PV Tech <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-300">Tedarik zinciri ve büyük ölçekli projeler (utility-scale) odaklı haber platformu.</p>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                        <span>🇹🇷</span> Türkiye Pazarı & Yerel Gelişmeler
+                    </h3>
+                    <div class="space-y-3 flex-1">
+                        <a href="https://www.gunder.org.tr/" target="_blank" class="block bg-white hover:bg-sky-50 p-3 rounded border shadow-sm transition">
+                            <h4 class="font-bold text-sky-700 text-sm mb-1 flex justify-between">GÜNDER <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-600">Sektörün en köklü derneklerinden biri. Mevzuat değişiklikleri ve sektörel raporlar.</p>
+                        </a>
+                        <a href="https://gensed.org/" target="_blank" class="block bg-white hover:bg-sky-50 p-3 rounded border shadow-sm transition">
+                            <h4 class="font-bold text-sky-700 text-sm mb-1 flex justify-between">GENSED <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-600">Endüstriyel çatılar ve depolama konusunda aktifler. Webinarları yerel mevzuat için çok faydalıdır.</p>
+                        </a>
+                        <a href="https://www.enerjigunlugu.net/" target="_blank" class="block bg-white hover:bg-sky-50 p-3 rounded border shadow-sm transition">
+                            <h4 class="font-bold text-sky-700 text-sm mb-1 flex justify-between">Enerji Günlüğü <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-600">Resmi gazete kararları ve yerel şebeke (TEİAŞ/EPDK) haberleri.</p>
+                        </a>
+                        <a href="https://www.temizenerji.org/" target="_blank" class="block bg-white hover:bg-sky-50 p-3 rounded border shadow-sm transition">
+                            <h4 class="font-bold text-sky-700 text-sm mb-1 flex justify-between">Temiz Enerji <span>↗</span></h4>
+                            <p class="text-[11px] text-slate-600">Türkiye enerji pazarındaki güncel sürdürülebilirlik haberleri.</p>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ============================================================================ -->
+        <!-- M-11: EĞİTİM & SEKTÖR SÖZLÜĞÜ MODÜLÜ                                      -->
+        <!-- ============================================================================ -->
+        <div id="educationModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 border-b pb-4 flex items-center justify-between">
+                <div class="flex items-center">
+                    <button id="btnBackToMenuFromEdu" class="text-slate-500 hover:text-amber-600 font-bold flex items-center transition">← Yönetim Paneli</button>
+                    <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Eğitim & Terimler Sözlüğü</span>
+                </div>
+                <div class="text-xs font-bold text-slate-400 italic hidden md:block">"Sektörün dilini konuşmak, güven inşa etmenin ilk adımıdır."</div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <div class="bg-amber-50 p-6 rounded-xl border border-amber-200 shadow-sm flex flex-col">
+                    <h3 class="text-lg font-black text-amber-900 mb-4 flex items-center gap-2 border-b border-amber-200 pb-2">
+                        <span>⚡</span> Temel Elektrik Birimleri
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="bg-white p-3 rounded shadow-sm border border-amber-100">
+                            <h4 class="font-bold text-amber-700 text-sm">V (Volt) - <span class="text-slate-600">Gerilim</span></h4>
+                            <p class="text-xs text-slate-600 mt-1">Elektriksel basınç veya potansiyel farktır. Su tesisatındaki <strong class="text-slate-800">suyun basıncına</strong> benzetilebilir.</p>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm border border-amber-100">
+                            <h4 class="font-bold text-amber-700 text-sm">A (Amper) - <span class="text-slate-600">Akım</span></h4>
+                            <p class="text-xs text-slate-600 mt-1">Elektrik akım şiddetidir. Borudan geçen <strong class="text-slate-800">suyun miktarına (hızına)</strong> benzer.</p>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm border border-amber-100">
+                            <h4 class="font-bold text-amber-700 text-sm">W (Watt) - <span class="text-slate-600">Anlık Güç</span></h4>
+                            <p class="text-xs text-slate-600 mt-1">Sistemin o anki gücüdür. Formülü: <strong class="text-slate-800">Volt x Amper (V x A)</strong> şeklindedir.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
+                    <h3 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
+                        <span>📊</span> Kapasite ve Tüketim (En Çok Karıştırılanlar)
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="bg-white p-3 rounded shadow-sm border border-slate-100 relative overflow-hidden">
+                            <div class="absolute right-0 top-0 bg-red-100 text-red-700 text-[10px] font-bold px-2 py-1 rounded-bl-lg">Kapasite</div>
+                            <h4 class="font-bold text-slate-800 text-sm">kW (Kilowatt)</h4>
+                            <p class="text-xs text-slate-600 mt-1">1.000 Watt'a eşittir. Bir sistemin <strong class="text-slate-800">anlık maksimum gücünü</strong> (kurulu gücünü) veya bir cihazın çalışma anında çektiği gücü ifade eder.</p>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm border border-slate-100 relative overflow-hidden">
+                            <div class="absolute right-0 top-0 bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-bl-lg">Enerji/Fatura</div>
+                            <h4 class="font-bold text-slate-800 text-sm">kWh (Kilowatt-saat)</h4>
+                            <p class="text-xs text-slate-600 mt-1">Zaman içindeki enerji miktarıdır. 1 kW gücündeki bir panelin veya cihazın <strong class="text-slate-800">1 saat boyunca</strong> ürettiği/tükettiği toplam enerjidir. Faturaya yansıyan değer budur.</p>
+                            <div class="mt-2 bg-slate-100 p-2 text-[10px] rounded italic text-slate-500">
+                                <strong>Örnek:</strong> Saatte 200 km (kW) hız yapabilen bir aracın, 3 saatte gittiği 600 km'lik toplam yol (kWh).
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-sky-50 p-6 rounded-xl border border-sky-200 shadow-sm flex flex-col">
+                    <h3 class="text-lg font-black text-sky-900 mb-4 flex items-center gap-2 border-b border-sky-200 pb-2">
+                        <span>🍺</span> Güç Çeşitleri (Bira Analojisi)
+                    </h3>
+                    <div class="space-y-3">
+                        <p class="text-[11px] text-slate-600 mb-2">Elektrik şebekesindeki gücü anlamanın en iyi yolu "Köpüklü Bira" örneğidir:</p>
+                        
+                        <div class="bg-white p-3 rounded shadow-sm border border-sky-100">
+                            <h4 class="font-bold text-sky-700 text-sm">Aktif Güç (kW)</h4>
+                            <p class="text-xs text-slate-600 mt-1">Faydalı işe dönüşen gerçek güçtür. <br><em class="text-slate-400">Analoji: Bardağın içindeki içilebilir gerçek sıvı kısımdır.</em></p>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm border border-sky-100">
+                            <h4 class="font-bold text-sky-700 text-sm">Reaktif / Kapasitif Güç (kVAr)</h4>
+                            <p class="text-xs text-slate-600 mt-1">Motorların/trafoların manyetik alan oluşturmak için çektiği faydasız ama zorunlu güçtür. <br><em class="text-slate-400">Analoji: Bardağın üstündeki işe yaramayan ama oluşması kaçınılmaz köpüktür.</em></p>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm border border-sky-100">
+                            <h4 class="font-bold text-sky-700 text-sm">Görünür Güç (kVA)</h4>
+                            <p class="text-xs text-slate-600 mt-1">Aktif ve Reaktif gücün vektörel toplamıdır. Trafoların kapasitesi bu cinsinden yazılır. <br><em class="text-slate-400">Analoji: Hem sıvı hem köpük dahil, bardağın kapladığı toplam hacimdir.</em></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3 bg-emerald-50 p-6 rounded-xl border border-emerald-200 shadow-sm mt-2">
+                    <h3 class="text-lg font-black text-emerald-900 mb-4 flex items-center gap-2 border-b border-emerald-200 pb-2">
+                        <span>☀️</span> Güneş Enerjisi Spesifik Terimler
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div class="bg-white p-4 rounded shadow-sm border border-emerald-100">
+                            <h4 class="font-bold text-emerald-700 text-sm mb-1">PV (Photovoltaic)</h4>
+                            <p class="text-xs text-slate-600">Güneş ışığını (Photo) doğrudan elektrik voltajına (Voltaic) dönüştüren teknolojinin bilimsel adıdır. Sektörde "Güneş Paneli" anlamında kullanılır.</p>
+                        </div>
+                        <div class="bg-white p-4 rounded shadow-sm border border-emerald-100">
+                            <h4 class="font-bold text-emerald-700 text-sm mb-1">Inverter (Evirici)</h4>
+                            <p class="text-xs text-slate-600">Güneş panellerinin ürettiği DC (Doğru Akım) elektriği, şebekede ve evde kullanabileceğimiz AC (Alternatif Akım) elektriğe çeviren sistemin beynidir.</p>
+                        </div>
+                        <div class="bg-white p-4 rounded shadow-sm border border-emerald-100">
+                            <h4 class="font-bold text-emerald-700 text-sm mb-1">DC ve AC Akım</h4>
+                            <p class="text-xs text-slate-600"><strong>DC:</strong> Akü, pil ve güneş panellerinin ürettiği tek yönlü akım. <br><strong>AC:</strong> Evdeki prizlerde bulunan, saniyede 50 kez yön değiştiren alternatif akım.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
 
     </div> <!-- APP CONTAINER BİTİŞİ -->
 
-    <!-- ============================================================================ -->
-    <!-- PDF YAZDIRMA (PDF EXPORT) İÇİN GİZLİ ALAN                                    -->
-    <!-- ============================================================================ -->
+    <!-- PDF YAZDIRMA (PDF EXPORT) İÇİN GİZLİ ALAN -->
     <div id="printArea"></div>
 
     <!-- ANA JAVASCRIPT DOSYASI BAĞLANTISI -->
-    <script src="app.js"></script>
+    <script src="new_app.js"></script>
 </body>
 </html>
