@@ -55,24 +55,23 @@
                 <h1 class="text-4xl md:text-7xl font-black mb-6 leading-tight">Enerji Dönüşümünüzü <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500">Dijitalde Başlatın</span></h1>
                 <p class="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-12">Güneş enerjisi sektöründe dijitalleşen çözümler sunuyoruz.</p>
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
-                    
-                    
+               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-16">
+    
                     <button onclick="openPublicModule('calculatorModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">📊</div><h3 class="text-xl font-bold text-white mb-2">Çatı Güç Hesaplayıcı</h3><p class="text-sm text-slate-400">Faturanıza göre ihtiyacınız olan GES kapasitesini hesaplayın.</p>
                     </button>
-                    
                     
                     <button onclick="openPublicModule('simulationModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">🏠</div><h3 class="text-xl font-bold text-white mb-2">3D Simülasyon</h3><p class="text-sm text-slate-400">Evinizin enerji bağımsızlığını 3D ortamda görselleştirin.</p>
                     </button>
                     
-                    
                     <button onclick="openPublicModule('evCalcModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">🚗</div><h3 class="text-xl font-bold text-white mb-2">EV & Solar Analizi</h3><p class="text-sm text-slate-400">Elektrikli aracınızın güneşten nasıl şarj olacağını planlayın.</p>
                     </button>
 
-
+                    <button onclick="openPublicModule('educationModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
+                        <div class="text-4xl mb-4 group-hover:scale-110 transition">🎓</div><h3 class="text-xl font-bold text-white mb-2">Sözlük & Eğitim</h3><p class="text-sm text-slate-400">Temel solar terimleri ve sektör analojilerini öğrenin.</p>
+                    </button>
 
                 </div>
             </div>
@@ -197,15 +196,15 @@
                 <button id="btnGoSalesAssistant" class="bg-orange-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
                     <h2 class="text-xl font-bold mb-4">🧠 Satış Copilot (İtiraz)</h2><p class="text-orange-100 text-sm">Müşteri itirazlarına psikolojik hazır cevaplar.</p>
                 </button>
+
                 <button id="btnGoRegulations" class="bg-slate-700 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
                     <h2 class="text-xl font-bold mb-4">📜 TEDAŞ Mevzuatı & Süreç</h2><p class="text-slate-300 text-sm">Yasal izin adımları ve güncel EDAŞ bilgileri.</p>
                 </button>
+
                 <button id="btnGoTechSupport" class="bg-red-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
                     <h2 class="text-xl font-bold mb-4">🔧 Teknik Servis Talebi</h2><p class="text-red-100 text-sm">Mevcut arızalar için merkeze destek talebi açın.</p>
                 </button>
-                <button id="btnGoSectoral" class="bg-sky-700 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
-                    <h2 class="text-xl font-bold mb-4">🌍 Sektörel Analizler</h2><p class="text-sky-100 text-sm">Pazar analizleri ve mühendislik araçları.</p>
-                </button>
+            
                 <button id="btnGoEducation" class="bg-amber-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
                     <h2 class="text-xl font-bold mb-4">🎓 Eğitim Sözlüğü</h2><p class="text-amber-100 text-sm">Temel solar terimler ve analojiler.</p>
                 </button>
@@ -629,44 +628,6 @@
                         <div><strong>Türkiye'nin Merkez Bölgesi:</strong> Orta Anadolu EDAŞ (Ankara ve çevresi) → Tel: (312) XXX-XXXX</div>
                         <div><strong>Türkiye'nin Karadeniz Bölgesi:</strong> Karadeniz EDAŞ (Trabzon ve çevresi) → Tel: (462) XXX-XXXX</div>
                         <div><strong>Merkezi Sistem (Ulusal):</strong> TEDAŞ Genel Müdürlüğü → Tel: (312) 310-1100</div>
-                    </div>
-                </section>
-            </div>
-        </div>
-
-        <div id="sectoralModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
-            <div class="mb-6 border-b pb-4 flex items-center">
-                <button id="btnBackToMenuFromSectoral" class="text-slate-500 hover:text-slate-600 font-bold flex items-center transition">← Yönetim Paneli</button>
-                <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Sektörel Analiz & Pazarlama Stratejileri</span>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <section class="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><span>📊</span> GES Pazar Segmentasyonu</h3>
-                    <div class="space-y-3 text-sm text-slate-700">
-                        <p><strong>Konut Segmenti (Çatı Sistemi):</strong> %45 pazar payı — Bireysel kullanıcılar, 3-10 kW sistemler</p>
-                        <p><strong>Ticari / Endüstriyel:</strong> %35 pazar payı — İşletmeler, fabrikalar, 10-100 kW+ sistemler</p>
-                        <p><strong>Tarım ve Sera:</strong> %12 pazar payı — Tarım işletmeleri, elektrikli pompa sistemleri</p>
-                        <p><strong>Kamu ve Kuruluşlar:</strong> %8 pazar payı — Belediyeler, okullar, hastaneler</p>
-                    </div>
-                </section>
-
-                <section class="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><span>💰</span> Sektördeki Ortalama Fiyatlandırma</h3>
-                    <div class="space-y-3 text-sm text-slate-700 font-mono">
-                        <p><strong>Konut (10 kW Sistem):</strong> 90,000 - 130,000 TL (Bataryasız)</p>
-                        <p><strong>Konut (10 kW + 5 kWh Batarya):</strong> 140,000 - 180,000 TL</p>
-                        <p><strong>Ticari (50 kW Sistem):</strong> 350,000 - 450,000 TL (Bataryasız)</p>
-                        <p class="text-[11px] text-gray-500 mt-4">Fiyatlar malzeme, kurulum zorluk derecesi ve coğrafi konuma göre değişebilir.</p>
-                    </div>
-                </section>
-
-                <section class="bg-slate-50 p-6 rounded-xl border border-slate-200 md:col-span-2">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><span>🎯</span> Rekabet Analizi - Başlıca EPC Firmalar</h3>
-                    <div class="space-y-3 text-sm text-slate-700">
-                        <p><strong>Yüksek Kapasiteli (100+ Kurulum/Yıl):</strong> Agresif fiyatlandırma, toptan malzeme tedariği yapan ulusal firmalar.</p>
-                        <p><strong>Orta Seviye (30-100 Kurulum/Yıl):</strong> Özel hizmet, esnek fiyat politikası uygulayan yerel ve bölgesel firmalar.</p>
-                        <p><strong>Niş / Yüksek-End (< 30 Kurulum/Yıl):</strong> Lüks konut, danışmanlık yoğun, yüksek marjlı ve özel mühendislik çözümleri sunan firmalar.</p>
                     </div>
                 </section>
             </div>
