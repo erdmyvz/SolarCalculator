@@ -76,27 +76,21 @@ window.addEventListener('load', async () => {
     handleSPA_Routing();
 });
 
-// Ziyaretçilerin landing page'den public hesaplayıcılara erişmesini sağlar
+
 window.openPublicModule = function(moduleId) {
     document.getElementById('landingContainer').classList.add('hidden');
     document.getElementById('appContainer').classList.remove('hidden');
     document.getElementById('mainMenu').classList.add('hidden');
     
-    // YENİ: Ziyaretçi ekranındayken üstteki logolu/profilli barı tamamen gizle
     const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');
     if(header) header.classList.add('hidden');
 
-   const btnTexts = {
-        'calculatorModule': 'btnBackToMenu',
-        'simulationModule': 'btnBackToMenuFromSim',
-        'evCalcModule': 'btnBackToMenuFromEV',
-        'educationModule': 'btnBackToMenuFromEdu'
-    };
-
-    const btnId = btnTexts[moduleId];
-    if(btnId && document.getElementById(btnId)) {
-        document.getElementById(btnId).textContent = "← Ana Sayfaya Dön";
-    }
+    // Ziyaretçi modüllere girdiğinde buton yazılarını Ziyaretçi moduna çevirir
+    const publicBtns = ['btnBackFromCalc', 'btnBackFromSim', 'btnBackFromEV', 'btnBackFromEdu'];
+    publicBtns.forEach(id => {
+        const btn = document.getElementById(id);
+        if(btn) btn.textContent = "← Ziyaretçi Sayfasına Dön";
+    });
 
     document.getElementById(moduleId).classList.remove('hidden');
     
@@ -106,27 +100,27 @@ window.openPublicModule = function(moduleId) {
     }
 }
 
-// Uygulama içindeki tüm modülleri kapatıp ana paneli veya ana sayfayı gösterir
+
 window.closeAllAndShowMenu = function() {
     const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'educationModule', 'regulationsModule'];
     mods.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
     
     const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');
     
-    // Sadece giriş yapmış yetkili kullanıcılar Main Menu'yü görebilir.
-    if(currentUserProfile || !supabaseClient) {
+    // Eğer oturum açmış yetkili bir EPC firmasıysa paneli göster
+    if(currentUserProfile) {
         document.getElementById('mainMenu').classList.remove('hidden');
-        // YENİ: Kurumsal paneldeyken üstteki barı geri getir
         if(header) header.classList.remove('hidden');
         
-        // YENİ: Buton metinlerini kurumlar için tekrar "Yönetim Paneli"ne çevir
-        if(document.getElementById('btnBackToMenu')) document.getElementById('btnBackToMenu').textContent = "← Yönetim Paneli";
-        if(document.getElementById('btnBackToMenuFromSim')) document.getElementById('btnBackToMenuFromSim').textContent = "← Yönetim Paneli";
-        if(document.getElementById('btnBackToMenuFromEV')) document.getElementById('btnBackToMenuFromEV').textContent = "← Yönetim Paneli";
-        if(document.getElementById('btnBackToMenuFromEdu')) document.getElementById('btnBackToMenuFromEdu').textContent = "← Yönetim Paneline Dön"; // YENİ EKLENDİ
+        // Kurumsal girişte butonları Yönetim Paneli yap
+        const adminBtns = ['btnBackFromCalc', 'btnBackFromSim', 'btnBackFromEV', 'btnBackFromEdu'];
+        adminBtns.forEach(id => {
+            const btn = document.getElementById(id);
+            if(btn) btn.textContent = "← Yönetim Paneline Dön";
+        });
         
     } else {
-        // YENİ: Giriş yapmamış biriyse onu direkt Landing Page'e geri ışınla!
+        // Eğer sistemde girişi yoksa (ziyaretçiyse) ana menüye değil, direkt Landing Page'e geri dön!
         window.location.hash = '#home';
     }
 }
@@ -367,8 +361,18 @@ for (const [btnId, modId] of Object.entries(menuMap)) {
     }
 }
 
-const backButtons = ['btnBackToMenu', 'btnBackToMenuFromSim', 'btnBackToMenuFromEV', 'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin', 'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt', 'btnBackToMenuFromReg', 'btnBackToMenuFromEdu'];
-backButtons.forEach(id => { document.getElementById(id)?.addEventListener('click', closeAllAndShowMenu); });
+// Geri dön butonlarının id listesi
+const backButtons = [
+    'btnBackFromCalc', 'btnBackFromSim', 'btnBackFromEV', 'btnBackFromEdu',
+    'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin',
+    'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt', 'btnBackToMenuFromReg'
+];
+backButtons.forEach(id => { 
+    document.getElementById(id)?.addEventListener('click', closeAllAndShowMenu); 
+});
+
+
+
 // ============================================================================
 // 5. SATIŞ CRM VE PROJE TAKİP MOTORU (SOLAR PIPELINE ENGINE)
 // ============================================================================
