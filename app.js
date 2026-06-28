@@ -78,6 +78,8 @@ window.addEventListener('load', async () => {
 
 
 window.openPublicModule = function(moduleId) {
+    window.openedFromPublic = true; // YENİ: Kullanıcının vitrinden (ziyaretçi olarak) girdiğini hafızaya aldık
+
     document.getElementById('landingContainer').classList.add('hidden');
     document.getElementById('appContainer').classList.remove('hidden');
     document.getElementById('mainMenu').classList.add('hidden');
@@ -85,7 +87,6 @@ window.openPublicModule = function(moduleId) {
     const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');
     if(header) header.classList.add('hidden');
 
-    // Ziyaretçi modüllere girdiğinde buton yazılarını Ziyaretçi moduna çevirir
     const publicBtns = ['btnBackFromCalc', 'btnBackFromSim', 'btnBackFromEV', 'btnBackFromEdu'];
     publicBtns.forEach(id => {
         const btn = document.getElementById(id);
@@ -107,21 +108,22 @@ window.closeAllAndShowMenu = function() {
     
     const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');
     
-    // Eğer oturum açmış yetkili bir EPC firmasıysa paneli göster
-    if(currentUserProfile) {
+    if (window.openedFromPublic) {
+        // DURUM 1: Eğer ziyaretçi vitrininden girdiyse, geri dönünce tekrar VİTRİNE gitsin.
+        document.getElementById('appContainer').classList.add('hidden');
+        document.getElementById('landingContainer').classList.remove('hidden');
+        window.openedFromPublic = false; // İşlem bitince hafızayı sıfırla
+    } else {
+        // DURUM 2: Eğer yönetim panelinden girdiyse, geri dönünce YÖNETİM PANELİNE gitsin.
         document.getElementById('mainMenu').classList.remove('hidden');
         if(header) header.classList.remove('hidden');
         
-        // Kurumsal girişte butonları Yönetim Paneli yap
+        // Kurumsal girişte butonları tekrar Yönetim Paneli yazısına çevir
         const adminBtns = ['btnBackFromCalc', 'btnBackFromSim', 'btnBackFromEV', 'btnBackFromEdu'];
         adminBtns.forEach(id => {
             const btn = document.getElementById(id);
             if(btn) btn.textContent = "← Yönetim Paneline Dön";
         });
-        
-    } else {
-        // Eğer sistemde girişi yoksa (ziyaretçiyse) ana menüye değil, direkt Landing Page'e geri dön!
-        window.location.hash = '#home';
     }
 }
 
@@ -343,6 +345,8 @@ for (const [btnId, modId] of Object.entries(menuMap)) {
     const btn = document.getElementById(btnId);
     if(btn) {
         btn.addEventListener('click', () => {
+            window.openedFromPublic = false; // YENİ: Kullanıcının yönetim panelinden girdiğini belirttik
+            
             document.getElementById('mainMenu').classList.add('hidden');
             document.getElementById(modId).classList.remove('hidden');
             
