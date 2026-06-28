@@ -238,9 +238,17 @@ document.getElementById('btnLogout')?.addEventListener('click', async () => {
 // ============================================================================
 // 4. MÜŞTERİ YAKALAMA (LEAD GENERATION) VE TAKİP MODÜLÜ (ZİYARETÇİ EKRANI)
 // ============================================================================
+// Modal açma fonksiyonunu güncelleyelim
 window.openLeadModal = function(type) {
+    const modal = document.getElementById('leadModal');
+    if (!modal) return;
+    
     document.getElementById('leadType').value = type;
     document.getElementById('leadModalTitle').innerText = type === 'kurulum' ? 'Ücretsiz Çatı Keşfi Başvurusu' : 'Teknik Servis Müdahale Başvurusu';
+    
+    // Z-index ve görünürlük zorunlu kılınsıyor
+    modal.classList.remove('hidden');
+    modal.classList.add('flex'); // hidden yerine flex kullanarak gösteriyoruz
     
     const kurulumFields = document.getElementById('kurulumExtraFields');
     const servisFields = document.getElementById('servisExtraFields');
@@ -255,14 +263,15 @@ window.openLeadModal = function(type) {
         kurulumFields?.classList.add('hidden');
         servisFields?.classList.remove('hidden');
         servisWarning?.classList.remove('hidden');
-        document.getElementById('leadDetailsLabel').innerText = "Yaşadığınız Sorunun Detaylı Özeti (Hangi durumda kapanıyor, yanan ışıklar vs.)";
+        document.getElementById('leadDetailsLabel').innerText = "Yaşadığınız Sorunun Detaylı Özeti";
     }
-    
-    document.getElementById('leadModal')?.classList.remove('hidden');
 };
 
+// Modal kapatma fonksiyonu
 window.closeLeadModal = function() { 
-    document.getElementById('leadModal')?.classList.add('hidden'); 
+    const modal = document.getElementById('leadModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
     document.getElementById('leadPublicForm')?.reset();
 };
 

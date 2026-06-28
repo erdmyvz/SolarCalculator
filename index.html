@@ -105,33 +105,15 @@
         </div>
     </div>
 
-<div id="leadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="leadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
             <div class="p-6 bg-slate-900 text-white flex justify-between items-center sticky top-0 z-10">
                 <h3 id="leadModalTitle" class="font-bold text-lg">Başvuru Formu</h3>
-                <button onclick="closeLeadModal()" class="text-2xl font-bold hover:text-red-400">&times;</button>
+                <button type="button" onclick="closeLeadModal()" class="text-2xl font-bold hover:text-red-400">&times;</button>
             </div>
             <form id="leadPublicForm" class="p-6 space-y-4" enctype="multipart/form-data">
-
-                <div id="servisExtraFields" class="hidden space-y-4 border-y py-4 my-2 border-slate-200 bg-slate-50 px-3 rounded-lg">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        </div>
-                    
-                    <div class="grid grid-cols-2 gap-3 mt-3 border-t border-slate-200 pt-3">
-                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Sistem Görüntüsü</label>
-                        <input type="file" id="srvImgSystem" accept="image/*" class="w-full p-1.5 border bg-white rounded text-[10px]"></div>
-                        
-                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Elektrik Panosu</label>
-                        <input type="file" id="srvImgPano" accept="image/*" class="w-full p-1.5 border bg-white rounded text-[10px]"></div>
-                        
-                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">GES Panosu</label>
-                        <input type="file" id="srvImgGes" accept="image/*" class="w-full p-1.5 border bg-white rounded text-[10px]"></div>
-                        
-                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Arıza Kodları</label>
-                        <input type="file" id="srvImgCode" accept="image/*" class="w-full p-1.5 border bg-white rounded text-[10px]"></div>
-                    </div>
-                </div>
-                
+                <input type="hidden" id="leadType">
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg mt-2 transition shadow-lg">Başvuruyu Gönder</button>
             </form>
         </div>
     </div>
