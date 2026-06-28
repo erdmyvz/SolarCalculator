@@ -769,7 +769,8 @@ async function fetchAdminData()    {
     const usersBody = document.getElementById('usersTableBody');
     const leadsBox = document.getElementById('adminLeadsList');
     const ticketsBox = document.getElementById('adminTicketsList');
-    }
+    
+
     // 1. FİRMALARI GETİR
     if(usersBody) {
         usersBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">Veritabanına bağlanılıyor...</td></tr>';
@@ -879,6 +880,7 @@ async function fetchAdminData()    {
             }
         }
     }
+}
 
 window.adminRespondTicket = async function(id) {
     const respValue = document.getElementById(`adm_resp_${id}`).value.trim();
