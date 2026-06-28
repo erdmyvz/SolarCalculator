@@ -271,86 +271,58 @@ window.closeLeadModal = function() {
 document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const type = document.getElementById('leadType').value;
-    const btn = e.target.querySelector('button[type="submit"]') || document.activeElement;
-    const originalBtnText = btn.textContent;
-    btn.textContent = "Gönderiliyor (Fotoğraflar Yükleniyor)..."; 
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.textContent = "Gönderiliyor..."; 
     btn.disabled = true;
 
-    // ==========================================
-    // 1. TEKNİK SERVİS MANTIĞI (FOTOĞRAF YÜKLEMELİ)
-    // ==========================================
     if (type === 'servis') {
-        if (supabaseClient) {
-            
-            // FOTOĞRAF YÜKLEME YARDIMCI FONKSİYONU
-            async function uploadImage(inputId, prefix) {
-                const fileInput = document.getElementById(inputId);
-                if (!fileInput || !fileInput.files || fileInput.files.length === 0) return null;
-                
-                const file = fileInput.files[0];
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${prefix}_${Date.now()}.${fileExt}`; // Örn: pano_1700000000.jpg
-                
-                // Supabase Storage'a Yükle
-                const { error } = await supabaseClient.storage.from('support-images').upload(fileName, file);
-                
-                if (error) {
-                    console.error("Fotoğraf yükleme hatası:", error);
-                    return null;
-                }
-                return fileName; // Yüklenen dosyanın adını veritabanına yazmak için geri döndür
-            }
-
-            // Dosyaları paralel olarak yükle
-            const [imgSys, imgPano, imgGes, imgCode] = await Promise.all([
-                uploadImage('srvImgSystem', 'sistem'),
-                uploadImage('srvImgPano', 'pano'),
-                uploadImage('srvImgGes', 'ges'),
-                uploadImage('srvImgCode', 'hata')
-            ]);
-
-            // Veritabanına eklenecek ana obje
-            const ticketData = {
-                user_id: "00000000-0000-0000-0000-000000000000",
-                full_name: document.getElementById('leadName').value,
-                phone: document.getElementById('leadPhone').value,
-                email: document.getElementById('leadEmail').value,
-                address: document.getElementById('leadAddress').value,
-                inverter_model: document.getElementById('srvInverter').value,
-                battery_model: document.getElementById('srvBattery').value,
-                installer_name: document.getElementById('srvInstaller').value,
-                install_date: document.getElementById('srvInstallDate').value || null,
-                problem_date: document.getElementById('srvProblemDate').value || null,
-                problem_desc: document.getElementById('leadDetails').value,
-                status: 'Başvuru İletildi',
-                // Yüklenen fotoğrafların isimleri
-                img_system: imgSys,
-                img_pano: imgPano,
-                img_ges: imgGes,
-                img_code: imgCode
-            };
-
-            // Tabloya Kaydet
-            const { data, error } = await supabaseClient.from('support_tickets').insert([ticketData]).select();
-
-            if (error) {
-                alert("Başvuru kaydedilirken hata oluştu: " + error.message);
-            } else if (data && data.length > 0) {
-                const trackingCode = "SRV-" + data[0].id;
-                alert(`🎉 Teknik Servis Talebiniz (ve Fotoğraflar) Başarıyla İletildi!\n\nLütfen Takip Kodunuzu Not Edin: ${trackingCode}`);
-                closeLeadModal();
-                
-                document.getElementById('leadTrackInput').value = trackingCode;
-                document.getElementById('btnTrackQuery').click();
-            }
-        } else {
-            alert("Veritabanı bağlantısı bulunamadı (Test Ortamı).");
+        // 1. Fotoğraf Yükleme Fonksiyonu
+        async function uploadImage(inputId, prefix) {
+            const fileInput = document.getElementById(inputId);
+            if (!fileInput || !fileInput.files || fileInput.files.length === 0) return null;
+            const file = fileInput.files[0];
+            const fileName = `${prefix}_${Date.now()}.${file.name.split('.').pop()}`;
+            const { error } = await supabaseClient.storage.from('support-images').upload(fileName, file);
+            return error ? null : fileName;
         }
+
+        // 2. Fotoğrafları yükle
+        const [imgSys, imgPano, imgGes, imgCode] = await Promise.all([
+            uploadImage('srvImgSystem', 'sistem'),
+            uploadImage('srvImgPano', 'pano'),
+            uploadImage('srvImgGes', 'ges'),
+            uploadImage('srvImgCode', 'hata')
+        ]);
+
+        // 3. Formdaki TÜM verileri al
+        const ticketData = {
+            full_name: document.getElementById('leadName').value,
+            phone: document.getElementById('leadPhone').value,
+            email: document.getElementById('leadEmail').value,
+            address: document.getElementById('leadAddress').value,
+            inverter_model: document.getElementById('srvInverter').value,
+            battery_model: document.getElementById('srvBattery').value,
+            installer_name: document.getElementById('srvInstaller').value,
+            install_date: document.getElementById('srvInstallDate').value || null,
+            problem_date: document.getElementById('srvProblemDate').value || null,
+            problem_desc: document.getElementById('leadDetails').value,
+            img_system: imgSys,
+            img_pano: imgPano,
+            img_ges: imgGes,
+            img_code: imgCode,
+            status: 'Başvuru İletildi'
+        };
+
+        // 4. Supabase'e gönder
+        const { data, error } = await supabaseClient.from('support_tickets').insert([ticketData]).select();
         
-        btn.textContent = originalBtnText;
-        btn.disabled = false;
-        return; // İşlem bitti, çıkış yap.
+        if (error) { alert("Hata: " + error.message); }
+        else { alert("Başarıyla iletildi!"); closeLeadModal(); }
+
+        btn.textContent = "Başvuruyu Gönder"; btn.disabled = false;
+        return;
     }
+
 
     // ==========================================
     // 2. YENİ KURULUM MANTIĞI (MEVCUT KODUNUZ)
