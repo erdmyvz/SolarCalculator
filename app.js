@@ -86,12 +86,13 @@ window.openPublicModule = function(moduleId) {
     const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');
     if(header) header.classList.add('hidden');
 
-    // YENİ: Ziyaretçi girdiği için buton metinlerini dinamik olarak "Ana Sayfa" yap
-    const btnTexts = {
+   const btnTexts = {
         'calculatorModule': 'btnBackToMenu',
         'simulationModule': 'btnBackToMenuFromSim',
-        'evCalcModule': 'btnBackToMenuFromEV'
+        'evCalcModule': 'btnBackToMenuFromEV',
+        'educationModule': 'btnBackToMenuFromEdu'
     };
+
     const btnId = btnTexts[moduleId];
     if(btnId && document.getElementById(btnId)) {
         document.getElementById(btnId).textContent = "← Ana Sayfaya Dön";
@@ -107,7 +108,7 @@ window.openPublicModule = function(moduleId) {
 
 // Uygulama içindeki tüm modülleri kapatıp ana paneli veya ana sayfayı gösterir
 window.closeAllAndShowMenu = function() {
-    const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'sectoralModule', 'educationModule', 'regulationsModule'];
+    const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'educationModule', 'regulationsModule'];
     mods.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
     
     const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');
@@ -122,6 +123,7 @@ window.closeAllAndShowMenu = function() {
         if(document.getElementById('btnBackToMenu')) document.getElementById('btnBackToMenu').textContent = "← Yönetim Paneli";
         if(document.getElementById('btnBackToMenuFromSim')) document.getElementById('btnBackToMenuFromSim').textContent = "← Yönetim Paneli";
         if(document.getElementById('btnBackToMenuFromEV')) document.getElementById('btnBackToMenuFromEV').textContent = "← Yönetim Paneli";
+        if(document.getElementById('btnBackToMenuFromEdu')) document.getElementById('btnBackToMenuFromEdu').textContent = "← Yönetim Paneline Dön"; // YENİ EKLENDİ
         
     } else {
         // YENİ: Giriş yapmamış biriyse onu direkt Landing Page'e geri ışınla!
@@ -333,7 +335,6 @@ document.getElementById('btnTrackQuery')?.addEventListener('click', async () => 
 // ============================================================================
 const menuMap = {
     'btnGoEducation': 'educationModule',
-    'btnGoSectoral': 'sectoralModule',
     'btnGoRegulations': 'regulationsModule',
     'btnGoCRM': 'crmModule',
     'btnGoCompanyMgmt': 'companyManagementModule',
@@ -366,7 +367,7 @@ for (const [btnId, modId] of Object.entries(menuMap)) {
     }
 }
 
-const backButtons = ['btnBackToMenu', 'btnBackToMenuFromSim', 'btnBackToMenuFromEV', 'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin', 'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt', 'btnBackToMenuFromReg', 'btnBackToMenuFromSectoral', 'btnBackToMenuFromEdu'];
+const backButtons = ['btnBackToMenu', 'btnBackToMenuFromSim', 'btnBackToMenuFromEV', 'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin', 'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt', 'btnBackToMenuFromReg', 'btnBackToMenuFromEdu'];
 backButtons.forEach(id => { document.getElementById(id)?.addEventListener('click', closeAllAndShowMenu); });
 // ============================================================================
 // 5. SATIŞ CRM VE PROJE TAKİP MOTORU (SOLAR PIPELINE ENGINE)
