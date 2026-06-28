@@ -5,6 +5,8 @@
    hesaplama motorlarını ve kullanıcı etkileşimlerini yönetir.
    ============================================================================ */
 
+
+
 // ============================================================================
 // 1. VERİTABANI VE KÜRESEL DEĞİŞKENLER
 // ============================================================================
@@ -818,7 +820,8 @@ async function fetchAdminData() {
     if(ticketsBox) {
         ticketsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Arıza biletleri veritabanından çekiliyor...</p>';
         if (supabaseClient) {
-            const { data } = await supabaseClient.from('support_tickets').select('*').order('created_at', { ascending: false });
+            // .neq('inverter_model', 'Yeni Kurulum') komutu, Yeni Kurulum olanları listeden çıkarır
+            const { data } = await supabaseClient.from('support_tickets').select('*').neq('inverter_model', 'Yeni Kurulum').order('created_at', { ascending: false });
             ticketsBox.innerHTML = '';
             
             if (!data || data.length === 0) {
