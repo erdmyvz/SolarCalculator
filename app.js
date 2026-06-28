@@ -369,7 +369,7 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
             phone: document.getElementById('leadPhone').value,
             email: document.getElementById('leadEmail').value,
             address: document.getElementById('leadAddress').value,
-            inverter_model: 'Yeni Kurulum',
+            inverter_model: 'Yeni Kurulum', // <-- BURASI ÇOK ÖNEMLİ
             problem_desc: combinedDetails,
             installer_name: randomCode, 
             status: 'yeni_basvuru'
@@ -816,12 +816,18 @@ async function fetchAdminData() {
         }
     }
 
-    // 3. TEKNİK SERVİS BİLETLERİ (GÜNCELLENMİŞ SÜPER ADMİN GÖRÜNÜMÜ)
+// 3. TEKNİK SERVİS BİLETLERİ (GÜNCELLENMİŞ SÜPER ADMİN GÖRÜNÜMÜ)
     if(ticketsBox) {
         ticketsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Arıza biletleri veritabanından çekiliyor...</p>';
         if (supabaseClient) {
-            // .neq('inverter_model', 'Yeni Kurulum') komutu, Yeni Kurulum olanları listeden çıkarır
-            const { data } = await supabaseClient.from('support_tickets').select('*').neq('inverter_model', 'Yeni Kurulum').order('created_at', { ascending: false });
+            
+            // ÇÖZÜM BURADA: .neq('inverter_model', 'Yeni Kurulum') eklenerek EPC başvuruları listeden çıkarıldı
+            const { data } = await supabaseClient
+                .from('support_tickets')
+                .select('*')
+                .neq('inverter_model', 'Yeni Kurulum')
+                .order('created_at', { ascending: false });
+                
             ticketsBox.innerHTML = '';
             
             if (!data || data.length === 0) {
@@ -830,7 +836,6 @@ async function fetchAdminData() {
                 data.forEach(t => {
                     const dateStr = new Date(t.created_at).toLocaleString('tr-TR');
                     
-                    // Supabase Storage Linklerini oluştur (Sırayla: sistem, pano, ges, kod)
                     const getImgUrl = (filename) => filename ? `${SUPABASE_URL}/storage/v1/object/public/support-images/${filename}` : null;
                     
                     const mediaButtons = `
@@ -874,7 +879,6 @@ async function fetchAdminData() {
             }
         }
     }
-}
 
 window.adminRespondTicket = async function(id) {
     const respValue = document.getElementById(`adm_resp_${id}`).value.trim();
