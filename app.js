@@ -229,14 +229,33 @@ document.getElementById('btnLogout')?.addEventListener('click', async () => {
     document.getElementById('profileDropdown').classList.add('hidden'); window.location.hash = '#home';
 });
 
+
+
+
+
 // ============================================================================
 // 4. MÜŞTERİ YAKALAMA (LEAD GENERATION) VE TAKİP MODÜLÜ (ZİYARETÇİ EKRANI)
 // ============================================================================
 window.openLeadModal = function(type) {
     document.getElementById('leadType').value = type;
     document.getElementById('leadModalTitle').innerText = type === 'kurulum' ? 'Ücretsiz Çatı Keşfi Başvurusu' : 'Teknik Servis Müdahale Başvurusu';
-    const extraFields = document.getElementById('kurulumExtraFields');
-    type === 'kurulum' ? extraFields?.classList.remove('hidden') : extraFields?.classList.add('hidden');
+    
+    const kurulumFields = document.getElementById('kurulumExtraFields');
+    const servisFields = document.getElementById('servisExtraFields');
+    const servisWarning = document.getElementById('servisWarningBanner');
+    
+    if (type === 'kurulum') {
+        kurulumFields?.classList.remove('hidden');
+        servisFields?.classList.add('hidden');
+        servisWarning?.classList.add('hidden');
+        document.getElementById('leadDetailsLabel').innerText = "Detaylar / Notlar";
+    } else {
+        kurulumFields?.classList.add('hidden');
+        servisFields?.classList.remove('hidden');
+        servisWarning?.classList.remove('hidden');
+        document.getElementById('leadDetailsLabel').innerText = "Yaşadığınız Sorunun Detaylı Özeti (Hangi durumda kapanıyor, yanan ışıklar vs.)";
+    }
+    
     document.getElementById('leadModal')?.classList.remove('hidden');
 };
 
@@ -245,20 +264,68 @@ window.closeLeadModal = function() {
     document.getElementById('leadPublicForm')?.reset();
 };
 
+
 document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const type = document.getElementById('leadType').value;
+    const btn = e.target.querySelector('button[type="submit"]') || document.activeElement;
+    const originalBtnText = btn.textContent;
+    btn.textContent = "Gönderiliyor..."; 
+    btn.disabled = true;
+
+    // ==========================================
+    // 1. TEKNİK SERVİS MANTIĞI (YENİ EKLENEN)
+    // ==========================================
+    if (type === 'servis') {
+        if (supabaseClient) {
+            const ticketData = {
+                // Not: user_id zorunlu ise boş bir uuid veya null bırakabilirsiniz
+                user_id: "00000000-0000-0000-0000-000000000000",
+                full_name: document.getElementById('leadName').value,
+                phone: document.getElementById('leadPhone').value,
+                email: document.getElementById('leadEmail').value,
+                address: document.getElementById('leadAddress').value,
+                inverter_model: document.getElementById('srvInverter').value,
+                battery_model: document.getElementById('srvBattery').value,
+                installer_name: document.getElementById('srvInstaller').value,
+                install_date: document.getElementById('srvInstallDate').value || null,
+                problem_date: document.getElementById('srvProblemDate').value || null,
+                problem_desc: document.getElementById('leadDetails').value,
+                status: 'Başvuru İletildi'
+            };
+
+            // Veriyi ekle ve eklenen satırın ID'sini geri dön (.select())
+            const { data, error } = await supabaseClient.from('support_tickets').insert([ticketData]).select();
+
+            if (error) {
+                alert("Başvuru gönderilirken hata oluştu: " + error.message);
+            } else if (data && data.length > 0) {
+                const trackingCode = "SRV-" + data[0].id;
+                alert(`🎉 Teknik Servis Talebiniz Başarıyla İletildi!\n\nLütfen Takip Kodunuzu Not Edin: ${trackingCode}`);
+                closeLeadModal();
+                
+                // Otomatik olarak takip sorgusunu tetikle
+                document.getElementById('leadTrackInput').value = trackingCode;
+                document.getElementById('btnTrackQuery').click();
+            }
+        } else {
+            alert("Veritabanı bağlantısı bulunamadı (Test Ortamı).");
+        }
+        
+        btn.textContent = originalBtnText;
+        btn.disabled = false;
+        return; // İşlem bitti, fonksiyonu sonlandır.
+    }
+
+    // ==========================================
+    // 2. YENİ KURULUM MANTIĞI (MEVCUT KODUNUZ)
+    // ==========================================
     const randomCode = "EPC-" + new Date().getFullYear() + "-" + Math.floor(1000 + Math.random() * 9000);
     const dateStr = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
 
-    let combinedDetails = document.getElementById('leadDetails').value;
-    let outage = "Bilinmiyor", evHp = "Yok";
-
-    if (type === 'kurulum') {
-        outage = document.getElementById('leadOutage').value;
-        evHp = document.getElementById('leadExtraConsumption').value || 'Yok';
-        combinedDetails = `[Şebeke Kesintisi: ${outage}] | [Gelecekte İlave Yük: ${evHp}]\n\nMüşteri Notu: ${combinedDetails}`;
-    }
+    let outage = document.getElementById('leadOutage').value;
+    let evHp = document.getElementById('leadExtraConsumption').value || 'Yok';
+    let combinedDetails = `[Şebeke Kesintisi: ${outage}] | [Gelecekte İlave Yük: ${evHp}]\n\nMüşteri Notu: ${document.getElementById('leadDetails').value}`;
 
     if(supabaseClient) {
         const leadData = {
@@ -267,7 +334,7 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
             phone: document.getElementById('leadPhone').value,
             email: document.getElementById('leadEmail').value,
             address: document.getElementById('leadAddress').value,
-            inverter_model: type === 'kurulum' ? 'Yeni Kurulum' : 'Servis Talebi',
+            inverter_model: 'Yeni Kurulum',
             problem_desc: combinedDetails,
             installer_name: randomCode, 
             status: 'yeni_basvuru'
@@ -293,7 +360,11 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
     
     document.getElementById('leadTrackInput').value = randomCode;
     document.getElementById('btnTrackQuery').click();
+
+    btn.textContent = originalBtnText;
+    btn.disabled = false;
 });
+
 
 document.getElementById('btnTrackQuery')?.addEventListener('click', async () => {
     const code = document.getElementById('leadTrackInput').value.trim();
@@ -303,6 +374,41 @@ document.getElementById('btnTrackQuery')?.addEventListener('click', async () => 
     display.className = "mt-4 p-4 rounded-xl text-sm font-bold bg-white text-slate-800 border border-slate-200";
     display.innerHTML = "Sistemde aranıyor...";
 
+    // ==========================================
+    // A. TEKNİK SERVİS SORGUSU (SRV-)
+    // ==========================================
+    if (code.startsWith("SRV-")) {
+        const ticketId = code.replace("SRV-", "");
+        if (supabaseClient) {
+            const { data, error } = await supabaseClient.from('support_tickets').select('*').eq('id', ticketId).single();
+            if (data) {
+                const dateText = new Date(data.created_at).toLocaleString('tr-TR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+                display.innerHTML = `
+                    <div class="flex flex-col space-y-2">
+                        <div class="flex justify-between border-b pb-2">
+                            <span class="text-slate-500">Sayın ${data.full_name.split(' ')[0]}</span>
+                            <span class="text-xs text-slate-400 font-mono">${dateText}</span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <span class="bg-red-100 text-red-800 px-3 py-1 rounded border border-red-200 text-xs uppercase tracking-wider">Durum:</span>
+                            <span class="font-black text-slate-700">${data.status}</span>
+                        </div>
+                        ${data.admin_response ? `<p class="text-xs bg-slate-50 p-2 rounded mt-2 border border-slate-200"><strong>🔧 Merkez Yanıtı:</strong> ${data.admin_response}</p>` : `<p class="text-xs text-slate-500 mt-2 italic">Teknik ekibimiz dosyanızı inceliyor, size geri dönüş yapılacaktır.</p>`}
+                    </div>
+                `;
+            } else {
+                display.innerHTML = `<span class="text-red-500 font-bold">Kayıt Bulunamadı.</span> Lütfen kodunuzu kontrol edin.`;
+            }
+        } else {
+            display.innerHTML = `<span class="text-red-500 font-bold">Veritabanı bağlantısı yok.</span>`;
+        }
+        display.classList.remove('hidden');
+        return; // Servis sorgusu yapıldıysa aşağı inme
+    }
+
+    // ==========================================
+    // B. YENİ KURULUM SORGUSU (EPC-) (MEVCUT)
+    // ==========================================
     const localLead = crmLeads.find(l => l.id === code);
     
     if (localLead) {
@@ -321,10 +427,15 @@ document.getElementById('btnTrackQuery')?.addEventListener('click', async () => 
             </div>
         `;
     } else {
-        display.innerHTML = `<span class="text-red-500 font-bold">Kayıt Bulunamadı.</span> Lütfen EPC- ile başlayan takip kodunuzu doğru girdiğinizden emin olun.`;
+        display.innerHTML = `<span class="text-red-500 font-bold">Kayıt Bulunamadı.</span> Lütfen EPC- veya SRV- ile başlayan takip kodunuzu doğru girdiğinizden emin olun.`;
     }
     display.classList.remove('hidden');
 });
+
+
+
+
+
 
 // ============================================================================
 // ANA MENÜ BUTONLARI VE SAYFA GEÇİŞLERİ YÖNETİMİ

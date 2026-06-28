@@ -105,23 +105,59 @@
         </div>
     </div>
 
-    <div id="leadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+<div id="leadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
-            <div class="p-6 bg-slate-900 text-white flex justify-between items-center sticky top-0 z-10"><h3 id="leadModalTitle" class="font-bold text-lg">Başvuru Formu</h3><button onclick="closeLeadModal()" class="text-2xl font-bold hover:text-red-400">&times;</button></div>
+            <div class="p-6 bg-slate-900 text-white flex justify-between items-center sticky top-0 z-10">
+                <h3 id="leadModalTitle" class="font-bold text-lg">Başvuru Formu</h3>
+                <button onclick="closeLeadModal()" class="text-2xl font-bold hover:text-red-400">&times;</button>
+            </div>
             <form id="leadPublicForm" class="p-6 space-y-4">
                 <input type="hidden" id="leadType">
+                
                 <div class="grid grid-cols-2 gap-3">
                     <div><label class="block text-xs font-bold mb-1 text-slate-700">Ad Soyad</label><input type="text" id="leadName" required class="w-full p-2.5 border rounded-lg text-sm"></div>
                     <div><label class="block text-xs font-bold mb-1 text-slate-700">Telefon</label><input type="tel" id="leadPhone" required class="w-full p-2.5 border rounded-lg text-sm"></div>
                 </div>
                 <div><label class="block text-xs font-bold mb-1 text-slate-700">E-Posta</label><input type="email" id="leadEmail" required class="w-full p-2.5 border rounded-lg text-sm"></div>
                 <div><label class="block text-xs font-bold mb-1 text-slate-700">Açık Adres (Tesis Konumu)</label><input type="text" id="leadAddress" required class="w-full p-2.5 border rounded-lg text-sm"></div>
+                
                 <div id="kurulumExtraFields" class="hidden space-y-4 border-y py-4 my-2 border-slate-200 bg-slate-50 px-3 rounded-lg">
                     <div><label class="block text-xs font-bold text-slate-700 mb-1">Bölgenizde sık kesinti yaşanıyor mu?</label><select id="leadOutage" class="w-full p-2.5 border rounded-lg text-sm"><option value="Hayır">Hayır</option><option value="Evet">Evet (Batarya İhtiyacı)</option></select></div>
                     <div><label class="block text-xs font-bold text-slate-700 mb-1">Gelecekte ilave tüketim (EV/Isı Pompası)?</label><input type="text" id="leadExtraConsumption" class="w-full p-2.5 border rounded-lg text-sm"></div>
                 </div>
-                <div><label class="block text-xs font-bold mb-1 text-slate-700" id="leadDetailsLabel">Detaylar / Notlar</label><textarea id="leadDetails" required rows="3" class="w-full p-2.5 border rounded-lg text-sm"></textarea></div>
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg mt-2">Başvuruyu Gönder</button>
+
+                <div id="servisWarningBanner" class="hidden bg-red-50 border-l-4 border-red-600 p-4 rounded-r-lg shadow-sm">
+                    <h3 class="text-red-900 font-black text-xs mb-2 flex items-center gap-2"><span>⚠️</span> Talep Oluşturmadan Önce Okuyun</h3>
+                    <ul class="list-disc ml-4 text-[10px] text-red-800 font-medium space-y-1">
+                        <li>10 kW altındaki şebeke bağlantısız hobi tesislerine hizmet verilmemektedir.</li>
+                        <li>Alt segment markalarına teknik hizmet sağlanmaz.</li>
+                        <li>Yalnızca profesyonel <strong>Victron, Fronius, Pylontech, Deye ve Solax</strong> sistemleri içindir.</li>
+                    </ul>
+                </div>
+
+                <div id="servisExtraFields" class="hidden space-y-4 border-y py-4 my-2 border-slate-200 bg-slate-50 px-3 rounded-lg">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">İnverter Marka/Model</label><input type="text" id="srvInverter" placeholder="Örn: Victron Quattro 10kVA" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Batarya Marka/Model (Varsa)</label><input type="text" id="srvBattery" placeholder="Örn: Pylontech US3000C" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Kurulumu Yapan Firma</label><input type="text" id="srvInstaller" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Kurulum Tarihi</label><input type="date" id="srvInstallDate" class="w-full p-2 border rounded-lg text-sm bg-white text-slate-600"></div>
+                        <div class="md:col-span-2"><label class="block text-[10px] font-bold text-slate-700 mb-1">Sorun Ne Zaman Başladı?</label><input type="date" id="srvProblemDate" class="w-full p-2 border rounded-lg text-sm bg-white text-slate-600"></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3 mt-3 border-t border-slate-200 pt-3">
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Sistem Görüntüsü</label><input type="file" accept="image/*" class="w-full p-1.5 border bg-white rounded text-[10px]"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Elektrik Panosu</label><input type="file" accept="image/*" class="w-full p-1.5 border bg-white rounded text-[10px]"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">GES Panosu</label><input type="file" accept="image/*" class="w-full p-1.5 border bg-white rounded text-[10px]"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Arıza Kodları</label><input type="file" accept="image/*" class="w-full p-1.5 border bg-white rounded text-[10px]"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold mb-1 text-slate-700" id="leadDetailsLabel">Detaylar / Notlar</label>
+                    <textarea id="leadDetails" required rows="3" class="w-full p-2.5 border rounded-lg text-sm"></textarea>
+                </div>
+                
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg mt-2 transition shadow-lg">Başvuruyu Gönder</button>
             </form>
         </div>
     </div>
