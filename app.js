@@ -265,21 +265,50 @@ window.closeLeadModal = function() {
 };
 
 
+
 document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const type = document.getElementById('leadType').value;
     const btn = e.target.querySelector('button[type="submit"]') || document.activeElement;
     const originalBtnText = btn.textContent;
-    btn.textContent = "Gönderiliyor..."; 
+    btn.textContent = "Gönderiliyor (Fotoğraflar Yükleniyor)..."; 
     btn.disabled = true;
 
     // ==========================================
-    // 1. TEKNİK SERVİS MANTIĞI (YENİ EKLENEN)
+    // 1. TEKNİK SERVİS MANTIĞI (FOTOĞRAF YÜKLEMELİ)
     // ==========================================
     if (type === 'servis') {
         if (supabaseClient) {
+            
+            // FOTOĞRAF YÜKLEME YARDIMCI FONKSİYONU
+            async function uploadImage(inputId, prefix) {
+                const fileInput = document.getElementById(inputId);
+                if (!fileInput || !fileInput.files || fileInput.files.length === 0) return null;
+                
+                const file = fileInput.files[0];
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${prefix}_${Date.now()}.${fileExt}`; // Örn: pano_1700000000.jpg
+                
+                // Supabase Storage'a Yükle
+                const { error } = await supabaseClient.storage.from('support-images').upload(fileName, file);
+                
+                if (error) {
+                    console.error("Fotoğraf yükleme hatası:", error);
+                    return null;
+                }
+                return fileName; // Yüklenen dosyanın adını veritabanına yazmak için geri döndür
+            }
+
+            // Dosyaları paralel olarak yükle
+            const [imgSys, imgPano, imgGes, imgCode] = await Promise.all([
+                uploadImage('srvImgSystem', 'sistem'),
+                uploadImage('srvImgPano', 'pano'),
+                uploadImage('srvImgGes', 'ges'),
+                uploadImage('srvImgCode', 'hata')
+            ]);
+
+            // Veritabanına eklenecek ana obje
             const ticketData = {
-                // Not: user_id zorunlu ise boş bir uuid veya null bırakabilirsiniz
                 user_id: "00000000-0000-0000-0000-000000000000",
                 full_name: document.getElementById('leadName').value,
                 phone: document.getElementById('leadPhone').value,
@@ -291,20 +320,24 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
                 install_date: document.getElementById('srvInstallDate').value || null,
                 problem_date: document.getElementById('srvProblemDate').value || null,
                 problem_desc: document.getElementById('leadDetails').value,
-                status: 'Başvuru İletildi'
+                status: 'Başvuru İletildi',
+                // Yüklenen fotoğrafların isimleri
+                img_system: imgSys,
+                img_pano: imgPano,
+                img_ges: imgGes,
+                img_code: imgCode
             };
 
-            // Veriyi ekle ve eklenen satırın ID'sini geri dön (.select())
+            // Tabloya Kaydet
             const { data, error } = await supabaseClient.from('support_tickets').insert([ticketData]).select();
 
             if (error) {
-                alert("Başvuru gönderilirken hata oluştu: " + error.message);
+                alert("Başvuru kaydedilirken hata oluştu: " + error.message);
             } else if (data && data.length > 0) {
                 const trackingCode = "SRV-" + data[0].id;
-                alert(`🎉 Teknik Servis Talebiniz Başarıyla İletildi!\n\nLütfen Takip Kodunuzu Not Edin: ${trackingCode}`);
+                alert(`🎉 Teknik Servis Talebiniz (ve Fotoğraflar) Başarıyla İletildi!\n\nLütfen Takip Kodunuzu Not Edin: ${trackingCode}`);
                 closeLeadModal();
                 
-                // Otomatik olarak takip sorgusunu tetikle
                 document.getElementById('leadTrackInput').value = trackingCode;
                 document.getElementById('btnTrackQuery').click();
             }
@@ -314,7 +347,7 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
         
         btn.textContent = originalBtnText;
         btn.disabled = false;
-        return; // İşlem bitti, fonksiyonu sonlandır.
+        return; // İşlem bitti, çıkış yap.
     }
 
     // ==========================================
@@ -729,6 +762,7 @@ document.getElementById('adminPanelCard')?.addEventListener('click', () => {
 document.getElementById('btnBackToMenuFromAdmin')?.addEventListener('click', closeAllAndShowMenu);
 document.getElementById('btnRefreshAdmin')?.addEventListener('click', fetchAdminData);
 
+
 async function fetchAdminData() {
     const usersBody = document.getElementById('usersTableBody');
     const leadsBox = document.getElementById('adminLeadsList');
@@ -758,7 +792,7 @@ async function fetchAdminData() {
             usersBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-red-500">Veritabanı bağlantısı yok.</td></tr>';
         }
     }
-    
+
     // 2. GENEL HAVUZ BAŞVURULARI
     if(leadsBox) {
         leadsBox.innerHTML = '';
@@ -780,31 +814,61 @@ async function fetchAdminData() {
         }
     }
 
-    // 3. TEKNİK SERVİS BİLETLERİ
+    // 3. TEKNİK SERVİS BİLETLERİ (GÜNCELLENMİŞ SÜPER ADMİN GÖRÜNÜMÜ)
     if(ticketsBox) {
-        ticketsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Arıza biletleri taranıyor...</p>';
-        if(supabaseClient) {
-            const { data } = await supabaseClient.from('support_tickets').select('*').neq('user_id', '00000000-0000-0000-0000-000000000000');
+        ticketsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Arıza biletleri veritabanından çekiliyor...</p>';
+        if (supabaseClient) {
+            const { data } = await supabaseClient.from('support_tickets').select('*').order('created_at', { ascending: false });
             ticketsBox.innerHTML = '';
-            if(!data || data.length === 0) {
-                ticketsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Sistemde arıza talebi bulunmuyor.</p>'; return;
+            
+            if (!data || data.length === 0) {
+                ticketsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Sistemde arıza talebi bulunmuyor.</p>'; 
+            } else {
+                data.forEach(t => {
+                    const dateStr = new Date(t.created_at).toLocaleString('tr-TR');
+                    
+                    // Supabase Storage Linklerini oluştur (Sırayla: sistem, pano, ges, kod)
+                    const getImgUrl = (filename) => filename ? `${SUPABASE_URL}/storage/v1/object/public/support-images/${filename}` : null;
+                    
+                    const mediaButtons = `
+                        <div class="flex gap-2 mt-3 pt-3 border-t border-slate-200">
+                            ${t.img_system ? `<a href="${getImgUrl(t.img_system)}" target="_blank" class="bg-blue-600 text-white px-3 py-1.5 rounded text-[10px] font-bold">📸 Sistem</a>` : ''}
+                            ${t.img_pano ? `<a href="${getImgUrl(t.img_pano)}" target="_blank" class="bg-blue-600 text-white px-3 py-1.5 rounded text-[10px] font-bold">⚡ Pano</a>` : ''}
+                            ${t.img_ges ? `<a href="${getImgUrl(t.img_ges)}" target="_blank" class="bg-blue-600 text-white px-3 py-1.5 rounded text-[10px] font-bold">☀️ GES Pano</a>` : ''}
+                            ${t.img_code ? `<a href="${getImgUrl(t.img_code)}" target="_blank" class="bg-blue-600 text-white px-3 py-1.5 rounded text-[10px] font-bold">⚠️ Hata Kodu</a>` : ''}
+                        </div>
+                    `;
+
+                    ticketsBox.innerHTML += `
+                        <div class="p-5 border border-slate-200 rounded-xl bg-white shadow-sm text-xs mb-4">
+                            <div class="flex justify-between items-center border-b pb-3 mb-3">
+                                <div class="flex items-center gap-3">
+                                    <span class="bg-slate-900 text-white font-mono px-2 py-1 rounded">SRV-${t.id}</span>
+                                    <strong class="text-slate-800 text-base">${t.full_name}</strong>
+                                    <span class="text-[10px] text-slate-400 font-normal">🕒 ${dateStr}</span>
+                                </div>
+                                <span class="bg-red-100 text-red-800 font-bold px-3 py-1 rounded-full text-[10px] tracking-widest uppercase">DURUM: ${t.status}</span>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4 bg-slate-50 p-4 rounded-lg border border-slate-100 text-[11px] text-slate-700">
+                                <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">İletişim</strong>📞 ${t.phone} <br>✉️ ${t.email}</p>
+                                <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Donanım</strong>${t.inverter_model || 'Belirtilmedi'}<br>${t.battery_model || 'Batarya Yok'}</p>
+                                <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Kurulum Firması</strong>${t.installer_name || 'Bilinmiyor'}</p>
+                                <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Tarihler</strong>Kurulum: ${t.install_date || '-'}<br>Arıza: ${t.problem_date || '-'}</p>
+                                <p class="col-span-2"><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Açık Adres</strong>${t.address || 'Belirtilmedi'}</p>
+                            </div>
+                            
+                            <p class="text-slate-700 mb-4 border-l-4 border-red-400 pl-3 py-1 bg-red-50/50 rounded-r font-medium">${t.problem_desc}</p>
+                            
+                            ${mediaButtons}
+                            
+                            <div class="flex gap-2 mt-4">
+                                <input type="text" id="adm_resp_${t.id}" placeholder="Firmaya/Müşteriye yanıt..." value="${t.admin_response || ''}" class="flex-1 p-3 border border-slate-300 rounded-lg text-sm outline-none shadow-inner">
+                                <button onclick="adminRespondTicket(${t.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-6 rounded-lg text-sm transition shadow-lg">Yanıtı Kaydet</button>
+                            </div>
+                        </div>`;
+                });
             }
-            data.forEach(t => {
-                ticketsBox.innerHTML += `
-                    <div class="p-4 border border-slate-200 rounded-xl bg-white shadow-sm text-xs">
-                        <div class="flex justify-between items-center border-b pb-2 mb-2">
-                            <strong class="text-slate-800 text-sm">${t.full_name} (${t.inverter_model})</strong>
-                            <span class="bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded text-[10px]">Durum: ${t.status}</span>
-                        </div>
-                        <p class="text-slate-600 mb-3 bg-slate-50 p-2 rounded font-medium">${t.problem_desc}</p>
-                        <div class="flex gap-2">
-                            <input type="text" id="adm_resp_${t.id}" placeholder="Firmaya/Müşteriye yanıt..." value="${t.admin_response||''}" class="flex-1 p-2 border rounded-lg text-xs outline-none focus:border-red-500">
-                            <button onclick="adminRespondTicket(${t.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 rounded-lg text-xs transition shadow">Yanıt Gönder</button>
-                        </div>
-                    </div>`;
-            });
-        } else {
-            ticketsBox.innerHTML = '<p class="text-xs text-red-500 font-bold">Veritabanı bağlantısı yok.</p>';
         }
     }
 }
@@ -818,6 +882,13 @@ window.adminRespondTicket = async function(id) {
         fetchAdminData();
     }
 };
+
+
+
+
+
+
+
 // ============================================================================
 // 8. GÜÇ VE FATURA HESAPLAYICI MODÜLÜ (Çekirdek Algoritma)
 // ============================================================================
