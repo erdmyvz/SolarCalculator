@@ -281,104 +281,93 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
     e.preventDefault();
     const type = document.getElementById('leadType').value;
     const btn = e.target.querySelector('button[type="submit"]');
-    btn.textContent = "Gönderiliyor..."; 
+    const originalBtnText = btn.textContent;
+    btn.textContent = "Gönderiliyor...";
     btn.disabled = true;
 
-    if (type === 'servis') {
-        // 1. Fotoğraf Yükleme Fonksiyonu
-        async function uploadImage(inputId, prefix) {
-            const fileInput = document.getElementById(inputId);
-            if (!fileInput || !fileInput.files || fileInput.files.length === 0) return null;
-            const file = fileInput.files[0];
-            const fileName = `${prefix}_${Date.now()}.${file.name.split('.').pop()}`;
-            const { error } = await supabaseClient.storage.from('support-images').upload(fileName, file);
-            return error ? null : fileName;
-        }
-
-        // 2. Fotoğrafları yükle
-        const [imgSys, imgPano, imgGes, imgCode] = await Promise.all([
-            uploadImage('srvImgSystem', 'sistem'),
-            uploadImage('srvImgPano', 'pano'),
-            uploadImage('srvImgGes', 'ges'),
-            uploadImage('srvImgCode', 'hata')
-        ]);
-
-        // 3. Formdaki TÜM verileri al
-        const ticketData = {
-            full_name: document.getElementById('leadName').value,
-            phone: document.getElementById('leadPhone').value,
-            email: document.getElementById('leadEmail').value,
-            address: document.getElementById('leadAddress').value,
-            inverter_model: document.getElementById('srvInverter').value,
-            battery_model: document.getElementById('srvBattery').value,
-            installer_name: document.getElementById('srvInstaller').value,
-            install_date: document.getElementById('srvInstallDate').value || null,
-            problem_date: document.getElementById('srvProblemDate').value || null,
-            problem_desc: document.getElementById('leadDetails').value,
-            img_system: imgSys,
-            img_pano: imgPano,
-            img_ges: imgGes,
-            img_code: imgCode,
-            status: 'Başvuru İletildi'
-        };
-
-        // 4. Supabase'e gönder
-        const { data, error } = await supabaseClient.from('support_tickets').insert([ticketData]).select();
-        
-        if (error) { alert("Hata: " + error.message); }
-        else { alert("Başarıyla iletildi!"); closeLeadModal(); }
-
-        btn.textContent = "Başvuruyu Gönder"; btn.disabled = false;
+    if (!supabaseClient) {
+        alert("Veritabanı bağlantısı yok. Lütfen daha sonra tekrar deneyin.");
+        btn.textContent = originalBtnText; btn.disabled = false;
         return;
     }
 
+    try {
+        // =====================================================================
+        // A. TEKNİK SERVİS / BAKIM BAŞVURUSU  ->  submit_service_request RPC
+        // =====================================================================
+        if (type === 'servis') {
+            // 1) Görselleri Storage'a yükle (varsa)
+            async function uploadImage(inputId, prefix) {
+                const fileInput = document.getElementById(inputId);
+                if (!fileInput || !fileInput.files || fileInput.files.length === 0) return null;
+                const file = fileInput.files[0];
+                const fileName = `${prefix}_${Date.now()}.${file.name.split('.').pop()}`;
+                const { error } = await supabaseClient.storage.from('support-images').upload(fileName, file);
+                return error ? null : fileName;
+            }
+            const [imgSys, imgPano, imgGes, imgCode] = await Promise.all([
+                uploadImage('srvImgSystem', 'sistem'),
+                uploadImage('srvImgPano', 'pano'),
+                uploadImage('srvImgGes', 'ges'),
+                uploadImage('srvImgCode', 'hata')
+            ]);
 
-    // ==========================================
-    // 2. YENİ KURULUM MANTIĞI (MEVCUT KODUNUZ)
-    // ==========================================
-    const randomCode = "EPC-" + new Date().getFullYear() + "-" + Math.floor(1000 + Math.random() * 9000);
-    const dateStr = new Date().toLocaleString('tr-TR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+            // 2) Güvenli RPC fonksiyonunu çağır -> geriye takip kodu döner
+            const { data: code, error } = await supabaseClient.rpc('submit_service_request', {
+                p_request_type: 'ariza',
+                p_full_name:    document.getElementById('leadName').value,
+                p_phone:        document.getElementById('leadPhone').value,
+                p_email:        document.getElementById('leadEmail').value,
+                p_address:      document.getElementById('leadAddress').value,
+                p_inverter_model: document.getElementById('srvInverter').value,
+                p_battery_model:  document.getElementById('srvBattery').value,
+                p_installer_name: document.getElementById('srvInstaller').value,
+                p_install_date:   document.getElementById('srvInstallDate').value || null,
+                p_problem_date:   document.getElementById('srvProblemDate').value || null,
+                p_problem_desc:   document.getElementById('leadDetails').value,
+                p_img_system: imgSys, p_img_pano: imgPano, p_img_ges: imgGes, p_img_code: imgCode,
+                p_facility_code: null, p_company_id: null
+            });
+            if (error) throw error;
 
-    let outage = document.getElementById('leadOutage').value;
-    let evHp = document.getElementById('leadExtraConsumption').value || 'Yok';
-    let combinedDetails = `[Şebeke Kesintisi: ${outage}] | [Gelecekte İlave Yük: ${evHp}]\n\nMüşteri Notu: ${document.getElementById('leadDetails').value}`;
+            alert(`🔧 Servis talebiniz iletildi!\n\nTakip Kodunuz: ${code}\nBu kod ile anasayfadan durumu izleyebilirsiniz.`);
+            closeLeadModal();
+            document.getElementById('leadTrackInput').value = code;
+            document.getElementById('btnTrackQuery').click();
+            return;
+        }
 
-    if(supabaseClient) {
-        const leadData = {
-            user_id: "00000000-0000-0000-0000-000000000000",
-            full_name: document.getElementById('leadName').value,
-            phone: document.getElementById('leadPhone').value,
-            email: document.getElementById('leadEmail').value,
-            address: document.getElementById('leadAddress').value,
-            inverter_model: 'Yeni Kurulum', // <-- BURASI ÇOK ÖNEMLİ
-            problem_desc: combinedDetails,
-            installer_name: randomCode, 
-            status: 'yeni_basvuru'
-        };
-        await supabaseClient.from('support_tickets').insert([leadData]);
+        // =====================================================================
+        // B. YENİ GES KURULUM BAŞVURUSU  ->  submit_lead RPC (Merkezi Havuz)
+        // =====================================================================
+        const outage = document.getElementById('leadOutage').value;
+        const evHp   = document.getElementById('leadExtraConsumption').value || 'Yok';
+        const notes  = `[Şebeke Kesintisi: ${outage}] | [Gelecekte İlave Yük: ${evHp}]\n\nMüşteri Notu: ${document.getElementById('leadDetails').value}`;
+
+        const { data: code, error } = await supabaseClient.rpc('submit_lead', {
+            p_full_name: document.getElementById('leadName').value,
+            p_phone:     document.getElementById('leadPhone').value,
+            p_email:     document.getElementById('leadEmail').value,
+            p_address:   document.getElementById('leadAddress').value,
+            p_outage:    outage,
+            p_extra_consumption: evHp,
+            p_notes:     notes,
+            p_company_id: null,       // null = Merkezi Havuz (admin bir firmaya atar)
+            p_source:    'website'
+        });
+        if (error) throw error;
+
+        alert(`🎉 Başvurunuz Başarıyla İletildi!\n\nLütfen Proje Takip Kodunuzu Not Edin: ${code}\nBu kod ile anasayfadan sürecinizi şeffafça izleyebilirsiniz.`);
+        closeLeadModal();
+        document.getElementById('leadTrackInput').value = code;
+        document.getElementById('btnTrackQuery').click();
+
+    } catch (err) {
+        alert("Başvuru gönderilemedi: " + (err.message || err));
+    } finally {
+        btn.textContent = originalBtnText;
+        btn.disabled = false;
     }
-
-    const newLead = {
-        id: randomCode, date: dateStr, name: document.getElementById('leadName').value,
-        phone: document.getElementById('leadPhone').value, email: document.getElementById('leadEmail').value,
-        address: document.getElementById('leadAddress').value, status: "yeni_basvuru", bill: "", consumptions: "",
-        heatPump: evHp.toLowerCase().includes('ısı') ? 'Planlıyor' : 'Yok', heatPumpPower: "",
-        ev: (evHp.toLowerCase().includes('araç') || evHp.toLowerCase().includes('ev')) ? 'Yakında' : 'Yok',
-        blackout: outage === 'Evet' ? 'Sık' : 'Seyrek', storageIntent: outage === 'Evet' ? 'Evet' : 'Hayır',
-        backupDetails: "", notes: combinedDetails, type: type
-    };
-    crmLeads.push(newLead);
-    
-    if(typeof crmCalculateStats === 'function') { crmCalculateStats(); crmRenderLeads(); }
-
-    alert(`🎉 Başvurunuz Başarıyla İletildi!\n\nLütfen Proje Takip ID Kodunuzu Not Edin: ${randomCode}\nBu kod ile anasayfadan sürecinizi şeffafça izleyebilirsiniz.`);
-    closeLeadModal();
-    
-    document.getElementById('leadTrackInput').value = randomCode;
-    document.getElementById('btnTrackQuery').click();
-
-    btn.textContent = originalBtnText;
-    btn.disabled = false;
 });
 
 
@@ -389,63 +378,61 @@ document.getElementById('btnTrackQuery')?.addEventListener('click', async () => 
 
     display.className = "mt-4 p-4 rounded-xl text-sm font-bold bg-white text-slate-800 border border-slate-200";
     display.innerHTML = "Sistemde aranıyor...";
-
-    // ==========================================
-    // A. TEKNİK SERVİS SORGUSU (SRV-)
-    // ==========================================
-    if (code.startsWith("SRV-")) {
-        const ticketId = code.replace("SRV-", "");
-        if (supabaseClient) {
-            const { data, error } = await supabaseClient.from('support_tickets').select('*').eq('id', ticketId).single();
-            if (data) {
-                const dateText = new Date(data.created_at).toLocaleString('tr-TR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-                display.innerHTML = `
-                    <div class="flex flex-col space-y-2">
-                        <div class="flex justify-between border-b pb-2">
-                            <span class="text-slate-500">Sayın ${data.full_name.split(' ')[0]}</span>
-                            <span class="text-xs text-slate-400 font-mono">${dateText}</span>
-                        </div>
-                        <div class="flex items-center gap-2 mt-2">
-                            <span class="bg-red-100 text-red-800 px-3 py-1 rounded border border-red-200 text-xs uppercase tracking-wider">Durum:</span>
-                            <span class="font-black text-slate-700">${data.status}</span>
-                        </div>
-                        ${data.admin_response ? `<p class="text-xs bg-slate-50 p-2 rounded mt-2 border border-slate-200"><strong>🔧 Merkez Yanıtı:</strong> ${data.admin_response}</p>` : `<p class="text-xs text-slate-500 mt-2 italic">Teknik ekibimiz dosyanızı inceliyor, size geri dönüş yapılacaktır.</p>`}
-                    </div>
-                `;
-            } else {
-                display.innerHTML = `<span class="text-red-500 font-bold">Kayıt Bulunamadı.</span> Lütfen kodunuzu kontrol edin.`;
-            }
-        } else {
-            display.innerHTML = `<span class="text-red-500 font-bold">Veritabanı bağlantısı yok.</span>`;
-        }
-        display.classList.remove('hidden');
-        return; // Servis sorgusu yapıldıysa aşağı inme
-    }
-
-    // ==========================================
-    // B. YENİ KURULUM SORGUSU (EPC-) (MEVCUT)
-    // ==========================================
-    const localLead = crmLeads.find(l => l.id === code);
-    
-    if (localLead) {
-        const statusObj = crmStatusLabels[localLead.status] || { text: "İşlem Bekliyor" };
-        display.innerHTML = `
-            <div class="flex flex-col space-y-2">
-                <div class="flex justify-between border-b pb-2">
-                    <span class="text-slate-500">Sayın ${localLead.name.split(' ')[0]}</span>
-                    <span class="text-xs text-slate-400">${localLead.date}</span>
-                </div>
-                <div class="flex items-center gap-2 mt-2">
-                    <span class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded border border-emerald-200 text-xs uppercase tracking-wider">Durum:</span>
-                    <span class="font-black text-slate-700">${statusObj.text}</span>
-                </div>
-                <p class="text-xs text-slate-500 mt-2 italic">Müşteri temsilcimiz dosyanız üzerinde çalışıyor, size en kısa sürede ulaşılacaktır.</p>
-            </div>
-        `;
-    } else {
-        display.innerHTML = `<span class="text-red-500 font-bold">Kayıt Bulunamadı.</span> Lütfen EPC- veya SRV- ile başlayan takip kodunuzu doğru girdiğinizden emin olun.`;
-    }
     display.classList.remove('hidden');
+
+    if (!supabaseClient) {
+        display.innerHTML = `<span class="text-red-500 font-bold">Veritabanı bağlantısı yok.</span>`;
+        return;
+    }
+
+    // Durum kodunu okunabilir etikete çevirmek için ortak sözlük
+    const statusText = (s) => (crmStatusLabels[s] && crmStatusLabels[s].text) || s;
+
+    try {
+        // Tek güvenli fonksiyon hem EPC- (kurulum) hem SRV- (servis) kodlarını çözer
+        const { data, error } = await supabaseClient.rpc('track_application', { p_code: code });
+        if (error) throw error;
+
+        if (!data) {
+            display.innerHTML = `<span class="text-red-500 font-bold">Kayıt Bulunamadı.</span> Lütfen EPC- veya SRV- ile başlayan takip kodunuzu doğru girdiğinizden emin olun.`;
+            return;
+        }
+
+        const dateText = new Date(data.created_at).toLocaleString('tr-TR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+        const firstName = (data.full_name || '').split(' ')[0];
+
+        if (data.kind === 'service') {
+            display.innerHTML = `
+                <div class="flex flex-col space-y-2">
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">Sayın ${firstName}</span>
+                        <span class="text-xs text-slate-400 font-mono">${dateText}</span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <span class="bg-red-100 text-red-800 px-3 py-1 rounded border border-red-200 text-xs uppercase tracking-wider">Durum:</span>
+                        <span class="font-black text-slate-700">${statusText(data.status)}</span>
+                    </div>
+                    ${data.admin_response
+                        ? `<p class="text-xs bg-slate-50 p-2 rounded mt-2 border border-slate-200"><strong>🔧 Merkez Yanıtı:</strong> ${data.admin_response}</p>`
+                        : `<p class="text-xs text-slate-500 mt-2 italic">Teknik ekibimiz dosyanızı inceliyor, size geri dönüş yapılacaktır.</p>`}
+                </div>`;
+        } else {
+            display.innerHTML = `
+                <div class="flex flex-col space-y-2">
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-slate-500">Sayın ${firstName}</span>
+                        <span class="text-xs text-slate-400 font-mono">${dateText}</span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <span class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded border border-emerald-200 text-xs uppercase tracking-wider">Durum:</span>
+                        <span class="font-black text-slate-700">${statusText(data.status)}</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2 italic">Müşteri temsilcimiz dosyanız üzerinde çalışıyor, size en kısa sürede ulaşılacaktır.</p>
+                </div>`;
+        }
+    } catch (err) {
+        display.innerHTML = `<span class="text-red-500 font-bold">Sorgu hatası:</span> ${err.message || err}`;
+    }
 });
 
 
