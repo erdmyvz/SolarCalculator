@@ -358,10 +358,26 @@
                 <button id="btnGoTechSupport" class="bg-red-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
                     <h2 class="text-xl font-bold mb-4">🔧 Teknik Servis Talebi</h2><p class="text-red-100 text-sm">Mevcut arızalar için merkeze destek talebi açın.</p>
                 </button>
-            
+
+                <button id="btnGoProjects" class="bg-slate-800 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
+                    <h2 class="text-xl font-bold mb-4">☀️ Tesislerim</h2><p class="text-slate-300 text-sm">Kurulumu tamamlanan tesisleri ve GES kodlarını görün.</p>
+                </button>
+
                 <button id="btnGoEducation" class="bg-amber-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
                     <h2 class="text-xl font-bold mb-4">🎓 Eğitim Sözlüğü</h2><p class="text-amber-100 text-sm">Temel solar terimler ve analojiler.</p>
                 </button>
+            </div>
+        </div>
+
+        <div id="projectsModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 flex justify-between items-center">
+                <button id="btnBackToMenuFromProjects" class="text-slate-500 font-bold">← Menüye Dön</button>
+                <button id="btnRefreshProjects" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded">Yenile</button>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 mb-1">☀️ Tesislerim</h2>
+            <p class="text-slate-500 text-sm mb-6 font-medium">Kurulumu tamamlanan tesisleriniz ve yatırımcıya verilen GES tesis kodları.</p>
+            <div id="projectsList" class="grid grid-cols-1 gap-4">
+                <p class="text-slate-400 text-sm">Yükleniyor...</p>
             </div>
         </div>
 
@@ -840,6 +856,7 @@
     <script src="sim3d.js"></script>
     <script src="techservice.js"></script>
     <script src="sales.js"></script>
+    <script src="projects.js"></script>
     
 </body>
 </html>
