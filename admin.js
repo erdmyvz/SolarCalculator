@@ -160,7 +160,86 @@ async function fetchAdminData() {
             });
         }
     }
+
+    // 4) POTANSİYEL MÜŞTERİLER (yalnız admin görür)
+    await renderProspects();
 }
+
+// --- Potansiyel müşteriler bölümünü (bir kez) admin paneline enjekte eder ---
+function ensureProspectsSection() {
+    let list = document.getElementById('adminProspectsList');
+    if (list) return list;
+    const admin = document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-black text-slate-800">🌱 Potansiyel Müşteriler</h3>
+            <span id="adminProspectsCount" class="text-xs font-bold text-slate-400"></span>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Hesaplayıcıda raporunu alan, ilgili ama henüz başvurmamış kişiler. E-posta ısıtma çalışmaları için.</p>
+        <div id="adminProspectsList" class="space-y-3"></div>`;
+    admin.appendChild(card);
+    return document.getElementById('adminProspectsList');
+}
+
+async function renderProspects() {
+    const box = ensureProspectsSection();
+    if (!box || !supabaseClient) return;
+    box.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+
+    const { data, error } = await supabaseClient
+        .from('prospects').select('*').order('created_at', { ascending: false });
+    if (error) { box.innerHTML = `<p class="text-xs text-red-500">Yüklenemedi: ${error.message}</p>`; return; }
+
+    const countEl = document.getElementById('adminProspectsCount');
+    if (countEl) countEl.textContent = (data?.length || 0) + ' kişi';
+
+    if (!data || data.length === 0) {
+        box.innerHTML = '<p class="text-xs text-slate-400 italic">Henüz potansiyel müşteri kaydı yok.</p>';
+        return;
+    }
+
+    const statusOpts = (cur) => [
+        ['yeni', 'Yeni'], ['isitiliyor', 'Isıtılıyor'],
+        ['donusturuldu', 'Dönüştürüldü'], ['ilgilenmiyor', 'İlgilenmiyor']
+    ].map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('');
+
+    box.innerHTML = data.map(p => {
+        const dateStr = new Date(p.created_at).toLocaleString('tr-TR', { day:'2-digit', month:'short', year:'2-digit' });
+        const kwp    = p.recommended_kwp   ? `${p.recommended_kwp} kWp` : '-';
+        const bill   = p.monthly_bill      ? `₺${Math.round(p.monthly_bill).toLocaleString('tr-TR')}/ay` : '-';
+        const saving = p.est_annual_saving ? `₺${Math.round(p.est_annual_saving).toLocaleString('tr-TR')}/yıl` : '-';
+        const pay    = p.payback_years     ? `${p.payback_years} yıl` : '-';
+        return `
+            <div class="border border-slate-200 rounded-xl p-4 text-xs">
+                <div class="flex justify-between items-start gap-3 flex-wrap">
+                    <div>
+                        <strong class="text-sm text-slate-800">${admEscape(p.full_name) || '(isim yok)'}</strong>
+                        <p class="text-slate-500 mt-1 font-medium">✉️ ${admEscape(p.email)}${p.phone ? ' | 📞 ' + admEscape(p.phone) : ''}</p>
+                        <p class="text-slate-400 mt-2 bg-slate-50 border border-slate-100 rounded px-2 py-1 inline-block">☀️ ${kwp} · ${bill} · Tasarruf ${saving} · Amorti ${pay}</p>
+                    </div>
+                    <span class="text-[10px] text-slate-400 whitespace-nowrap">${dateStr}${p.consent ? ' · ✅ izinli' : ' · ⚠️ izinsiz'}</span>
+                </div>
+                <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100 items-center flex-wrap">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Durum</span>
+                    <select id="prstatus_${p.id}" class="border border-slate-300 p-2 rounded-lg text-xs">${statusOpts(p.status)}</select>
+                    <button onclick="updateProspectStatus('${p.id}','prstatus_${p.id}')" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-lg text-xs">Güncelle</button>
+                    <a href="mailto:${admEscape(p.email)}" class="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs no-underline">✉️ E-posta At</a>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+window.updateProspectStatus = async function(id, selectId) {
+    const sel = document.getElementById(selectId);
+    const status = sel ? sel.value : '';
+    if (!status) return;
+    const { error } = await supabaseClient.from('prospects').update({ status }).eq('id', id);
+    if (error) { alert("Durum güncellenemedi: " + error.message); return; }
+    renderProspects();
+};
 
 // Merkezi havuzdaki başvuruyu seçilen firmaya ata
 window.adminAssignLead = async function(leadId) {
