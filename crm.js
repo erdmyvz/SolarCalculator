@@ -1,0 +1,273 @@
+/* ============================================================================
+   5. Satış CRM ve Proje Takip Motoru
+   Bölünmüş modül dosyası. index.html'de core.js'ten sonra, ORİJİNAL SIRAYLA
+   yüklenmelidir. Klasik script olduğu için tüm fonksiyonlar küresel kalır.
+   ============================================================================ */
+
+// ============================================================================
+// 5. SATIŞ CRM VE PROJE TAKİP MOTORU (SOLAR PIPELINE ENGINE)
+// ============================================================================
+
+/**
+ * CRM Modülü ilk açıldığında veya bir veri güncellendiğinde tetiklenen ana fonksiyon.
+ * Üst bar istatistiklerini hesaplar ve güncel müşteri listesini tabloya basar.
+ */
+function initCRMModule() {
+    crmLoadLeads();
+}
+
+/**
+ * Firmanın kendi başvurularını veritabanından yükler.
+ * RLS sayesinde otomatik olarak yalnız bu firmaya atanmış kayıtlar gelir.
+ */
+async function crmLoadLeads() {
+    if (!supabaseClient) return;
+    const tableBody = document.getElementById('crmLeadsTableBody');
+    if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Yükleniyor...</td></tr>`;
+    try {
+        const { data, error } = await supabaseClient
+            .from('leads').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        crmLeads = data || [];
+    } catch (err) {
+        crmLeads = [];
+        if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500">Liste yüklenemedi: ${err.message}</td></tr>`;
+        return;
+    }
+    crmCalculateStats();
+    crmRenderLeads();
+}
+
+/**
+ * CRM Paneli üst kısmındaki 4 adet renkli özet kokpit kartının sayılarını hesaplar.
+ */
+function crmCalculateStats() {
+    if(document.getElementById('crmStatNew')) {
+        document.getElementById('crmStatNew').textContent = crmLeads.filter(l => l.status === 'yeni_basvuru').length;
+    }
+    if(document.getElementById('crmStatFollowUp')) {
+        document.getElementById('crmStatFollowUp').textContent = crmLeads.filter(l => l.status === 'arandi_gorusuldu' || l.status === 'teklif_gonderildi').length;
+    }
+    if(document.getElementById('crmStatActive')) {
+        document.getElementById('crmStatActive').textContent = crmLeads.filter(l => l.status === 'kurulum_basladi' || l.status === 'sozlesme_imzalandi').length;
+    }
+    if(document.getElementById('crmStatOfficial')) {
+        document.getElementById('crmStatOfficial').textContent = crmLeads.filter(l => l.status === 'resmi_surec').length;
+    }
+}
+
+/**
+ * CRM Müşteri Listesini HTML tablosuna dinamik olarak basar.
+ */
+function crmRenderLeads() {
+    const tableBody = document.getElementById('crmLeadsTableBody');
+    const filterValue = document.getElementById('crmFilterStatus')?.value || 'all';
+
+    if(!tableBody) return;
+    tableBody.innerHTML = '';
+
+    const filteredLeads = crmLeads.filter(lead => filterValue === 'all' || lead.status === filterValue);
+
+    if(filteredLeads.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium bg-white">Bu aşamada bekleyen müşteri kaydı bulunmuyor.</td></tr>`;
+        return;
+    }
+
+    filteredLeads.forEach(lead => {
+        const badge = crmStatusLabels[lead.status] || { text: lead.status, css: 'bg-slate-100 text-slate-800' };
+        const dateStr = lead.created_at
+            ? new Date(lead.created_at).toLocaleString('tr-TR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
+            : '-';
+
+        let techBadges = [];
+        if(lead.has_ev === 'Var' || lead.has_ev === 'Yakında') techBadges.push('🚗 EV');
+        if(lead.has_heat_pump === 'Var' || lead.has_heat_pump === 'Planlıyor') techBadges.push('🔥 Isı P.');
+        if(lead.wants_storage === 'Evet') techBadges.push('🔋 Batarya');
+        const techSummary = techBadges.length > 0 ? techBadges.join(' | ') : 'Standart (On-Grid)';
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50 border-b border-slate-100 transition cursor-pointer";
+        tr.onclick = (e) => { if(e.target.tagName !== 'BUTTON') crmOpenLeadDetails(lead.id); };
+
+        tr.innerHTML = `
+            <td class="p-4 pl-6 font-mono text-slate-400 text-[11px]">${dateStr}</td>
+            <td class="p-4">
+                <div class="font-black text-slate-900 text-sm mb-0.5">${admEscape(lead.full_name)}</div>
+                <div class="text-[10px] text-slate-400 font-mono tracking-wider">Takip ID: ${admEscape(lead.tracking_code)} | Tel: ${admEscape(lead.phone) || '-'}</div>
+            </td>
+            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.css}">${badge.text}</span></td>
+            <td class="p-4 text-slate-600 font-bold text-[11px]">${techSummary}</td>
+            <td class="p-4 text-right pr-6">
+                <button class="bg-white hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm transition text-xs">Müşteri Kartı</button>
+            </td>
+        `;
+        tableBody.appendChild(tr);
+    });
+}
+
+/**
+ * Modal içine (index.html'e dokunmadan) tesis alanını enjekte eder / bulur.
+ */
+function crmEnsureFacilityZone() {
+    let zone = document.getElementById('crmFacilityZone');
+    if (!zone) {
+        const body = document.getElementById('fieldNotes')?.parentElement;
+        if (!body) return null;
+        zone = document.createElement('div');
+        zone.id = 'crmFacilityZone';
+        zone.className = 'bg-white p-4 border rounded-lg';
+        body.appendChild(zone);
+    }
+    return zone;
+}
+
+/**
+ * Müşteri detay modalını açar, alanları doldurur ve tesis durumunu gösterir.
+ */
+window.crmOpenLeadDetails = async function(id) {
+    const lead = crmLeads.find(l => l.id === id);
+    if(!lead) return;
+
+    const dateStr = lead.created_at ? new Date(lead.created_at).toLocaleString('tr-TR') : '-';
+
+    document.getElementById('modalLeadId').value = lead.id;
+    document.getElementById('modalLeadName').textContent = lead.full_name || '-';
+    if(document.getElementById('modalLeadDate')) document.getElementById('modalLeadDate').textContent = "Başvuru Tarihi: " + dateStr;
+    if(document.getElementById('modalLeadIdDisplay')) document.getElementById('modalLeadIdDisplay').textContent = "ID: " + (lead.tracking_code || '');
+    document.getElementById('modalLeadContact').innerHTML = `📞 <strong>Tel:</strong> ${admEscape(lead.phone) || '-'} &nbsp;|&nbsp; ✉️ <strong>E-posta:</strong> ${admEscape(lead.email) || '-'}<br>📍 <strong>Konum:</strong> ${admEscape(lead.address) || '-'}`;
+
+    document.getElementById('modalStatusSelect').value = lead.status;
+    document.getElementById('fieldBill').value = (lead.bill_amount ?? '');
+    document.getElementById('fieldConsumptions').value = lead.consumptions || '';
+    document.getElementById('fieldHeatPump').value = (!lead.has_heat_pump || lead.has_heat_pump === 'Yok') ? 'Yok' : 'Var';
+    document.getElementById('fieldHeatPumpPower').value = lead.heat_pump_power || '';
+    document.getElementById('fieldEV').value = (!lead.has_ev || lead.has_ev === 'Yok') ? 'Yok' : 'Var';
+    document.getElementById('fieldBlackout').value = (lead.blackout_frequency === 'Sık') ? 'Sık' : 'Seyrek';
+    document.getElementById('fieldStorageIntent').value = (lead.wants_storage === 'Evet') ? 'Evet' : 'Hayır';
+    document.getElementById('fieldBackupDetails').value = lead.backup_details || '';
+    document.getElementById('fieldNotes').value = lead.notes || '';
+
+    document.getElementById('crmDetailModal').classList.remove('hidden');
+
+    // --- TESİS ALANI ---
+    const zone = crmEnsureFacilityZone();
+    if (zone) {
+        zone.innerHTML = '<p class="text-xs text-slate-400">Tesis bilgisi kontrol ediliyor...</p>';
+        try {
+            const { data: proj } = await supabaseClient
+                .from('projects').select('facility_code').eq('lead_id', lead.id).maybeSingle();
+
+            if (proj && proj.facility_code) {
+                zone.innerHTML = `
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                        <div>
+                            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">☀️ Kurulu Tesis</div>
+                            <div class="font-mono text-lg font-black text-emerald-700">${admEscape(proj.facility_code)}</div>
+                            <p class="text-[11px] text-slate-500 mt-1">Yatırımcı bu kod ile bakım / temizlik / servis talebi açabilir.</p>
+                        </div>
+                        <button onclick="crmCopyText('${admEscape(proj.facility_code)}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold">Kodu Kopyala</button>
+                    </div>`;
+            } else if (lead.status === 'tamamlandi') {
+                zone.innerHTML = `
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                        <div>
+                            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Tesis Kaydı</div>
+                            <p class="text-sm text-slate-600">Bu proje devreye alındı. Yatırımcıya kalıcı bir tesis kodu vermek için tesisi oluşturun.</p>
+                        </div>
+                        <button onclick="crmCreateFacility('${lead.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap">☀️ Tesis Oluştur</button>
+                    </div>`;
+            } else {
+                zone.innerHTML = `<p class="text-xs text-slate-400">Tesis kodu, müşteri <strong>"7. Bitti"</strong> aşamasına gelince oluşturulabilir.</p>`;
+            }
+        } catch (err) {
+            zone.innerHTML = `<p class="text-xs text-red-500">Tesis bilgisi alınamadı: ${err.message}</p>`;
+        }
+    }
+};
+
+/**
+ * Tamamlanan müşteriyi kalıcı tesise dönüştürür (GES kodu üretir).
+ */
+window.crmCreateFacility = async function(leadId) {
+    if (!confirm("Bu müşteriyi kalıcı bir tesise dönüştürmek istediğinize emin misiniz?\nYatırımcıya verilecek GES tesis kodu oluşturulacak.")) return;
+    try {
+        const { data: code, error } = await supabaseClient.rpc('create_project_from_lead', { p_lead_id: leadId });
+        if (error) throw error;
+        alert(`✅ Tesis oluşturuldu!\n\nTesis Kodu: ${code}\n\nBu kodu yatırımcıya verin; bakım/temizlik/servis taleplerinde kullanacak.`);
+        await crmLoadLeads();
+        crmOpenLeadDetails(leadId);
+    } catch (err) {
+        alert("Tesis oluşturulamadı: " + (err.message || err));
+    }
+};
+
+/**
+ * Bir metni panoya kopyalar.
+ */
+window.crmCopyText = function(text) {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(
+            () => alert("Kopyalandı: " + text),
+            () => alert("Tesis Kodu: " + text)
+        );
+    } else {
+        alert("Tesis Kodu: " + text);
+    }
+};
+
+/**
+ * Satış ekibinin manuel olarak sisteme müşteri eklemesi (veritabanına yazar).
+ */
+window.crmOpenNewLeadModal = async function() {
+    const name = prompt("Lütfen eklenecek yeni müşterinin adını veya proje başlığını giriniz:");
+    if(!name || !name.trim()) return;
+
+    const code = "EPC-MANUAL-" + Date.now().toString().slice(-6);
+    const row = {
+        tracking_code: code,
+        company_id: (currentUserProfile && currentUserProfile.company_id) ? currentUserProfile.company_id : null,
+        source: 'manual',
+        full_name: name.trim(),
+        phone: '',
+        status: 'yeni_basvuru',
+        notes: 'Panelden manuel eklendi.'
+    };
+
+    const { data, error } = await supabaseClient.from('leads').insert([row]).select().single();
+    if(error) { alert("Müşteri eklenemedi: " + error.message); return; }
+
+    await crmLoadLeads();
+    crmOpenLeadDetails(data.id);
+};
+
+/**
+ * Müşteri kartındaki değişiklikleri veritabanına kalıcı olarak kaydeder.
+ */
+window.crmSaveLeadDetails = async function() {
+    const id = document.getElementById('modalLeadId').value;
+    if(!id) return;
+
+    const billVal = document.getElementById('fieldBill').value;
+    const patch = {
+        status:             document.getElementById('modalStatusSelect').value,
+        bill_amount:        billVal === '' ? null : Number(billVal),
+        consumptions:       document.getElementById('fieldConsumptions').value,
+        has_heat_pump:      document.getElementById('fieldHeatPump').value,
+        heat_pump_power:    document.getElementById('fieldHeatPumpPower').value,
+        has_ev:             document.getElementById('fieldEV').value,
+        blackout_frequency: document.getElementById('fieldBlackout').value,
+        wants_storage:      document.getElementById('fieldStorageIntent').value,
+        backup_details:     document.getElementById('fieldBackupDetails').value,
+        notes:              document.getElementById('fieldNotes').value,
+        updated_at:         new Date().toISOString()
+    };
+
+    const { error } = await supabaseClient.from('leads').update(patch).eq('id', id);
+    if(error) { alert("Kaydedilemedi: " + error.message); return; }
+
+    crmCloseModal();
+    await crmLoadLeads();
+};
+
+window.crmCloseModal = function() { document.getElementById('crmDetailModal').classList.add('hidden'); };
+window.crmOpenIntegrationModal = function() { document.getElementById('crmIntegrationModal').classList.remove('hidden'); };
