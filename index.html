@@ -136,6 +136,22 @@
             </div>
 
             <div id="servisExtraFields" class="hidden space-y-4 border-y py-4 my-2 border-slate-200 bg-slate-50 px-3 rounded-lg">
+                <!-- Talep türü ve tesis kodu (bakım / temizlik / arıza) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-700 mb-1">Talep Türü</label>
+                        <select id="srvRequestType" class="w-full p-2 border rounded-lg text-sm bg-white">
+                            <option value="ariza">Arıza / Teknik Servis</option>
+                            <option value="bakim">Periyodik Bakım</option>
+                            <option value="temizlik">Panel Temizliği</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-700 mb-1">Tesis Kodu (varsa)</label>
+                        <input type="text" id="srvFacilityCode" placeholder="Örn: GES-2026-1234" class="w-full p-2 border rounded-lg text-sm bg-white">
+                    </div>
+                </div>
+                
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div><label class="block text-[10px] font-bold text-slate-700 mb-1">İnverter Marka/Model</label><input type="text" id="srvInverter" placeholder="Örn: Victron Quattro 10kVA" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
                     <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Batarya Marka/Model</label><input type="text" id="srvBattery" placeholder="Örn: Pylontech US3000C" class="w-full p-2 border rounded-lg text-sm bg-white"></div>

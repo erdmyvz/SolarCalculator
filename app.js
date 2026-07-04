@@ -335,7 +335,7 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
 
             // 2) Güvenli RPC fonksiyonunu çağır -> geriye takip kodu döner
             const { data: code, error } = await supabaseClient.rpc('submit_service_request', {
-                p_request_type: 'ariza',
+                p_request_type: document.getElementById('srvRequestType')?.value || 'ariza',
                 p_full_name:    document.getElementById('leadName').value,
                 p_phone:        document.getElementById('leadPhone').value,
                 p_email:        document.getElementById('leadEmail').value,
@@ -347,7 +347,8 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
                 p_problem_date:   document.getElementById('srvProblemDate').value || null,
                 p_problem_desc:   document.getElementById('leadDetails').value,
                 p_img_system: imgSys, p_img_pano: imgPano, p_img_ges: imgGes, p_img_code: imgCode,
-                p_facility_code: null, p_company_id: null
+                p_facility_code: (document.getElementById('srvFacilityCode')?.value || '').trim() || null,
+                p_company_id: null
             });
             if (error) throw error;
 
