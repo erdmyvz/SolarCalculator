@@ -11,6 +11,109 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☀️</text></svg>">
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 1) Tailwind tema ayarı: yeşil vurgular güneş amberine, koyu yüzeyler laciverte -->
+        <script>
+        tailwind.config = {
+            theme: {
+            extend: {
+                fontFamily: {
+                sans: ['Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                display: ['Sora', 'ui-sans-serif', 'sans-serif'],
+                mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+                },
+                colors: {
+                // "emerald" -> güneş amber/altın (mevcut tüm yeşil vurgular buna döner)
+                emerald: {
+                    50:'#FFF8EB', 100:'#FEEFC7', 200:'#FDE08A', 300:'#FBCB4D',
+                    400:'#FBBF24', 500:'#F59E0B', 600:'#D9820A', 700:'#B45309',
+                    800:'#92400E', 900:'#78350F',
+                },
+                // "teal" gradient uyumu için sıcak tarafa çekilir
+                teal: { 200:'#FDE08A', 300:'#FCD34D', 400:'#FBBF24', 500:'#F59E0B' },
+                // en koyu slate tonları -> fotovoltaik lacivert
+                slate: { 800:'#12263D', 900:'#0B1B2E', 950:'#081524' },
+                },
+            },
+            },
+        };
+        </script>
+        
+        <!-- 2) Karakterli yazı tipleri -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+        
+        <!-- 3) Bileşen cilası (body-öncelikli seçicilerle güvenli biçimde) -->
+        <style>
+        /* Başlıklar karakterli display yazısıyla */
+        h1, h2, h3, h4, h5 {
+            font-family: 'Sora', ui-sans-serif, sans-serif;
+            letter-spacing: -0.02em;
+        }
+        
+        /* Takip kodları / veri için teknik monospace */
+        body .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .02em; }
+        
+        /* İMZA: karanlık hero'da fotovoltaik lacivert + üstten güneş parıltısı */
+        body .tech-gradient {
+            background:
+            radial-gradient(1100px 480px at 72% -12%, rgba(245,158,11,0.18), transparent 60%),
+            linear-gradient(140deg, #0A1A2F 0%, #0E2540 55%, #0B1B2E 100%);
+        }
+        
+        /* Cam paneller: sıcak amber kenar, hover'da yumuşak yükseliş */
+        body .glass-panel {
+            background: rgba(255,255,255,0.055);
+            border: 1px solid rgba(251,191,36,0.14);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+        }
+        body .glass-panel:hover {
+            border-color: rgba(251,191,36,0.42);
+            box-shadow: 0 22px 44px -26px rgba(245,158,11,0.55);
+        }
+        
+        /* Amber CTA butonlarına sıcak gölge ve hafif yükseliş */
+        body [class*="bg-emerald-6"], body [class*="bg-emerald-7"] {
+            transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+        }
+        body [class*="bg-emerald-6"]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 26px -12px rgba(245,158,11,0.6);
+            filter: saturate(1.05);
+        }
+        
+        /* Form alanları: rafine amber odak halkası (erişilebilirlik + cila) */
+        body input, body select, body textarea {
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+        body input:focus, body select:focus, body textarea:focus {
+            outline: none;
+            border-color: #F59E0B;
+            box-shadow: 0 0 0 3px rgba(245,158,11,0.18);
+        }
+        
+        /* Klavye ile gezinenler için görünür odak */
+        body a:focus-visible, body button:focus-visible {
+            outline: 2px solid #F59E0B;
+            outline-offset: 2px;
+            border-radius: 6px;
+        }
+        
+        /* Sıcak kaydırma çubuğu ve seçim rengi */
+        body .custom-scrollbar::-webkit-scrollbar-thumb { background: #E5C99B; border-radius: 4px; }
+        body .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #D9820A; }
+        body ::selection { background: rgba(245,158,11,0.25); }
+        
+        /* Hareket hassasiyeti olan kullanıcılara saygı */
+        @media (prefers-reduced-motion: reduce) {
+            body * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+        }
+        </style>
+        <!-- ============================================================ -->
+        <!-- TEMA SONU                                                     -->
+        <!-- ============================================================ -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -52,7 +155,7 @@
 
         <div class="tech-gradient text-white pt-32 pb-20 px-6 border-b border-slate-800">
             <div class="max-w-6xl mx-auto text-center">
-                <h1 class="text-4xl md:text-7xl font-black mb-6 leading-tight">Enerji Dönüşümünüzü <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500">Dijitalde Başlatın</span></h1>
+                <h1 class="text-4xl md:text-7xl font-black mb-6 leading-tight">Enerji Dönüşümünüzü <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-orange-500">Dijitalde Başlatın</span></h1>
                 <p class="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-12">Güneş enerjisi sektöründe dijitalleşen çözümler sunuyoruz.</p>
                 
                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-16">
@@ -151,7 +254,7 @@
                         <input type="text" id="srvFacilityCode" placeholder="Örn: GES-2026-1234" class="w-full p-2 border rounded-lg text-sm bg-white">
                     </div>
                 </div>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div><label class="block text-[10px] font-bold text-slate-700 mb-1">İnverter Marka/Model</label><input type="text" id="srvInverter" placeholder="Örn: Victron Quattro 10kVA" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
                     <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Batarya Marka/Model</label><input type="text" id="srvBattery" placeholder="Örn: Pylontech US3000C" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
