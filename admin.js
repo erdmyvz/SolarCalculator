@@ -15,6 +15,16 @@ document.getElementById('adminPanelCard')?.addEventListener('click', () => {
 document.getElementById('btnBackToMenuFromAdmin')?.addEventListener('click', closeAllAndShowMenu);
 document.getElementById('btnRefreshAdmin')?.addEventListener('click', fetchAdminData);
 
+// Servis talebi durum seçenekleri (mevcut durum seçili gelir) — techservice.js de kullanır
+function srStatusOptions(cur) {
+    return [
+        ['basvuru_iletildi', 'Başvuru İletildi'],
+        ['inceleniyor',      'İnceleniyor'],
+        ['planlandi',        'Planlandı'],
+        ['tamamlandi',       'Tamamlandı'],
+    ].map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('');
+}
+
 
 // admEscape yardımcısı core.js'te tanımlıdır.
 
@@ -129,7 +139,20 @@ async function fetchAdminData() {
                         </div>
                         <p class="text-slate-700 mb-4 border-l-4 border-red-400 pl-3 py-1 bg-red-50/50 rounded-r font-medium whitespace-pre-line">${admEscape(t.problem_desc)}</p>
                         ${mediaButtons}
-                        <div class="flex gap-2 mt-4">
+                        ${!t.company_id ? `
+                        <div class="flex gap-2 mt-4 pt-3 border-t border-slate-100 items-center">
+                            <span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Havuzda</span>
+                            <select id="srassign_${t.id}" class="flex-1 border border-slate-300 p-2 rounded-lg text-xs">
+                                <option value="">Firmaya ata...</option>${companyOptions}
+                            </select>
+                            <button onclick="adminAssignService('${t.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg text-xs">Ata</button>
+                        </div>` : ''}
+                        <div class="flex gap-2 mt-3 items-center">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Durum</span>
+                            <select id="srstatus_${t.id}" class="border border-slate-300 p-2 rounded-lg text-xs">${srStatusOptions(t.status)}</select>
+                            <button onclick="updateServiceStatus('${t.id}','srstatus_${t.id}')" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-lg text-xs">Durumu Güncelle</button>
+                        </div>
+                        <div class="flex gap-2 mt-3">
                             <input type="text" id="adm_resp_${t.id}" placeholder="Firmaya/Müşteriye yanıt..." value="${admEscape(t.admin_response)}" class="flex-1 p-3 border border-slate-300 rounded-lg text-sm outline-none shadow-inner">
                             <button onclick="adminRespondTicket('${t.id}')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-6 rounded-lg text-sm transition shadow-lg">Yanıtı Kaydet</button>
                         </div>
@@ -162,6 +185,31 @@ window.adminRespondTicket = async function(id) {
     if (error) { alert("Hata: " + error.message); return; }
     alert("Yanıt kaydedildi.");
     fetchAdminData();
+};
+
+// Merkezi havuzdaki servis talebini seçilen firmaya ata (yalnız admin)
+window.adminAssignService = async function(id) {
+    const sel = document.getElementById(`srassign_${id}`);
+    const companyId = sel ? sel.value : '';
+    if (!companyId) { alert("Lütfen bir firma seçin."); return; }
+    const { error } = await supabaseClient.from('service_requests').update({ company_id: companyId }).eq('id', id);
+    if (error) { alert("Atama hatası: " + error.message); return; }
+    alert("Servis talebi firmaya atandı. Firma kendi 'Teknik Servis' ekranında görecek.");
+    fetchAdminData();
+};
+
+// Servis talebinin durumunu ilerlet (admin veya talebi üstlenen firma) — global
+window.updateServiceStatus = async function(id, selectId) {
+    const sel = document.getElementById(selectId);
+    const status = sel ? sel.value : '';
+    if (!status) return;
+    const { error } = await supabaseClient.from('service_requests').update({ status }).eq('id', id);
+    if (error) { alert("Durum güncellenemedi: " + error.message); return; }
+    alert("Durum güncellendi.");
+    // Hangi ekran açıksa onu tazele
+    const adminOpen = !document.getElementById('adminModule')?.classList.contains('hidden');
+    if (adminOpen && typeof fetchAdminData === 'function') fetchAdminData();
+    else if (typeof fetchMyTickets === 'function') fetchMyTickets();
 };
 
 // Özel (private) bucket'taki görseli imzalı (geçici) URL ile aç

@@ -107,6 +107,11 @@ async function fetchMyTickets() {
                 <div class="mt-4 bg-emerald-50 p-4 rounded-lg border border-emerald-200">
                     <p class="text-sm text-emerald-900 leading-relaxed"><strong>🔧 Merkez Yanıtı:</strong> ${admEscape(t.admin_response)}</p>
                 </div>` : '<p class="text-xs text-slate-400 mt-2 italic flex items-center gap-1"><span>⏳</span> Henüz teknisyen yanıtı bekleniyor...</p>'}
+                <div class="flex gap-2 mt-4 pt-3 border-t border-slate-100 items-center flex-wrap">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Durumu Güncelle</span>
+                    <select id="mystatus_${t.id}" class="border border-slate-300 p-2 rounded-lg text-xs">${srStatusOptions(t.status)}</select>
+                    <button onclick="updateServiceStatus('${t.id}','mystatus_${t.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs">Kaydet</button>
+                </div>
             </div>
         `;
     }).join('');
