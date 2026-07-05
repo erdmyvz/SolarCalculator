@@ -358,10 +358,6 @@
                     <h2 class="text-xl font-bold mb-4">📜 TEDAŞ Mevzuatı & Süreç</h2><p class="text-slate-300 text-sm">Yasal izin adımları ve güncel EDAŞ bilgileri.</p>
                 </button>
 
-                <button id="btnGoTechSupport" class="bg-red-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
-                    <h2 class="text-xl font-bold mb-4">🔧 Teknik Servis Talebi</h2><p class="text-red-100 text-sm">Mevcut arızalar için merkeze destek talebi açın.</p>
-                </button>
-
                 <button id="btnGoProjects" class="bg-slate-800 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
                     <h2 class="text-xl font-bold mb-4">☀️ Tesislerim</h2><p class="text-slate-300 text-sm">Kurulumu tamamlanan tesisleri ve GES kodlarını görün.</p>
                 </button>
@@ -651,54 +647,6 @@
             </div>
         </div>
 
-        <div id="techSupportModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
-            <div class="mb-6 border-b pb-4 flex items-center"><button id="btnBackToMenuFromSupport" class="text-slate-500 hover:text-red-600 font-bold flex items-center transition">← Yönetim Paneli</button><span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Teknik Servis ve Müdahale</span></div>
-            
-            <div class="bg-red-50 border-l-4 border-red-600 p-6 rounded-r-xl mb-8 shadow-sm">
-                <h3 class="text-red-900 font-black text-lg mb-2 flex items-center gap-2"><span>⚠️</span> Lütfen Talep Oluşturmadan Önce Okuyun</h3>
-                <ul class="list-disc ml-6 text-sm text-red-800 font-medium space-y-1 mt-3">
-                    <li>Sistemimiz üzerinden <strong>10 kW altındaki</strong> şebeke bağlantısız hobi tesislerine hizmet verilmemektedir.</li>
-                    <li>Alt segment markalarına teknik hizmet sağlanmaz. Yalnızca profesyonel <strong>Victron, Fronius, Pylontech, Deye ve Solax</strong> sistemleri desteklenir.</li>
-                </ul>
-            </div>
-            
-            <div class="flex border-b border-slate-200 mb-8">
-                <button id="tabNewTicket" class="px-6 py-4 font-black text-red-600 border-b-2 border-red-600 bg-red-50/50 rounded-t-lg transition">Yeni Talep Oluştur</button>
-                <button id="tabMyTickets" class="px-6 py-4 font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-t-lg transition">Geçmiş Taleplerim ve Durumları</button>
-            </div>
-            
-            <form id="ticketForm" class="space-y-8">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label class="block text-sm font-bold text-slate-700 mb-1">Kayıtlı Ad Soyad</label><input type="text" id="tsName" required class="w-full p-3 border border-slate-300 rounded-lg bg-slate-50 outline-none" readonly></div>
-                    <div><label class="block text-sm font-bold text-slate-700 mb-1">Sistemdeki Telefon</label><input type="tel" id="tsPhone" required class="w-full p-3 border border-slate-300 rounded-lg bg-slate-50 outline-none" readonly></div>
-                    <div><label class="block text-sm font-bold text-slate-700 mb-1">İletişim E-Posta</label><input type="email" id="tsEmail" required class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-red-500"></div>
-                    <div><label class="block text-sm font-bold text-slate-700 mb-1">Arızalı Tesisin Açık Adresi</label><input type="text" id="tsAddress" required class="w-full p-3 border border-slate-300 rounded-lg outline-none focus:border-red-500"></div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-inner">
-                    <div><label class="block text-xs font-bold text-slate-700 mb-1">İnverter Marka / Model</label><input type="text" id="tsInverter" required placeholder="Örn: Victron Quattro 10kVA" class="w-full p-3 border border-slate-300 rounded-lg text-sm outline-none focus:border-red-500"></div>
-                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Batarya Marka / Model (Varsa)</label><input type="text" id="tsBattery" placeholder="Örn: Pylontech US3000C" class="w-full p-3 border border-slate-300 rounded-lg text-sm outline-none focus:border-red-500"></div>
-                    <div><label class="block text-xs font-bold text-slate-700 mb-1">İlk Kurulumu Yapan Firma</label><input type="text" id="tsInstaller" required placeholder="Eski Kurulumcu" class="w-full p-3 border border-slate-300 rounded-lg text-sm outline-none focus:border-red-500"></div>
-                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Kurulumun Tahmini Tarihi</label><input type="date" id="tsInstallDate" required class="w-full p-3 border border-slate-300 rounded-lg text-sm text-slate-600 outline-none focus:border-red-500"></div>
-                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Arıza / Sorun Ne Zaman Başladı?</label><input type="date" id="tsProblemDate" required class="w-full p-3 border border-slate-300 rounded-lg text-sm text-slate-600 outline-none focus:border-red-500"></div>
-                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Arıza Kodları veya Ekran Görüntüsü</label><input type="file" id="tsPhotos" multiple accept="image/*" class="w-full p-2.5 border border-slate-300 bg-white rounded-lg text-sm text-slate-500 outline-none"></div>
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">Yaşadığınız Sorunun Detaylı Özeti</label>
-                    <textarea id="tsProblemDesc" rows="4" required placeholder="İnverter ekranında yanan ışıklar, sistemin ne zaman kapandığı gibi tüm teknik detayları buraya yazınız..." class="w-full p-4 border border-slate-300 rounded-xl outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 resize-none"></textarea>
-                </div>
-                
-                <button type="submit" id="btnSubmitTicket" class="w-full bg-red-600 hover:bg-red-700 transition text-white font-black py-4 rounded-xl text-lg shadow-lg flex items-center justify-center gap-2">
-                    <span>📨</span> Yetkili Servis Talebini Merkeze Gönder
-                </button>
-            </form>
-            
-            <div id="myTicketsArea" class="hidden">
-                <div id="myTicketsList" class="grid grid-cols-1 gap-5">
-                    </div>
-            </div>
-        </div>
 
         <div id="salesAssistantModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             
@@ -844,7 +792,8 @@
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">TEDAŞ Mevzuatı & Teknik Süreçler</span>
             </div>
             
-            <div class="space-y-8">
+            <div id="processRoot"></div>
+            <div class="space-y-8" hidden>
                 <section class="bg-blue-50 p-6 rounded-xl border border-blue-200">
                     <h3 class="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2"><span>📋</span> GES Kurulumu İçin Gerekli Yasal İzin Adımları</h3>
                     <div class="space-y-3 text-sm text-blue-800">
@@ -927,10 +876,10 @@
     <script src="admin.js"></script>
     <script src="calculators.js"></script>
     <script src="sim3d.js"></script>
-    <script src="techservice.js"></script>
     <script src="sales.js"></script>
     <script src="projects.js"></script>
     <script src="education.js"></script>
+    <script src="process.js"></script>
     
 </body>
 </html>
