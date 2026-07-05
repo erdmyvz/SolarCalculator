@@ -166,6 +166,12 @@ async function fetchAdminData() {
 
     // 5) EĞİTİM İÇERİĞİ (yalnız admin görür)
     await renderEduAdmin();
+
+    // 6) SÜREÇ ADIMLARI (yalnız admin görür)
+    await renderProcessAdmin();
+
+    // 7) DAĞITIM ŞİRKETİ YÖNETİMİ (yalnız admin görür)
+    await renderDistAdmin();
 }
 
 // --- Potansiyel müşteriler bölümünü (bir kez) admin paneline enjekte eder ---
@@ -549,4 +555,204 @@ window.eduDeleteGlossary = async (id) => {
     const { error } = await supabaseClient.from('edu_glossary').delete().eq('id', id);
     if (error) { alert('Silinemedi: ' + error.message); return; }
     renderEduAdmin();
+};
+
+
+// ============================================================================
+// SÜREÇ ADIMI YÖNETİMİ (process_steps — yalnız admin)
+// Not: eduModal/eduCloseModal/eduSlugify yardımcıları yukarıda tanımlıdır.
+// ============================================================================
+let _psSteps = [];
+
+function ensureProcessSection() {
+    if (document.getElementById('psAdminRoot')) return document.getElementById('psAdminRoot');
+    const admin = document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'psAdminRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 class="text-lg font-black text-slate-800">🗺️ Süreç Adımları</h3>
+            <button onclick="psNew()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+ Yeni Adım</button>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Yatırımcı rehberinde ve firma proje takibinde kullanılan kurulum süreci adımları.</p>
+        <div id="psList" class="space-y-2"></div>`;
+    admin.appendChild(card);
+    return card;
+}
+
+async function renderProcessAdmin() {
+    const wrap = ensureProcessSection();
+    if (!wrap || !supabaseClient) return;
+    const box = document.getElementById('psList');
+    box.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+    const { data, error } = await supabaseClient.from('process_steps').select('*').order('sort_order');
+    if (error) { box.innerHTML = `<p class="text-xs text-red-500">Yüklenemedi: ${error.message}</p>`; return; }
+    _psSteps = data || [];
+    box.innerHTML = _psSteps.map(s => `
+        <div class="flex items-center justify-between gap-2 border border-slate-200 rounded-lg p-3">
+            <div class="min-w-0">
+                <strong class="text-sm text-slate-800">${s.step_no || ''}. ${admEscape(s.title)}</strong> ${s.is_published ? '' : '<span class="text-[10px] text-amber-600 font-bold">(taslak)</span>'}
+                <div class="text-[11px] text-slate-400 truncate">${admEscape(s.short_desc)}</div>
+            </div>
+            <span class="flex gap-1 flex-shrink-0">
+                <button onclick="psEdit('${s.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Düzenle</button>
+                <button onclick="psDelete('${s.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Sil</button>
+            </span>
+        </div>`).join('') || '<p class="text-xs text-slate-400 italic">Henüz adım yok.</p>';
+}
+
+window.psNew = () => openStepModal(null);
+window.psEdit = (id) => openStepModal(_psSteps.find(s => s.id === id));
+function openStepModal(s) {
+    const e = s || {};
+    const actors = ['Yatırımcı', 'Firma', 'Dağıtım Şirketi', 'Yatırımcı + Firma', 'Yatırımcı + Dağıtım Şirketi', 'Dağıtım Şirketi + Firma'];
+    const actorOpts = actors.map(a => `<option ${e.actor === a ? 'selected' : ''}>${a}</option>`).join('');
+    eduModal(`
+        <h3 class="text-lg font-black text-slate-800 mb-4">${s ? 'Adımı Düzenle' : 'Yeni Adım'}</h3>
+        <div class="space-y-3">
+            <div class="flex gap-3">
+                <div class="w-20"><label class="text-xs font-bold text-slate-600">No</label><input id="psNo" type="number" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${e.step_no ?? 0}"></div>
+                <div class="flex-1"><label class="text-xs font-bold text-slate-600">Başlık</label><input id="psTitle" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.title)}"></div>
+            </div>
+            <div><label class="text-xs font-bold text-slate-600">Kısa açıklama (tek cümle)</label><input id="psShort" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.short_desc)}"></div>
+            <div><label class="text-xs font-bold text-slate-600">Detay (paragrafları alt satırla ayır)</label><textarea id="psDetail" rows="4" class="w-full p-2 border border-slate-300 rounded-lg text-sm">${admEscape(e.detail)}</textarea></div>
+            <div><label class="text-xs font-bold text-slate-600">Kim yapar</label><select id="psActor" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">${actorOpts}</select></div>
+            <div><label class="text-xs font-bold text-slate-600">İpucu (opsiyonel)</label><textarea id="psTip" rows="2" class="w-full p-2 border border-slate-300 rounded-lg text-sm">${admEscape(e.tip)}</textarea></div>
+            <div class="flex gap-3">
+                <div class="flex-1"><label class="text-xs font-bold text-slate-600">Yaklaşık süre (opsiyonel)</label><input id="psDur" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.duration)}"></div>
+                <div class="w-24"><label class="text-xs font-bold text-slate-600">Sıra</label><input id="psOrder" type="number" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${e.sort_order ?? 0}"></div>
+                <label class="flex items-end gap-2 text-sm text-slate-600 pb-2"><input id="psPub" type="checkbox" ${(e.is_published !== false) ? 'checked' : ''}> Yayında</label>
+            </div>
+        </div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="eduCloseModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-lg">İptal</button>
+            <button onclick="psSave('${s ? s.id : ''}')" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-lg">Kaydet</button>
+        </div>`);
+}
+window.psSave = async (id) => {
+    const title = document.getElementById('psTitle').value.trim();
+    if (!title) { alert('Başlık gerekli.'); return; }
+    const base = {
+        title,
+        step_no: parseInt(document.getElementById('psNo').value) || 0,
+        short_desc: document.getElementById('psShort').value.trim() || null,
+        detail: document.getElementById('psDetail').value.trim() || null,
+        actor: document.getElementById('psActor').value || null,
+        tip: document.getElementById('psTip').value.trim() || null,
+        duration: document.getElementById('psDur').value.trim() || null,
+        sort_order: parseInt(document.getElementById('psOrder').value) || 0,
+        is_published: document.getElementById('psPub').checked
+    };
+    let error;
+    if (id) {
+        ({ error } = await supabaseClient.from('process_steps').update(base).eq('id', id));
+    } else {
+        // slug adım anahtarıdır (projelerdeki ilerleme buna bağlı); yeni adımda benzersiz üretilir
+        const slug = (eduSlugify(title) || 'adim') + '-' + Math.random().toString(36).slice(2, 6);
+        ({ error } = await supabaseClient.from('process_steps').insert([{ ...base, slug }]));
+    }
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    eduCloseModal(); renderProcessAdmin();
+};
+window.psDelete = async (id) => {
+    if (!confirm('Bu süreç adımı silinecek. Projelerde bu adımın işareti de artık görünmeyecek. Emin misiniz?')) return;
+    const { error } = await supabaseClient.from('process_steps').delete().eq('id', id);
+    if (error) { alert('Silinemedi: ' + error.message); return; }
+    renderProcessAdmin();
+};
+
+
+
+
+// ============================================================================
+// DAĞITIM ŞİRKETİ YÖNETİMİ (distribution_companies — yalnız admin)
+// ============================================================================
+let _discoAdmin = [];
+
+function ensureDiscoSection() {
+    if (document.getElementById('dcAdminRoot')) return document.getElementById('dcAdminRoot');
+    const admin = document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'dcAdminRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 class="text-lg font-black text-slate-800">🔌 Dağıtım Şirketleri</h3>
+            <button onclick="dcNew()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+ Yeni Şirket</button>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Firmalar proje yönetiminde ilini arayıp buradan başvuru şirketini bulur. Verileri güncel tutun.</p>
+        <div id="dcList" class="space-y-2"></div>`;
+    admin.appendChild(card);
+    return card;
+}
+
+async function renderDiscoAdmin() {
+    const wrap = ensureDiscoSection();
+    if (!wrap || !supabaseClient) return;
+    const box = document.getElementById('dcList');
+    box.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+    const { data, error } = await supabaseClient.from('distribution_companies').select('*').order('sort_order');
+    if (error) { box.innerHTML = `<p class="text-xs text-red-500">Yüklenemedi: ${error.message}</p>`; return; }
+    _discoAdmin = data || [];
+    box.innerHTML = _discoAdmin.map(d => `
+        <div class="flex items-center justify-between gap-2 border border-slate-200 rounded-lg p-3">
+            <div class="min-w-0">
+                <strong class="text-sm text-slate-800">${admEscape(d.name)}</strong> ${d.abbr ? `<span class="text-[10px] text-slate-400 font-mono">${admEscape(d.abbr)}</span>` : ''} ${d.is_published ? '' : '<span class="text-[10px] text-amber-600 font-bold">(gizli)</span>'}
+                <div class="text-[11px] text-slate-400 truncate">${admEscape(d.provinces)}</div>
+            </div>
+            <span class="flex gap-1 flex-shrink-0">
+                <button onclick="dcEdit('${d.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Düzenle</button>
+                <button onclick="dcDelete('${d.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Sil</button>
+            </span>
+        </div>`).join('') || '<p class="text-xs text-slate-400 italic">Henüz kayıt yok.</p>';
+}
+
+window.dcNew = () => openDiscoModal(null);
+window.dcEdit = (id) => openDiscoModal(_discoAdmin.find(d => d.id === id));
+function openDiscoModal(d) {
+    const e = d || {};
+    eduModal(`
+        <h3 class="text-lg font-black text-slate-800 mb-4">${d ? 'Şirketi Düzenle' : 'Yeni Dağıtım Şirketi'}</h3>
+        <div class="space-y-3">
+            <div><label class="text-xs font-bold text-slate-600">Şirket adı</label><input id="dcName" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.name)}"></div>
+            <div><label class="text-xs font-bold text-slate-600">Kısa ad (opsiyonel)</label><input id="dcAbbr" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.abbr)}"></div>
+            <div><label class="text-xs font-bold text-slate-600">İller (virgülle ayır)</label><textarea id="dcProv" rows="2" class="w-full p-2 border border-slate-300 rounded-lg text-sm">${admEscape(e.provinces)}</textarea></div>
+            <div class="flex gap-3">
+                <div class="flex-1"><label class="text-xs font-bold text-slate-600">Telefon</label><input id="dcPhone" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.phone)}"></div>
+                <div class="w-24"><label class="text-xs font-bold text-slate-600">Sıra</label><input id="dcOrder" type="number" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${e.sort_order ?? 0}"></div>
+            </div>
+            <div><label class="text-xs font-bold text-slate-600">Web sitesi</label><input id="dcWeb" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.website)}"></div>
+            <label class="flex items-center gap-2 text-sm text-slate-600"><input id="dcPub" type="checkbox" ${(e.is_published !== false) ? 'checked' : ''}> Yayında</label>
+        </div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="eduCloseModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-lg">İptal</button>
+            <button onclick="dcSave('${d ? d.id : ''}')" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-lg">Kaydet</button>
+        </div>`);
+}
+window.dcSave = async (id) => {
+    const name = document.getElementById('dcName').value.trim();
+    if (!name) { alert('Şirket adı gerekli.'); return; }
+    const obj = {
+        name,
+        abbr: document.getElementById('dcAbbr').value.trim() || null,
+        provinces: document.getElementById('dcProv').value.trim() || null,
+        phone: document.getElementById('dcPhone').value.trim() || null,
+        website: document.getElementById('dcWeb').value.trim() || null,
+        sort_order: parseInt(document.getElementById('dcOrder').value) || 0,
+        is_published: document.getElementById('dcPub').checked
+    };
+    const { error } = id
+        ? await supabaseClient.from('distribution_companies').update(obj).eq('id', id)
+        : await supabaseClient.from('distribution_companies').insert([obj]);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    eduCloseModal(); renderDiscoAdmin();
+};
+window.dcDelete = async (id) => {
+    if (!confirm('Bu dağıtım şirketi kaydı silinecek. Emin misiniz?')) return;
+    const { error } = await supabaseClient.from('distribution_companies').delete().eq('id', id);
+    if (error) { alert('Silinemedi: ' + error.message); return; }
+    renderDiscoAdmin();
 };
