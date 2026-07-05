@@ -170,8 +170,8 @@ async function fetchAdminData() {
     // 6) SÜREÇ ADIMLARI (yalnız admin görür)
     await renderProcessAdmin();
 
-    // 7) DAĞITIM ŞİRKETİ YÖNETİMİ (yalnız admin görür)
-    await renderDistAdmin();
+    // 7) DAĞITIM ŞİRKETLERİ (yalnız admin görür)
+    await renderDiscoAdmin();
 }
 
 // --- Potansiyel müşteriler bölümünü (bir kez) admin paneline enjekte eder ---
@@ -662,8 +662,6 @@ window.psDelete = async (id) => {
     if (error) { alert('Silinemedi: ' + error.message); return; }
     renderProcessAdmin();
 };
-
-
 
 
 // ============================================================================
