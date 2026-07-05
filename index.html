@@ -115,8 +115,6 @@
         <!-- TEMA SONU                                                     -->
         <!-- ============================================================ -->
 
-
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -216,76 +214,76 @@
     </div>
 
     <div id="leadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
-        <div class="p-6 bg-slate-900 text-white flex justify-between items-center sticky top-0 z-10">
-            <h3 id="leadModalTitle" class="font-bold text-lg">Başvuru Formu</h3>
-            <button type="button" onclick="closeLeadModal()" class="text-2xl font-bold hover:text-red-400">&times;</button>
+        <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
+            <div class="p-6 bg-slate-900 text-white flex justify-between items-center sticky top-0 z-10">
+                <h3 id="leadModalTitle" class="font-bold text-lg">Başvuru Formu</h3>
+                <button type="button" onclick="closeLeadModal()" class="text-2xl font-bold hover:text-red-400">&times;</button>
+            </div>
+            
+            <form id="leadPublicForm" class="p-6 space-y-4" enctype="multipart/form-data">
+                <input type="hidden" id="leadType">
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs font-bold mb-1 text-slate-700">Ad Soyad</label><input type="text" id="leadName" required class="w-full p-2.5 border rounded-lg text-sm"></div>
+                    <div><label class="block text-xs font-bold mb-1 text-slate-700">Telefon</label><input type="tel" id="leadPhone" required class="w-full p-2.5 border rounded-lg text-sm"></div>
+                </div>
+                <div><label class="block text-xs font-bold mb-1 text-slate-700">E-Posta</label><input type="email" id="leadEmail" required class="w-full p-2.5 border rounded-lg text-sm"></div>
+                <div><label class="block text-xs font-bold mb-1 text-slate-700">Açık Adres (Tesis Konumu)</label><input type="text" id="leadAddress" required class="w-full p-2.5 border rounded-lg text-sm"></div>
+
+                <div id="kurulumExtraFields" class="hidden space-y-4 border-y py-4 my-2 border-slate-200 bg-slate-50 px-3 rounded-lg">
+                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Bölgenizde sık kesinti yaşanıyor mu?</label><select id="leadOutage" class="w-full p-2.5 border rounded-lg text-sm"><option value="Hayır">Hayır</option><option value="Evet">Evet (Batarya İhtiyacı)</option></select></div>
+                    <div><label class="block text-xs font-bold text-slate-700 mb-1">Gelecekte ilave tüketim (EV/Isı Pompası)?</label><input type="text" id="leadExtraConsumption" class="w-full p-2.5 border rounded-lg text-sm"></div>
+                </div>
+
+                <div id="servisWarningBanner" class="hidden bg-red-50 border-l-4 border-red-600 p-4 rounded-r-lg shadow-sm">
+                    <h3 class="text-red-900 font-black text-xs mb-2 flex items-center gap-2"><span>⚠️</span> Talep Oluşturmadan Önce Okuyun</h3>
+                    <ul class="list-disc ml-4 text-[10px] text-red-800 font-medium space-y-1">
+                        <li>10 kW altındaki şebeke bağlantısız hobi tesislerine hizmet verilmemektedir.</li>
+                        <li>Sadece Victron, Fronius, Pylontech, Deye ve Solax sistemleri desteklenir.</li>
+                    </ul>
+                </div>
+
+                <div id="servisExtraFields" class="hidden space-y-4 border-y py-4 my-2 border-slate-200 bg-slate-50 px-3 rounded-lg">
+                    <!-- Talep türü ve tesis kodu (bakım / temizlik / arıza) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-700 mb-1">Talep Türü</label>
+                            <select id="srvRequestType" class="w-full p-2 border rounded-lg text-sm bg-white">
+                                <option value="ariza">Arıza / Teknik Servis</option>
+                                <option value="bakim">Periyodik Bakım</option>
+                                <option value="temizlik">Panel Temizliği</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-700 mb-1">Tesis Kodu (varsa)</label>
+                            <input type="text" id="srvFacilityCode" placeholder="Örn: GES-2026-1234" class="w-full p-2 border rounded-lg text-sm bg-white">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">İnverter Marka/Model</label><input type="text" id="srvInverter" placeholder="Örn: Victron Quattro 10kVA" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Batarya Marka/Model</label><input type="text" id="srvBattery" placeholder="Örn: Pylontech US3000C" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Kurulumu Yapan Firma</label><input type="text" id="srvInstaller" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Kurulum Tarihi</label><input type="date" id="srvInstallDate" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
+                        <div class="md:col-span-2"><label class="block text-[10px] font-bold text-slate-700 mb-1">Sorun Ne Zaman Başladı?</label><input type="date" id="srvProblemDate" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mt-3 border-t border-slate-200 pt-3">
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Sistem Görüntüsü</label><input type="file" id="srvImgSystem" accept="image/*" class="w-full p-1 border bg-white rounded text-[10px]"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Elektrik Panosu</label><input type="file" id="srvImgPano" accept="image/*" class="w-full p-1 border bg-white rounded text-[10px]"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">GES Panosu</label><input type="file" id="srvImgGes" accept="image/*" class="w-full p-1 border bg-white rounded text-[10px]"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Arıza Kodları</label><input type="file" id="srvImgCode" accept="image/*" class="w-full p-1 border bg-white rounded text-[10px]"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold mb-1 text-slate-700" id="leadDetailsLabel">Detaylar / Notlar</label>
+                    <textarea id="leadDetails" required rows="3" class="w-full p-2.5 border rounded-lg text-sm"></textarea>
+                </div>
+                
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg mt-2 transition shadow-lg">Başvuruyu Gönder</button>
+            </form>
         </div>
-        
-        <form id="leadPublicForm" class="p-6 space-y-4" enctype="multipart/form-data">
-            <input type="hidden" id="leadType">
-            
-            <div class="grid grid-cols-2 gap-3">
-                <div><label class="block text-xs font-bold mb-1 text-slate-700">Ad Soyad</label><input type="text" id="leadName" required class="w-full p-2.5 border rounded-lg text-sm"></div>
-                <div><label class="block text-xs font-bold mb-1 text-slate-700">Telefon</label><input type="tel" id="leadPhone" required class="w-full p-2.5 border rounded-lg text-sm"></div>
-            </div>
-            <div><label class="block text-xs font-bold mb-1 text-slate-700">E-Posta</label><input type="email" id="leadEmail" required class="w-full p-2.5 border rounded-lg text-sm"></div>
-            <div><label class="block text-xs font-bold mb-1 text-slate-700">Açık Adres (Tesis Konumu)</label><input type="text" id="leadAddress" required class="w-full p-2.5 border rounded-lg text-sm"></div>
-
-            <div id="kurulumExtraFields" class="hidden space-y-4 border-y py-4 my-2 border-slate-200 bg-slate-50 px-3 rounded-lg">
-                <div><label class="block text-xs font-bold text-slate-700 mb-1">Bölgenizde sık kesinti yaşanıyor mu?</label><select id="leadOutage" class="w-full p-2.5 border rounded-lg text-sm"><option value="Hayır">Hayır</option><option value="Evet">Evet (Batarya İhtiyacı)</option></select></div>
-                <div><label class="block text-xs font-bold text-slate-700 mb-1">Gelecekte ilave tüketim (EV/Isı Pompası)?</label><input type="text" id="leadExtraConsumption" class="w-full p-2.5 border rounded-lg text-sm"></div>
-            </div>
-
-            <div id="servisWarningBanner" class="hidden bg-red-50 border-l-4 border-red-600 p-4 rounded-r-lg shadow-sm">
-                <h3 class="text-red-900 font-black text-xs mb-2 flex items-center gap-2"><span>⚠️</span> Talep Oluşturmadan Önce Okuyun</h3>
-                <ul class="list-disc ml-4 text-[10px] text-red-800 font-medium space-y-1">
-                    <li>10 kW altındaki şebeke bağlantısız hobi tesislerine hizmet verilmemektedir.</li>
-                    <li>Sadece Victron, Fronius, Pylontech, Deye ve Solax sistemleri desteklenir.</li>
-                </ul>
-            </div>
-
-            <div id="servisExtraFields" class="hidden space-y-4 border-y py-4 my-2 border-slate-200 bg-slate-50 px-3 rounded-lg">
-                <!-- Talep türü ve tesis kodu (bakım / temizlik / arıza) -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-700 mb-1">Talep Türü</label>
-                        <select id="srvRequestType" class="w-full p-2 border rounded-lg text-sm bg-white">
-                            <option value="ariza">Arıza / Teknik Servis</option>
-                            <option value="bakim">Periyodik Bakım</option>
-                            <option value="temizlik">Panel Temizliği</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-700 mb-1">Tesis Kodu (varsa)</label>
-                        <input type="text" id="srvFacilityCode" placeholder="Örn: GES-2026-1234" class="w-full p-2 border rounded-lg text-sm bg-white">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div><label class="block text-[10px] font-bold text-slate-700 mb-1">İnverter Marka/Model</label><input type="text" id="srvInverter" placeholder="Örn: Victron Quattro 10kVA" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
-                    <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Batarya Marka/Model</label><input type="text" id="srvBattery" placeholder="Örn: Pylontech US3000C" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
-                    <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Kurulumu Yapan Firma</label><input type="text" id="srvInstaller" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
-                    <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Kurulum Tarihi</label><input type="date" id="srvInstallDate" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
-                    <div class="md:col-span-2"><label class="block text-[10px] font-bold text-slate-700 mb-1">Sorun Ne Zaman Başladı?</label><input type="date" id="srvProblemDate" class="w-full p-2 border rounded-lg text-sm bg-white"></div>
-                </div>
-                <div class="grid grid-cols-2 gap-3 mt-3 border-t border-slate-200 pt-3">
-                    <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Sistem Görüntüsü</label><input type="file" id="srvImgSystem" accept="image/*" class="w-full p-1 border bg-white rounded text-[10px]"></div>
-                    <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Elektrik Panosu</label><input type="file" id="srvImgPano" accept="image/*" class="w-full p-1 border bg-white rounded text-[10px]"></div>
-                    <div><label class="block text-[10px] font-bold text-slate-700 mb-1">GES Panosu</label><input type="file" id="srvImgGes" accept="image/*" class="w-full p-1 border bg-white rounded text-[10px]"></div>
-                    <div><label class="block text-[10px] font-bold text-slate-700 mb-1">Arıza Kodları</label><input type="file" id="srvImgCode" accept="image/*" class="w-full p-1 border bg-white rounded text-[10px]"></div>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold mb-1 text-slate-700" id="leadDetailsLabel">Detaylar / Notlar</label>
-                <textarea id="leadDetails" required rows="3" class="w-full p-2.5 border rounded-lg text-sm"></textarea>
-            </div>
-            
-            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg mt-2 transition shadow-lg">Başvuruyu Gönder</button>
-        </form>
     </div>
-</div>
 
     <div id="authContainer" class="hidden w-full min-h-screen flex flex-col items-center justify-center p-4 bg-slate-900">
         <div class="mb-4 absolute top-6 left-6"><a href="#home" class="text-slate-400 hover:text-white font-bold text-sm">← Ziyaretçi Ekranına Dön</a></div>
@@ -358,22 +356,13 @@
                     <h2 class="text-xl font-bold mb-4">🧠 Satış Copilot (İtiraz)</h2><p class="text-orange-100 text-sm">Müşteri itirazlarına psikolojik hazır cevaplar.</p>
                 </button>
 
-                <button id="btnGoRegulations" class="bg-slate-700 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
-                    <h2 class="text-xl font-bold mb-4">📜 TEDAŞ Mevzuatı & Süreç</h2><p class="text-slate-300 text-sm">Yasal izin adımları ve güncel EDAŞ bilgileri.</p>
-                </button>
-
                 <button id="btnGoProjects" class="bg-slate-800 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
                     <h2 class="text-xl font-bold mb-4">☀️ Tesislerim</h2><p class="text-slate-300 text-sm">Kurulumu tamamlanan tesisleri ve GES kodlarını görün.</p>
                 </button>
 
-                <button id="btnGoEducation" class="bg-amber-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left">
-                    <h2 class="text-xl font-bold mb-4">🎓 Eğitim Sözlüğü</h2><p class="text-amber-100 text-sm">Temel solar terimler ve analojiler.</p>
-                </button>
             </div>
         </div>
         
-    
-
         <div id="projectsModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 flex justify-between items-center">
                 <button id="btnBackToMenuFromProjects" class="text-slate-500 font-bold">← Menüye Dön</button>
@@ -420,21 +409,71 @@
         </div>
 
         <div id="crmDetailModal" class="hidden fixed inset-0 z-[60] bg-slate-900/60 flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                <div class="p-6 bg-slate-900 text-white flex justify-between"><h3 id="modalLeadName" class="font-bold">Müşteri Kartı</h3><button onclick="crmCloseModal()" class="text-2xl">&times;</button></div>
-                <div class="p-6 space-y-4 bg-slate-50">
-                    <input type="hidden" id="modalLeadId">
-                    <div class="grid grid-cols-2 gap-4 bg-white p-4 border rounded-lg">
-                        <div id="modalLeadContact" class="text-sm">İletişim...</div>
-                        <div><label class="text-xs">Aşama:</label><select id="modalStatusSelect" class="w-full border p-2 rounded"><option value="yeni_basvuru">1. Yeni Başvuru</option><option value="arandi_gorusuldu">2. İletişim</option><option value="teklif_gonderildi">3. Teklif</option><option value="sozlesme_imzalandi">4. Sözleşme</option><option value="kurulum_basladi">5. Kurulum</option><option value="resmi_surec">6. TEDAŞ</option><option value="tamamlandi">7. Bitti</option></select></div>
+            <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+                <div class="px-6 py-5 bg-slate-900 text-white flex justify-between items-start gap-4 sticky top-0 z-10">
+                    <div>
+                        <h3 id="modalLeadName" class="text-xl font-black">Müşteri Kartı</h3>
+                        <p class="text-xs text-slate-400 mt-1"><span id="modalLeadIdDisplay"></span> <span id="modalLeadDate" class="ml-2"></span></p>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-white p-4 border rounded-lg space-y-2"><label class="text-xs">Fatura (TL)</label><input type="number" id="fieldBill" class="w-full border p-2 rounded text-sm"><label class="text-xs">Tüketimler</label><textarea id="fieldConsumptions" class="w-full border p-2 rounded text-sm"></textarea><label class="text-xs">Isı Pompası</label><select id="fieldHeatPump" class="border p-2"><option value="Yok">Yok</option><option value="Var">Var</option></select><input type="text" id="fieldHeatPumpPower" placeholder="Güç"></div>
-                        <div class="bg-white p-4 border rounded-lg space-y-2"><label class="text-xs">EV</label><select id="fieldEV" class="border p-2"><option value="Yok">Yok</option><option value="Var">Var</option></select><label class="text-xs">Kesinti</label><select id="fieldBlackout" class="border p-2"><option value="Seyrek">Seyrek</option><option value="Sık">Sık</option></select><label class="text-xs">Batarya İstiyor mu?</label><select id="fieldStorageIntent" class="w-full border p-2"><option value="Hayır">Hayır</option><option value="Evet">Evet</option></select><label class="text-xs">Yedekleme</label><input type="text" id="fieldBackupDetails" class="w-full border p-2 text-sm"></div>
-                    </div>
-                    <textarea id="fieldNotes" placeholder="Müşteri Notları" class="w-full p-3 border rounded-lg"></textarea>
+                    <button onclick="crmCloseModal()" class="text-2xl text-slate-400 hover:text-white leading-none">&times;</button>
                 </div>
-                <div class="p-4 border-t text-right"><button onclick="crmSaveLeadDetails()" class="bg-emerald-600 text-white px-6 py-2 rounded font-bold">Kaydet</button></div>
+
+                <div class="p-6 space-y-5 bg-slate-50">
+                    <input type="hidden" id="modalLeadId">
+
+                    <div class="bg-white p-4 rounded-xl border border-slate-200">
+                        <div id="modalLeadContact" class="text-sm text-slate-600 leading-relaxed">İletişim...</div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200">
+                        <h4 class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-4">Tüketim & Sistem Bilgileri</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Aylık Fatura (TL)</label>
+                                <input type="number" id="fieldBill" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Şebeke Kesintisi Sıklığı</label>
+                                <select id="fieldBlackout" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white"><option value="Seyrek">Seyrek</option><option value="Sık">Sık</option></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Elektrikli Araç (EV)</label>
+                                <select id="fieldEV" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white"><option value="Yok">Yok</option><option value="Var">Var</option></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Batarya İstiyor mu?</label>
+                                <select id="fieldStorageIntent" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white"><option value="Hayır">Hayır</option><option value="Evet">Evet</option></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Isı Pompası</label>
+                                <select id="fieldHeatPump" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white"><option value="Yok">Yok</option><option value="Var">Var</option></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Isı Pompası Gücü</label>
+                                <input type="text" id="fieldHeatPumpPower" placeholder="örn. 12 kW" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Aylık Tüketimler (kWh)</label>
+                                <textarea id="fieldConsumptions" rows="2" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500"></textarea>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Yedekleme / Kesintide Çalışacak Yükler</label>
+                                <input type="text" id="fieldBackupDetails" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200">
+                        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Müşteri Notları</label>
+                        <textarea id="fieldNotes" rows="4" placeholder="Görüşme notları, özel istekler..." class="w-full border border-slate-300 p-3 rounded-lg text-sm outline-none focus:border-amber-500"></textarea>
+                    </div>
+
+                    <div id="crmCardExtras" class="space-y-5"></div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-slate-200 bg-white flex justify-end sticky bottom-0">
+                    <button onclick="crmSaveLeadDetails()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-bold text-sm">Kaydet</button>
+                </div>
             </div>
         </div>
         

@@ -111,11 +111,11 @@ function crmRenderLeads() {
 function crmEnsureFacilityZone() {
     let zone = document.getElementById('crmFacilityZone');
     if (!zone) {
-        const body = document.getElementById('fieldNotes')?.parentElement;
+        const body = document.getElementById('crmCardExtras') || document.getElementById('fieldNotes')?.parentElement;
         if (!body) return null;
         zone = document.createElement('div');
         zone.id = 'crmFacilityZone';
-        zone.className = 'bg-white p-4 border rounded-lg';
+        zone.className = 'bg-white p-5 rounded-xl border border-slate-200';
         body.appendChild(zone);
     }
     return zone;
@@ -136,7 +136,6 @@ window.crmOpenLeadDetails = async function(id) {
     if(document.getElementById('modalLeadIdDisplay')) document.getElementById('modalLeadIdDisplay').textContent = "ID: " + (lead.tracking_code || '');
     document.getElementById('modalLeadContact').innerHTML = `📞 <strong>Tel:</strong> ${admEscape(lead.phone) || '-'} &nbsp;|&nbsp; ✉️ <strong>E-posta:</strong> ${admEscape(lead.email) || '-'}<br>📍 <strong>Konum:</strong> ${admEscape(lead.address) || '-'}`;
 
-    document.getElementById('modalStatusSelect').value = lead.status;
     document.getElementById('fieldBill').value = (lead.bill_amount ?? '');
     document.getElementById('fieldConsumptions').value = lead.consumptions || '';
     document.getElementById('fieldHeatPump').value = (!lead.has_heat_pump || lead.has_heat_pump === 'Yok') ? 'Yok' : 'Var';
@@ -256,7 +255,6 @@ window.crmSaveLeadDetails = async function() {
 
     const billVal = document.getElementById('fieldBill').value;
     const patch = {
-        status:             document.getElementById('modalStatusSelect').value,
         bill_amount:        billVal === '' ? null : Number(billVal),
         consumptions:       document.getElementById('fieldConsumptions').value,
         has_heat_pump:      document.getElementById('fieldHeatPump').value,
@@ -296,21 +294,17 @@ async function ensureProcessSteps() {
 function crmEnsureStepsZone() {
     let z = document.getElementById('crmStepsZone');
     if (!z) {
-        const body = document.getElementById('fieldNotes')?.parentElement;
+        const body = document.getElementById('crmCardExtras') || document.getElementById('fieldNotes')?.parentElement;
         if (!body) return null;
         z = document.createElement('div');
         z.id = 'crmStepsZone';
-        z.className = 'bg-white p-4 border rounded-lg';
+        z.className = 'bg-white p-5 rounded-xl border border-slate-200';
         body.appendChild(z);
     }
     return z;
 }
 
 async function renderLeadSteps(lead) {
-    // Üstteki tekrar eden "Aşama" alanını gizle (artık bu birleşik blokta)
-    const orig = document.getElementById('modalStatusSelect');
-    if (orig && orig.parentElement) orig.parentElement.style.display = 'none';
-
     const z = crmEnsureStepsZone();
     if (!z) return;
     z.innerHTML = '<p class="text-xs text-slate-400">Yükleniyor...</p>';
@@ -348,13 +342,11 @@ async function renderLeadSteps(lead) {
         ${rows}`;
 }
 
-// Genel aşamayı değiştir (birleşik blok içinden). Kaydet ile de tutarlı kalır.
+// Genel aşamayı değiştir (birleşik blok içinden) — anında kaydeder.
 window.crmSetStage = async function(leadId, value) {
     const lead = crmLeads.find(l => l.id === leadId);
     if (!lead) return;
     lead.status = value;
-    const orig = document.getElementById('modalStatusSelect');
-    if (orig) orig.value = value;   // "Kaydet" ile tutarlılık
     const { error } = await supabaseClient
         .from('leads').update({ status: value, updated_at: new Date().toISOString() }).eq('id', leadId);
     if (error) { alert('Aşama kaydedilemedi: ' + error.message); return; }
