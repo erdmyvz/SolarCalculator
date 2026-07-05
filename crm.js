@@ -183,6 +183,9 @@ window.crmOpenLeadDetails = async function(id) {
             zone.innerHTML = `<p class="text-xs text-red-500">Tesis bilgisi alınamadı: ${err.message}</p>`;
         }
     }
+
+    // --- SÜREÇ ADIMLARI (firma proje takibi) ---
+    renderLeadSteps(lead);
 };
 
 /**
@@ -271,3 +274,74 @@ window.crmSaveLeadDetails = async function() {
 
 window.crmCloseModal = function() { document.getElementById('crmDetailModal').classList.add('hidden'); };
 window.crmOpenIntegrationModal = function() { document.getElementById('crmIntegrationModal').classList.remove('hidden'); };
+
+
+// ============================================================================
+// SÜREÇ ADIMLARI — firma, her proje için adımları işaretler (process_steps)
+// ============================================================================
+let _processSteps = null;
+
+async function ensureProcessSteps() {
+    if (_processSteps) return _processSteps;
+    if (!supabaseClient) return [];
+    const { data } = await supabaseClient.from('process_steps').select('*').order('sort_order');
+    _processSteps = data || [];
+    return _processSteps;
+}
+
+function crmEnsureStepsZone() {
+    let z = document.getElementById('crmStepsZone');
+    if (!z) {
+        const body = document.getElementById('fieldNotes')?.parentElement;
+        if (!body) return null;
+        z = document.createElement('div');
+        z.id = 'crmStepsZone';
+        z.className = 'bg-white p-4 border rounded-lg';
+        body.appendChild(z);
+    }
+    return z;
+}
+
+async function renderLeadSteps(lead) {
+    const z = crmEnsureStepsZone();
+    if (!z) return;
+    z.innerHTML = '<p class="text-xs text-slate-400">Süreç adımları yükleniyor...</p>';
+
+    const steps = await ensureProcessSteps();
+    if (!steps.length) { z.innerHTML = '<p class="text-xs text-slate-400">Süreç adımı tanımlı değil.</p>'; return; }
+
+    const done = Array.isArray(lead.completed_steps) ? lead.completed_steps : [];
+    const doneCount = steps.filter(s => done.includes(s.slug)).length;
+    const pct = Math.round(doneCount / steps.length * 100);
+
+    const rows = steps.map(s => {
+        const isDone = done.includes(s.slug);
+        return `<button onclick="crmToggleStep('${lead.id}','${s.slug}')" class="w-full text-left flex items-start gap-2 px-2 py-2 rounded-lg ${isDone ? 'bg-emerald-50' : 'hover:bg-slate-50'} border-b border-slate-100">
+            <span class="text-lg leading-none mt-0.5">${isDone ? '✅' : '⬜'}</span>
+            <span class="flex-1 min-w-0">
+                <span class="text-sm font-bold ${isDone ? 'text-emerald-800 line-through' : 'text-slate-700'}">${s.step_no || ''}. ${admEscape(s.title)}</span>
+                ${s.short_desc ? `<span class="block text-[11px] text-slate-400">${admEscape(s.short_desc)}</span>` : ''}
+            </span>
+        </button>`;
+    }).join('');
+
+    z.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">📋 Süreç Adımları</div>
+            <span class="text-xs font-bold text-slate-500">${doneCount}/${steps.length} · %${pct}</span>
+        </div>
+        <div class="h-2 bg-slate-100 rounded-full overflow-hidden mb-3"><div class="h-full bg-amber-500" style="width:${pct}%"></div></div>
+        ${rows}`;
+}
+
+window.crmToggleStep = async function(leadId, slug) {
+    const lead = crmLeads.find(l => l.id === leadId);
+    if (!lead) return;
+    let done = Array.isArray(lead.completed_steps) ? [...lead.completed_steps] : [];
+    done = done.includes(slug) ? done.filter(x => x !== slug) : done.concat(slug);
+    lead.completed_steps = done;            // iyimser güncelleme
+    renderLeadSteps(lead);
+    const { error } = await supabaseClient
+        .from('leads').update({ completed_steps: done, updated_at: new Date().toISOString() }).eq('id', leadId);
+    if (error) { alert('Adım kaydedilemedi: ' + error.message); }
+};

@@ -167,10 +167,14 @@
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">📊</div><h3 class="text-xl font-bold text-white mb-2">Çatı Güç Hesaplayıcı</h3><p class="text-sm text-slate-400">Faturanıza göre ihtiyacınız olan GES kapasitesini hesaplayın.</p>
                     </button>
                     
+                    <button onclick="openPublicModule('regulationsModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
+                        <div class="text-4xl mb-4 group-hover:scale-110 transition">🗺️</div><h3 class="text-xl font-bold text-white mb-2">Kurulum Süreci</h3><p class="text-sm text-slate-400">Başvurudan devreye almaya, geçeceğiniz tüm adımları öğrenin.</p>
+                    </button>                    
+                    
                     <button onclick="openPublicModule('simulationModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">🏠</div><h3 class="text-xl font-bold text-white mb-2">3D Simülasyon</h3><p class="text-sm text-slate-400">Evinizin enerji bağımsızlığını 3D ortamda görselleştirin.</p>
                     </button>
-                    
+
                     <button onclick="openPublicModule('evCalcModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
                         <div class="text-4xl mb-4 group-hover:scale-110 transition">🚗</div><h3 class="text-xl font-bold text-white mb-2">EV & Solar Analizi</h3><p class="text-sm text-slate-400">Elektrikli aracınızın güneşten nasıl şarj olacağını planlayın.</p>
                     </button>
@@ -788,7 +792,7 @@
 
         <div id="regulationsModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
-                <button id="btnBackToMenuFromReg" class="text-slate-500 hover:text-slate-600 font-bold flex items-center transition">← Yönetim Paneli</button>
+                <button id="btnBackToMenuFromReg" class="text-slate-500 hover:text-slate-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">TEDAŞ Mevzuatı & Teknik Süreçler</span>
             </div>
             
