@@ -149,44 +149,48 @@ window.crmOpenLeadDetails = async function(id) {
 
     document.getElementById('crmDetailModal').classList.remove('hidden');
 
-    // --- TESİS ALANI ---
-    const zone = crmEnsureFacilityZone();
-    if (zone) {
-        zone.innerHTML = '<p class="text-xs text-slate-400">Tesis bilgisi kontrol ediliyor...</p>';
-        try {
-            const { data: proj } = await supabaseClient
-                .from('projects').select('facility_code').eq('lead_id', lead.id).maybeSingle();
-
-            if (proj && proj.facility_code) {
-                zone.innerHTML = `
-                    <div class="flex items-center justify-between gap-3 flex-wrap">
-                        <div>
-                            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">☀️ Kurulu Tesis</div>
-                            <div class="font-mono text-lg font-black text-emerald-700">${admEscape(proj.facility_code)}</div>
-                            <p class="text-[11px] text-slate-500 mt-1">Yatırımcı bu kod ile bakım / temizlik / servis talebi açabilir.</p>
-                        </div>
-                        <button onclick="crmCopyText('${admEscape(proj.facility_code)}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold">Kodu Kopyala</button>
-                    </div>`;
-            } else if (lead.status === 'tamamlandi') {
-                zone.innerHTML = `
-                    <div class="flex items-center justify-between gap-3 flex-wrap">
-                        <div>
-                            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Tesis Kaydı</div>
-                            <p class="text-sm text-slate-600">Bu proje devreye alındı. Yatırımcıya kalıcı bir tesis kodu vermek için tesisi oluşturun.</p>
-                        </div>
-                        <button onclick="crmCreateFacility('${lead.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap">☀️ Tesis Oluştur</button>
-                    </div>`;
-            } else {
-                zone.innerHTML = `<p class="text-xs text-slate-400">Tesis kodu, müşteri <strong>"7. Bitti"</strong> aşamasına gelince oluşturulabilir.</p>`;
-            }
-        } catch (err) {
-            zone.innerHTML = `<p class="text-xs text-red-500">Tesis bilgisi alınamadı: ${err.message}</p>`;
-        }
-    }
-
-    // --- SÜREÇ ADIMLARI (firma proje takibi) ---
+    // Birleşik ilerleme: tesis + (aşama + süreç adımları)
+    renderFacilityZone(lead);
     renderLeadSteps(lead);
 };
+
+/**
+ * Tesis (kurulu GES) alanını basar. Aşama değişince de yeniden çağrılır.
+ */
+async function renderFacilityZone(lead) {
+    const zone = crmEnsureFacilityZone();
+    if (!zone) return;
+    zone.innerHTML = '<p class="text-xs text-slate-400">Tesis bilgisi kontrol ediliyor...</p>';
+    try {
+        const { data: proj } = await supabaseClient
+            .from('projects').select('facility_code').eq('lead_id', lead.id).maybeSingle();
+
+        if (proj && proj.facility_code) {
+            zone.innerHTML = `
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">☀️ Kurulu Tesis</div>
+                        <div class="font-mono text-lg font-black text-emerald-700">${admEscape(proj.facility_code)}</div>
+                        <p class="text-[11px] text-slate-500 mt-1">Yatırımcı bu kod ile bakım / temizlik / servis talebi açabilir.</p>
+                    </div>
+                    <button onclick="crmCopyText('${admEscape(proj.facility_code)}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold">Kodu Kopyala</button>
+                </div>`;
+        } else if (lead.status === 'tamamlandi') {
+            zone.innerHTML = `
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Tesis Kaydı</div>
+                        <p class="text-sm text-slate-600">Bu proje devreye alındı. Yatırımcıya kalıcı bir tesis kodu vermek için tesisi oluşturun.</p>
+                    </div>
+                    <button onclick="crmCreateFacility('${lead.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap">☀️ Tesis Oluştur</button>
+                </div>`;
+        } else {
+            zone.innerHTML = `<p class="text-xs text-slate-400">Tesis kodu, müşteri <strong>"7. Bitti"</strong> aşamasına gelince oluşturulabilir.</p>`;
+        }
+    } catch (err) {
+        zone.innerHTML = `<p class="text-xs text-red-500">Tesis bilgisi alınamadı: ${err.message}</p>`;
+    }
+}
 
 /**
  * Tamamlanan müşteriyi kalıcı tesise dönüştürür (GES kodu üretir).
@@ -303,18 +307,23 @@ function crmEnsureStepsZone() {
 }
 
 async function renderLeadSteps(lead) {
+    // Üstteki tekrar eden "Aşama" alanını gizle (artık bu birleşik blokta)
+    const orig = document.getElementById('modalStatusSelect');
+    if (orig && orig.parentElement) orig.parentElement.style.display = 'none';
+
     const z = crmEnsureStepsZone();
     if (!z) return;
-    z.innerHTML = '<p class="text-xs text-slate-400">Süreç adımları yükleniyor...</p>';
+    z.innerHTML = '<p class="text-xs text-slate-400">Yükleniyor...</p>';
 
     const steps = await ensureProcessSteps();
-    if (!steps.length) { z.innerHTML = '<p class="text-xs text-slate-400">Süreç adımı tanımlı değil.</p>'; return; }
-
     const done = Array.isArray(lead.completed_steps) ? lead.completed_steps : [];
     const doneCount = steps.filter(s => done.includes(s.slug)).length;
-    const pct = Math.round(doneCount / steps.length * 100);
+    const pct = steps.length ? Math.round(doneCount / steps.length * 100) : 0;
 
-    const rows = steps.map(s => {
+    const stageOpts = Object.entries(crmStatusLabels)
+        .map(([k, v]) => `<option value="${k}" ${lead.status === k ? 'selected' : ''}>${v.text}</option>`).join('');
+
+    const rows = steps.length ? steps.map(s => {
         const isDone = done.includes(s.slug);
         return `<button onclick="crmToggleStep('${lead.id}','${s.slug}')" class="w-full text-left flex items-start gap-2 px-2 py-2 rounded-lg ${isDone ? 'bg-emerald-50' : 'hover:bg-slate-50'} border-b border-slate-100">
             <span class="text-lg leading-none mt-0.5">${isDone ? '✅' : '⬜'}</span>
@@ -323,16 +332,35 @@ async function renderLeadSteps(lead) {
                 ${s.short_desc ? `<span class="block text-[11px] text-slate-400">${admEscape(s.short_desc)}</span>` : ''}
             </span>
         </button>`;
-    }).join('');
+    }).join('') : '<p class="text-xs text-slate-400 py-1">Süreç adımı tanımlı değil.</p>';
 
     z.innerHTML = `
-        <div class="flex items-center justify-between mb-2">
-            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">📋 Süreç Adımları</div>
+        <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">📋 Süreç & Aşama</div>
+        <div class="mb-3">
+            <label class="text-xs font-bold text-slate-600">Genel Aşama</label>
+            <select onchange="crmSetStage('${lead.id}', this.value)" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white">${stageOpts}</select>
+        </div>
+        <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-slate-500">Detaylı süreç adımları</span>
             <span class="text-xs font-bold text-slate-500">${doneCount}/${steps.length} · %${pct}</span>
         </div>
         <div class="h-2 bg-slate-100 rounded-full overflow-hidden mb-3"><div class="h-full bg-amber-500" style="width:${pct}%"></div></div>
         ${rows}`;
 }
+
+// Genel aşamayı değiştir (birleşik blok içinden). Kaydet ile de tutarlı kalır.
+window.crmSetStage = async function(leadId, value) {
+    const lead = crmLeads.find(l => l.id === leadId);
+    if (!lead) return;
+    lead.status = value;
+    const orig = document.getElementById('modalStatusSelect');
+    if (orig) orig.value = value;   // "Kaydet" ile tutarlılık
+    const { error } = await supabaseClient
+        .from('leads').update({ status: value, updated_at: new Date().toISOString() }).eq('id', leadId);
+    if (error) { alert('Aşama kaydedilemedi: ' + error.message); return; }
+    renderFacilityZone(lead);   // "7. Bitti" olunca Tesis Oluştur çıksın
+    renderLeadSteps(lead);
+};
 
 window.crmToggleStep = async function(leadId, slug) {
     const lead = crmLeads.find(l => l.id === leadId);
