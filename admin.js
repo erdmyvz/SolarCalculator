@@ -163,6 +163,9 @@ async function fetchAdminData() {
 
     // 4) POTANSİYEL MÜŞTERİLER (yalnız admin görür)
     await renderProspects();
+
+    // 5) EĞİTİM İÇERİĞİ (yalnız admin görür)
+    await renderEduAdmin();
 }
 
 // --- Potansiyel müşteriler bölümünü (bir kez) admin paneline enjekte eder ---
@@ -297,4 +300,253 @@ window.openStorageImage = async function(path) {
     const { data, error } = await supabaseClient.storage.from('support-images').createSignedUrl(path, 60);
     if (error || !data) { alert("Görsel açılamadı."); return; }
     window.open(data.signedUrl, '_blank');
+};
+
+
+// ============================================================================
+// EĞİTİM İÇERİĞİ YÖNETİMİ (bölüm / ders / sözlük — yalnız admin)
+// ============================================================================
+let _eduChapters = [], _eduLessons = [], _eduGlossary = [];
+
+function eduSlugify(s) {
+    return String(s || '').toLowerCase()
+        .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ş/g, 's').replace(/ü/g, 'u')
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function ensureEduSection() {
+    if (document.getElementById('eduAdminRoot')) return document.getElementById('eduAdminRoot');
+    const admin = document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'eduAdminRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 class="text-lg font-black text-slate-800">📚 Eğitim İçeriği</h3>
+            <div class="flex gap-2">
+                <button onclick="eduNewChapter()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+ Yeni Bölüm</button>
+                <button onclick="eduNewGlossary()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+ Yeni Terim</button>
+            </div>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Bölümler, dersler ve sözlük burada yönetilir. Değişiklikler anında yayına girer (yayında olanlar ziyaretçiye görünür).</p>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div>
+                <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Bölümler & Dersler</div>
+                <div id="eduChaptersAdmin"></div>
+            </div>
+            <div>
+                <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Sözlük</div>
+                <div id="eduGlossaryAdmin" class="space-y-2"></div>
+            </div>
+        </div>`;
+    admin.appendChild(card);
+    return card;
+}
+
+async function renderEduAdmin() {
+    const wrap = ensureEduSection();
+    if (!wrap || !supabaseClient) return;
+    const chBox = document.getElementById('eduChaptersAdmin');
+    const glBox = document.getElementById('eduGlossaryAdmin');
+    chBox.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+
+    const [rc, rl, rg] = await Promise.all([
+        supabaseClient.from('edu_chapters').select('*').order('sort_order'),
+        supabaseClient.from('edu_lessons').select('*').order('sort_order'),
+        supabaseClient.from('edu_glossary').select('*').order('sort_order')
+    ]);
+    if (rc.error) { chBox.innerHTML = `<p class="text-xs text-red-500">Yüklenemedi: ${rc.error.message}</p>`; return; }
+    _eduChapters = rc.data || []; _eduLessons = rl.data || []; _eduGlossary = rg.data || [];
+
+    chBox.innerHTML = _eduChapters.map(c => {
+        const lessons = _eduLessons.filter(l => l.chapter_id === c.id);
+        const rows = lessons.map(l => `
+            <div class="flex items-center justify-between gap-2 pl-3 py-1.5 border-l-2 border-slate-100">
+                <span class="text-xs text-slate-600">${admEscape(l.title)} ${l.is_published ? '' : '<span class="text-amber-600">(taslak)</span>'}</span>
+                <span class="flex gap-1">
+                    <button onclick="eduEditLesson('${l.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Düzenle</button>
+                    <button onclick="eduDeleteLesson('${l.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Sil</button>
+                </span>
+            </div>`).join('') || '<p class="text-[11px] text-slate-400 pl-3 py-1">Ders yok.</p>';
+        return `<div class="border border-slate-200 rounded-xl p-3 mb-3">
+            <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
+                <div class="min-w-0"><strong class="text-sm text-slate-800">${admEscape(c.title)}</strong> <span class="text-[10px] text-slate-400 font-mono">${admEscape(c.slug)}</span> ${c.is_published ? '' : '<span class="text-[10px] text-amber-600 font-bold">(taslak)</span>'}</div>
+                <span class="flex gap-1 flex-shrink-0">
+                    <button onclick="eduNewLesson('${c.id}')" class="text-[11px] bg-emerald-600 text-white px-2 py-1 rounded">+ Ders</button>
+                    <button onclick="eduEditChapter('${c.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Düzenle</button>
+                    <button onclick="eduDeleteChapter('${c.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Sil</button>
+                </span>
+            </div>
+            ${rows}
+        </div>`;
+    }).join('') || '<p class="text-xs text-slate-400 italic">Henüz bölüm yok. "+ Yeni Bölüm" ile başlayın.</p>';
+
+    glBox.innerHTML = _eduGlossary.map(g => `
+        <div class="flex items-center justify-between gap-2 border border-slate-200 rounded-lg p-3">
+            <strong class="text-xs text-slate-800 min-w-0">${admEscape(g.term)} ${g.is_published ? '' : '<span class="text-amber-600">(taslak)</span>'}</strong>
+            <span class="flex gap-1 flex-shrink-0">
+                <button onclick="eduEditGlossary('${g.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Düzenle</button>
+                <button onclick="eduDeleteGlossary('${g.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Sil</button>
+            </span>
+        </div>`).join('') || '<p class="text-xs text-slate-400 italic">Henüz terim yok.</p>';
+}
+
+// --- Ortak modal kabuğu ---
+function eduModal(inner) {
+    const ex = document.getElementById('eduModal'); if (ex) ex.remove();
+    const m = document.createElement('div');
+    m.id = 'eduModal';
+    m.className = 'fixed inset-0 z-[80] bg-slate-900/60 flex items-center justify-center p-4';
+    m.innerHTML = `<div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">${inner}</div>`;
+    document.body.appendChild(m);
+    return m;
+}
+window.eduCloseModal = function () { const m = document.getElementById('eduModal'); if (m) m.remove(); };
+
+// --- BÖLÜM ---
+window.eduNewChapter = () => openChapterModal(null);
+window.eduEditChapter = (id) => openChapterModal(_eduChapters.find(c => c.id === id));
+function openChapterModal(c) {
+    const e = c || {};
+    eduModal(`
+        <h3 class="text-lg font-black text-slate-800 mb-4">${c ? 'Bölümü Düzenle' : 'Yeni Bölüm'}</h3>
+        <div class="space-y-3">
+            <div><label class="text-xs font-bold text-slate-600">Başlık</label><input id="ecTitle" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.title)}"></div>
+            <div><label class="text-xs font-bold text-slate-600">Slug (boş bırakırsan otomatik oluşur)</label><input id="ecSlug" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.slug)}"></div>
+            <div><label class="text-xs font-bold text-slate-600">Açıklama</label><input id="ecDesc" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.description)}"></div>
+            <div class="flex gap-3">
+                <div class="flex-1"><label class="text-xs font-bold text-slate-600">İkon (opsiyonel)</label><input id="ecIcon" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.icon)}"></div>
+                <div class="w-24"><label class="text-xs font-bold text-slate-600">Sıra</label><input id="ecOrder" type="number" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${e.sort_order ?? 0}"></div>
+            </div>
+            <label class="flex items-center gap-2 text-sm text-slate-600"><input id="ecPub" type="checkbox" ${(e.is_published !== false) ? 'checked' : ''}> Yayında</label>
+        </div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="eduCloseModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-lg">İptal</button>
+            <button onclick="eduSaveChapter('${c ? c.id : ''}')" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-lg">Kaydet</button>
+        </div>`);
+}
+window.eduSaveChapter = async (id) => {
+    const title = document.getElementById('ecTitle').value.trim();
+    if (!title) { alert('Başlık gerekli.'); return; }
+    const obj = {
+        title,
+        slug: document.getElementById('ecSlug').value.trim() || eduSlugify(title),
+        description: document.getElementById('ecDesc').value.trim() || null,
+        icon: document.getElementById('ecIcon').value.trim() || null,
+        sort_order: parseInt(document.getElementById('ecOrder').value) || 0,
+        is_published: document.getElementById('ecPub').checked
+    };
+    const { error } = id
+        ? await supabaseClient.from('edu_chapters').update(obj).eq('id', id)
+        : await supabaseClient.from('edu_chapters').insert([obj]);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    eduCloseModal(); renderEduAdmin();
+};
+window.eduDeleteChapter = async (id) => {
+    if (!confirm('Bu bölüm ve içindeki TÜM dersler silinecek. Emin misiniz?')) return;
+    const { error } = await supabaseClient.from('edu_chapters').delete().eq('id', id);
+    if (error) { alert('Silinemedi: ' + error.message); return; }
+    renderEduAdmin();
+};
+
+// --- DERS ---
+window.eduNewLesson = (chapterId) => openLessonModal(null, chapterId);
+window.eduEditLesson = (id) => openLessonModal(_eduLessons.find(l => l.id === id), null);
+function openLessonModal(l, chapterId) {
+    const e = l || {};
+    const cid = e.chapter_id || chapterId || (_eduChapters[0] && _eduChapters[0].id) || '';
+    const opts = _eduChapters.map(c => `<option value="${c.id}" ${c.id === cid ? 'selected' : ''}>${admEscape(c.title)}</option>`).join('');
+    eduModal(`
+        <h3 class="text-lg font-black text-slate-800 mb-4">${l ? 'Dersi Düzenle' : 'Yeni Ders'}</h3>
+        <div class="space-y-3">
+            <div><label class="text-xs font-bold text-slate-600">Bölüm</label><select id="elChapter" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">${opts}</select></div>
+            <div><label class="text-xs font-bold text-slate-600">Başlık</label><input id="elTitle" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.title)}"></div>
+            <div><label class="text-xs font-bold text-slate-600">Slug (boşsa otomatik)</label><input id="elSlug" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.slug)}"></div>
+            <div><label class="text-xs font-bold text-slate-600">Ana metin (paragrafları alt satırla ayır)</label><textarea id="elBody" rows="5" class="w-full p-2 border border-slate-300 rounded-lg text-sm">${admEscape(e.body)}</textarea></div>
+            <div><label class="text-xs font-bold text-slate-600">Benzetme (opsiyonel)</label><textarea id="elAnalogy" rows="2" class="w-full p-2 border border-slate-300 rounded-lg text-sm">${admEscape(e.analogy)}</textarea></div>
+            <div><label class="text-xs font-bold text-slate-600">Özet (opsiyonel)</label><textarea id="elSummary" rows="2" class="w-full p-2 border border-slate-300 rounded-lg text-sm">${admEscape(e.summary)}</textarea></div>
+            <div class="flex gap-3">
+                <div class="w-28"><label class="text-xs font-bold text-slate-600">Okuma (dk)</label><input id="elMin" type="number" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${e.read_minutes ?? 2}"></div>
+                <div class="w-24"><label class="text-xs font-bold text-slate-600">Sıra</label><input id="elOrder" type="number" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${e.sort_order ?? 0}"></div>
+                <label class="flex items-end gap-2 text-sm text-slate-600 pb-2"><input id="elPub" type="checkbox" ${(e.is_published !== false) ? 'checked' : ''}> Yayında</label>
+            </div>
+        </div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="eduCloseModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-lg">İptal</button>
+            <button onclick="eduSaveLesson('${l ? l.id : ''}')" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-lg">Kaydet</button>
+        </div>`);
+}
+window.eduSaveLesson = async (id) => {
+    const title = document.getElementById('elTitle').value.trim();
+    const chapter_id = document.getElementById('elChapter').value;
+    if (!title) { alert('Başlık gerekli.'); return; }
+    if (!chapter_id) { alert('Önce bir bölüm oluşturun.'); return; }
+    const obj = {
+        chapter_id, title,
+        slug: document.getElementById('elSlug').value.trim() || eduSlugify(title),
+        body: document.getElementById('elBody').value.trim() || null,
+        analogy: document.getElementById('elAnalogy').value.trim() || null,
+        summary: document.getElementById('elSummary').value.trim() || null,
+        read_minutes: parseInt(document.getElementById('elMin').value) || null,
+        sort_order: parseInt(document.getElementById('elOrder').value) || 0,
+        is_published: document.getElementById('elPub').checked
+    };
+    const { error } = id
+        ? await supabaseClient.from('edu_lessons').update(obj).eq('id', id)
+        : await supabaseClient.from('edu_lessons').insert([obj]);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    eduCloseModal(); renderEduAdmin();
+};
+window.eduDeleteLesson = async (id) => {
+    if (!confirm('Bu ders silinecek. Emin misiniz?')) return;
+    const { error } = await supabaseClient.from('edu_lessons').delete().eq('id', id);
+    if (error) { alert('Silinemedi: ' + error.message); return; }
+    renderEduAdmin();
+};
+
+// --- SÖZLÜK ---
+window.eduNewGlossary = () => openGlossaryModal(null);
+window.eduEditGlossary = (id) => openGlossaryModal(_eduGlossary.find(g => g.id === id));
+function openGlossaryModal(g) {
+    const e = g || {};
+    const opts = ['<option value="">(bağlantı yok)</option>']
+        .concat(_eduChapters.map(c => `<option value="${admEscape(c.slug)}" ${c.slug === e.related_chapter_slug ? 'selected' : ''}>${admEscape(c.title)}</option>`)).join('');
+    eduModal(`
+        <h3 class="text-lg font-black text-slate-800 mb-4">${g ? 'Terimi Düzenle' : 'Yeni Terim'}</h3>
+        <div class="space-y-3">
+            <div><label class="text-xs font-bold text-slate-600">Terim</label><input id="egTerm" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.term)}"></div>
+            <div><label class="text-xs font-bold text-slate-600">Tanım</label><textarea id="egDef" rows="4" class="w-full p-2 border border-slate-300 rounded-lg text-sm">${admEscape(e.definition)}</textarea></div>
+            <div><label class="text-xs font-bold text-slate-600">İlgili bölüm (opsiyonel)</label><select id="egChapter" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">${opts}</select></div>
+            <div class="flex gap-3">
+                <div class="w-24"><label class="text-xs font-bold text-slate-600">Sıra</label><input id="egOrder" type="number" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${e.sort_order ?? 0}"></div>
+                <label class="flex items-end gap-2 text-sm text-slate-600 pb-2"><input id="egPub" type="checkbox" ${(e.is_published !== false) ? 'checked' : ''}> Yayında</label>
+            </div>
+        </div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="eduCloseModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-lg">İptal</button>
+            <button onclick="eduSaveGlossary('${g ? g.id : ''}')" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-lg">Kaydet</button>
+        </div>`);
+}
+window.eduSaveGlossary = async (id) => {
+    const term = document.getElementById('egTerm').value.trim();
+    const definition = document.getElementById('egDef').value.trim();
+    if (!term || !definition) { alert('Terim ve tanım gerekli.'); return; }
+    const obj = {
+        term, definition,
+        related_chapter_slug: document.getElementById('egChapter').value || null,
+        sort_order: parseInt(document.getElementById('egOrder').value) || 0,
+        is_published: document.getElementById('egPub').checked
+    };
+    const { error } = id
+        ? await supabaseClient.from('edu_glossary').update(obj).eq('id', id)
+        : await supabaseClient.from('edu_glossary').insert([obj]);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    eduCloseModal(); renderEduAdmin();
+};
+window.eduDeleteGlossary = async (id) => {
+    if (!confirm('Bu terim silinecek. Emin misiniz?')) return;
+    const { error } = await supabaseClient.from('edu_glossary').delete().eq('id', id);
+    if (error) { alert('Silinemedi: ' + error.message); return; }
+    renderEduAdmin();
 };
