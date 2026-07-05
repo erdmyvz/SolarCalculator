@@ -345,3 +345,65 @@ window.crmToggleStep = async function(leadId, slug) {
         .from('leads').update({ completed_steps: done, updated_at: new Date().toISOString() }).eq('id', leadId);
     if (error) { alert('Adım kaydedilemedi: ' + error.message); }
 };
+
+
+// ============================================================================
+// DAĞITIM ŞİRKETİ REFERANSI — firma, projenin ilini arayıp başvuru şirketini bulur
+// ============================================================================
+let _disco = null;
+
+async function ensureDisco() {
+    if (_disco) return _disco;
+    if (!supabaseClient) return [];
+    const { data } = await supabaseClient.from('distribution_companies').select('*').order('sort_order');
+    _disco = data || [];
+    return _disco;
+}
+
+window.crmOpenDisco = async function () {
+    let m = document.getElementById('discoModal');
+    if (!m) {
+        m = document.createElement('div');
+        m.id = 'discoModal';
+        m.className = 'fixed inset-0 z-[80] bg-slate-900/60 flex items-center justify-center p-4';
+        m.innerHTML = `
+            <div class="bg-white rounded-2xl w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] flex flex-col">
+                <div class="flex justify-between items-start mb-3 gap-3">
+                    <div>
+                        <h3 class="text-lg font-black text-slate-800">🔌 Dağıtım Şirketleri</h3>
+                        <p class="text-xs text-slate-500">Projenin ilini yazın; başvuru yapılacak dağıtım şirketini bulun. Ulusal arıza/şikayet hattı: <strong>186</strong>.</p>
+                    </div>
+                    <button onclick="document.getElementById('discoModal').classList.add('hidden')" class="text-2xl text-slate-400 leading-none">&times;</button>
+                </div>
+                <input id="discoSearch" type="text" placeholder="🔎 İl veya şirket ara (örn. Ankara)" class="w-full p-3 border border-slate-300 rounded-lg mb-3 outline-none focus:border-amber-500">
+                <div id="discoList" class="overflow-y-auto space-y-2 flex-1"></div>
+            </div>`;
+        document.body.appendChild(m);
+        m.querySelector('#discoSearch').addEventListener('input', renderDiscoList);
+    }
+    m.classList.remove('hidden');
+    m.querySelector('#discoSearch').value = '';
+    await ensureDisco();
+    renderDiscoList();
+};
+
+function renderDiscoList() {
+    const box = document.getElementById('discoList');
+    if (!box) return;
+    const q = (document.getElementById('discoSearch')?.value || '').trim().toLowerCase();
+    const items = (_disco || []).filter(d =>
+        !q || (d.provinces || '').toLowerCase().includes(q)
+           || (d.name || '').toLowerCase().includes(q)
+           || (d.abbr || '').toLowerCase().includes(q));
+    box.innerHTML = items.length ? items.map(d => `
+        <div class="border border-slate-200 rounded-xl p-4">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+                <strong class="text-sm text-slate-800">${admEscape(d.name)}${d.abbr ? ` <span class="text-slate-400 font-mono text-[11px]">${admEscape(d.abbr)}</span>` : ''}</strong>
+                <span class="flex gap-2">
+                    ${d.phone ? `<a href="tel:${admEscape(d.phone)}" class="text-[11px] bg-emerald-50 text-emerald-700 font-bold px-2 py-1 rounded no-underline">📞 ${admEscape(d.phone)}</a>` : ''}
+                    ${d.website ? `<a href="${admEscape(d.website)}" target="_blank" rel="noopener" class="text-[11px] bg-blue-50 text-blue-700 font-bold px-2 py-1 rounded no-underline">🌐 Web sitesi</a>` : ''}
+                </span>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">${admEscape(d.provinces)}</p>
+        </div>`).join('') : '<p class="text-slate-400 text-sm p-2">Eşleşen dağıtım şirketi bulunamadı.</p>';
+}
