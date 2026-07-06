@@ -20,6 +20,9 @@ function initCRMModule() {
  * Firmanın kendi başvurularını veritabanından yükler.
  * RLS sayesinde otomatik olarak yalnız bu firmaya atanmış kayıtlar gelir.
  */
+let _quotesByLead = {};
+let _quoteStats = { count: 0, taslak: 0, gonderildi: 0, kabul: 0, ret: 0, kabulTotal: 0 };
+
 async function crmLoadLeads() {
     if (!supabaseClient) return;
     const tableBody = document.getElementById('crmLeadsTableBody');
@@ -34,8 +37,46 @@ async function crmLoadLeads() {
         if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500">Liste yüklenemedi: ${err.message}</td></tr>`;
         return;
     }
+
+    // Teklif durumlarını yükle (liste rozetleri + özet çubuğu için)
+    _quotesByLead = {};
+    _quoteStats = { count: 0, taslak: 0, gonderildi: 0, kabul: 0, ret: 0, kabulTotal: 0 };
+    try {
+        const { data: qs } = await supabaseClient
+            .from('quotes').select('lead_id, status, total_amount, created_at').order('created_at', { ascending: false });
+        (qs || []).forEach(q => {
+            if (!_quotesByLead[q.lead_id]) _quotesByLead[q.lead_id] = q; // en güncel teklif
+            _quoteStats.count++;
+            if (_quoteStats[q.status] !== undefined) _quoteStats[q.status]++;
+            if (q.status === 'kabul') _quoteStats.kabulTotal += Number(q.total_amount) || 0;
+        });
+    } catch (e) { /* quotes tablosu yoksa sessiz geç */ }
+
     crmCalculateStats();
+    renderQuoteSummary();
     crmRenderLeads();
+}
+
+// Kokpit altına teklif özet çubuğunu enjekte eder
+function renderQuoteSummary() {
+    const grid = document.getElementById('crmStatNew')?.closest('.grid');
+    if (!grid) return;
+    let bar = document.getElementById('crmQuoteSummary');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'crmQuoteSummary';
+        bar.className = 'mb-6';
+        grid.insertAdjacentElement('afterend', bar);
+    }
+    const s = _quoteStats;
+    bar.innerHTML = `
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 flex-wrap text-xs">
+            <span class="font-black text-slate-700">📄 Teklifler</span>
+            <span class="text-slate-500">Toplam: <strong class="text-slate-800">${s.count}</strong></span>
+            <span class="text-slate-500">Gönderildi: <strong class="text-blue-700">${s.gonderildi}</strong></span>
+            <span class="text-slate-500">Kabul: <strong class="text-emerald-700">${s.kabul}</strong></span>
+            ${s.kabulTotal ? `<span class="ml-auto text-slate-500">Kazanılan iş: <strong class="text-emerald-700">₺${Math.round(s.kabulTotal).toLocaleString('tr-TR')}</strong></span>` : ''}
+        </div>`;
 }
 
 /**
@@ -85,6 +126,17 @@ function crmRenderLeads() {
         if(lead.wants_storage === 'Evet') techBadges.push('🔋 Batarya');
         const techSummary = techBadges.length > 0 ? techBadges.join(' | ') : 'Standart (On-Grid)';
 
+        const q = _quotesByLead[lead.id];
+        const qMap = {
+            taslak:     ['📄 Teklif: Taslak',    'bg-slate-100 text-slate-600'],
+            gonderildi: ['📄 Teklif: Gönderildi', 'bg-blue-100 text-blue-700'],
+            kabul:      ['✅ Teklif: Kabul',      'bg-emerald-100 text-emerald-700'],
+            ret:        ['❌ Teklif: Ret',        'bg-red-100 text-red-700']
+        };
+        const qBadge = q && qMap[q.status]
+            ? `<span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${qMap[q.status][1]}">${qMap[q.status][0]}</span>`
+            : '';
+
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50 border-b border-slate-100 transition cursor-pointer";
         tr.onclick = (e) => { if(e.target.tagName !== 'BUTTON') crmOpenLeadDetails(lead.id); };
@@ -94,6 +146,7 @@ function crmRenderLeads() {
             <td class="p-4">
                 <div class="font-black text-slate-900 text-sm mb-0.5">${admEscape(lead.full_name)}</div>
                 <div class="text-[10px] text-slate-400 font-mono tracking-wider">Takip ID: ${admEscape(lead.tracking_code)} | Tel: ${admEscape(lead.phone) || '-'}</div>
+                ${qBadge}
             </td>
             <td class="p-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.css}">${badge.text}</span></td>
             <td class="p-4 text-slate-600 font-bold text-[11px]">${techSummary}</td>
