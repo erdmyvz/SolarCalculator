@@ -344,6 +344,10 @@
                     <div class="flex items-center justify-between mb-2"><h2 class="text-2xl font-black text-emerald-400">👑 Süper Admin Paneli</h2><span class="bg-red-600 text-xs px-3 py-1 rounded-full font-bold">Tam Yetki</span></div><p class="text-slate-300 text-sm">Firmaları ve genel yatırımcı başvurularını denetleyin.</p>
                 </div>
                 
+                <button id="btnGoDashboard" class="bg-slate-900 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left col-span-1 md:col-span-2 group">
+                    <h2 class="text-xl font-bold mb-4">📊 Yönetim Panosu</h2><p class="text-slate-300 text-sm">Lead hattı, teklif dönüşümü, kazanılan iş ve servis özeti — tek bakışta.</p>
+                </button>
+
                 <button id="btnGoCRM" class="bg-emerald-600 text-white rounded-xl p-6 shadow-lg hover:-translate-y-1 text-left col-span-1 md:col-span-2 group">
                     <div class="flex items-center justify-between mb-4"><h2 class="text-2xl font-bold">💼 Satış CRM & Proje Takip</h2><span class="bg-emerald-800 text-xs px-3 py-1 rounded-full">Aktif Modül</span></div><p class="text-emerald-100 text-sm">Lead'leri toplayın ve TEDAŞ aşamalarını takip edin.</p>
                 </button>
@@ -387,6 +391,16 @@
             <div id="projectsList" class="grid grid-cols-1 gap-4">
                 <p class="text-slate-400 text-sm">Yükleniyor...</p>
             </div>
+        </div>
+
+        <div id="dashboardModule" class="hidden bg-slate-50 p-6 md:p-8 rounded-xl shadow-lg w-full max-w-7xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 flex justify-between items-center">
+                <button id="btnBackToMenuFromDashboard" class="text-slate-500 font-bold">← Menüye Dön</button>
+                <button id="btnRefreshDashboard" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded">Yenile</button>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 mb-1">📊 Yönetim Panosu</h2>
+            <p class="text-slate-500 text-sm mb-6 font-medium">İşinizin genel durumu — tamamı canlı verilerden.</p>
+            <div id="dashboardRoot"></div>
         </div>
 
         <div id="crmModule" class="hidden bg-slate-50 p-6 rounded-xl shadow-lg max-w-7xl mx-auto mt-4">
@@ -938,6 +952,7 @@
     <script src="projects.js"></script>
     <script src="services.js"></script>
     <script src="quote.js"></script>
+    <script src="dashboard.js"></script>
     <script src="education.js"></script>
     <script src="process.js"></script>
     
