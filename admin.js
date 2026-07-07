@@ -172,6 +172,9 @@ async function fetchAdminData() {
 
     // 7) DAĞITIM ŞİRKETLERİ (yalnız admin görür)
     await renderDiscoAdmin();
+
+    // 8) AYARLAR / PARAMETRELER (yalnız admin görür)
+    await renderSettingsAdmin();
 }
 
 // --- Potansiyel müşteriler bölümünü (bir kez) admin paneline enjekte eder ---
@@ -753,4 +756,81 @@ window.dcDelete = async (id) => {
     const { error } = await supabaseClient.from('distribution_companies').delete().eq('id', id);
     if (error) { alert('Silinemedi: ' + error.message); return; }
     renderDiscoAdmin();
+};
+
+
+// ============================================================================
+// AYARLAR / PARAMETRE YÖNETİMİ (app_settings — yalnız admin)
+// Hesaplayıcı, teklif ve batarya modülleri bu değerleri hesap anında okur.
+// ============================================================================
+const SETTINGS_SCHEMA = [
+    { key: 'solarYield',    label: 'Yıllık üretim (kWh/kWp)',          cat: 'Güneş Sistemi', step: '1',    def: 1500 },
+    { key: 'roofM2PerKwp',  label: 'Çatı alanı (m²/kWp)',              cat: 'Güneş Sistemi', step: '0.1',  def: 5.5 },
+    { key: 'kwpPerPanel',   label: 'Panel gücü (kWp/panel)',           cat: 'Güneş Sistemi', step: '0.01', def: 0.55 },
+    { key: 'pricePerKwp',   label: 'Kurulum bedeli (TL/kWp)',          cat: 'Güneş Sistemi', step: '500',  def: 30000 },
+    { key: 'co2PerKwh',     label: 'CO₂ katsayısı (kg/kWh)',           cat: 'Güneş Sistemi', step: '0.01', def: 0.45 },
+    { key: 'tariff',        label: 'Elektrik tarifesi (TL/kWh)',       cat: 'Güneş Sistemi', step: '0.1',  def: 2.5 },
+    { key: 'batteryDod',    label: 'Batarya deşarj derinliği (0-1)',   cat: 'Batarya',       step: '0.05', def: 0.9 },
+    { key: 'inverterEff',   label: 'İnverter verimi (0-1)',            cat: 'Batarya',       step: '0.01', def: 0.95 },
+    { key: 'batteryModule', label: 'Batarya ünite boyutu (kWh)',       cat: 'Batarya',       step: '1',    def: 5 },
+    { key: 'inverterSurge', label: 'İnverter kalkış katsayısı',        cat: 'Batarya',       step: '0.1',  def: 1.3 }
+];
+let _settingsVals = {};
+
+function ensureSettingsSection() {
+    if (document.getElementById('settingsAdminRoot')) return document.getElementById('settingsAdminRoot');
+    const admin = document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'settingsAdminRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 class="text-lg font-black text-slate-800">⚙️ Ayarlar / Referans Değerler</h3>
+            <button onclick="saveSettings()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg">Kaydet</button>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Hesaplayıcılar, teklif motoru ve batarya aracı bu değerleri kullanır. Değişiklikler kaydedildiğinde hemen geçerli olur.</p>
+        <div id="settingsList"></div>`;
+    admin.appendChild(card);
+    return card;
+}
+
+async function renderSettingsAdmin() {
+    const wrap = ensureSettingsSection();
+    if (!wrap || !supabaseClient) return;
+    const box = document.getElementById('settingsList');
+    box.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+    const { data, error } = await supabaseClient.from('app_settings').select('key, value');
+    if (error) { box.innerHTML = `<p class="text-xs text-red-500">Yüklenemedi: ${error.message}</p>`; return; }
+    _settingsVals = {};
+    (data || []).forEach(r => { _settingsVals[r.key] = Number(r.value); });
+
+    const cats = [...new Set(SETTINGS_SCHEMA.map(s => s.cat))];
+    box.innerHTML = cats.map(cat => `
+        <div class="mb-4">
+            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">${cat}</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                ${SETTINGS_SCHEMA.filter(s => s.cat === cat).map(s => {
+                    const val = (_settingsVals[s.key] !== undefined && !isNaN(_settingsVals[s.key])) ? _settingsVals[s.key] : s.def;
+                    return `<div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-600 flex-1">${admEscape(s.label)}</label>
+                        <input id="set_${s.key}" type="number" step="${s.step}" value="${val}" class="w-28 border border-slate-300 p-2 rounded-lg text-sm text-right">
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`).join('');
+}
+
+window.saveSettings = async function () {
+    const rows = SETTINGS_SCHEMA.map(s => {
+        const el = document.getElementById(`set_${s.key}`);
+        const v = el ? parseFloat(el.value) : NaN;
+        return { key: s.key, value: (isNaN(v) ? s.def : v), label: s.label, category: s.cat };
+    });
+    const { error } = await supabaseClient.from('app_settings').upsert(rows);
+    if (error) { alert('Ayarlar kaydedilemedi: ' + error.message); return; }
+    // Anında geçerli olsun (sayfa yenilemeden)
+    if (window.EPC_SETTINGS) rows.forEach(r => { window.EPC_SETTINGS[r.key] = r.value; });
+    alert('Ayarlar kaydedildi ve uygulandı.');
+    renderSettingsAdmin();
 };
