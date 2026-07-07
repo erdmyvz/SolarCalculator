@@ -24,20 +24,26 @@
         if (!lead) { alert('Müşteri bulunamadı.'); return; }
         _qLead = lead;
 
-        // --- Otomatik boyutlandırma ---
-        const yearlyKwh = lead.bill_amount ? (lead.bill_amount / Q_TARIFF) * 12 : 0;
-        let kwp = yearlyKwh > 0 ? yearlyKwh / Q_YIELD : 5;
+        // --- Otomatik boyutlandırma (değerler admin Ayarlar'dan; yoksa varsayılan) ---
+        const _S = window.EPC_SETTINGS || {};
+        const _TARIFF = _S.tariff       || Q_TARIFF;
+        const _YIELD  = _S.solarYield   || Q_YIELD;
+        const _PANELK = _S.kwpPerPanel  || Q_KWP_PER_PANEL;
+        const _PRICE  = _S.pricePerKwp  || Q_PRICE_PER_KWP;
+
+        const yearlyKwh = lead.bill_amount ? (lead.bill_amount / _TARIFF) * 12 : 0;
+        let kwp = yearlyKwh > 0 ? yearlyKwh / _YIELD : 5;
         kwp = Math.max(1, Math.round(kwp * 10) / 10);
-        const panels = Math.max(1, Math.ceil(kwp / Q_KWP_PER_PANEL));
-        const annualSaving = lead.bill_amount ? Math.round(lead.bill_amount * 12) : Math.round(yearlyKwh * Q_TARIFF);
+        const panels = Math.max(1, Math.ceil(kwp / _PANELK));
+        const annualSaving = lead.bill_amount ? Math.round(lead.bill_amount * 12) : Math.round(yearlyKwh * _TARIFF);
 
         // --- Otomatik maliyet kalemleri ---
         const items = [
-            { name: 'Güneş Paneli', qty: panels, unit: Math.round(Q_PRICE_PER_KWP * 0.40 * kwp / panels) },
-            { name: 'İnverter (Evirici)', qty: 1, unit: Math.round(Q_PRICE_PER_KWP * 0.15 * kwp) },
-            { name: 'Montaj & Konstrüksiyon', qty: 1, unit: Math.round(Q_PRICE_PER_KWP * 0.15 * kwp) },
-            { name: 'Kablolama & Pano', qty: 1, unit: Math.round(Q_PRICE_PER_KWP * 0.10 * kwp) },
-            { name: 'Proje, Ruhsat & İşçilik', qty: 1, unit: Math.round(Q_PRICE_PER_KWP * 0.20 * kwp) }
+            { name: 'Güneş Paneli', qty: panels, unit: Math.round(_PRICE * 0.40 * kwp / panels) },
+            { name: 'İnverter (Evirici)', qty: 1, unit: Math.round(_PRICE * 0.15 * kwp) },
+            { name: 'Montaj & Konstrüksiyon', qty: 1, unit: Math.round(_PRICE * 0.15 * kwp) },
+            { name: 'Kablolama & Pano', qty: 1, unit: Math.round(_PRICE * 0.10 * kwp) },
+            { name: 'Proje, Ruhsat & İşçilik', qty: 1, unit: Math.round(_PRICE * 0.20 * kwp) }
         ];
         if (lead.wants_storage === 'Evet') items.push({ name: 'Batarya (Enerji Depolama)', qty: 1, unit: 40000 });
 

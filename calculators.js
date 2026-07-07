@@ -121,15 +121,22 @@ document.getElementById('btnCalculate')?.addEventListener('click', () => {
     document.getElementById('finalYearlyLoad').textContent = Math.round(sonYillik).toLocaleString('tr-TR');
     document.getElementById('finalMonthlyBill').textContent = sonFatura.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    // --- GÜNEŞ ÇÖZÜMÜ (referans hesap) ---
-    const kwp        = sonYillik > 0 ? sonYillik / SOLAR_YIELD_KWH_PER_KWP : 0;
-    const roofArea   = kwp * ROOF_M2_PER_KWP;
-    const panels     = kwp > 0 ? Math.max(1, Math.ceil(kwp / KWP_PER_PANEL)) : 0;
-    const investment = kwp * REF_PRICE_PER_KWP_TL;
+    // --- GÜNEŞ ÇÖZÜMÜ (referans hesap; değerler admin Ayarlar'dan gelir, yoksa varsayılan) ---
+    const _S = window.EPC_SETTINGS || {};
+    const _YIELD = _S.solarYield   || SOLAR_YIELD_KWH_PER_KWP;
+    const _ROOF  = _S.roofM2PerKwp  || ROOF_M2_PER_KWP;
+    const _PANEL = _S.kwpPerPanel   || KWP_PER_PANEL;
+    const _PRICE = _S.pricePerKwp   || REF_PRICE_PER_KWP_TL;
+    const _CO2   = _S.co2PerKwh      || CO2_KG_PER_KWH;
+
+    const kwp        = sonYillik > 0 ? sonYillik / _YIELD : 0;
+    const roofArea   = kwp * _ROOF;
+    const panels     = kwp > 0 ? Math.max(1, Math.ceil(kwp / _PANEL)) : 0;
+    const investment = kwp * _PRICE;
     const annualSaving = sonFatura * 12;
     const payback    = annualSaving > 0 ? investment / annualSaving : 0;
     const saving25   = annualSaving * 25;
-    const co2Annual  = sonYillik * CO2_KG_PER_KWH;
+    const co2Annual  = sonYillik * _CO2;
 
     // Raporu (indir/e-posta) ile birlikte kaydedilecek özet
     window.lastCalc = {
