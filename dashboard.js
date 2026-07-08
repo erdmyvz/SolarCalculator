@@ -76,7 +76,8 @@
         const maxc = Math.max(1, ...stages.map(s => a.leadByStatus[s] || 0));
         const funnel = stages.map(s => {
             const c = a.leadByStatus[s] || 0;
-            const lbl = (typeof crmStatusLabels !== 'undefined' && crmStatusLabels[s]) ? crmStatusLabels[s].text : s;
+            const lbl = (typeof stageLabel === 'function') ? stageLabel(s)
+                : ((typeof crmStatusLabels !== 'undefined' && crmStatusLabels[s]) ? crmStatusLabels[s].text : s);
             const w = Math.round((c / maxc) * 100);
             return `
                 <div class="flex items-center gap-3 mb-2">
