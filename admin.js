@@ -175,6 +175,9 @@ async function fetchAdminData() {
 
     // 8) AYARLAR / PARAMETRELER (yalnız admin görür)
     await renderSettingsAdmin();
+
+    // 9) GENEL AŞAMA ETİKETLERİ (yalnız admin görür)
+    await renderStageAdmin();
 }
 
 // --- Potansiyel müşteriler bölümünü (bir kez) admin paneline enjekte eder ---
@@ -833,4 +836,69 @@ window.saveSettings = async function () {
     if (window.EPC_SETTINGS) rows.forEach(r => { window.EPC_SETTINGS[r.key] = r.value; });
     alert('Ayarlar kaydedildi ve uygulandı.');
     renderSettingsAdmin();
+};
+
+
+// ============================================================================
+// GENEL AŞAMA ETİKETLERİ (stage_labels — yalnız admin)
+// CRM "Genel Aşama" adımlarının görünen adı ve açıklaması buradan düzenlenir.
+// Anahtarlar sabittir; yalnız etiket + açıklama değişir.
+// ============================================================================
+const STAGE_KEYS = ['yeni_basvuru', 'arandi_gorusuldu', 'teklif_gonderildi', 'sozlesme_imzalandi', 'kurulum_basladi', 'resmi_surec', 'tamamlandi'];
+let _stageVals = {};
+
+function ensureStageSection() {
+    if (document.getElementById('stageAdminRoot')) return document.getElementById('stageAdminRoot');
+    const admin = document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'stageAdminRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 class="text-lg font-black text-slate-800">🚦 Genel Aşamalar</h3>
+            <button onclick="saveStages()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg">Kaydet</button>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">CRM müşteri kartındaki "Genel Aşama" menüsünde görünen adları ve açıklamaları düzenleyin. Sıra ve sayı sabittir.</p>
+        <div id="stageList"></div>`;
+    admin.appendChild(card);
+    return card;
+}
+
+async function renderStageAdmin() {
+    const wrap = ensureStageSection();
+    if (!wrap || !supabaseClient) return;
+    const box = document.getElementById('stageList');
+    box.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+    const { data, error } = await supabaseClient.from('stage_labels').select('*');
+    if (error) { box.innerHTML = `<p class="text-xs text-red-500">Yüklenemedi: ${error.message}</p>`; return; }
+    _stageVals = {};
+    (data || []).forEach(r => { _stageVals[r.key] = r; });
+
+    box.innerHTML = STAGE_KEYS.map((k, i) => {
+        const v = _stageVals[k] || {};
+        const label = (v.label !== undefined && v.label !== null) ? v.label : '';
+        const desc = (v.description !== undefined && v.description !== null) ? v.description : '';
+        return `
+            <div class="border border-slate-200 rounded-lg p-3 mb-2">
+                <div class="text-[10px] text-slate-400 font-mono mb-1">${i + 1}. aşama · <span class="uppercase">${k}</span></div>
+                <input id="stg_label_${k}" value="${admEscape(label)}" placeholder="Görünen ad" class="w-full border border-slate-300 p-2 rounded-lg text-sm mb-2 font-bold">
+                <input id="stg_desc_${k}" value="${admEscape(desc)}" placeholder="Açıklama (kart içi/iç referans)" class="w-full border border-slate-300 p-2 rounded-lg text-xs text-slate-600">
+            </div>`;
+    }).join('');
+}
+
+window.saveStages = async function () {
+    const rows = STAGE_KEYS.map((k, i) => ({
+        key: k,
+        label: (document.getElementById(`stg_label_${k}`).value || '').trim() || k,
+        description: (document.getElementById(`stg_desc_${k}`).value || '').trim() || null,
+        sort_order: i + 1
+    }));
+    const { error } = await supabaseClient.from('stage_labels').upsert(rows);
+    if (error) { alert('Aşamalar kaydedilemedi: ' + error.message); return; }
+    // Anında geçerli olsun
+    if (window.EPC_STAGES) rows.forEach(r => { window.EPC_STAGES[r.key] = { label: r.label, description: r.description }; });
+    alert('Aşamalar kaydedildi ve uygulandı.');
+    renderStageAdmin();
 };
