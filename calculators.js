@@ -303,7 +303,7 @@ document.querySelectorAll('.ev-tab-btn').forEach(btn => {
     });
 });
 
-document.querySelectorAll('.ev-reactive-input').forEach(input => input.addEventListener('input', calculateEVSolar));
+document.querySelectorAll('.ev-reactive-input').forEach(input => input.addEventListener('input', () => calculateEVSolar()));
 
 window.calculateEVSolar = function() {
     const tariff = parseFloat(document.getElementById('evCalcTariff')?.value) || 2.50;
@@ -377,3 +377,7 @@ window.calculateEVSolar = function() {
         }
     }
 }
+
+// İlk yüklemede "Akıllı öneri sistemi yükleniyor..." placeholder'ı yerine
+// varsayılan değerlerle gerçek öneri/sonuçları göster (tüm erişimler korumalı).
+try { calculateEVSolar(); } catch (e) { /* modül DOM'da yoksa sessiz geç */ }

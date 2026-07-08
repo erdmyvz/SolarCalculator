@@ -20,6 +20,8 @@ function initCRMModule() {
  * Firmanın kendi başvurularını veritabanından yükler.
  * RLS sayesinde otomatik olarak yalnız bu firmaya atanmış kayıtlar gelir.
  */
+// Teklif özelliği şimdilik gizli ("YAKINDA"). İleride açmak için: true yapın.
+const QUOTES_ENABLED = false;
 let _quotesByLead = {};
 let _quoteStats = { count: 0, taslak: 0, gonderildi: 0, kabul: 0, ret: 0, kabulTotal: 0 };
 
@@ -41,16 +43,18 @@ async function crmLoadLeads() {
     // Teklif durumlarını yükle (liste rozetleri + özet çubuğu için)
     _quotesByLead = {};
     _quoteStats = { count: 0, taslak: 0, gonderildi: 0, kabul: 0, ret: 0, kabulTotal: 0 };
-    try {
-        const { data: qs } = await supabaseClient
-            .from('quotes').select('lead_id, status, total_amount, created_at').order('created_at', { ascending: false });
-        (qs || []).forEach(q => {
-            if (!_quotesByLead[q.lead_id]) _quotesByLead[q.lead_id] = q; // en güncel teklif
-            _quoteStats.count++;
-            if (_quoteStats[q.status] !== undefined) _quoteStats[q.status]++;
-            if (q.status === 'kabul') _quoteStats.kabulTotal += Number(q.total_amount) || 0;
-        });
-    } catch (e) { /* quotes tablosu yoksa sessiz geç */ }
+    if (QUOTES_ENABLED) {
+        try {
+            const { data: qs } = await supabaseClient
+                .from('quotes').select('lead_id, status, total_amount, created_at').order('created_at', { ascending: false });
+            (qs || []).forEach(q => {
+                if (!_quotesByLead[q.lead_id]) _quotesByLead[q.lead_id] = q; // en güncel teklif
+                _quoteStats.count++;
+                if (_quoteStats[q.status] !== undefined) _quoteStats[q.status]++;
+                if (q.status === 'kabul') _quoteStats.kabulTotal += Number(q.total_amount) || 0;
+            });
+        } catch (e) { /* quotes tablosu yoksa sessiz geç */ }
+    }
 
     crmCalculateStats();
     renderQuoteSummary();
@@ -59,17 +63,19 @@ async function crmLoadLeads() {
 
 // Kokpit altına teklif özet çubuğunu enjekte eder
 function renderQuoteSummary() {
+    const bar = document.getElementById('crmQuoteSummary');
+    if (!QUOTES_ENABLED) { if (bar) bar.innerHTML = ''; return; }
     const grid = document.getElementById('crmStatNew')?.closest('.grid');
     if (!grid) return;
-    let bar = document.getElementById('crmQuoteSummary');
-    if (!bar) {
-        bar = document.createElement('div');
-        bar.id = 'crmQuoteSummary';
-        bar.className = 'mb-6';
-        grid.insertAdjacentElement('afterend', bar);
+    let b = bar;
+    if (!b) {
+        b = document.createElement('div');
+        b.id = 'crmQuoteSummary';
+        b.className = 'mb-6';
+        grid.insertAdjacentElement('afterend', b);
     }
     const s = _quoteStats;
-    bar.innerHTML = `
+    b.innerHTML = `
         <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 flex-wrap text-xs">
             <span class="font-black text-slate-700">📄 Teklifler</span>
             <span class="text-slate-500">Toplam: <strong class="text-slate-800">${s.count}</strong></span>
@@ -115,7 +121,8 @@ function crmRenderLeads() {
     }
 
     filteredLeads.forEach(lead => {
-        const badge = crmStatusLabels[lead.status] || { text: lead.status, css: 'bg-slate-100 text-slate-800' };
+        const _bb = crmStatusLabels[lead.status] || { text: lead.status, css: 'bg-slate-100 text-slate-800' };
+        const badge = { text: (typeof stageLabel === 'function' ? stageLabel(lead.status) : _bb.text), css: _bb.css };
         const dateStr = lead.created_at
             ? new Date(lead.created_at).toLocaleString('tr-TR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
             : '-';
@@ -133,7 +140,7 @@ function crmRenderLeads() {
             kabul:      ['✅ Teklif: Kabul',      'bg-emerald-100 text-emerald-700'],
             ret:        ['❌ Teklif: Ret',        'bg-red-100 text-red-700']
         };
-        const qBadge = q && qMap[q.status]
+        const qBadge = (QUOTES_ENABLED && q && qMap[q.status])
             ? `<span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${qMap[q.status][1]}">${qMap[q.status][0]}</span>`
             : '';
 
@@ -148,7 +155,7 @@ function crmRenderLeads() {
                 <div class="text-[10px] text-slate-400 font-mono tracking-wider">Takip ID: ${admEscape(lead.tracking_code)} | Tel: ${admEscape(lead.phone) || '-'}</div>
                 ${qBadge}
             </td>
-            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.css}">${badge.text}</span></td>
+            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.css}">${admEscape(badge.text)}</span></td>
             <td class="p-4 text-slate-600 font-bold text-[11px]">${techSummary}</td>
             <td class="p-4 text-right pr-6">
                 <button class="bg-white hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm transition text-xs">Müşteri Kartı</button>
@@ -187,7 +194,10 @@ window.crmOpenLeadDetails = async function(id) {
     document.getElementById('modalLeadName').textContent = lead.full_name || '-';
     if(document.getElementById('modalLeadDate')) document.getElementById('modalLeadDate').textContent = "Başvuru Tarihi: " + dateStr;
     if(document.getElementById('modalLeadIdDisplay')) document.getElementById('modalLeadIdDisplay').textContent = "ID: " + (lead.tracking_code || '');
-    document.getElementById('modalLeadContact').innerHTML = `📞 <strong>Tel:</strong> ${admEscape(lead.phone) || '-'} &nbsp;|&nbsp; ✉️ <strong>E-posta:</strong> ${admEscape(lead.email) || '-'}<br>📍 <strong>Konum:</strong> ${admEscape(lead.address) || '-'}`;
+    document.getElementById('fieldName').value = lead.full_name || '';
+    document.getElementById('fieldPhone').value = lead.phone || '';
+    document.getElementById('fieldEmail').value = lead.email || '';
+    document.getElementById('fieldAddress').value = lead.address || '';
 
     document.getElementById('fieldBill').value = (lead.bill_amount ?? '');
     document.getElementById('fieldConsumptions').value = lead.consumptions || '';
@@ -277,37 +287,39 @@ window.crmCopyText = function(text) {
 /**
  * Satış ekibinin manuel olarak sisteme müşteri eklemesi (veritabanına yazar).
  */
-window.crmOpenNewLeadModal = async function() {
-    const name = prompt("Lütfen eklenecek yeni müşterinin adını veya proje başlığını giriniz:");
-    if(!name || !name.trim()) return;
+window.crmOpenNewLeadModal = function() {
+    // Yeni müşteri: kartı BOŞ, tüm alanlar düzenlenebilir aç. Kayıt "Kaydet" ile oluşur.
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+    document.getElementById('modalLeadId').value = '';           // boş = yeni kayıt modu
+    set('fieldName', ''); set('fieldPhone', ''); set('fieldEmail', ''); set('fieldAddress', '');
+    set('fieldBill', ''); set('fieldConsumptions', '');
+    set('fieldHeatPump', 'Yok'); set('fieldHeatPumpPower', '');
+    set('fieldEV', 'Yok'); set('fieldBlackout', 'Seyrek'); set('fieldStorageIntent', 'Hayır');
+    set('fieldBackupDetails', ''); set('fieldNotes', '');
 
-    const code = "EPC-MANUAL-" + Date.now().toString().slice(-6);
-    const row = {
-        tracking_code: code,
-        company_id: (currentUserProfile && currentUserProfile.company_id) ? currentUserProfile.company_id : null,
-        source: 'manual',
-        full_name: name.trim(),
-        phone: '',
-        status: 'yeni_basvuru',
-        notes: 'Panelden manuel eklendi.'
-    };
+    const nm = document.getElementById('modalLeadName'); if (nm) nm.textContent = 'Yeni Müşteri';
+    const idd = document.getElementById('modalLeadIdDisplay'); if (idd) idd.textContent = '';
+    const dt = document.getElementById('modalLeadDate'); if (dt) dt.textContent = 'Bilgileri girip Kaydet’e basın';
+    const pz = document.getElementById('crmProcessZone'); if (pz) pz.innerHTML = ''; // kayıt oluşmadan süreç/aşama yok
+    const ex = document.getElementById('crmCardExtras'); if (ex) ex.innerHTML = '';   // kayıt oluşmadan tesis yok
 
-    const { data, error } = await supabaseClient.from('leads').insert([row]).select().single();
-    if(error) { alert("Müşteri eklenemedi: " + error.message); return; }
-
-    await crmLoadLeads();
-    crmOpenLeadDetails(data.id);
+    document.getElementById('crmDetailModal').classList.remove('hidden');
 };
 
 /**
- * Müşteri kartındaki değişiklikleri veritabanına kalıcı olarak kaydeder.
+ * Müşteri kartını kaydeder. modalLeadId boşsa YENİ kayıt oluşturur, doluysa günceller.
  */
 window.crmSaveLeadDetails = async function() {
     const id = document.getElementById('modalLeadId').value;
-    if(!id) return;
+    const name = (document.getElementById('fieldName').value || '').trim();
+    if (!name) { alert('Lütfen müşteri adı / proje başlığı girin.'); return; }
 
     const billVal = document.getElementById('fieldBill').value;
-    const patch = {
+    const data = {
+        full_name:          name,
+        phone:              document.getElementById('fieldPhone').value.trim(),
+        email:              document.getElementById('fieldEmail').value.trim(),
+        address:            document.getElementById('fieldAddress').value.trim(),
         bill_amount:        billVal === '' ? null : Number(billVal),
         consumptions:       document.getElementById('fieldConsumptions').value,
         has_heat_pump:      document.getElementById('fieldHeatPump').value,
@@ -320,8 +332,17 @@ window.crmSaveLeadDetails = async function() {
         updated_at:         new Date().toISOString()
     };
 
-    const { error } = await supabaseClient.from('leads').update(patch).eq('id', id);
-    if(error) { alert("Kaydedilemedi: " + error.message); return; }
+    if (!id) {
+        data.tracking_code = 'EPC-MANUAL-' + Date.now().toString().slice(-6);
+        data.company_id = (currentUserProfile && currentUserProfile.company_id) ? currentUserProfile.company_id : null;
+        data.source = 'manual';
+        data.status = 'yeni_basvuru';
+        const { error } = await supabaseClient.from('leads').insert([data]);
+        if (error) { alert('Müşteri eklenemedi: ' + error.message); return; }
+    } else {
+        const { error } = await supabaseClient.from('leads').update(data).eq('id', id);
+        if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    }
 
     crmCloseModal();
     await crmLoadLeads();
@@ -347,7 +368,7 @@ async function ensureProcessSteps() {
 function crmEnsureStepsZone() {
     let z = document.getElementById('crmStepsZone');
     if (!z) {
-        const body = document.getElementById('crmCardExtras') || document.getElementById('fieldNotes')?.parentElement;
+        const body = document.getElementById('crmProcessZone') || document.getElementById('crmCardExtras') || document.getElementById('fieldNotes')?.parentElement;
         if (!body) return null;
         z = document.createElement('div');
         z.id = 'crmStepsZone';
@@ -356,6 +377,15 @@ function crmEnsureStepsZone() {
     }
     return z;
 }
+
+let _stepsOpen = false;
+window.crmToggleSteps = function () {
+    _stepsOpen = !_stepsOpen;
+    const d = document.getElementById('crmDetailSteps');
+    if (d) d.classList.toggle('hidden', !_stepsOpen);
+    const a = document.getElementById('crmStepsArrow');
+    if (a) a.textContent = _stepsOpen ? '▲' : '▼';
+};
 
 async function renderLeadSteps(lead) {
     const z = crmEnsureStepsZone();
@@ -367,8 +397,9 @@ async function renderLeadSteps(lead) {
     const doneCount = steps.filter(s => done.includes(s.slug)).length;
     const pct = steps.length ? Math.round(doneCount / steps.length * 100) : 0;
 
-    const stageOpts = Object.entries(crmStatusLabels)
-        .map(([k, v]) => `<option value="${k}" ${lead.status === k ? 'selected' : ''}>${v.text}</option>`).join('');
+    const lbl = (typeof stageLabel === 'function') ? stageLabel : (k) => (crmStatusLabels[k] ? crmStatusLabels[k].text : k);
+    const stageOpts = Object.keys(crmStatusLabels)
+        .map(k => `<option value="${k}" ${lead.status === k ? 'selected' : ''}>${admEscape(lbl(k))}</option>`).join('');
 
     const rows = steps.length ? steps.map(s => {
         const isDone = done.includes(s.slug);
@@ -387,12 +418,14 @@ async function renderLeadSteps(lead) {
             <label class="text-xs font-bold text-slate-600">Genel Aşama</label>
             <select onchange="crmSetStage('${lead.id}', this.value)" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white">${stageOpts}</select>
         </div>
-        <div class="flex items-center justify-between mb-1">
-            <span class="text-xs font-bold text-slate-500">Detaylı süreç adımları</span>
-            <span class="text-xs font-bold text-slate-500">${doneCount}/${steps.length} · %${pct}</span>
-        </div>
-        <div class="h-2 bg-slate-100 rounded-full overflow-hidden mb-3"><div class="h-full bg-amber-500" style="width:${pct}%"></div></div>
-        ${rows}`;
+        <button type="button" onclick="crmToggleSteps()" class="w-full flex items-center justify-between text-left px-2 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-100">
+            <span class="text-xs font-bold text-slate-600">Detaylı süreç adımları <span class="text-slate-400">(${doneCount}/${steps.length} · %${pct})</span></span>
+            <span id="crmStepsArrow" class="text-slate-400 text-xs">${_stepsOpen ? '▲' : '▼'}</span>
+        </button>
+        <div id="crmDetailSteps" class="${_stepsOpen ? '' : 'hidden'} mt-3">
+            <div class="h-2 bg-slate-100 rounded-full overflow-hidden mb-3"><div class="h-full bg-amber-500" style="width:${pct}%"></div></div>
+            ${rows}
+        </div>`;
 }
 
 // Genel aşamayı değiştir (birleşik blok içinden) — anında kaydeder.
