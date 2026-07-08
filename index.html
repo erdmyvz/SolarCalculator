@@ -162,7 +162,7 @@
                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-16">
     
                     <button onclick="openPublicModule('calculatorModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
-                        <div class="text-4xl mb-4 group-hover:scale-110 transition">📊</div><h3 class="text-xl font-bold text-white mb-2">Çatı Güç Hesaplayıcı</h3><p class="text-sm text-slate-400">Faturanıza göre ihtiyacınız olan GES kapasitesini hesaplayın.</p>
+                        <div class="text-4xl mb-4 group-hover:scale-110 transition">📊</div><h3 class="text-xl font-bold text-white mb-2">Tüketim Hesaplayıcı</h3><p class="text-sm text-slate-400">Faturanıza göre ihtiyacınız olan GES kapasitesini hesaplayın.</p>
                     </button>
                     
                     <button onclick="openPublicModule('regulationsModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
@@ -174,15 +174,23 @@
                     </button>
 
                     <button onclick="openPublicModule('evCalcModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
-                        <div class="text-4xl mb-4 group-hover:scale-110 transition">🚗</div><h3 class="text-xl font-bold text-white mb-2">EV & Solar Analizi</h3><p class="text-sm text-slate-400">Elektrikli aracınızın güneşten nasıl şarj olacağını planlayın.</p>
+                        <div class="text-4xl mb-4 group-hover:scale-110 transition">🚗</div><h3 class="text-xl font-bold text-white mb-2">Elektrikli Araç + Güneş Enerjisi</h3><p class="text-sm text-slate-400">Elektrikli aracınızın güneşten nasıl şarj olacağını planlayın.</p>
                     </button>
 
                     <button onclick="openPublicModule('batteryModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
-                        <div class="text-4xl mb-4 group-hover:scale-110 transition">🔋</div><h3 class="text-xl font-bold text-white mb-2">Kesinti & Batarya</h3><p class="text-sm text-slate-400">Kesintide evinizi ayakta tutacak batarya ihtiyacını hesaplayın.</p>
+                        <div class="text-4xl mb-4 group-hover:scale-110 transition">🔋</div><h3 class="text-xl font-bold text-white mb-2">Batarya Hesaplayıcı</h3><p class="text-sm text-slate-400">Kesintide evinizi ayakta tutacak batarya ihtiyacını hesaplayın.</p>
+                    </button>
+
+                    <button onclick="openPublicModule('amortizationModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
+                        <div class="text-4xl mb-4 group-hover:scale-110 transition">📉</div><h3 class="text-xl font-bold text-white mb-2">Amortisman Hesaplayıcı</h3><p class="text-sm text-slate-400">Yatırımınız kaç yılda kendini amorti eder? 25 yıllık net kazancınızı görün.</p>
+                    </button>
+
+                    <button onclick="openPublicModule('hardwareModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
+                        <div class="text-4xl mb-4 group-hover:scale-110 transition">⚖️</div><h3 class="text-xl font-bold text-white mb-2">Donanım Karşılaştırma</h3><p class="text-sm text-slate-400">İnverter, panel ve batarya markalarını yan yana kıyaslayın.</p>
                     </button>
 
                     <button onclick="openPublicModule('educationModule')" class="glass-panel p-6 rounded-2xl hover:-translate-y-2 transition text-left cursor-pointer group">
-                        <div class="text-4xl mb-4 group-hover:scale-110 transition">🎓</div><h3 class="text-xl font-bold text-white mb-2">Sözlük & Eğitim</h3><p class="text-sm text-slate-400">Temel solar terimleri ve sektör analojilerini öğrenin.</p>
+                        <div class="text-4xl mb-4 group-hover:scale-110 transition">🎓</div><h3 class="text-xl font-bold text-white mb-2">Solar Akademi</h3><p class="text-sm text-slate-400">Temel solar terimleri ve sektör analojilerini öğrenin.</p>
                     </button>
 
                 </div>
@@ -192,7 +200,7 @@
         <div class="bg-white py-20 px-6">
             <div class="max-w-5xl mx-auto text-center">
                 <h2 class="text-3xl font-black text-slate-800 mb-4">Profesyonel Destek Alın</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
                     
                     <div onclick="openLeadModal('kurulum')" class="bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-emerald-300 transition cursor-pointer text-left relative overflow-hidden">
                         <div class="text-4xl mb-4">☀️</div><h3 class="text-2xl font-bold text-slate-800 mb-2">Sıfırdan GES Kurulumu</h3><p class="text-slate-500 text-sm">Uzmanlardan çatı analizi ve kurulum teklifi almak için formu doldurun.</p>
@@ -200,6 +208,11 @@
                     
                     <div onclick="openLeadModal('servis')" class="bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-red-300 transition cursor-pointer text-left">
                         <div class="text-4xl mb-4">🔧</div><h3 class="text-2xl font-bold text-slate-800 mb-2">Teknik Servis & Arıza</h3><p class="text-slate-500 text-sm">Mevcut inverter/batarya arızaları için destek talebi oluşturun.</p>
+                    </div>
+
+                    <div onclick="openPublicModule('consultantsModule')" class="bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-indigo-300 transition cursor-pointer text-left relative overflow-hidden">
+                        <span class="absolute top-4 right-4 bg-indigo-100 text-indigo-700 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">Yakında</span>
+                        <div class="text-4xl mb-4">🎯</div><h3 class="text-2xl font-bold text-slate-800 mb-2">Danışmanlık Al</h3><p class="text-slate-500 text-sm">Sektörün bağımsız uzmanlarından tarafsız danışmanlık alın; doğru kararı birlikte verin.</p>
                     </div>
 
                 </div>
@@ -960,6 +973,33 @@
             </div>
         </div>
 
+        <!-- ============================ AMORTİSMAN HESAPLAYICI ============================ -->
+        <div id="amortizationModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 border-b pb-4 flex items-center">
+                <button id="btnBackFromAmort" class="text-slate-500 hover:text-emerald-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
+                <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Amortisman & Geri Ödeme Analizi</span>
+            </div>
+            <div id="amortRoot"></div>
+        </div>
+
+        <!-- ============================ DONANIM KARŞILAŞTIRMA ============================ -->
+        <div id="hardwareModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 border-b pb-4 flex items-center">
+                <button id="btnBackFromHardware" class="text-slate-500 hover:text-emerald-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
+                <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Donanım Karşılaştırma</span>
+            </div>
+            <div id="hardwareRoot"></div>
+        </div>
+
+        <!-- ============================ DANIŞMANLIK AL ============================ -->
+        <div id="consultantsModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-6 border-b pb-4 flex items-center">
+                <button id="btnBackFromConsultants" class="text-slate-500 hover:text-indigo-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
+                <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Danışmanlık Al</span>
+            </div>
+            <div id="consultantsRoot"></div>
+        </div>
+
     </div> <div id="printArea"></div>
 
     <script src="core.js"></script>
@@ -980,6 +1020,9 @@
     <script src="battery.js"></script>
     <script src="education.js"></script>
     <script src="process.js"></script>
+    <script src="amortization.js"></script>
+    <script src="hardware.js"></script>
+    <script src="consultants.js"></script>
     
 </body>
 </html>
