@@ -158,7 +158,7 @@ function crmRenderLeads() {
             <td class="p-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.css}">${admEscape(badge.text)}</span></td>
             <td class="p-4 text-slate-600 font-bold text-[11px]">${techSummary}</td>
             <td class="p-4 text-right pr-6">
-                <button class="bg-white hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm transition text-xs">Müşteri Kartı</button>
+                <button onclick="event.stopPropagation(); crmCreateQuoteForLead('${lead.id}')" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition text-xs">📄 Teklif Oluştur</button>
             </td>
         `;
         tableBody.appendChild(tr);
@@ -199,15 +199,20 @@ window.crmOpenLeadDetails = async function(id) {
     document.getElementById('fieldEmail').value = lead.email || '';
     document.getElementById('fieldAddress').value = lead.address || '';
 
-    document.getElementById('fieldBill').value = (lead.bill_amount ?? '');
-    document.getElementById('fieldConsumptions').value = lead.consumptions || '';
-    document.getElementById('fieldHeatPump').value = (!lead.has_heat_pump || lead.has_heat_pump === 'Yok') ? 'Yok' : 'Var';
-    document.getElementById('fieldHeatPumpPower').value = lead.heat_pump_power || '';
-    document.getElementById('fieldEV').value = (!lead.has_ev || lead.has_ev === 'Yok') ? 'Yok' : 'Var';
-    document.getElementById('fieldBlackout').value = (lead.blackout_frequency === 'Sık') ? 'Sık' : 'Seyrek';
-    document.getElementById('fieldStorageIntent').value = (lead.wants_storage === 'Evet') ? 'Evet' : 'Hayır';
-    document.getElementById('fieldBackupDetails').value = lead.backup_details || '';
-    document.getElementById('fieldNotes').value = lead.notes || '';
+    const setV = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+    setV('fieldTariff', lead.tariff_group || 'mesken');
+    setV('fieldBill', (lead.bill_amount ?? ''));
+    setV('fieldHeatPump', (!lead.has_heat_pump || lead.has_heat_pump === 'Yok') ? 'Yok' : 'Var');
+    setV('fieldHeatPumpPower', lead.heat_pump_power || '');
+    setV('fieldHpKwh', (lead.heat_pump_kwh ?? ''));
+    setV('fieldEV', (!lead.has_ev || lead.has_ev === 'Yok') ? 'Yok' : 'Var');
+    setV('fieldEvBattery', (lead.ev_battery_kwh ?? ''));
+    setV('fieldEvCharge', (lead.ev_charge_kw ?? ''));
+    setV('fieldBlackout', (lead.blackout_frequency === 'Sık') ? 'Sık' : 'Seyrek');
+    setV('fieldStorageIntent', (lead.wants_storage === 'Evet') ? 'Evet' : 'Hayır');
+    setV('fieldNotes', lead.notes || '');
+    if (typeof crmRecalcKwh === 'function') crmRecalcKwh();
+    if (typeof crmSyncConsumptionUI === 'function') crmSyncConsumptionUI();
 
     document.getElementById('crmDetailModal').classList.remove('hidden');
 
@@ -292,10 +297,14 @@ window.crmOpenNewLeadModal = function() {
     const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
     document.getElementById('modalLeadId').value = '';           // boş = yeni kayıt modu
     set('fieldName', ''); set('fieldPhone', ''); set('fieldEmail', ''); set('fieldAddress', '');
-    set('fieldBill', ''); set('fieldConsumptions', '');
-    set('fieldHeatPump', 'Yok'); set('fieldHeatPumpPower', '');
-    set('fieldEV', 'Yok'); set('fieldBlackout', 'Seyrek'); set('fieldStorageIntent', 'Hayır');
-    set('fieldBackupDetails', ''); set('fieldNotes', '');
+    set('fieldTariff', 'mesken');
+    set('fieldBill', ''); set('fieldMonthlyKwh', '');
+    set('fieldHeatPump', 'Yok'); set('fieldHeatPumpPower', ''); set('fieldHpKwh', '');
+    set('fieldEV', 'Yok'); set('fieldEvBattery', ''); set('fieldEvCharge', '');
+    set('fieldBlackout', 'Seyrek'); set('fieldStorageIntent', 'Hayır');
+    set('fieldNotes', '');
+    if (typeof crmRecalcKwh === 'function') crmRecalcKwh();
+    if (typeof crmSyncConsumptionUI === 'function') crmSyncConsumptionUI();
 
     const nm = document.getElementById('modalLeadName'); if (nm) nm.textContent = 'Yeni Müşteri';
     const idd = document.getElementById('modalLeadIdDisplay'); if (idd) idd.textContent = '';
@@ -314,20 +323,26 @@ window.crmSaveLeadDetails = async function() {
     const name = (document.getElementById('fieldName').value || '').trim();
     if (!name) { alert('Lütfen müşteri adı / proje başlığı girin.'); return; }
 
+    const numOrNull = (id) => { const v = document.getElementById(id) ? document.getElementById(id).value : ''; return (v === '' || v == null) ? null : Number(v); };
     const billVal = document.getElementById('fieldBill').value;
+    const hasEV = document.getElementById('fieldEV').value;
+    const hasHP = document.getElementById('fieldHeatPump').value;
     const data = {
         full_name:          name,
         phone:              document.getElementById('fieldPhone').value.trim(),
         email:              document.getElementById('fieldEmail').value.trim(),
         address:            document.getElementById('fieldAddress').value.trim(),
+        tariff_group:       document.getElementById('fieldTariff').value,
         bill_amount:        billVal === '' ? null : Number(billVal),
-        consumptions:       document.getElementById('fieldConsumptions').value,
-        has_heat_pump:      document.getElementById('fieldHeatPump').value,
+        monthly_kwh:        numOrNull('fieldMonthlyKwh'),
+        has_heat_pump:      hasHP,
         heat_pump_power:    document.getElementById('fieldHeatPumpPower').value,
-        has_ev:             document.getElementById('fieldEV').value,
+        heat_pump_kwh:      hasHP === 'Var' ? numOrNull('fieldHpKwh') : null,
+        has_ev:             hasEV,
+        ev_battery_kwh:     hasEV === 'Var' ? numOrNull('fieldEvBattery') : null,
+        ev_charge_kw:       hasEV === 'Var' ? numOrNull('fieldEvCharge') : null,
         blackout_frequency: document.getElementById('fieldBlackout').value,
         wants_storage:      document.getElementById('fieldStorageIntent').value,
-        backup_details:     document.getElementById('fieldBackupDetails').value,
         notes:              document.getElementById('fieldNotes').value,
         updated_at:         new Date().toISOString()
     };
@@ -513,3 +528,51 @@ function renderDiscoList() {
             <p class="text-[11px] text-slate-500 mt-1">${admEscape(d.provinces)}</p>
         </div>`).join('') : '<p class="text-slate-400 text-sm p-2">Eşleşen dağıtım şirketi bulunamadı.</p>';
 }
+
+
+// ============================================================================
+// MÜŞTERİ KARTI: otomatik tüketim hesabı + koşullu alan görünürlüğü + teklif (yakında)
+// ============================================================================
+window.crmCreateQuoteForLead = function (id) {
+    if (typeof QUOTES_ENABLED !== 'undefined' && QUOTES_ENABLED && typeof crmOpenQuote === 'function') {
+        crmOpenQuote(id);
+    } else {
+        alert('📄 Teklif oluşturma özelliği çok yakında aktif olacak.\nMüşteri kaydınız hazır; teklif modülü açıldığında buradan oluşturabileceksiniz.');
+    }
+};
+
+function crmTariffRate() {
+    const sel = document.getElementById('fieldTariff');
+    if (!sel || sel.selectedIndex < 0) return 2.5;
+    const opt = sel.options[sel.selectedIndex];
+    return (opt && opt.dataset && parseFloat(opt.dataset.rate)) || 2.5;
+}
+
+window.crmRecalcKwh = function () {
+    const billEl = document.getElementById('fieldBill');
+    const outEl = document.getElementById('fieldMonthlyKwh');
+    if (!billEl || !outEl) return;
+    const bill = parseFloat(billEl.value) || 0;
+    const rate = crmTariffRate();
+    outEl.value = (bill > 0 && rate > 0) ? Math.round(bill / rate) : '';
+};
+
+window.crmSyncConsumptionUI = function () {
+    const toggle = (id, cond) => { const e = document.getElementById(id); if (e) e.classList.toggle('hidden', !cond); };
+    const val = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
+    toggle('crmBatteryTip', val('fieldBlackout') === 'Sık');
+    toggle('crmEvDetails', val('fieldEV') === 'Var');
+    toggle('crmHpDetails', val('fieldHeatPump') === 'Var');
+};
+
+// Modal alanlarını bir kez dinle (statik HTML; crm.js modal'dan sonra yüklenir)
+(function crmWireConsumptionForm() {
+    const bill = document.getElementById('fieldBill');
+    if (bill) bill.addEventListener('input', crmRecalcKwh);
+    const tar = document.getElementById('fieldTariff');
+    if (tar) tar.addEventListener('change', crmRecalcKwh);
+    ['fieldBlackout', 'fieldEV', 'fieldHeatPump'].forEach(function (id) {
+        const e = document.getElementById(id);
+        if (e) e.addEventListener('change', crmSyncConsumptionUI);
+    });
+})();
