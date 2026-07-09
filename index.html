@@ -496,39 +496,78 @@
                     </div>
 
                     <div class="bg-white p-5 rounded-xl border border-slate-200">
-                        <h4 class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-4">Tüketim & Sistem Bilgileri</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
+                        <h4 class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-4">⚡ Tüketim Bilgileri</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Abone Grubu</label>
+                                <select id="fieldTariff" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">
+                                    <option value="mesken" data-rate="2.5">🏠 Mesken / Ev (~2,50 TL/kWh)</option>
+                                    <option value="ticarethane" data-rate="4.0">🏢 Ticarethane (~4,00 TL/kWh)</option>
+                                    <option value="sanayi" data-rate="3.5">🏭 Sanayi (~3,50 TL/kWh)</option>
+                                </select>
+                            </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-600 mb-1">Aylık Fatura (TL)</label>
-                                <input type="number" id="fieldBill" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500">
+                                <input type="number" id="fieldBill" placeholder="örn. 3000" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500">
                             </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Aylık Tüketim (kWh)</label>
+                                <input type="number" id="fieldMonthlyKwh" readonly title="Abone grubu ve faturaya göre otomatik hesaplanır" class="w-full border border-slate-200 bg-slate-50 text-slate-700 font-bold p-2.5 rounded-lg text-sm outline-none">
+                                <p class="text-[10px] text-slate-400 mt-1">Abone grubu + faturaya göre otomatik.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200">
+                        <h4 class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-4">🔋 Şebeke Kesintisi & Batarya</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
                             <div>
                                 <label class="block text-xs font-bold text-slate-600 mb-1">Şebeke Kesintisi Sıklığı</label>
                                 <select id="fieldBlackout" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white"><option value="Seyrek">Seyrek</option><option value="Sık">Sık</option></select>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-slate-600 mb-1">Elektrikli Araç (EV)</label>
-                                <select id="fieldEV" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white"><option value="Yok">Yok</option><option value="Var">Var</option></select>
-                            </div>
-                            <div>
                                 <label class="block text-xs font-bold text-slate-600 mb-1">Batarya İstiyor mu?</label>
                                 <select id="fieldStorageIntent" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white"><option value="Hayır">Hayır</option><option value="Evet">Evet</option></select>
                             </div>
-                            <div>
+                        </div>
+                        <div id="crmBatteryTip" class="hidden mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <span class="text-lg leading-none">💡</span>
+                            <p class="text-xs text-amber-800 font-medium">Sık kesinti yaşanan bölgelerde <strong>batarya (enerji depolama)</strong> önerilir; kesinti anında evin kritik yükleri ayakta kalır.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200">
+                        <h4 class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-4">🚗 İlave Yükler (Elektrikli Araç & Isı Pompası)</h4>
+                        <div class="border border-slate-100 rounded-lg p-4 mb-4">
+                            <div class="md:w-1/2">
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Elektrikli Araç (EV)</label>
+                                <select id="fieldEV" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white"><option value="Yok">Yok</option><option value="Var">Var</option></select>
+                            </div>
+                            <div id="crmEvDetails" class="hidden grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 mt-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">Batarya Kapasitesi (kWh)</label>
+                                    <input type="number" id="fieldEvBattery" placeholder="örn. 64" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">Şarj Gücü (kW)</label>
+                                    <input type="number" id="fieldEvCharge" placeholder="örn. 11" step="0.1" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="border border-slate-100 rounded-lg p-4">
+                            <div class="md:w-1/2">
                                 <label class="block text-xs font-bold text-slate-600 mb-1">Isı Pompası</label>
                                 <select id="fieldHeatPump" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white"><option value="Yok">Yok</option><option value="Var">Var</option></select>
                             </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-600 mb-1">Isı Pompası Gücü</label>
-                                <input type="text" id="fieldHeatPumpPower" placeholder="örn. 12 kW" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-xs font-bold text-slate-600 mb-1">Aylık Tüketimler (kWh)</label>
-                                <textarea id="fieldConsumptions" rows="2" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500"></textarea>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-xs font-bold text-slate-600 mb-1">Yedekleme / Kesintide Çalışacak Yükler</label>
-                                <input type="text" id="fieldBackupDetails" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500">
+                            <div id="crmHpDetails" class="hidden grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 mt-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">Aylık Tahmini Tüketim (kWh)</label>
+                                    <input type="number" id="fieldHpKwh" placeholder="örn. 350" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">Gücü (kW)</label>
+                                    <input type="number" id="fieldHeatPumpPower" placeholder="örn. 12" step="0.1" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -542,7 +581,6 @@
                 </div>
 
                 <div class="px-6 py-4 border-t border-slate-200 bg-white flex justify-end sticky bottom-0">
-                    <button onclick="crmOpenQuote(document.getElementById('modalLeadId').value)" class="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-lg font-bold text-sm mr-2">📄 Teklif Oluştur</button>
                     <button onclick="crmSaveLeadDetails()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-bold text-sm">Kaydet</button>
                 </div>
             </div>
@@ -556,13 +594,88 @@
             </div>
         </div>
 
-        <div id="adminModule" class="hidden bg-white p-6 rounded-xl shadow-lg max-w-7xl mx-auto mt-4 border-t-4 border-red-600">
-            <button id="btnBackToMenuFromAdmin" class="text-slate-500 font-bold mb-4">← Menüye Dön</button>
-            <button id="btnRefreshAdmin" class="bg-slate-200 px-4 py-2 rounded text-sm mb-4">Verileri Yenile</button>
-            <div class="space-y-6">
-                <div class="border rounded p-4"><h3 class="font-bold text-lg mb-2">🏢 Firmalar</h3><table class="w-full text-xs text-left"><tbody id="usersTableBody"></tbody></table></div>
-                <div class="border rounded p-4 bg-blue-50"><h3 class="font-bold text-lg mb-2">🌐 Genel Başvuru Havuzu</h3><div id="adminLeadsList" class="space-y-2"></div></div>
-                <div class="border rounded p-4 bg-red-50"><h3 class="font-bold text-lg mb-2">🔧 Teknik Servis Biletleri</h3><div id="adminTicketsList" class="space-y-2"></div></div>
+        <div id="adminModule" class="hidden bg-slate-50 p-4 md:p-6 rounded-xl shadow-lg max-w-7xl mx-auto mt-4 border-t-4 border-red-600">
+            <!-- Başlık -->
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div class="flex items-center gap-3">
+                    <button id="btnBackToMenuFromAdmin" class="text-slate-500 hover:text-slate-700 font-bold">← Menüye Dön</button>
+                    <span class="text-slate-300">/</span>
+                    <h2 class="text-lg md:text-xl font-black text-slate-800">👑 Süper Admin Kontrol Merkezi</h2>
+                </div>
+                <button id="btnRefreshAdmin" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-sm font-bold px-4 py-2 rounded-lg transition">↻ Verileri Yenile</button>
+            </div>
+
+            <!-- Sekme çubuğu -->
+            <div class="flex flex-wrap gap-1.5 mb-5 bg-white border border-slate-200 rounded-xl p-1.5">
+                <button onclick="adminShowTab('overview')" data-tab="overview" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition bg-slate-900 text-white">📊 Genel Bakış</button>
+                <button onclick="adminShowTab('ops')" data-tab="ops" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">📥 Operasyon</button>
+                <button onclick="adminShowTab('companies')" data-tab="companies" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">🏢 Firmalar</button>
+                <button onclick="adminShowTab('content')" data-tab="content" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">📚 İçerik & Süreç</button>
+                <button onclick="adminShowTab('settings')" data-tab="settings" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">⚙️ Ayarlar</button>
+            </div>
+
+            <!-- SEKME: GENEL BAKIŞ -->
+            <div id="adminPaneOverview" class="admin-pane space-y-4">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <button onclick="adminShowTab('companies')" class="text-left bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md transition rounded-xl p-4">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Kayıtlı Firma</p>
+                        <p id="admStatCompanies" class="text-3xl font-black text-slate-800">–</p>
+                    </button>
+                    <button onclick="adminShowTab('ops')" class="text-left bg-white border border-slate-200 hover:border-blue-300 hover:shadow-md transition rounded-xl p-4">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bekleyen Başvuru</p>
+                        <p id="admStatLeads" class="text-3xl font-black text-blue-600">–</p>
+                    </button>
+                    <button onclick="adminShowTab('ops')" class="text-left bg-white border border-slate-200 hover:border-red-300 hover:shadow-md transition rounded-xl p-4">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Servis Talebi</p>
+                        <p id="admStatTickets" class="text-3xl font-black text-red-600">–</p>
+                    </button>
+                    <button onclick="adminShowTab('ops')" class="text-left bg-white border border-slate-200 hover:border-amber-300 hover:shadow-md transition rounded-xl p-4">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Potansiyel Müşteri</p>
+                        <p id="admStatProspects" class="text-3xl font-black text-amber-600">–</p>
+                    </button>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl p-5">
+                    <h3 class="font-black text-slate-800 mb-3">Hızlı Erişim</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                        <button onclick="adminShowTab('ops')" class="text-left bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-3 transition"><span class="font-bold text-slate-800">📥 Operasyon</span><br><span class="text-slate-500 text-xs">Başvuruları firmalara atayın, servis biletlerini yönetin, potansiyel müşterileri takip edin.</span></button>
+                        <button onclick="adminShowTab('companies')" class="text-left bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-3 transition"><span class="font-bold text-slate-800">🏢 Firmalar</span><br><span class="text-slate-500 text-xs">Kayıtlı EPC firmalarını ve bölgesel dağıtım şirketlerini yönetin.</span></button>
+                        <button onclick="adminShowTab('content')" class="text-left bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-3 transition"><span class="font-bold text-slate-800">📚 İçerik & Süreç</span><br><span class="text-slate-500 text-xs">Eğitim içeriği, süreç adımları ve genel aşama etiketlerini düzenleyin.</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEKME: OPERASYON (başvuru havuzu + servis biletleri + potansiyel müşteriler) -->
+            <div id="adminPaneOps" class="admin-pane hidden space-y-6">
+                <div class="bg-white border border-slate-200 rounded-xl p-5"><h3 class="font-black text-lg text-slate-800 mb-3">🌐 Genel Başvuru Havuzu</h3><div id="adminLeadsList" class="space-y-2"></div></div>
+                <div class="bg-white border border-slate-200 rounded-xl p-5"><h3 class="font-black text-lg text-slate-800 mb-3">🔧 Teknik Servis Biletleri</h3><div id="adminTicketsList" class="space-y-2"></div></div>
+                <!-- 🌱 Potansiyel Müşteriler buraya JS ile eklenir -->
+            </div>
+
+            <!-- SEKME: FİRMALAR (firmalar + dağıtım şirketleri) -->
+            <div id="adminPaneCompanies" class="admin-pane hidden space-y-6">
+                <div class="bg-white border border-slate-200 rounded-xl p-5">
+                    <h3 class="font-black text-lg text-slate-800 mb-3">🏢 Firmalar</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left min-w-[640px]">
+                            <thead class="text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-200">
+                                <tr><th class="p-3 pl-6">Ad Soyad</th><th class="p-3">Firma</th><th class="p-3">Telefon</th><th class="p-3">Plan</th><th class="p-3">Durum</th><th class="p-3">Rol</th><th class="p-3">İşlem</th></tr>
+                            </thead>
+                            <tbody id="usersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- 🔌 Dağıtım Şirketleri buraya JS ile eklenir -->
+            </div>
+
+            <!-- SEKME: İÇERİK & SÜREÇ (eğitim + süreç adımları + genel aşamalar) -->
+            <div id="adminPaneContent" class="admin-pane hidden space-y-6">
+                <p class="text-xs text-slate-400">Ziyaretçilere gösterilen eğitim içeriği, kurulum süreç adımları ve CRM genel aşama etiketleri bu sekmeden yönetilir.</p>
+                <!-- 📚 Eğitim · 🗺️ Süreç Adımları · 🚦 Genel Aşamalar buraya JS ile eklenir -->
+            </div>
+
+            <!-- SEKME: AYARLAR (referans değerler) -->
+            <div id="adminPaneSettings" class="admin-pane hidden space-y-6">
+                <!-- ⚙️ Ayarlar / Referans Değerler buraya JS ile eklenir -->
             </div>
         </div>
 

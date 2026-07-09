@@ -41,6 +41,7 @@ async function fetchAdminData() {
         companies = data || [];
     } catch (e) { companies = []; }
     const companyOptions = companies.map(c => `<option value="${c.id}">${admEscape(c.name)}</option>`).join('');
+    window.__admCompanyCount = companies.length; // Genel Bakis KPI icin gercek firma sayisi
 
     // 1) FİRMALAR  (profiles + companies join)
     if (usersBody) {
@@ -178,13 +179,16 @@ async function fetchAdminData() {
 
     // 9) GENEL AŞAMA ETİKETLERİ (yalnız admin görür)
     await renderStageAdmin();
+
+    // 10) GENEL BAKIŞ ÖZET KPI'LARINI GÜNCELLE (sekmeli panel)
+    renderAdminStats();
 }
 
 // --- Potansiyel müşteriler bölümünü (bir kez) admin paneline enjekte eder ---
 function ensureProspectsSection() {
     let list = document.getElementById('adminProspectsList');
     if (list) return list;
-    const admin = document.getElementById('adminModule');
+    const admin = document.getElementById('adminPaneOps') || document.getElementById('adminModule');
     if (!admin) return null;
     const card = document.createElement('div');
     card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
@@ -328,7 +332,7 @@ function eduSlugify(s) {
 
 function ensureEduSection() {
     if (document.getElementById('eduAdminRoot')) return document.getElementById('eduAdminRoot');
-    const admin = document.getElementById('adminModule');
+    const admin = document.getElementById('adminPaneContent') || document.getElementById('adminModule');
     if (!admin) return null;
     const card = document.createElement('div');
     card.id = 'eduAdminRoot';
@@ -572,7 +576,7 @@ let _psSteps = [];
 
 function ensureProcessSection() {
     if (document.getElementById('psAdminRoot')) return document.getElementById('psAdminRoot');
-    const admin = document.getElementById('adminModule');
+    const admin = document.getElementById('adminPaneContent') || document.getElementById('adminModule');
     if (!admin) return null;
     const card = document.createElement('div');
     card.id = 'psAdminRoot';
@@ -677,7 +681,7 @@ let _discoAdmin = [];
 
 function ensureDiscoSection() {
     if (document.getElementById('dcAdminRoot')) return document.getElementById('dcAdminRoot');
-    const admin = document.getElementById('adminModule');
+    const admin = document.getElementById('adminPaneCompanies') || document.getElementById('adminModule');
     if (!admin) return null;
     const card = document.createElement('div');
     card.id = 'dcAdminRoot';
@@ -782,7 +786,7 @@ let _settingsVals = {};
 
 function ensureSettingsSection() {
     if (document.getElementById('settingsAdminRoot')) return document.getElementById('settingsAdminRoot');
-    const admin = document.getElementById('adminModule');
+    const admin = document.getElementById('adminPaneSettings') || document.getElementById('adminModule');
     if (!admin) return null;
     const card = document.createElement('div');
     card.id = 'settingsAdminRoot';
@@ -849,7 +853,7 @@ let _stageVals = {};
 
 function ensureStageSection() {
     if (document.getElementById('stageAdminRoot')) return document.getElementById('stageAdminRoot');
-    const admin = document.getElementById('adminModule');
+    const admin = document.getElementById('adminPaneContent') || document.getElementById('adminModule');
     if (!admin) return null;
     const card = document.createElement('div');
     card.id = 'stageAdminRoot';
@@ -902,3 +906,40 @@ window.saveStages = async function () {
     alert('Aşamalar kaydedildi ve uygulandı.');
     renderStageAdmin();
 };
+
+
+// ============================================================================
+// SEKMELİ PANEL YÖNETİMİ + GENEL BAKIŞ ÖZET KPI'LARI
+// (index.html'deki .admin-tab-btn ve .admin-pane öğeleriyle çalışır.)
+// ============================================================================
+window.adminShowTab = function (key) {
+    document.querySelectorAll('.admin-pane').forEach(p => p.classList.add('hidden'));
+    const pane = document.getElementById('adminPane' + key.charAt(0).toUpperCase() + key.slice(1));
+    if (pane) pane.classList.remove('hidden');
+    document.querySelectorAll('.admin-tab-btn').forEach(b => {
+        const on = b.getAttribute('data-tab') === key;
+        b.className = 'admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition ' +
+            (on ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100');
+    });
+};
+
+// Panel her açıldığında "Genel Bakış" sekmesiyle başlasın
+document.getElementById('adminPanelCard')?.addEventListener('click', () => {
+    if (typeof adminShowTab === 'function') adminShowTab('overview');
+});
+
+// Genel Bakış özet sayıları (fetchAdminData render'ından sonra çalışır)
+function renderAdminStats() {
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const countCards = (id) => { const b = document.getElementById(id); return b ? b.querySelectorAll(':scope > div').length : 0; };
+    const companies = (typeof window.__admCompanyCount === 'number')
+        ? window.__admCompanyCount
+        : document.querySelectorAll('#usersTableBody tr').length;
+    setTxt('admStatCompanies', companies);
+    setTxt('admStatLeads', countCards('adminLeadsList'));
+    setTxt('admStatTickets', countCards('adminTicketsList'));
+    let prospects = countCards('adminProspectsList');
+    const c = document.getElementById('adminProspectsCount');
+    if (c) { const m = (c.textContent || '').match(/\d+/); if (m) prospects = +m[0]; }
+    setTxt('admStatProspects', prospects);
+}
