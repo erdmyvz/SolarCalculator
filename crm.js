@@ -56,7 +56,8 @@ async function crmLoadLeads() {
         } catch (e) { /* quotes tablosu yoksa sessiz geç */ }
     }
 
-    crmCalculateStats();
+    await ensureProcessSteps();   // sayaclar/filtre/rozetler 9 adima gore calissin
+    crmRenderStepCounters();
     renderQuoteSummary();
     crmRenderLeads();
 }
@@ -106,6 +107,74 @@ function crmCalculateStats() {
 /**
  * CRM Müşteri Listesini HTML tablosuna dinamik olarak basar.
  */
+// === 9 ADIMLIK SÜREÇ: güncel adım, üst sayaçlar ve filtre (process_steps) ===
+
+// Bir lead'in güncel adımı = ilk TAMAMLANMAMIŞ adım. Hiç adım işaretlenmemişse
+// (eski kayıtlar) status'tan yaklaşık adım türetilir (geçiş dönemi sürekliliği).
+function crmCurrentStep(lead, steps) {
+    if (!steps || !steps.length) return null;
+    const done = Array.isArray(lead.completed_steps) ? lead.completed_steps : [];
+    if (done.length) {
+        for (let i = 0; i < steps.length; i++) {
+            if (!done.includes(steps[i].slug)) return steps[i];
+        }
+        return steps[steps.length - 1];   // hepsi tamam -> son adim
+    }
+    return crmStepFromStatus(lead.status, steps);
+}
+
+// Eski 7'li asama (status) -> ~9 adima orantisal geri esleme (yalniz completed_steps bossa)
+function crmStepFromStatus(status, steps) {
+    if (!steps || !steps.length) return null;
+    const ORDER = ['yeni_basvuru','arandi_gorusuldu','teklif_gonderildi','sozlesme_imzalandi','kurulum_basladi','resmi_surec','tamamlandi'];
+    if (status === 'tamamlandi') return steps[steps.length - 1];
+    const si = Math.max(0, ORDER.indexOf(status));
+    const idx = Math.min(steps.length - 1, Math.round(si / (ORDER.length - 1) * (steps.length - 1)));
+    return steps[idx] || steps[0];
+}
+
+// Ust sayaclari (her adimda kac musteri) ve filtre menusunu 9 adima gore basar.
+function crmRenderStepCounters() {
+    const steps = _processSteps || [];
+    const box = document.getElementById('crmStepCounters');
+
+    const counts = {};
+    steps.forEach(s => { counts[s.slug] = 0; });
+    crmLeads.forEach(l => {
+        const cur = crmCurrentStep(l, steps);
+        if (cur) counts[cur.slug] = (counts[cur.slug] || 0) + 1;
+    });
+
+    const palette = ['border-blue-500','border-sky-500','border-cyan-500','border-teal-500','border-amber-500','border-orange-500','border-purple-500','border-fuchsia-500','border-emerald-500'];
+    const activeFilter = document.getElementById('crmFilterStatus') ? document.getElementById('crmFilterStatus').value : 'all';
+
+    if (box) {
+        box.innerHTML = steps.length ? steps.map((s, i) => {
+            const on = activeFilter === s.slug;
+            return `<button onclick="crmFilterByStep('${s.slug}')" title="${admEscape(s.title)}" class="text-left bg-white rounded-xl shadow-sm border-l-4 ${palette[i % palette.length]} px-3 py-2.5 hover:shadow-md transition ${on ? 'ring-2 ring-slate-800' : ''}">
+                <div class="text-[9px] text-slate-400 font-bold leading-tight truncate">${s.step_no || (i + 1)}. ${admEscape(s.title)}</div>
+                <div class="text-xl font-black text-slate-800">${counts[s.slug] || 0}</div>
+            </button>`;
+        }).join('') : '<p class="text-xs text-slate-400 p-3 col-span-full">Süreç adımı tanımlı değil. Admin panelinden ekleyin.</p>';
+    }
+
+    const sel = document.getElementById('crmFilterStatus');
+    if (sel) {
+        const cur = sel.value || 'all';
+        sel.innerHTML = '<option value="all">Tümü</option>' +
+            steps.map(s => `<option value="${s.slug}">${s.step_no || ''}. ${admEscape(s.title)}</option>`).join('');
+        sel.value = [...sel.options].some(o => o.value === cur) ? cur : 'all';
+    }
+}
+
+// Sayac kartina tiklayinca o adima gore filtrele (tekrar tiklayinca kaldir).
+window.crmFilterByStep = function (slug) {
+    const sel = document.getElementById('crmFilterStatus');
+    if (sel) sel.value = (sel.value === slug) ? 'all' : slug;
+    crmRenderLeads();
+    crmRenderStepCounters();
+};
+
 function crmRenderLeads() {
     const tableBody = document.getElementById('crmLeadsTableBody');
     const filterValue = document.getElementById('crmFilterStatus')?.value || 'all';
@@ -113,7 +182,12 @@ function crmRenderLeads() {
     if(!tableBody) return;
     tableBody.innerHTML = '';
 
-    const filteredLeads = crmLeads.filter(lead => filterValue === 'all' || lead.status === filterValue);
+    const _steps = _processSteps || [];
+    const filteredLeads = crmLeads.filter(lead => {
+        if (filterValue === 'all') return true;
+        const cur = crmCurrentStep(lead, _steps);
+        return cur && cur.slug === filterValue;
+    });
 
     if(filteredLeads.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium bg-white">Bu aşamada bekleyen müşteri kaydı bulunmuyor.</td></tr>`;
@@ -121,8 +195,14 @@ function crmRenderLeads() {
     }
 
     filteredLeads.forEach(lead => {
+        const _curStep = crmCurrentStep(lead, _steps);
+        const _total = _steps.length;
+        const _doneCount = _steps.filter(s => (lead.completed_steps || []).includes(s.slug)).length;
+        const _allDone = _total > 0 && _doneCount >= _total;
         const _bb = crmStatusLabels[lead.status] || { text: lead.status, css: 'bg-slate-100 text-slate-800' };
-        const badge = { text: (typeof stageLabel === 'function' ? stageLabel(lead.status) : _bb.text), css: _bb.css };
+        const badge = _curStep
+            ? { text: `${_curStep.step_no || ''}. ${_curStep.title}`, css: _allDone ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800' }
+            : { text: (typeof stageLabel === 'function' ? stageLabel(lead.status) : _bb.text), css: _bb.css };
         const dateStr = lead.created_at
             ? new Date(lead.created_at).toLocaleString('tr-TR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })
             : '-';
@@ -491,7 +571,7 @@ window.crmToggleStep = async function(leadId, slug) {
 
     renderLeadSteps(lead);
     renderFacilityZone(lead);               // son adımda "Tesis Oluştur" çıksın
-    if (typeof crmCalculateStats === 'function') crmCalculateStats();  // pano sayaçlarını tazele
+    crmRenderStepCounters();  // ust sayaclari (9 adim) tazele
 
     const { error } = await supabaseClient
         .from('leads').update({ completed_steps: done, status: newStatus, updated_at: new Date().toISOString() }).eq('id', leadId);
