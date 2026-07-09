@@ -309,7 +309,7 @@ window.crmOpenNewLeadModal = function() {
     const nm = document.getElementById('modalLeadName'); if (nm) nm.textContent = 'Yeni Müşteri';
     const idd = document.getElementById('modalLeadIdDisplay'); if (idd) idd.textContent = '';
     const dt = document.getElementById('modalLeadDate'); if (dt) dt.textContent = 'Bilgileri girip Kaydet’e basın';
-    const pz = document.getElementById('crmProcessZone'); if (pz) pz.innerHTML = ''; // kayıt oluşmadan süreç/aşama yok
+    crmRenderStepsPreview(); // yeni kayıt: 9 adım en üstte önizleme olarak gösterilir
     const ex = document.getElementById('crmCardExtras'); if (ex) ex.innerHTML = '';   // kayıt oluşmadan tesis yok
 
     document.getElementById('crmDetailModal').classList.remove('hidden');
@@ -402,6 +402,21 @@ window.crmToggleSteps = function () {
     if (a) a.textContent = _stepsOpen ? '▲' : '▼';
 };
 
+// Genel aşama (leads.status) artık 9 adımdan TÜRETİLİR. Böylece KPI sayaçları,
+// ziyaretçi takibi ve pano özeti eski 7'li aşama kovasında çalışmaya devam eder.
+function crmStatusFromSteps(steps, doneSlugs) {
+    const ORDER = ['yeni_basvuru','arandi_gorusuldu','teklif_gonderildi','sozlesme_imzalandi','kurulum_basladi','resmi_surec','tamamlandi'];
+    let maxNo = 0;
+    (steps || []).forEach(s => { if (doneSlugs.includes(s.slug)) maxNo = Math.max(maxNo, Number(s.step_no) || 0); });
+    const total = (steps && steps.length) ? steps.length : maxNo;
+    if (maxNo <= 0 || total <= 0) return 'yeni_basvuru';
+    if (maxNo >= total) return 'tamamlandi';                        // son adım → Devreye Alındı
+    let idx = Math.ceil(maxNo / total * (ORDER.length - 1)) - 1;    // ilk 6 aşamaya orantısal
+    idx = Math.max(0, Math.min(ORDER.length - 2, idx));
+    return ORDER[idx];
+}
+
+// Tek liste: 9 adımlık süreç (admin yönetir). İşaretledikçe aşama otomatik türetilir.
 async function renderLeadSteps(lead) {
     const z = crmEnsureStepsZone();
     if (!z) return;
@@ -409,38 +424,45 @@ async function renderLeadSteps(lead) {
 
     const steps = await ensureProcessSteps();
     const done = Array.isArray(lead.completed_steps) ? lead.completed_steps : [];
+    const total = steps.length;
     const doneCount = steps.filter(s => done.includes(s.slug)).length;
-    const pct = steps.length ? Math.round(doneCount / steps.length * 100) : 0;
+    const pct = total ? Math.round(doneCount / total * 100) : 0;
 
-    const lbl = (typeof stageLabel === 'function') ? stageLabel : (k) => (crmStatusLabels[k] ? crmStatusLabels[k].text : k);
-    const stageOpts = Object.keys(crmStatusLabels)
-        .map(k => `<option value="${k}" ${lead.status === k ? 'selected' : ''}>${admEscape(lbl(k))}</option>`).join('');
-
-    const rows = steps.length ? steps.map(s => {
+    const rows = total ? steps.map(s => {
         const isDone = done.includes(s.slug);
-        return `<button onclick="crmToggleStep('${lead.id}','${s.slug}')" class="w-full text-left flex items-start gap-2 px-2 py-2 rounded-lg ${isDone ? 'bg-emerald-50' : 'hover:bg-slate-50'} border-b border-slate-100">
+        return `<button onclick="crmToggleStep('${lead.id}','${s.slug}')" class="w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-lg ${isDone ? 'bg-emerald-50 border-emerald-200' : 'hover:bg-slate-50 border-slate-100'} border mb-1.5 transition">
             <span class="text-lg leading-none mt-0.5">${isDone ? '✅' : '⬜'}</span>
             <span class="flex-1 min-w-0">
-                <span class="text-sm font-bold ${isDone ? 'text-emerald-800 line-through' : 'text-slate-700'}">${s.step_no || ''}. ${admEscape(s.title)}</span>
+                <span class="text-sm font-bold ${isDone ? 'text-emerald-800' : 'text-slate-700'}">${s.step_no || ''}. ${admEscape(s.title)}</span>
                 ${s.short_desc ? `<span class="block text-[11px] text-slate-400">${admEscape(s.short_desc)}</span>` : ''}
             </span>
         </button>`;
-    }).join('') : '<p class="text-xs text-slate-400 py-1">Süreç adımı tanımlı değil.</p>';
+    }).join('') : '<p class="text-xs text-slate-400 py-2">Henüz süreç adımı tanımlı değil. Admin panelinden ekleyebilirsiniz.</p>';
 
     z.innerHTML = `
-        <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">📋 Süreç & Aşama</div>
-        <div class="mb-3">
-            <label class="text-xs font-bold text-slate-600">Genel Aşama</label>
-            <select onchange="crmSetStage('${lead.id}', this.value)" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white">${stageOpts}</select>
+        <div class="flex items-center justify-between mb-3">
+            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold">📋 Süreç & Aşama</div>
+            <span class="text-xs font-bold text-slate-500">${doneCount}/${total} · %${pct}</span>
         </div>
-        <button type="button" onclick="crmToggleSteps()" class="w-full flex items-center justify-between text-left px-2 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-100">
-            <span class="text-xs font-bold text-slate-600">Detaylı süreç adımları <span class="text-slate-400">(${doneCount}/${steps.length} · %${pct})</span></span>
-            <span id="crmStepsArrow" class="text-slate-400 text-xs">${_stepsOpen ? '▲' : '▼'}</span>
-        </button>
-        <div id="crmDetailSteps" class="${_stepsOpen ? '' : 'hidden'} mt-3">
-            <div class="h-2 bg-slate-100 rounded-full overflow-hidden mb-3"><div class="h-full bg-amber-500" style="width:${pct}%"></div></div>
-            ${rows}
-        </div>`;
+        <div class="h-2 bg-slate-100 rounded-full overflow-hidden mb-4"><div class="h-full bg-amber-500 transition-all" style="width:${pct}%"></div></div>
+        ${rows}
+        <p class="text-[10px] text-slate-400 mt-2">Adımları işaretledikçe müşterinin genel aşaması ve panodaki sayaçlar otomatik güncellenir.</p>`;
+}
+
+// Yeni (henüz kaydedilmemiş) müşteri için: 9 adımın salt-okunur önizlemesi.
+async function crmRenderStepsPreview() {
+    const z = crmEnsureStepsZone();
+    if (!z) return;
+    const steps = await ensureProcessSteps();
+    const rows = (steps && steps.length) ? steps.map(s => `
+        <div class="flex items-start gap-3 px-3 py-2.5 rounded-lg border border-slate-100 mb-1.5 opacity-60">
+            <span class="text-lg leading-none mt-0.5">⬜</span>
+            <span class="flex-1 min-w-0"><span class="text-sm font-bold text-slate-600">${s.step_no || ''}. ${admEscape(s.title)}</span></span>
+        </div>`).join('') : '<p class="text-xs text-slate-400 py-2">Henüz süreç adımı tanımlı değil.</p>';
+    z.innerHTML = `
+        <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-3">📋 Süreç & Aşama</div>
+        ${rows}
+        <p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg p-2 mt-2">Müşteriyi kaydettikten sonra adımları işaretleyebilir, aşamayı ilerletebilirsiniz.</p>`;
 }
 
 // Genel aşamayı değiştir (birleşik blok içinden) — anında kaydeder.
@@ -461,9 +483,18 @@ window.crmToggleStep = async function(leadId, slug) {
     let done = Array.isArray(lead.completed_steps) ? [...lead.completed_steps] : [];
     done = done.includes(slug) ? done.filter(x => x !== slug) : done.concat(slug);
     lead.completed_steps = done;            // iyimser güncelleme
+
+    // Genel aşama (status) 9 adımdan türetilir → KPI sayaçları & ziyaretçi takibi güncel kalır
+    const steps = await ensureProcessSteps();
+    const newStatus = crmStatusFromSteps(steps, done);
+    lead.status = newStatus;
+
     renderLeadSteps(lead);
+    renderFacilityZone(lead);               // son adımda "Tesis Oluştur" çıksın
+    if (typeof crmCalculateStats === 'function') crmCalculateStats();  // pano sayaçlarını tazele
+
     const { error } = await supabaseClient
-        .from('leads').update({ completed_steps: done, updated_at: new Date().toISOString() }).eq('id', leadId);
+        .from('leads').update({ completed_steps: done, status: newStatus, updated_at: new Date().toISOString() }).eq('id', leadId);
     if (error) { alert('Adım kaydedilemedi: ' + error.message); }
 };
 
