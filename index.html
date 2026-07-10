@@ -149,7 +149,7 @@
                 <a href="#home" class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">epcmerkezim</a>
                 <div class="space-x-4 flex items-center">
                     <button onclick="document.getElementById('trackingSection').scrollIntoView()" class="text-sm font-bold text-gray-300 hover:text-white transition">Başvuru Takip</button>
-                    <a href="#auth" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-bold text-sm transition shadow-lg">Kurumsal EPC Girişi</a>
+                    <a href="#auth" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-bold text-sm transition shadow-lg">Kurumsal Giriş</a>
                 </div>
             </div>
         </nav>
@@ -210,7 +210,7 @@
                         <div class="text-4xl mb-4">🔧</div><h3 class="text-2xl font-bold text-slate-800 mb-2">Teknik Servis & Arıza</h3><p class="text-slate-500 text-sm">Mevcut inverter/batarya arızaları için destek talebi oluşturun.</p>
                     </div>
 
-                    <div onclick="openPublicModule('consultantsModule')" class="bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-indigo-300 transition cursor-pointer text-left relative overflow-hidden">
+                    <div onclick="openPublicModule('consultantsModule'); if(window.renderConsultantsList) renderConsultantsList();" class="bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-indigo-300 transition cursor-pointer text-left relative overflow-hidden">
                         <span class="absolute top-4 right-4 bg-indigo-100 text-indigo-700 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">Yakında</span>
                         <div class="text-4xl mb-4">🎯</div><h3 class="text-2xl font-bold text-slate-800 mb-2">Danışmanlık Al</h3><p class="text-slate-500 text-sm">Sektörün bağımsız uzmanlarından tarafsız danışmanlık alın; doğru kararı birlikte verin.</p>
                     </div>
@@ -305,23 +305,24 @@
     <div id="authContainer" class="hidden w-full min-h-screen flex flex-col items-center justify-center p-4 bg-slate-900">
         <div class="mb-4 absolute top-6 left-6"><a href="#home" class="text-slate-400 hover:text-white font-bold text-sm">← Ziyaretçi Ekranına Dön</a></div>
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
-            <div class="bg-emerald-600 p-6 text-center"><h1 class="text-3xl font-extrabold text-white">epcmerkezim</h1><p class="text-emerald-100 text-sm mt-1">Sadece Kurulumcu (EPC) Firmalar</p></div>
+            <div class="bg-emerald-600 p-6 text-center"><h1 class="text-3xl font-extrabold text-white">epcmerkezim</h1><p class="text-emerald-100 text-sm mt-1">Kurumsal Giriş</p></div>
             <div class="p-8">
-                <div class="flex border-b border-gray-200 mb-6">
+                <div class="grid grid-cols-2 gap-2 mb-6"><button type="button" id="roleFirma" onclick="authSetRole('firma')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-emerald-600 bg-emerald-600 text-white">🏢 Kurulumcu Firma</button><button type="button" id="roleConsultant" onclick="authSetRole('consultant')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white">🎯 Danışman</button></div>
+                    <div class="flex border-b border-gray-200 mb-6">
                     <button id="tabLogin" class="w-1/2 pb-3 text-center font-bold text-emerald-600 border-b-2 border-emerald-600">Giriş Yap</button>
-                    <button id="tabRegister" class="w-1/2 pb-3 text-center font-bold text-gray-400 hover:text-gray-600">Firma Kaydı</button>
+                    <button id="tabRegister" class="w-1/2 pb-3 text-center font-bold text-gray-400 hover:text-gray-600">Kayıt Ol</button>
                 </div>
                 <form id="loginForm" class="space-y-4">
                     <div><label class="block text-sm font-medium text-gray-700">E-posta</label><input type="email" id="loginEmail" required class="w-full p-3 border rounded-lg"></div>
                     <div><label class="block text-sm font-medium text-gray-700">Şifre</label><input type="password" id="loginPassword" required class="w-full p-3 border rounded-lg"></div>
-                    <button type="submit" id="btnLoginSubmit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg">Yönetim Paneline Gir</button>
+                    <button type="submit" id="btnLoginSubmit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg">Giriş Yap</button>
                 </form>
                 <form id="registerForm" class="space-y-4 hidden">
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-sm">Yetkili Adı</label><input type="text" id="regName" required class="w-full p-2 border rounded-lg"></div>
-                        <div><label class="block text-sm">Soyadı</label><input type="text" id="regSurname" required class="w-full p-2 border rounded-lg"></div>
+                        <div><label class="block text-sm">Ad</label><input type="text" id="regName" required class="w-full p-2 border rounded-lg"></div>
+                        <div><label class="block text-sm">Soyad</label><input type="text" id="regSurname" required class="w-full p-2 border rounded-lg"></div>
                     </div>
-                    <div><label class="block text-sm">Resmi Firma Ünvanı</label><input type="text" id="regCompany" required class="w-full p-2 border rounded-lg"></div>
+                    <div id="regCompanyWrap"><label class="block text-sm">Resmi Firma Ünvanı</label><input type="text" id="regCompany" class="w-full p-2 border rounded-lg"></div>
                     <div><label class="block text-sm">Telefon</label><input type="tel" id="regPhone" required class="w-full p-2 border rounded-lg"></div>
                     <div><label class="block text-sm">E-posta</label><input type="email" id="regEmail" required class="w-full p-2 border rounded-lg"></div>
                     <div><label class="block text-sm">Şifre</label><input type="password" id="regPassword" required minlength="6" class="w-full p-2 border rounded-lg"></div>
@@ -608,6 +609,7 @@
                 <button onclick="adminShowTab('companies')" data-tab="companies" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">🏢 Firmalar</button>
                 <button onclick="adminShowTab('content')" data-tab="content" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">📚 İçerik & Süreç</button>
                 <button onclick="adminShowTab('settings')" data-tab="settings" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">⚙️ Ayarlar</button>
+                <button onclick="adminShowTab('consultants')" data-tab="consultants" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">🎯 Danışmanlar</button>
             </div>
 
             <!-- SEKME: GENEL BAKIŞ -->
@@ -672,6 +674,10 @@
             <!-- SEKME: AYARLAR (referans değerler) -->
             <div id="adminPaneSettings" class="admin-pane hidden space-y-6">
                 <!-- ⚙️ Ayarlar / Referans Değerler buraya JS ile eklenir -->
+            </div>
+
+            <div id="adminPaneConsultants" class="admin-pane hidden space-y-6">
+                <div id="admConsultantsRoot"></div>
             </div>
         </div>
 
@@ -954,6 +960,10 @@
                     </button>
                 </div>
             </div>
+        </div>
+
+        <div id="consultantPanelModule" class="hidden w-full max-w-5xl mx-auto mt-4 animate-fade-in">
+            <div id="consultantPanelRoot"></div>
         </div>
 
         <div id="companyManagementModule" class="hidden bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">

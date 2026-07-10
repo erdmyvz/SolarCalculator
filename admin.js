@@ -180,7 +180,10 @@ async function fetchAdminData() {
     // 9) GENEL AŞAMA ETİKETLERİ (yalnız admin görür)
     await renderStageAdmin();
 
-    // 10) GENEL BAKIŞ ÖZET KPI'LARINI GÜNCELLE (sekmeli panel)
+    // 10) DANIŞMAN BAŞVURULARI (onay akışı)
+    await renderConsultantsAdmin();
+
+    // 11) GENEL BAKIŞ ÖZET KPI'LARINI GÜNCELLE (sekmeli panel)
     renderAdminStats();
 }
 
@@ -943,3 +946,70 @@ function renderAdminStats() {
     if (c) { const m = (c.textContent || '').match(/\d+/); if (m) prospects = +m[0]; }
     setTxt('admStatProspects', prospects);
 }
+
+
+// ============================================================================
+// DANIŞMAN BAŞVURULARI — admin onay akışı (adminPaneConsultants)
+// ============================================================================
+async function renderConsultantsAdmin() {
+    const root = document.getElementById('admConsultantsRoot');
+    if (!root || !supabaseClient) return;
+    root.innerHTML = '<p class="text-slate-400 text-sm">Yükleniyor...</p>';
+    let list = [];
+    try {
+        const { data, error } = await supabaseClient.from('consultants').select('*').order('updated_at', { ascending: false });
+        if (error) throw error;
+        list = data || [];
+    } catch (e) {
+        root.innerHTML = '<p class="text-red-500 text-sm">Danışmanlar yüklenemedi: ' + (e.message || e) + '</p>';
+        return;
+    }
+    const badge = (s) => {
+        const m = { draft: ['Taslak', 'bg-slate-100 text-slate-600'], pending: ['Onay Bekliyor', 'bg-amber-100 text-amber-800'], approved: ['Onaylı', 'bg-emerald-100 text-emerald-700'], rejected: ['Reddedildi', 'bg-red-100 text-red-700'] };
+        const x = m[s] || m.draft;
+        return '<span class="text-[10px] font-black px-2 py-1 rounded-full ' + x[1] + '">' + x[0] + '</span>';
+    };
+    const pending = list.filter(c => c.status === 'pending').length;
+    root.innerHTML =
+        '<div class="bg-white border border-slate-200 rounded-xl p-5">' +
+            '<div class="flex items-center justify-between mb-4">' +
+                '<h3 class="font-black text-lg text-slate-800">🎯 Danışman Başvuruları</h3>' +
+                (pending ? '<span class="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1 rounded-full">' + pending + ' onay bekliyor</span>' : '') +
+            '</div>' +
+            (list.length ? list.map(c =>
+                '<div class="border border-slate-100 rounded-lg p-4 mb-2">' +
+                    '<div class="flex items-start justify-between gap-3 flex-wrap">' +
+                        '<div class="min-w-0">' +
+                            '<div class="flex items-center gap-2 mb-1"><span class="font-black text-slate-800">' + admEscape(c.full_name || '—') + '</span> ' + badge(c.status) + '</div>' +
+                            '<p class="text-xs text-slate-500">' + admEscape(c.title || '') + '</p>' +
+                            '<p class="text-[11px] text-slate-400 mt-1">' + admEscape(c.email || '') + ' · ' + (c.completed_jobs || 0) + ' iş · ' + (c.expertise ? admEscape(c.expertise) : 'etiket yok') + '</p>' +
+                            (c.bio ? '<p class="text-xs text-slate-600 mt-2">' + admEscape(c.bio) + '</p>' : '') +
+                            (c.reject_reason ? '<p class="text-[11px] text-red-500 mt-1">Ret gerekçesi: ' + admEscape(c.reject_reason) + '</p>' : '') +
+                        '</div>' +
+                        '<div class="flex gap-2 shrink-0">' +
+                            (c.status !== 'approved'
+                                ? '<button onclick="adminApproveConsultant(\'' + c.id + '\')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Onayla</button>'
+                                : '<button onclick="adminUnpublishConsultant(\'' + c.id + '\')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg">Yayından Kaldır</button>') +
+                            (c.status !== 'rejected'
+                                ? '<button onclick="adminRejectConsultant(\'' + c.id + '\')" class="bg-white border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold px-3 py-1.5 rounded-lg">Reddet</button>'
+                                : '') +
+                        '</div>' +
+                    '</div>' +
+                '</div>').join('') : '<p class="text-sm text-slate-400">Henüz danışman kaydı yok.</p>') +
+        '</div>';
+}
+
+async function _consUpdate(id, patch) {
+    patch.updated_at = new Date().toISOString();
+    const { error } = await supabaseClient.from('consultants').update(patch).eq('id', id);
+    if (error) { alert('İşlem başarısız: ' + error.message); return false; }
+    await renderConsultantsAdmin();
+    return true;
+}
+window.adminApproveConsultant = (id) => _consUpdate(id, { status: 'approved', reject_reason: null });
+window.adminUnpublishConsultant = (id) => _consUpdate(id, { status: 'pending' });
+window.adminRejectConsultant = (id) => {
+    const reason = prompt('Ret gerekçesi (danışmana gösterilecek):', '');
+    if (reason === null) return;
+    _consUpdate(id, { status: 'rejected', reject_reason: reason });
+};
