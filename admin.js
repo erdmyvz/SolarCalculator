@@ -240,7 +240,8 @@ async function renderProspects() {
                     <div>
                         <strong class="text-sm text-slate-800">${admEscape(p.full_name) || '(isim yok)'}</strong>
                         <p class="text-slate-500 mt-1 font-medium">✉️ ${admEscape(p.email)}${p.phone ? ' | 📞 ' + admEscape(p.phone) : ''}</p>
-                        <p class="text-slate-400 mt-2 bg-slate-50 border border-slate-100 rounded px-2 py-1 inline-block">☀️ ${kwp} · ${bill} · Tasarruf ${saving} · Amorti ${pay}</p>
+                        ${p.source ? `<p class="text-indigo-700 mt-1 text-[11px] font-bold bg-indigo-50 border border-indigo-100 rounded px-2 py-1 inline-block">🔎 ${admEscape(p.source)}</p>` : ''}
+                        ${(p.recommended_kwp || p.monthly_bill || p.est_annual_saving) ? `<p class="text-slate-400 mt-2 bg-slate-50 border border-slate-100 rounded px-2 py-1 inline-block">☀️ ${kwp} · ${bill} · Tasarruf ${saving} · Amorti ${pay}</p>` : ''}
                     </div>
                     <span class="text-[10px] text-slate-400 whitespace-nowrap">${dateStr}${p.consent ? ' · ✅ izinli' : ' · ⚠️ izinsiz'}</span>
                 </div>

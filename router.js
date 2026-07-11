@@ -47,12 +47,19 @@ window.addEventListener('load', async () => {
     if(supabaseClient) {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
-            let isConsultant = false;
+            window.currentConsultant = null;
+            let hasCompanyProfile = false;
             try {
-                const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', session.user.id).maybeSingle();
-                if (cons) { window.currentConsultant = cons; window.__consultantEmail = session.user.email; isConsultant = true; }
-            } catch (e) { /* consultants tablosu yoksa sessiz gec */ }
-            if (!isConsultant) { window.currentConsultant = null; await fetchUserProfile(session.user.id, session.user.email); }
+                const { data: prof } = await supabaseClient.from('profiles').select('id').eq('id', session.user.id).maybeSingle();
+                if (prof) hasCompanyProfile = true;
+            } catch (e) { /* profiles okunamadı */ }
+            if (!hasCompanyProfile) {
+                try {
+                    const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', session.user.id).maybeSingle();
+                    if (cons) { window.currentConsultant = cons; window.__consultantEmail = session.user.email; }
+                } catch (e) { /* consultants tablosu yoksa sessiz gec */ }
+            }
+            if (!window.currentConsultant) { await fetchUserProfile(session.user.id, session.user.email); }
             if (window.location.hash === '#auth' || window.location.hash === '') {
                 window.location.hash = '#app'; // Zaten giriş yapmışsa direkt panele al
             }
