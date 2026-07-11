@@ -48,12 +48,12 @@ window.addEventListener('load', async () => {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
             window.currentConsultant = null;
-            let hasCompanyProfile = false;
+            let role = null;
             try {
-                const { data: prof } = await supabaseClient.from('profiles').select('id').eq('id', session.user.id).maybeSingle();
-                if (prof) hasCompanyProfile = true;
+                const { data: prof } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+                if (prof) role = prof.role;
             } catch (e) { /* profiles okunamadı */ }
-            if (!hasCompanyProfile) {
+            if (role !== 'admin') {
                 try {
                     const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', session.user.id).maybeSingle();
                     if (cons) { window.currentConsultant = cons; window.__consultantEmail = session.user.email; }

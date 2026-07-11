@@ -44,14 +44,13 @@ window.authSetRole = function (role) {
 async function routeAfterLogin(user) {
     window.currentConsultant = null;
     if (supabaseClient) {
-        // ÖNCE firma/admin profili var mı? (admin & kurulumcu firma her zaman öncelikli)
-        let hasCompanyProfile = false;
+        // Admin rolü her zaman öncelikli (danışman satırı olsa bile yönetim paneline gider)
+        let role = null;
         try {
-            const { data: prof } = await supabaseClient.from('profiles').select('id').eq('id', user.id).maybeSingle();
-            if (prof) hasCompanyProfile = true;
+            const { data: prof } = await supabaseClient.from('profiles').select('role').eq('id', user.id).maybeSingle();
+            if (prof) role = prof.role;
         } catch (e) { /* profiles okunamadı */ }
-        // Profili yoksa danışman mı?
-        if (!hasCompanyProfile) {
+        if (role !== 'admin') {
             try {
                 const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', user.id).maybeSingle();
                 if (cons) { window.currentConsultant = cons; window.__consultantEmail = user.email; return 'consultant'; }
@@ -78,7 +77,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
     if (window.authRole === 'consultant') {
         const orig = btn.textContent; btn.textContent = "Kaydediliyor..."; btn.disabled = true;
         try {
-            const { error: signUpErr } = await supabaseClient.auth.signUp({ email, password });
+            const { error: signUpErr } = await supabaseClient.auth.signUp({ email, password, options: { data: { role: 'consultant', full_name: (firstName + ' ' + lastName).trim(), phone: phone } } });
             if (signUpErr) throw signUpErr;
             let { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) {
