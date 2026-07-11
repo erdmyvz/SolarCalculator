@@ -42,13 +42,22 @@ window.authSetRole = function (role) {
 
 // Girişten sonra rol tespiti: danışman mı, firma/admin mi?
 async function routeAfterLogin(user) {
-    if (supabaseClient) {
-        try {
-            const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', user.id).maybeSingle();
-            if (cons) { window.currentConsultant = cons; window.__consultantEmail = user.email; return 'consultant'; }
-        } catch (e) { /* consultants tablosu yoksa sessiz gec */ }
-    }
     window.currentConsultant = null;
+    if (supabaseClient) {
+        // ÖNCE firma/admin profili var mı? (admin & kurulumcu firma her zaman öncelikli)
+        let hasCompanyProfile = false;
+        try {
+            const { data: prof } = await supabaseClient.from('profiles').select('id').eq('id', user.id).maybeSingle();
+            if (prof) hasCompanyProfile = true;
+        } catch (e) { /* profiles okunamadı */ }
+        // Profili yoksa danışman mı?
+        if (!hasCompanyProfile) {
+            try {
+                const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', user.id).maybeSingle();
+                if (cons) { window.currentConsultant = cons; window.__consultantEmail = user.email; return 'consultant'; }
+            } catch (e) { /* consultants tablosu yoksa sessiz gec */ }
+        }
+    }
     await fetchUserProfile(user.id, user.email);
     return 'company';
 }
