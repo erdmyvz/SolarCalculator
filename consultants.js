@@ -204,7 +204,7 @@
         CONS_HOURS.forEach(hour => {
             h += `<tr><td class="p-1 text-[10px] text-slate-400 font-bold pr-2 whitespace-nowrap">${hour}</td>`;
             CONS_DAYS.forEach(d => {
-                const on = (_consAvail[d[0]] || []).includes(hour);
+                const on = (Array.isArray(_consAvail[d[0]]) ? _consAvail[d[0]] : []).includes(hour);
                 h += `<td class="p-0.5"><button type="button" onclick="consAvailToggle('${d[0]}','${hour}')" class="w-9 h-7 rounded ${on ? 'bg-emerald-500' : 'bg-slate-100 hover:bg-slate-200'} transition"></button></td>`;
             });
             h += `</tr>`;
@@ -212,7 +212,7 @@
         return h + `</tbody></table>`;
     }
     window.consAvailToggle = function (day, hour) {
-        if (!_consAvail[day]) _consAvail[day] = [];
+        if (!Array.isArray(_consAvail[day])) _consAvail[day] = [];
         const i = _consAvail[day].indexOf(hour);
         if (i >= 0) _consAvail[day].splice(i, 1); else _consAvail[day].push(hour);
         const g = document.getElementById('consAvailGrid');
@@ -232,6 +232,10 @@
         if (!root) return;
         _consAvail = (c.availability && typeof c.availability === 'object') ? JSON.parse(JSON.stringify(c.availability)) : {};
 
+        let _gridHtml = '<p class="text-xs text-red-500">Müsaitlik ızgarası yüklenemedi.</p>';
+        try { _gridHtml = availGridInner(); } catch (e) { console.error('availGridInner:', e); }
+
+        try {
         root.innerHTML = `
             <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
                 <h2 class="text-xl md:text-2xl font-black text-slate-800">🎯 Danışman Panelim</h2>
@@ -254,7 +258,7 @@
             <div class="bg-white border border-slate-200 rounded-xl p-5 md:p-6 mb-5">
                 <h3 class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Müsaitlik (haftalık)</h3>
                 <p class="text-xs text-slate-400 mb-3">Görüşmeye açık olduğunuz gün ve saatleri işaretleyin. Yatırımcılar yalnız bu saatlerden randevu alabilir.</p>
-                <div class="overflow-x-auto"><div id="consAvailGrid">${availGridInner()}</div></div>
+                <div class="overflow-x-auto"><div id="consAvailGrid">${_gridHtml}</div></div>
             </div>
 
             <div class="flex flex-wrap gap-3 mb-6">
@@ -271,9 +275,13 @@
                 <h3 class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-4">💬 Yatırımcı Talepleri (Anonim)</h3>
                 <div id="consRequestsInbox"><p class="text-sm text-slate-400">Yükleniyor...</p></div>
             </div>`;
+        } catch (e) {
+            console.error('renderConsultantPanel:', e);
+            root.innerHTML = '<div class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">Panel yüklenirken bir hata oluştu: ' + ((e && e.message) || e) + '. Lütfen sayfayı yenileyin.</div>';
+        }
 
-        loadConsultantAppointments(c.id);
-        if (window.loadConsultantRequests) loadConsultantRequests('consRequestsInbox');
+        try { loadConsultantAppointments(c.id); } catch (e) { console.error(e); }
+        if (window.loadConsultantRequests) { try { loadConsultantRequests('consRequestsInbox'); } catch (e) { console.error(e); } }
     }
     window.renderConsultantPanel = renderConsultantPanel;
 
