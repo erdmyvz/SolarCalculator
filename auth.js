@@ -41,24 +41,36 @@ window.authSetRole = function (role) {
 };
 
 // Girişten sonra rol tespiti: danışman mı, firma/admin mi?
-async function routeAfterLogin(user) {
-    window.currentConsultant = null;
+// Hesap türünü belirle: 'admin' | 'consultant' | 'installer'
+async function getAccountInfo(user) {
+    let role = null, consultant = null;
     if (supabaseClient) {
-        // Admin rolü her zaman öncelikli (danışman satırı olsa bile yönetim paneline gider)
-        let role = null;
         try {
             const { data: prof } = await supabaseClient.from('profiles').select('role').eq('id', user.id).maybeSingle();
             if (prof) role = prof.role;
         } catch (e) { /* profiles okunamadı */ }
-        if (role !== 'admin') {
-            try {
-                const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', user.id).maybeSingle();
-                if (cons) { window.currentConsultant = cons; window.__consultantEmail = user.email; return 'consultant'; }
-            } catch (e) { /* consultants tablosu yoksa sessiz gec */ }
-        }
+        if (role === 'admin') return { type: 'admin', consultant: null };
+        try {
+            const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', user.id).maybeSingle();
+            if (cons) consultant = cons;
+        } catch (e) { /* consultants tablosu yoksa sessiz gec */ }
+    }
+    if (consultant) return { type: 'consultant', consultant };
+    return { type: 'installer', consultant: null };
+}
+window.getAccountInfo = getAccountInfo;
+
+// Girişten sonra yönlendirme (rol kilidi YOK — sayfa yenilemede kullanılır)
+async function routeAfterLogin(user) {
+    window.currentConsultant = null;
+    const info = await getAccountInfo(user);
+    if (info.type === 'consultant') {
+        window.currentConsultant = info.consultant;
+        window.__consultantEmail = user.email;
+        return 'consultant';
     }
     await fetchUserProfile(user.id, user.email);
-    return 'company';
+    return info.type;
 }
 
 // YENİ FİRMA KAYIT İŞLEMİ (Multi-tenant: companies + profiles atomik oluşur)
@@ -146,8 +158,20 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         });
         if (error) { alert("Giriş Başarısız: E-posta veya şifre hatalı."); }
         else if (data.user) {
-            await routeAfterLogin(data.user);
-            window.location.hash = '#app'; document.getElementById('loginForm').reset();
+            const info = await getAccountInfo(data.user);
+            const wantConsultant = (window.authRole === 'consultant');
+            if (wantConsultant && info.type !== 'consultant') {
+                await supabaseClient.auth.signOut();
+                alert('Bu hesap bir danışman hesabı değil. Lütfen "Kurulumcu Firma" ile giriş yapın.');
+            } else if (!wantConsultant && info.type === 'consultant') {
+                await supabaseClient.auth.signOut();
+                alert('Bu hesap bir danışman hesabıdır. Lütfen "Danışman" ile giriş yapın.');
+            } else {
+                window.currentConsultant = (info.type === 'consultant') ? info.consultant : null;
+                if (info.type === 'consultant') { window.__consultantEmail = data.user.email; }
+                else { await fetchUserProfile(data.user.id, data.user.email); }
+                window.location.hash = '#app'; document.getElementById('loginForm').reset();
+            }
         }
     }
     btn.textContent = "Giriş Yap"; btn.disabled = false;

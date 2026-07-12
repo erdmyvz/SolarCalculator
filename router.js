@@ -47,19 +47,11 @@ window.addEventListener('load', async () => {
     if(supabaseClient) {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
-            window.currentConsultant = null;
-            let role = null;
-            try {
-                const { data: prof } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
-                if (prof) role = prof.role;
-            } catch (e) { /* profiles okunamadı */ }
-            if (role !== 'admin') {
-                try {
-                    const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', session.user.id).maybeSingle();
-                    if (cons) { window.currentConsultant = cons; window.__consultantEmail = session.user.email; }
-                } catch (e) { /* consultants tablosu yoksa sessiz gec */ }
+            if (typeof routeAfterLogin === 'function') {
+                await routeAfterLogin(session.user);
+            } else {
+                await fetchUserProfile(session.user.id, session.user.email);
             }
-            if (!window.currentConsultant) { await fetchUserProfile(session.user.id, session.user.email); }
             if (window.location.hash === '#auth' || window.location.hash === '') {
                 window.location.hash = '#app'; // Zaten giriş yapmışsa direkt panele al
             }

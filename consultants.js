@@ -1,15 +1,16 @@
 /* ============================================================================
-   consultants.js — DANIŞMANLIK MODÜLÜ (iletişim-bilgisi modeli)
-   - Ziyaretçi: onaylı danışmanları listeler (iletişim bilgisi GİZLİ).
-     Yatırımcı danışman seçip ad/soyad/telefon/e-posta + reklam onayı verince
-     danışmanın iletişim bilgisi açılır VE yatırımcı "potansiyel müşteri"ye kaydedilir.
-   - Danışman: kendi ziyaretçi-profilini düzenler, onaya gönderir.
+   consultants.js — DANIŞMANLIK MODÜLÜ
+   - Ziyaretçi: onaylı danışmanları listeler (iletişim GİZLİ); yatırımcı bilgi +
+     reklam onayı verince iletişim açılır ve "potansiyel müşteri"ye kaydedilir.
+   - Danışman arayüzü: menü butonları (Profili Düzenle / Mesajlaşma-Yakında /
+     Danışan Takibi CRM-Yakında). Profil düzenlenip onaya gönderilir.
    consultants.sql + consultant_leads.sql çalıştırılmış olmalıdır.
    ============================================================================ */
 (function () {
     const esc = (s) => (typeof admEscape === 'function' ? admEscape(s) : String(s == null ? '' : s));
     let _approvedConsultants = [];
     let _contactConsultant = null;
+    let _consData = null;   // giriş yapan danışmanın kaydı
 
     document.getElementById('btnBackFromConsultants')?.addEventListener('click', () => {
         if (typeof closeAllAndShowMenu === 'function') closeAllAndShowMenu();
@@ -24,7 +25,6 @@
 
         let list = [];
         try {
-            // İletişim bilgisi HARİÇ liste (RPC) — e-posta/telefon ziyaretçiye açık değil
             const { data, error } = await supabaseClient.rpc('list_approved_consultants');
             if (error) throw error;
             list = data || [];
@@ -78,7 +78,6 @@
         m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
         return m;
     }
-
     window.consultantContact = function (cid) {
         const c = _approvedConsultants.find(x => x.id === cid);
         if (!c) return;
@@ -106,7 +105,6 @@
             </div>`;
         m.classList.remove('hidden');
     };
-
     window.contactSubmit = async function () {
         if (!_contactConsultant || !supabaseClient) return;
         const name = (document.getElementById('ctName').value || '').trim();
@@ -138,7 +136,7 @@
         }
     };
 
-    // ================================================================ DANIŞMAN PANELİ (profil)
+    // ================================================================ DANIŞMAN ARAYÜZÜ
     function statusBanner(c) {
         const s = c.status || 'draft';
         if (s === 'approved') return `<div class="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 text-sm font-bold">✅ Profiliniz onaylandı — ziyaretçi sayfasında listeleniyorsunuz.</div>`;
@@ -147,13 +145,46 @@
         return `<div class="bg-slate-100 border border-slate-200 text-slate-600 rounded-xl p-4 text-sm">📝 Taslak — profilinizi doldurup "Onaya Gönder" ile yayına başvurun.</div>`;
     }
 
-    function renderConsultantPanel(c) {
+    // 1. seviye: menü (kurulumcu firmalardaki gibi buton/kart menüsü)
+    function renderConsultantMenu() {
         const root = document.getElementById('consultantPanelRoot');
-        if (!root) return;
+        if (!root || !_consData) return;
+        const c = _consData;
+        const soonCard = (icon, title, desc) => `
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 opacity-70 relative">
+                <span class="absolute top-3 right-3 bg-slate-100 text-slate-400 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Yakında</span>
+                <div class="text-4xl mb-3">${icon}</div>
+                <h3 class="font-black text-slate-800 mb-1">${title}</h3>
+                <p class="text-sm text-slate-500">${desc}</p>
+            </div>`;
+        root.innerHTML = `
+            <div class="mb-5"><h2 class="text-xl md:text-2xl font-black text-slate-800">🎯 Danışman Panelim</h2></div>
+            <div class="mb-6">${statusBanner(c)}</div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onclick="consultantEditProfile()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition">
+                    <div class="text-4xl mb-3">📝</div>
+                    <h3 class="font-black text-slate-800 mb-1">Profili Düzenle</h3>
+                    <p class="text-sm text-slate-500">Ziyaretçi sayfasında görünen profilinizi düzenleyin ve onaya gönderin.</p>
+                </button>
+                ${soonCard('💬', 'Mesajlaşma', 'Yatırımcılarla mesajlaşma yakında burada olacak.')}
+                ${soonCard('👥', 'Danışan Takibi (CRM)', 'Görüştüğünüz yatırımcıları takip edin — yakında.')}
+            </div>`;
+    }
+    window.renderConsultantMenu = renderConsultantMenu;
+    window.consultantEditProfile = function () { renderConsultantProfile(); };
+    window.consultantBackToMenu = function () { renderConsultantMenu(); };
+
+    // 2. seviye: profil düzenleme
+    function renderConsultantProfile() {
+        const root = document.getElementById('consultantPanelRoot');
+        if (!root || !_consData) return;
+        const c = _consData;
         try {
             root.innerHTML = `
-                <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-                    <h2 class="text-xl md:text-2xl font-black text-slate-800">🎯 Danışman Panelim</h2>
+                <div class="flex items-center gap-3 mb-5">
+                    <button onclick="consultantBackToMenu()" class="text-slate-500 hover:text-indigo-600 font-bold">← Panele Dön</button>
+                    <span class="text-slate-300">/</span>
+                    <h2 class="text-lg md:text-xl font-black text-slate-800">📝 Profili Düzenle</h2>
                 </div>
                 <div class="mb-5">${statusBanner(c)}</div>
 
@@ -172,7 +203,7 @@
                 </div>
 
                 <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5 text-xs text-blue-800">
-                    ℹ️ Profilinizde her değişiklikten sonra <strong>"Onaya Gönder"</strong> ile admin onayına iletmeniz gerekir. Onaylanınca ziyaretçi sayfasındaki profiliniz güncellenir.
+                    ℹ️ Her değişiklikten sonra <strong>"Onaya Gönder"</strong> ile admin onayına iletilir. Onaylanınca ziyaretçi sayfasındaki profiliniz güncellenir.
                 </div>
 
                 <div class="flex flex-wrap gap-3">
@@ -180,18 +211,18 @@
                     <button onclick="consultantSave(true)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-6 py-2.5 rounded-lg">Onaya Gönder ›</button>
                 </div>`;
         } catch (e) {
-            console.error('renderConsultantPanel:', e);
-            root.innerHTML = '<div class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">Panel yüklenirken hata: ' + ((e && e.message) || e) + '</div>';
+            console.error('renderConsultantProfile:', e);
+            root.innerHTML = '<div class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">Profil yüklenirken hata: ' + ((e && e.message) || e) + '</div>';
         }
     }
-    window.renderConsultantPanel = renderConsultantPanel;
+    window.renderConsultantProfile = renderConsultantProfile;
 
     window.showConsultantPanel = function (cons, email) {
         document.getElementById('authContainer')?.classList.add('hidden');
         document.getElementById('landingContainer')?.classList.add('hidden');
         document.getElementById('appContainer')?.classList.remove('hidden');
         document.getElementById('mainMenu')?.classList.add('hidden');
-        document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto')?.classList.remove('hidden'); // üst bar (profil/çıkış)
+        document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto')?.classList.remove('hidden'); // üst bar
         ['crmModule','adminModule','companyManagementModule','techSupportModule','salesAssistantModule','educationModule','regulationsModule','dashboardModule'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
         document.getElementById('consultantPanelModule')?.classList.remove('hidden');
 
@@ -202,7 +233,8 @@
         set('userInitials', (cons.avatar_initials || (cons.full_name || 'D').charAt(0)).toUpperCase());
         document.getElementById('adminPanelCard')?.classList.add('hidden');
 
-        renderConsultantPanel(cons);
+        _consData = cons;
+        renderConsultantMenu();
     };
 
     window.consultantSave = async function (submit) {
@@ -228,7 +260,8 @@
                 .update(data).eq('id', window.currentConsultant.id).select().single();
             if (error) throw error;
             window.currentConsultant = upd;
-            renderConsultantPanel(upd);
+            _consData = upd;
+            renderConsultantProfile();
             alert(submit ? 'Profiliniz onaya gönderildi. Admin onayından sonra ziyaretçi sayfasında görünür/güncellenir.' : 'Taslak kaydedildi.');
         } catch (e) {
             alert('Kaydedilemedi: ' + (e.message || e));
