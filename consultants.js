@@ -11,6 +11,37 @@
     let _approvedConsultants = [];
     let _contactConsultant = null;
     let _consData = null;   // giriş yapan danışmanın kaydı
+    let _consAvatar = null; // profil düzenlemedeki fotoğrafın base64'ü
+
+    function resizeToBase64(file, maxSize, cb) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width, h = img.height;
+                if (w > h) { if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; } }
+                else { if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; } }
+                const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+                cv.getContext('2d').drawImage(img, 0, 0, w, h);
+                cb(cv.toDataURL('image/jpeg', 0.85));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+    function consAvatarInner() {
+        if (_consAvatar) return `<img src="${_consAvatar}" class="w-16 h-16 rounded-full object-cover border border-slate-200">`;
+        return `<div class="w-16 h-16 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xl">${esc((_consData && _consData.avatar_initials) || 'D')}</div>`;
+    }
+    window.consAvatarPick = function (input) {
+        const f = input.files && input.files[0]; if (!f) return;
+        resizeToBase64(f, 256, (b64) => { _consAvatar = b64; const p = document.getElementById('consAvatarPreview'); if (p) p.innerHTML = consAvatarInner(); });
+    };
+    window.consAvatarClear = function () {
+        _consAvatar = null;
+        const fi = document.getElementById('consAvatarFile'); if (fi) fi.value = '';
+        const p = document.getElementById('consAvatarPreview'); if (p) p.innerHTML = consAvatarInner();
+    };
 
     document.getElementById('btnBackFromConsultants')?.addEventListener('click', () => {
         if (typeof closeAllAndShowMenu === 'function') closeAllAndShowMenu();
@@ -37,7 +68,7 @@
         const card = (c) => `
             <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col">
                 <div class="flex items-center gap-3 mb-3">
-                    <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-lg">${esc(c.avatar_initials || (c.full_name || '?').charAt(0))}</div>
+                    ${c.avatar_data ? `<img src="${c.avatar_data}" class="w-12 h-12 rounded-full object-cover shrink-0">` : `<div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-lg shrink-0">${esc(c.avatar_initials || (c.full_name || '?').charAt(0))}</div>`}
                     <div class="min-w-0">
                         <p class="font-black text-slate-800 leading-tight truncate">${esc(c.full_name || 'Danışman')}</p>
                         <p class="text-[11px] text-slate-500 truncate">${esc(c.title || '')}</p>
@@ -179,6 +210,7 @@
         const root = document.getElementById('consultantPanelRoot');
         if (!root || !_consData) return;
         const c = _consData;
+        _consAvatar = c.avatar_data || null;
         try {
             root.innerHTML = `
                 <div class="flex items-center gap-3 mb-5">
@@ -192,6 +224,14 @@
                     <h3 class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-1">Ziyaretçi Profili</h3>
                     <p class="text-xs text-slate-400 mb-4">Bu bilgiler onaylandıktan sonra ziyaretçi sayfasında "Danışmanlık Al" bölümünde görünür.</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2 flex items-center gap-4">
+                            <div id="consAvatarPreview" class="shrink-0">${consAvatarInner()}</div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">Profil Fotoğrafı</label>
+                                <input type="file" id="consAvatarFile" accept="image/*" onchange="consAvatarPick(this)" class="block text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-white file:font-bold file:cursor-pointer">
+                                <button type="button" onclick="consAvatarClear()" class="mt-1 text-[11px] text-slate-400 hover:text-red-500 underline">Fotoğrafı kaldır</button>
+                            </div>
+                        </div>
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">Ad Soyad</label><input id="consName" value="${esc(c.full_name || '')}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500"></div>
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">Unvan</label><input id="consTitle" value="${esc(c.title || '')}" placeholder="örn. Elektrik Y. Müh. · GES Uzmanı" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500"></div>
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">Baş Harfler (avatar)</label><input id="consInitials" maxlength="2" value="${esc(c.avatar_initials || '')}" placeholder="örn. MA" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500"></div>
@@ -248,6 +288,7 @@
             completed_jobs: parseInt(g('consJobs'), 10) || 0,
             bio: g('consBio'),
             motivation: g('consMotivation'),
+            avatar_data: _consAvatar,
             updated_at: new Date().toISOString()
         };
         if (submit) {

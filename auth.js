@@ -95,7 +95,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
             if (!session) {
                 const { data: si, error: siErr } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (siErr) {
-                    alert("Kaydınız oluşturuldu. E-postanızı onayladıktan sonra giriş yapıp profilinizi doldurun.");
+                    alert("✅ Kaydınız oluşturuldu! Sizlere mail doğrulama linki gönderdik. Lütfen e-postanızı doğrulayın, sonra giriş yapın.");
                     document.getElementById('registerForm').reset(); document.getElementById('tabLogin').click(); return;
                 }
                 session = si.session;
@@ -107,7 +107,7 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
             });
             if (insErr && insErr.code !== '23505') throw insErr;   // 23505: kayit zaten var
             await supabaseClient.auth.signOut();
-            alert("Danışman kaydınız oluşturuldu! Giriş yapıp profilinizi doldurun ve onaya gönderin.");
+            alert("✅ Kaydınız oluşturuldu! Sizlere mail doğrulama linki gönderdik. Lütfen e-postanızı doğrulayın, sonra giriş yapın.");
             document.getElementById('registerForm').reset(); document.getElementById('tabLogin').click();
         } catch (err) {
             alert("Kayıt Hatası: " + (err.message || err));
@@ -156,7 +156,14 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         const { data, error } = await supabaseClient.auth.signInWithPassword({
             email: document.getElementById('loginEmail').value, password: document.getElementById('loginPassword').value,
         });
-        if (error) { alert("Giriş Başarısız: E-posta veya şifre hatalı."); }
+        if (error) {
+            const _m = (error.message || '').toLowerCase();
+            if (error.code === 'email_not_confirmed' || _m.includes('not confirmed') || _m.includes('confirm')) {
+                alert("⚠️ Lütfen önce e-postanızı doğrulayın. Kayıt sırasında gönderdiğimiz doğrulama linkine tıklayın.");
+            } else {
+                alert("Giriş Başarısız: E-posta veya şifre hatalı.");
+            }
+        }
         else if (data.user) {
             const info = await getAccountInfo(data.user);
             const wantConsultant = (window.authRole === 'consultant');
