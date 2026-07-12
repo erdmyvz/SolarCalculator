@@ -223,7 +223,7 @@
         document.getElementById('appContainer')?.classList.remove('hidden');
         document.getElementById('mainMenu')?.classList.add('hidden');
         document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto')?.classList.remove('hidden'); // üst bar
-        ['crmModule','adminModule','companyManagementModule','techSupportModule','salesAssistantModule','educationModule','regulationsModule','dashboardModule'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+        ['crmModule','adminModule','calculatorModule','simulationModule','evCalcModule','companyManagementModule','techSupportModule','salesAssistantModule','educationModule','regulationsModule','amortizationModule','hardwareModule','consultantsModule','dashboardModule'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
         document.getElementById('consultantPanelModule')?.classList.remove('hidden');
 
         const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.textContent = v; };
