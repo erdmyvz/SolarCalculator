@@ -198,7 +198,11 @@
                     <p class="text-sm text-slate-500">Ziyaretçi sayfasında görünen profilinizi düzenleyin ve onaya gönderin.</p>
                 </button>
                 ${soonCard('💬', 'Mesajlaşma', 'Yatırımcılarla mesajlaşma yakında burada olacak.')}
-                ${soonCard('👥', 'Danışan Takibi (CRM)', 'Görüştüğünüz yatırımcıları takip edin — yakında.')}
+                <button onclick="consultantOpenCRM()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition">
+                    <div class="text-4xl mb-3">👥</div>
+                    <h3 class="font-black text-slate-800 mb-1">Danışan Takibi (CRM)</h3>
+                    <p class="text-sm text-slate-500">Görüştüğünüz yatırımcıları/danışanları ekleyin, durumlarını takip edin.</p>
+                </button>
             </div>`;
     }
     window.renderConsultantMenu = renderConsultantMenu;
@@ -308,6 +312,146 @@
             alert('Kaydedilemedi: ' + (e.message || e));
         }
     };
+
+    // ---------- DANIŞAN TAKİBİ (CRM) ----------
+    const CLIENT_ST = [['yeni','Yeni'],['gorusuluyor','Görüşülüyor'],['teklif','Teklif Aşaması'],['karar','Karar Verdi'],['kuruldu','Kuruldu'],['ilgilenmiyor','İlgilenmiyor']];
+    const CLIENT_BADGE = { yeni:'bg-slate-100 text-slate-600', gorusuluyor:'bg-blue-100 text-blue-700', teklif:'bg-amber-100 text-amber-800', karar:'bg-indigo-100 text-indigo-700', kuruldu:'bg-emerald-100 text-emerald-700', ilgilenmiyor:'bg-red-100 text-red-700' };
+    const stLabel = (v) => (CLIENT_ST.find(x => x[0] === v) || ['','—'])[1];
+    let _clients = [];
+
+    window.consultantOpenCRM = function () { renderConsultantCRM(); };
+
+    async function renderConsultantCRM() {
+        const root = document.getElementById('consultantPanelRoot');
+        if (!root || !window.currentConsultant || !supabaseClient) return;
+        root.innerHTML = `
+            <div class="flex items-center gap-3 mb-5">
+                <button onclick="consultantBackToMenu()" class="text-slate-500 hover:text-indigo-600 font-bold">← Panele Dön</button>
+                <span class="text-slate-300">/</span>
+                <h2 class="text-lg md:text-xl font-black text-slate-800">👥 Danışan Takibi</h2>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div id="consClientStats" class="text-sm text-slate-500"></div>
+                <button onclick="consultantClientNew()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-sm">+ Yeni Danışan</button>
+            </div>
+            <div id="consClientList"><p class="text-sm text-slate-400">Yükleniyor...</p></div>`;
+        await loadClients();
+    }
+
+    async function loadClients() {
+        const list = document.getElementById('consClientList');
+        try {
+            const { data, error } = await supabaseClient.from('consultant_clients').select('*').eq('consultant_id', window.currentConsultant.id).order('updated_at', { ascending: false });
+            if (error) throw error;
+            _clients = data || [];
+        } catch (e) { if (list) list.innerHTML = `<p class="text-red-500 text-sm">${esc(e.message || e)}</p>`; return; }
+        renderClientList();
+    }
+
+    function renderClientList() {
+        const list = document.getElementById('consClientList');
+        const stats = document.getElementById('consClientStats');
+        if (stats) stats.textContent = `${_clients.length} danışan · ${_clients.filter(c => c.status === 'kuruldu').length} kuruldu`;
+        if (!list) return;
+        if (!_clients.length) { list.innerHTML = '<div class="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-slate-500 text-sm">Henüz danışan eklemediniz. "+ Yeni Danışan" ile başlayın.</div>'; return; }
+        const opts = (sel) => CLIENT_ST.map(x => `<option value="${x[0]}" ${x[0] === sel ? 'selected' : ''}>${x[1]}</option>`).join('');
+        list.innerHTML = _clients.map(c => `
+            <div class="bg-white border border-slate-200 rounded-xl p-4 mb-2">
+                <div class="flex items-start justify-between gap-3 flex-wrap">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 mb-1"><span class="font-black text-slate-800">${esc(c.name)}</span><span class="text-[10px] font-black px-2 py-0.5 rounded-full ${CLIENT_BADGE[c.status] || 'bg-slate-100'}">${esc(stLabel(c.status))}</span></div>
+                        <div class="text-[11px] text-slate-400">${c.phone ? esc(c.phone) : ''}${c.phone && c.email ? ' · ' : ''}${c.email ? esc(c.email) : ''}</div>
+                        ${c.notes ? `<div class="text-xs text-slate-600 mt-1">${esc(c.notes)}</div>` : ''}
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <select onchange="consultantClientStatus('${c.id}', this.value)" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">${opts(c.status)}</select>
+                        <button onclick="consultantClientEdit('${c.id}')" title="Düzenle" class="text-slate-400 hover:text-indigo-600 px-1.5 py-1">✏️</button>
+                        <button onclick="consultantClientDelete('${c.id}')" title="Sil" class="text-slate-400 hover:text-red-600 px-1.5 py-1">🗑️</button>
+                    </div>
+                </div>
+            </div>`).join('');
+    }
+
+    function ensureClientModal() {
+        let m = document.getElementById('consClientModal');
+        if (m) return m;
+        m = document.createElement('div');
+        m.id = 'consClientModal';
+        m.className = 'fixed inset-0 bg-black/50 z-[70] hidden flex items-center justify-center p-4';
+        m.innerHTML = '<div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"><div id="consClientBody" class="p-6"></div></div>';
+        document.body.appendChild(m);
+        m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
+        return m;
+    }
+    function openClientForm(c) {
+        const m = ensureClientModal();
+        const ed = !!c;
+        document.getElementById('consClientBody').innerHTML = `
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-black text-lg text-slate-800">${ed ? 'Danışanı Düzenle' : 'Yeni Danışan'}</h3>
+                <button onclick="document.getElementById('consClientModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+            </div>
+            <input type="hidden" id="clId" value="${ed ? c.id : ''}">
+            <div class="space-y-3">
+                <div><label class="block text-xs font-bold text-slate-600 mb-1">Ad Soyad *</label><input id="clName" value="${ed ? esc(c.name) : ''}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">Telefon</label><input id="clPhone" value="${ed && c.phone ? esc(c.phone) : ''}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">E-posta</label><input id="clEmail" value="${ed && c.email ? esc(c.email) : ''}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
+                </div>
+                <div><label class="block text-xs font-bold text-slate-600 mb-1">Durum</label><select id="clStatus" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${CLIENT_ST.map(x => `<option value="${x[0]}" ${ed && c.status === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></div>
+                <div><label class="block text-xs font-bold text-slate-600 mb-1">Notlar</label><textarea id="clNotes" rows="3" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">${ed && c.notes ? esc(c.notes) : ''}</textarea></div>
+                <button onclick="consultantClientSave()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-2.5 rounded-lg">Kaydet</button>
+                <div id="clResult"></div>
+            </div>`;
+        m.classList.remove('hidden');
+    }
+    window.consultantClientNew = function () { openClientForm(null); };
+    window.consultantClientEdit = function (id) { const c = _clients.find(x => x.id === id); if (c) openClientForm(c); };
+
+    window.consultantClientSave = async function () {
+        const id = document.getElementById('clId').value;
+        const name = (document.getElementById('clName').value || '').trim();
+        const res = document.getElementById('clResult');
+        if (!name) { res.innerHTML = '<p class="text-red-500 text-sm">Ad soyad zorunludur.</p>'; return; }
+        const row = {
+            name,
+            phone: (document.getElementById('clPhone').value || '').trim() || null,
+            email: (document.getElementById('clEmail').value || '').trim() || null,
+            status: document.getElementById('clStatus').value,
+            notes: (document.getElementById('clNotes').value || '').trim() || null,
+            updated_at: new Date().toISOString()
+        };
+        res.innerHTML = '<p class="text-xs text-slate-400">Kaydediliyor...</p>';
+        try {
+            if (id) {
+                const { error } = await supabaseClient.from('consultant_clients').update(row).eq('id', id);
+                if (error) throw error;
+            } else {
+                row.consultant_id = window.currentConsultant.id;
+                const { error } = await supabaseClient.from('consultant_clients').insert(row);
+                if (error) throw error;
+            }
+            document.getElementById('consClientModal').classList.add('hidden');
+            await loadClients();
+        } catch (e) { res.innerHTML = `<p class="text-red-500 text-sm">${esc(e.message || e)}</p>`; }
+    };
+    window.consultantClientStatus = async function (id, status) {
+        try {
+            const { error } = await supabaseClient.from('consultant_clients').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
+            if (error) throw error;
+            const c = _clients.find(x => x.id === id); if (c) c.status = status;
+            renderClientList();
+        } catch (e) { alert('Güncellenemedi: ' + (e.message || e)); }
+    };
+    window.consultantClientDelete = async function (id) {
+        if (!confirm('Bu danışanı silmek istediğinize emin misiniz?')) return;
+        try {
+            const { error } = await supabaseClient.from('consultant_clients').delete().eq('id', id);
+            if (error) throw error;
+            await loadClients();
+        } catch (e) { alert('Silinemedi: ' + (e.message || e)); }
+    };
+
 
     if (document.getElementById('consultantsRoot')) renderConsultantsList();
 })();
