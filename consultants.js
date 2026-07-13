@@ -316,8 +316,11 @@
     // ---------- DANIŞAN TAKİBİ (CRM) ----------
     const CLIENT_ST = [['yeni','Yeni'],['gorusuluyor','Görüşülüyor'],['teklif','Teklif Aşaması'],['karar','Karar Verdi'],['kuruldu','Kuruldu'],['ilgilenmiyor','İlgilenmiyor']];
     const CLIENT_BADGE = { yeni:'bg-slate-100 text-slate-600', gorusuluyor:'bg-blue-100 text-blue-700', teklif:'bg-amber-100 text-amber-800', karar:'bg-indigo-100 text-indigo-700', kuruldu:'bg-emerald-100 text-emerald-700', ilgilenmiyor:'bg-red-100 text-red-700' };
+    const INSTALL_ST = [['atandi','Atandı'],['iletisim','İletişime Geçildi'],['kesif','Keşif Yapıldı'],['teklif','Teklif Verildi'],['sozlesme','Sözleşme'],['kurulum','Kurulum Aşamasında'],['tamamlandi','Tamamlandı']];
+    const INSTALL_BADGE = { atandi:'bg-slate-100 text-slate-600', iletisim:'bg-blue-100 text-blue-700', kesif:'bg-cyan-100 text-cyan-700', teklif:'bg-amber-100 text-amber-800', sozlesme:'bg-violet-100 text-violet-700', kurulum:'bg-orange-100 text-orange-700', tamamlandi:'bg-emerald-100 text-emerald-700' };
     const stLabel = (v) => (CLIENT_ST.find(x => x[0] === v) || ['','—'])[1];
-    let _clients = [];
+    const instLabel = (v) => (INSTALL_ST.find(x => x[0] === v) || ['',''])[1];
+    let _clients = [], _companies = [];
 
     window.consultantOpenCRM = function () { renderConsultantCRM(); };
 
@@ -330,32 +333,64 @@
                 <span class="text-slate-300">/</span>
                 <h2 class="text-lg md:text-xl font-black text-slate-800">👥 Danışan Takibi</h2>
             </div>
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <div id="consClientStats" class="text-sm text-slate-500"></div>
                 <button onclick="consultantClientNew()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-sm">+ Yeni Danışan</button>
             </div>
+            <div id="consClientFilters" class="mb-4"></div>
             <div id="consClientList"><p class="text-sm text-slate-400">Yükleniyor...</p></div>`;
-        await loadClients();
+        await Promise.all([loadClients(), loadCompanies()]);
+        renderFilters();
+        applyClientFilters();
     }
-
     async function loadClients() {
-        const list = document.getElementById('consClientList');
         try {
             const { data, error } = await supabaseClient.from('consultant_clients').select('*').eq('consultant_id', window.currentConsultant.id).order('updated_at', { ascending: false });
             if (error) throw error;
             _clients = data || [];
-        } catch (e) { if (list) list.innerHTML = `<p class="text-red-500 text-sm">${esc(e.message || e)}</p>`; return; }
-        renderClientList();
+        } catch (e) { const l = document.getElementById('consClientList'); if (l) l.innerHTML = `<p class="text-red-500 text-sm">${esc(e.message || e)}</p>`; }
+    }
+    async function loadCompanies() {
+        try { const { data } = await supabaseClient.rpc('list_companies'); _companies = data || []; } catch (e) { _companies = []; }
     }
 
-    function renderClientList() {
+    function renderFilters() {
+        const box = document.getElementById('consClientFilters');
+        if (!box) return;
+        const stOpts = '<option value="">Tüm durumlar</option>' + CLIENT_ST.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('');
+        const fmOpts = '<option value="">Tüm firmalar</option><option value="__none__">Atanmamış</option>' + _companies.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+        box.innerHTML = `
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input id="clSearch" oninput="applyClientFilters()" placeholder="🔍 Ara: ad, telefon, e-posta, firma" class="flex-1 border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500">
+                <select id="clStatusFilter" onchange="applyClientFilters()" class="border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${stOpts}</select>
+                <select id="clFirmFilter" onchange="applyClientFilters()" class="border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${fmOpts}</select>
+            </div>`;
+    }
+    window.applyClientFilters = function () {
+        const q = (document.getElementById('clSearch')?.value || '').toLowerCase().trim();
+        const st = document.getElementById('clStatusFilter')?.value || '';
+        const fm = document.getElementById('clFirmFilter')?.value || '';
+        const filtered = _clients.filter(c => {
+            if (st && c.status !== st) return false;
+            if (fm === '__none__' && c.assigned_company_id) return false;
+            if (fm && fm !== '__none__' && c.assigned_company_id !== fm) return false;
+            if (q) { const hay = [c.name, c.phone, c.email, c.assigned_company_name].filter(Boolean).join(' ').toLowerCase(); if (!hay.includes(q)) return false; }
+            return true;
+        });
+        renderClientList(filtered);
+    };
+
+    function renderClientList(arr) {
         const list = document.getElementById('consClientList');
         const stats = document.getElementById('consClientStats');
-        if (stats) stats.textContent = `${_clients.length} danışan · ${_clients.filter(c => c.status === 'kuruldu').length} kuruldu`;
+        arr = arr || _clients;
+        if (stats) stats.textContent = `${_clients.length} danışan · ${_clients.filter(c => c.install_status === 'tamamlandi').length} tamamlandı · ${_clients.filter(c => c.assigned_company_id).length} firmaya atandı`;
         if (!list) return;
         if (!_clients.length) { list.innerHTML = '<div class="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-slate-500 text-sm">Henüz danışan eklemediniz. "+ Yeni Danışan" ile başlayın.</div>'; return; }
-        const opts = (sel) => CLIENT_ST.map(x => `<option value="${x[0]}" ${x[0] === sel ? 'selected' : ''}>${x[1]}</option>`).join('');
-        list.innerHTML = _clients.map(c => `
+        if (!arr.length) { list.innerHTML = '<div class="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center text-slate-400 text-sm">Filtreye uyan danışan yok.</div>'; return; }
+        const stOpts = (sel) => CLIENT_ST.map(x => `<option value="${x[0]}" ${x[0] === sel ? 'selected' : ''}>${x[1]}</option>`).join('');
+        const instOpts = (sel) => INSTALL_ST.map(x => `<option value="${x[0]}" ${x[0] === sel ? 'selected' : ''}>${x[1]}</option>`).join('');
+        list.innerHTML = arr.map(c => `
             <div class="bg-white border border-slate-200 rounded-xl p-4 mb-2">
                 <div class="flex items-start justify-between gap-3 flex-wrap">
                     <div class="min-w-0">
@@ -364,10 +399,18 @@
                         ${c.notes ? `<div class="text-xs text-slate-600 mt-1">${esc(c.notes)}</div>` : ''}
                     </div>
                     <div class="flex items-center gap-1.5 shrink-0">
-                        <select onchange="consultantClientStatus('${c.id}', this.value)" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">${opts(c.status)}</select>
+                        <select onchange="consultantClientStatus('${c.id}', this.value)" title="Danışan durumu" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">${stOpts(c.status)}</select>
                         <button onclick="consultantClientEdit('${c.id}')" title="Düzenle" class="text-slate-400 hover:text-indigo-600 px-1.5 py-1">✏️</button>
                         <button onclick="consultantClientDelete('${c.id}')" title="Sil" class="text-slate-400 hover:text-red-600 px-1.5 py-1">🗑️</button>
                     </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+                    <span class="text-[11px] text-slate-400">Kurulumcu firma:</span>
+                    ${c.assigned_company_id
+                        ? `<span class="text-xs font-bold text-slate-700">🏢 ${esc(c.assigned_company_name || 'Firma')}</span>
+                           <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${INSTALL_BADGE[c.install_status] || 'bg-slate-100 text-slate-500'}">${esc(instLabel(c.install_status) || 'Durum yok')}</span>
+                           <select onchange="consultantClientInstall('${c.id}', this.value)" title="Kurulum durumu" class="ml-auto text-xs border border-slate-300 rounded-lg px-2 py-1 bg-white">${instOpts(c.install_status)}</select>`
+                        : `<span class="text-xs text-slate-400 italic">atanmadı</span><button onclick="consultantClientEdit('${c.id}')" class="ml-auto text-xs font-bold text-indigo-600 hover:underline">Firma ata →</button>`}
                 </div>
             </div>`).join('');
     }
@@ -386,6 +429,8 @@
     function openClientForm(c) {
         const m = ensureClientModal();
         const ed = !!c;
+        const compOpts = '<option value="">— Firma atanmadı —</option>' + _companies.map(x => `<option value="${x.id}" ${ed && c.assigned_company_id === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+        const instOpts = '<option value="">— Durum yok —</option>' + INSTALL_ST.map(x => `<option value="${x[0]}" ${ed && c.install_status === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('');
         document.getElementById('consClientBody').innerHTML = `
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-black text-lg text-slate-800">${ed ? 'Danışanı Düzenle' : 'Yeni Danışan'}</h3>
@@ -398,8 +443,10 @@
                     <div><label class="block text-xs font-bold text-slate-600 mb-1">Telefon</label><input id="clPhone" value="${ed && c.phone ? esc(c.phone) : ''}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1">E-posta</label><input id="clEmail" value="${ed && c.email ? esc(c.email) : ''}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
                 </div>
-                <div><label class="block text-xs font-bold text-slate-600 mb-1">Durum</label><select id="clStatus" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${CLIENT_ST.map(x => `<option value="${x[0]}" ${ed && c.status === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></div>
-                <div><label class="block text-xs font-bold text-slate-600 mb-1">Notlar</label><textarea id="clNotes" rows="3" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">${ed && c.notes ? esc(c.notes) : ''}</textarea></div>
+                <div><label class="block text-xs font-bold text-slate-600 mb-1">Danışan Durumu</label><select id="clStatus" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${CLIENT_ST.map(x => `<option value="${x[0]}" ${ed && c.status === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></div>
+                <div class="border-t border-slate-100 pt-3"><label class="block text-xs font-bold text-slate-600 mb-1">🏢 Atanan Kurulumcu Firma</label><select id="clCompany" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${compOpts}</select></div>
+                <div><label class="block text-xs font-bold text-slate-600 mb-1">Kurulum Durumu</label><select id="clInstall" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${instOpts}</select></div>
+                <div><label class="block text-xs font-bold text-slate-600 mb-1">Notlar</label><textarea id="clNotes" rows="2" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">${ed && c.notes ? esc(c.notes) : ''}</textarea></div>
                 <button onclick="consultantClientSave()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-2.5 rounded-lg">Kaydet</button>
                 <div id="clResult"></div>
             </div>`;
@@ -413,43 +460,40 @@
         const name = (document.getElementById('clName').value || '').trim();
         const res = document.getElementById('clResult');
         if (!name) { res.innerHTML = '<p class="text-red-500 text-sm">Ad soyad zorunludur.</p>'; return; }
+        const compId = document.getElementById('clCompany').value || null;
+        const comp = _companies.find(x => x.id === compId);
         const row = {
             name,
             phone: (document.getElementById('clPhone').value || '').trim() || null,
             email: (document.getElementById('clEmail').value || '').trim() || null,
             status: document.getElementById('clStatus').value,
+            assigned_company_id: compId,
+            assigned_company_name: comp ? comp.name : null,
+            install_status: (document.getElementById('clInstall').value || null),
             notes: (document.getElementById('clNotes').value || '').trim() || null,
             updated_at: new Date().toISOString()
         };
         res.innerHTML = '<p class="text-xs text-slate-400">Kaydediliyor...</p>';
         try {
-            if (id) {
-                const { error } = await supabaseClient.from('consultant_clients').update(row).eq('id', id);
-                if (error) throw error;
-            } else {
-                row.consultant_id = window.currentConsultant.id;
-                const { error } = await supabaseClient.from('consultant_clients').insert(row);
-                if (error) throw error;
-            }
+            if (id) { const { error } = await supabaseClient.from('consultant_clients').update(row).eq('id', id); if (error) throw error; }
+            else { row.consultant_id = window.currentConsultant.id; const { error } = await supabaseClient.from('consultant_clients').insert(row); if (error) throw error; }
             document.getElementById('consClientModal').classList.add('hidden');
-            await loadClients();
+            await loadClients(); applyClientFilters();
         } catch (e) { res.innerHTML = `<p class="text-red-500 text-sm">${esc(e.message || e)}</p>`; }
     };
-    window.consultantClientStatus = async function (id, status) {
-        try {
-            const { error } = await supabaseClient.from('consultant_clients').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
-            if (error) throw error;
-            const c = _clients.find(x => x.id === id); if (c) c.status = status;
-            renderClientList();
-        } catch (e) { alert('Güncellenemedi: ' + (e.message || e)); }
-    };
+    async function _clientPatch(id, patch) {
+        patch.updated_at = new Date().toISOString();
+        const { error } = await supabaseClient.from('consultant_clients').update(patch).eq('id', id);
+        if (error) { alert('Güncellenemedi: ' + error.message); return; }
+        const c = _clients.find(x => x.id === id); if (c) Object.assign(c, patch);
+        applyClientFilters();
+    }
+    window.consultantClientStatus = (id, status) => _clientPatch(id, { status });
+    window.consultantClientInstall = (id, install_status) => _clientPatch(id, { install_status: install_status || null });
     window.consultantClientDelete = async function (id) {
         if (!confirm('Bu danışanı silmek istediğinize emin misiniz?')) return;
-        try {
-            const { error } = await supabaseClient.from('consultant_clients').delete().eq('id', id);
-            if (error) throw error;
-            await loadClients();
-        } catch (e) { alert('Silinemedi: ' + (e.message || e)); }
+        try { const { error } = await supabaseClient.from('consultant_clients').delete().eq('id', id); if (error) throw error; await loadClients(); applyClientFilters(); }
+        catch (e) { alert('Silinemedi: ' + (e.message || e)); }
     };
 
 
