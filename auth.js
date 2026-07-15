@@ -109,18 +109,67 @@ function showRenewalScreen(email, sub) {
     m.classList.remove('hidden');
 }
 
+function paymentInfoHtml(email) {
+    const safe = String(email || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<div class="bg-white border border-slate-200 rounded-xl p-4">
+        <div class="flex items-end justify-between mb-3"><div><div class="text-2xl font-black text-slate-800">$299<span class="text-sm font-bold text-slate-400">/ay</span></div><div class="text-[11px] text-slate-500">KDV hariç · USD'ye endeksli TL (güncel kur)</div></div><span class="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full">AYLIK</span></div>
+        <div class="border-t border-slate-200 pt-3 space-y-1.5 text-sm">
+            <div class="flex justify-between gap-3"><span class="text-slate-500">Alıcı</span><span class="font-bold text-slate-800 text-right">${PAYMENT_NAME}</span></div>
+            <div class="flex justify-between gap-3"><span class="text-slate-500">IBAN</span><span class="font-bold text-slate-800 text-right">${PAYMENT_IBAN}</span></div>
+            <div class="flex justify-between gap-3"><span class="text-slate-500">Açıklama</span><span class="font-bold text-indigo-600 text-right break-all">${safe}</span></div>
+        </div>
+    </div>`;
+}
+
+function updateSubCounter() {
+    const el = document.getElementById('subCounter');
+    if (!el) return;
+    const s = window.__subInfo;
+    if (!s || !s.endsAt) { el.innerHTML = ''; return; }
+    const days = Math.ceil((new Date(s.endsAt).getTime() - Date.now()) / 86400000);
+    if (days < 0) { el.innerHTML = ''; return; }
+    let cls = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    if (days <= 7) cls = 'bg-amber-50 text-amber-700 border-amber-200';
+    const label = days === 0 ? 'Bugün son gün' : days + ' gün kaldı';
+    el.innerHTML = `<button onclick="showSubModal()" title="Abonelik / uzatma" class="border ${cls} font-bold text-xs px-3 py-1.5 rounded-full hover:opacity-80 whitespace-nowrap">⏳ ${label}</button>`;
+}
+
+window.showSubModal = function () {
+    const s = window.__subInfo || {};
+    const days = s.endsAt ? Math.ceil((new Date(s.endsAt).getTime() - Date.now()) / 86400000) : null;
+    const endStr = s.endsAt ? new Date(s.endsAt).toLocaleDateString('tr-TR') : '—';
+    let m = document.getElementById('subModal');
+    if (!m) { m = document.createElement('div'); m.id = 'subModal'; document.body.appendChild(m); m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); }); }
+    m.className = 'fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4 overflow-y-auto';
+    m.innerHTML = `<div class="bg-white rounded-2xl max-w-md w-full p-7 my-8">
+        <div class="flex items-center justify-between mb-4"><h3 class="font-black text-lg text-slate-800">Aboneliğim</h3><button onclick="document.getElementById('subModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button></div>
+        <div class="text-center bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
+            <div class="text-4xl font-black ${days !== null && days <= 7 ? 'text-amber-600' : 'text-emerald-600'}">${days !== null ? days : '—'}</div>
+            <div class="text-sm text-slate-500">gün kaldı · Bitiş: ${endStr}</div>
+        </div>
+        <p class="text-xs font-bold text-slate-600 mb-2">Aboneliği uzatmak için ödeme bilgileri:</p>
+        ${paymentInfoHtml(s.email || '')}
+        <p class="text-xs text-slate-600 mt-3 bg-amber-50 border border-amber-100 rounded-lg p-3">💡 Havale/EFT açıklamasına <strong>e-posta adresinizi</strong> yazın. Ödemeniz onaylanınca süreniz uzatılır.</p>
+    </div>`;
+    m.classList.remove('hidden');
+};
+
 async function routeByInfo(info, user) {
     window.currentConsultant = null;
+    window.__subInfo = null;
     if (info.type !== 'admin') {
         const sub = await getSubscription(info, user);
+        window.__subInfo = sub ? { endsAt: sub.endsAt, status: sub.status, email: user.email } : null;
         if (sub && sub.endsAt && new Date(sub.endsAt).getTime() < Date.now()) { showRenewalScreen(user.email, sub); return 'expired'; }
     }
     if (info.type === 'consultant') {
         window.currentConsultant = info.consultant;
         window.__consultantEmail = user.email;
+        updateSubCounter();
         return 'consultant';
     }
     await fetchUserProfile(user.id, user.email);
+    updateSubCounter();
     return info.type;
 }
 async function routeAfterLogin(user) {

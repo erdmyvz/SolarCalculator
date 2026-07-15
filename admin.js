@@ -1117,6 +1117,7 @@ async function renderSubscriptions() {
                     <div class="flex gap-1.5 shrink-0">
                         <button onclick="adminExtendSub('${s.table}','${s.id}',1)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+1 Ay</button>
                         <button onclick="adminExtendSub('${s.table}','${s.id}',3)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg">+3 Ay</button>
+                        <button onclick="adminSubManage('${s.table}','${s.id}')" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg">⚙️ Ayarla</button>
                     </div>
                 </div>`; }).join('') : '<p class="text-sm text-slate-400">Kayıt yok.</p>'}
         </div>`;
@@ -1129,4 +1130,49 @@ window.adminExtendSub = async function (table, id, months) {
     const { error } = await supabaseClient.from(table).update({ sub_ends_at: d.toISOString(), sub_status: 'active' }).eq('id', id);
     if (error) { alert('İşlem başarısız: ' + error.message); return; }
     await renderSubscriptions();
+};
+
+// Abonelik süresi ayarla / geri al / sonlandır (yanlış uzatmaları düzeltmek için)
+window.adminSubManage = function (table, id) {
+    const s = _allSubs.find(x => x.table === table && x.id === id);
+    if (!s) return;
+    const cur = s.sub_ends_at ? new Date(s.sub_ends_at) : new Date();
+    const iso = cur.toISOString().split('T')[0];
+    let m = document.getElementById('subManageModal');
+    if (!m) { m = document.createElement('div'); m.id = 'subManageModal'; document.body.appendChild(m); m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); }); }
+    m.className = 'fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4';
+    m.innerHTML = `<div class="bg-white rounded-2xl max-w-sm w-full p-6">
+        <div class="flex items-center justify-between mb-2"><h3 class="font-black text-slate-800">Abonelik Ayarla</h3><button onclick="document.getElementById('subManageModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button></div>
+        <p class="text-sm text-slate-500 mb-4">${admEscape(s.name)} <span class="text-xs text-slate-400">(${s.type})</span></p>
+        <label class="block text-xs font-bold text-slate-600 mb-1">Bitiş tarihi</label>
+        <input type="date" id="subMngDate" value="${iso}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm mb-3">
+        <button onclick="adminSubSetDate('${table}','${id}')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg mb-3">Tarihi Kaydet</button>
+        <div class="flex gap-2">
+            <button onclick="adminSubReduce('${table}','${id}',1)" class="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs py-2 rounded-lg">− 1 Ay Geri Al</button>
+            <button onclick="adminSubEnd('${table}','${id}')" class="flex-1 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs py-2 rounded-lg">Hemen Sonlandır</button>
+        </div>
+    </div>`;
+    m.classList.remove('hidden');
+};
+async function _subUpdate(table, id, isoDate) {
+    const future = new Date(isoDate).getTime() > Date.now();
+    const { error } = await supabaseClient.from(table).update({ sub_ends_at: isoDate, sub_status: future ? 'active' : 'trial' }).eq('id', id);
+    if (error) { alert('İşlem başarısız: ' + error.message); return; }
+    const mm = document.getElementById('subManageModal'); if (mm) mm.classList.add('hidden');
+    await renderSubscriptions();
+}
+window.adminSubSetDate = function (table, id) {
+    const v = document.getElementById('subMngDate').value;
+    if (!v) { alert('Tarih seçin.'); return; }
+    _subUpdate(table, id, new Date(v + 'T23:59:59').toISOString());
+};
+window.adminSubReduce = function (table, id, months) {
+    const s = _allSubs.find(x => x.table === table && x.id === id);
+    const base = s && s.sub_ends_at ? new Date(s.sub_ends_at) : new Date();
+    base.setMonth(base.getMonth() - months);
+    _subUpdate(table, id, base.toISOString());
+};
+window.adminSubEnd = function (table, id) {
+    if (!confirm('Bu aboneliği hemen sonlandırmak (süresini bugüne çekmek) istediğinize emin misiniz?')) return;
+    _subUpdate(table, id, new Date(Date.now() - 60000).toISOString());
 };
