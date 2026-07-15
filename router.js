@@ -47,12 +47,10 @@ window.addEventListener('load', async () => {
     if(supabaseClient) {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
-            if (typeof routeAfterLogin === 'function') {
-                await routeAfterLogin(session.user);
-            } else {
-                await fetchUserProfile(session.user.id, session.user.email);
-            }
-            if (window.location.hash === '#auth' || window.location.hash === '') {
+            let _r = 'installer';
+            if (typeof routeAfterLogin === 'function') { _r = await routeAfterLogin(session.user); }
+            else { await fetchUserProfile(session.user.id, session.user.email); }
+            if (_r !== 'expired' && (window.location.hash === '#auth' || window.location.hash === '')) {
                 window.location.hash = '#app'; // Zaten giriş yapmışsa direkt panele al
             }
         }

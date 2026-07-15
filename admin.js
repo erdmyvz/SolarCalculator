@@ -183,6 +183,9 @@ async function fetchAdminData() {
     // 10) DANIŞMAN BAŞVURULARI (onay akışı)
     await renderConsultantsAdmin();
 
+    // 10b) ABONELİKLER
+    await renderSubscriptions();
+
     // 11) GENEL BAKIŞ ÖZET KPI'LARINI GÜNCELLE (sekmeli panel)
     renderAdminStats();
 }
@@ -1060,4 +1063,70 @@ window.adminRejectConsultant = (id) => {
     const reason = prompt('Ret gerekçesi (danışmana gösterilecek):', '');
     if (reason === null) return;
     _consUpdate(id, { status: 'rejected', reject_reason: reason });
+};
+
+// ============================================================================
+// ABONELİKLER — admin: firma & danışman abonelik durumu + aktifleştir/uzat
+// ============================================================================
+let _allSubs = [];
+async function renderSubscriptions() {
+    const root = document.getElementById('admSubsRoot');
+    if (!root || !supabaseClient) return;
+    root.innerHTML = '<p class="text-slate-400 text-sm">Yükleniyor...</p>';
+    try {
+        const [r1, r2] = await Promise.all([
+            supabaseClient.from('companies').select('id, name, sub_status, sub_ends_at'),
+            supabaseClient.from('consultants').select('id, full_name, email, sub_status, sub_ends_at')
+        ]);
+        if (r1.error) throw r1.error; if (r2.error) throw r2.error;
+        _allSubs = [
+            ...(r1.data || []).map(x => ({ table: 'companies', id: x.id, name: x.name || '(firma)', email: '', type: 'Firma', sub_status: x.sub_status, sub_ends_at: x.sub_ends_at })),
+            ...(r2.data || []).map(x => ({ table: 'consultants', id: x.id, name: x.full_name || '(danışman)', email: x.email || '', type: 'Danışman', sub_status: x.sub_status, sub_ends_at: x.sub_ends_at }))
+        ];
+    } catch (e) { root.innerHTML = `<p class="text-red-500 text-sm">Yüklenemedi: ${e.message}</p>`; return; }
+    const info = (s) => {
+        const end = s.sub_ends_at ? new Date(s.sub_ends_at) : null;
+        const days = end ? Math.ceil((end.getTime() - Date.now()) / 86400000) : null;
+        const expired = days !== null && days < 0;
+        let cls = 'bg-amber-100 text-amber-800', label = 'Deneme';
+        if (expired) { cls = 'bg-red-100 text-red-700'; label = 'Süresi Doldu'; }
+        else if (s.sub_status === 'active') { cls = 'bg-emerald-100 text-emerald-700'; label = 'Aktif'; }
+        return { days, expired, cls, label, end };
+    };
+    const active = _allSubs.filter(s => !info(s).expired && s.sub_status === 'active').length;
+    const trial = _allSubs.filter(s => !info(s).expired && s.sub_status !== 'active').length;
+    const expiredN = _allSubs.filter(s => info(s).expired).length;
+    _allSubs.sort((a, b) => new Date(a.sub_ends_at || 0) - new Date(b.sub_ends_at || 0));
+    root.innerHTML = `
+        <div class="bg-white border border-slate-200 rounded-xl p-5">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 class="font-black text-lg text-slate-800">💳 Abonelikler <span class="text-sm font-normal text-slate-400">· $299/ay · KDV hariç</span></h3>
+                <div class="flex gap-2 text-[11px] font-bold flex-wrap">
+                    <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-3 py-1">${active} Aktif</span>
+                    <span class="bg-amber-50 text-amber-800 border border-amber-200 rounded-full px-3 py-1">${trial} Deneme</span>
+                    <span class="bg-red-50 text-red-700 border border-red-200 rounded-full px-3 py-1">${expiredN} Süresi Doldu</span>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">Havale/EFT geldikçe hesabı <b>+1 Ay</b> ile aktifleştir/uzat. Deneme 30 gündür. (En yakın biten üstte.)</p>
+            ${_allSubs.length ? _allSubs.map(s => { const i = info(s); return `
+                <div class="border border-slate-100 rounded-lg p-3 mb-2 flex items-center justify-between gap-3 flex-wrap">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-slate-800">${admEscape(s.name)}</span><span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">${s.type}</span><span class="text-[10px] font-black px-2 py-0.5 rounded-full ${i.cls}">${i.label}</span></div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">${s.email ? admEscape(s.email) + ' · ' : ''}Bitiş: ${i.end ? i.end.toLocaleDateString('tr-TR') : '—'}${i.days !== null ? (i.days >= 0 ? ' · ' + i.days + ' gün kaldı' : ' · ' + Math.abs(i.days) + ' gün geçti') : ''}</div>
+                    </div>
+                    <div class="flex gap-1.5 shrink-0">
+                        <button onclick="adminExtendSub('${s.table}','${s.id}',1)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+1 Ay</button>
+                        <button onclick="adminExtendSub('${s.table}','${s.id}',3)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg">+3 Ay</button>
+                    </div>
+                </div>`; }).join('') : '<p class="text-sm text-slate-400">Kayıt yok.</p>'}
+        </div>`;
+}
+window.adminExtendSub = async function (table, id, months) {
+    const item = _allSubs.find(x => x.table === table && x.id === id);
+    let base = Date.now();
+    if (item && item.sub_ends_at) { const e = new Date(item.sub_ends_at).getTime(); if (e > base) base = e; }
+    const d = new Date(base); d.setMonth(d.getMonth() + months);
+    const { error } = await supabaseClient.from(table).update({ sub_ends_at: d.toISOString(), sub_status: 'active' }).eq('id', id);
+    if (error) { alert('İşlem başarısız: ' + error.message); return; }
+    await renderSubscriptions();
 };
