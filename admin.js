@@ -206,6 +206,46 @@ function ensureProspectsSection() {
     return document.getElementById('adminProspectsList');
 }
 
+function prospectScore(p) {
+    // Niyet/aksiyon ağırlıklı puan. Aksiyon en büyük paya sahip; ekonomik uyum ikincil.
+    const parts = [];
+    const src = (p.source || '').toLowerCase();
+    // 1) AKSİYON / NİYET — en büyük ağırlık (0-50)
+    let action = 10, aLabel = '👀 Göz attı';
+    if (src.includes('danışman') || src.includes('danisman')) { action = 50; aLabel = '🎯 Danışman iletişimi aldı'; }
+    else if (p.consent && p.phone && p.email) { action = 40; aLabel = '📝 Bilgi bıraktı'; }
+    else if (p.recommended_kwp || p.monthly_bill || p.est_annual_saving) { action = 25; aLabel = '🧮 Hesaplama yaptı'; }
+    parts.push([aLabel, action]);
+    // 2) ULAŞILABİLİRLİK (izin + iletişim) (0-25)
+    let reach = 0, rLabel = '';
+    if (p.consent && p.phone) { reach = 25; rLabel = '✅ İzinli + telefon'; }
+    else if (p.consent && p.email) { reach = 18; rLabel = '✅ İzinli + e-posta'; }
+    else if (p.phone || p.email) { reach = 10; rLabel = '📇 İletişim var (izinsiz)'; }
+    if (reach) parts.push([rLabel, reach]);
+    // 3) GÜNCELLİK (0-15)
+    const days = (Date.now() - new Date(p.created_at).getTime()) / 86400000;
+    let rec = 2, recL = '🕐 30+ gün';
+    if (days <= 3) { rec = 15; recL = '🔥 Son 3 gün'; }
+    else if (days <= 7) { rec = 11; recL = '🕐 Son 7 gün'; }
+    else if (days <= 30) { rec = 6; recL = '🕐 Son 30 gün'; }
+    parts.push([recL, rec]);
+    // 4) EKONOMİK UYUM — ikincil (0-10)
+    const bill = Number(p.monthly_bill) || 0;
+    let eco = 0, eL = '';
+    if (bill >= 8000) { eco = 10; eL = '💰 Yüksek fatura'; }
+    else if (bill >= 4000) { eco = 7; eL = '💰 Orta-üstü fatura'; }
+    else if (bill >= 1500) { eco = 4; eL = '💰 Orta fatura'; }
+    else if (bill > 0) { eco = 2; eL = '💰 Düşük fatura'; }
+    if (eco) parts.push([eL, eco]);
+    const total = Math.max(0, Math.min(100, action + reach + rec + eco));
+    return { total, parts };
+}
+function scoreBand(s) {
+    if (s >= 70) return { label: 'Sıcak', icon: '🔥', cls: 'bg-red-100 text-red-700 border-red-200' };
+    if (s >= 40) return { label: 'Ilık', icon: '🌤️', cls: 'bg-amber-100 text-amber-800 border-amber-200' };
+    return { label: 'Soğuk', icon: '❄️', cls: 'bg-sky-100 text-sky-700 border-sky-200' };
+}
+
 async function renderProspects() {
     const box = ensureProspectsSection();
     if (!box || !supabaseClient) return;
@@ -223,13 +263,19 @@ async function renderProspects() {
         return;
     }
 
+    data.forEach(p => { p._sc = prospectScore(p); p._score = p._sc.total; });
+    data.sort((a, b) => b._score - a._score);
+
     const statusOpts = (cur) => [
         ['yeni', 'Yeni'], ['isitiliyor', 'Isıtılıyor'],
         ['donusturuldu', 'Dönüştürüldü'], ['ilgilenmiyor', 'İlgilenmiyor']
     ].map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('');
 
-    box.innerHTML = data.map(p => {
+    const _hot = data.filter(p => p._score >= 70).length, _warm = data.filter(p => p._score >= 40 && p._score < 70).length, _cold = data.length - _hot - _warm;
+    const _summary = `<div class="flex gap-2 mb-3 text-[11px] font-bold flex-wrap"><span class="bg-red-50 text-red-700 border border-red-200 rounded-full px-3 py-1">🔥 ${_hot} Sıcak</span><span class="bg-amber-50 text-amber-800 border border-amber-200 rounded-full px-3 py-1">🌤️ ${_warm} Ilık</span><span class="bg-sky-50 text-sky-700 border border-sky-200 rounded-full px-3 py-1">❄️ ${_cold} Soğuk</span><span class="ml-auto text-slate-400 font-normal self-center">Yaptırma olasılığına göre sıralı</span></div>`;
+    box.innerHTML = _summary + data.map(p => {
         const dateStr = new Date(p.created_at).toLocaleString('tr-TR', { day:'2-digit', month:'short', year:'2-digit' });
+        const _band = scoreBand(p._score);
         const kwp    = p.recommended_kwp   ? `${p.recommended_kwp} kWp` : '-';
         const bill   = p.monthly_bill      ? `₺${Math.round(p.monthly_bill).toLocaleString('tr-TR')}/ay` : '-';
         const saving = p.est_annual_saving ? `₺${Math.round(p.est_annual_saving).toLocaleString('tr-TR')}/yıl` : '-';
@@ -238,7 +284,8 @@ async function renderProspects() {
             <div class="border border-slate-200 rounded-xl p-4 text-xs">
                 <div class="flex justify-between items-start gap-3 flex-wrap">
                     <div>
-                        <strong class="text-sm text-slate-800">${admEscape(p.full_name) || '(isim yok)'}</strong>
+                        <div class="flex items-center gap-2 flex-wrap"><strong class="text-sm text-slate-800">${admEscape(p.full_name) || '(isim yok)'}</strong><span class="text-[10px] font-black px-2 py-0.5 rounded-full border ${_band.cls}">${_band.icon} ${_band.label} · ${p._score}/100</span></div>
+                        <div class="mt-1.5 flex flex-wrap gap-1">${p._sc.parts.map(([l, v]) => `<span class="text-[10px] bg-slate-100 text-slate-600 rounded px-1.5 py-0.5">${l} <b class="text-slate-800">+${v}</b></span>`).join('')}</div>
                         <p class="text-slate-500 mt-1 font-medium">✉️ ${admEscape(p.email)}${p.phone ? ' | 📞 ' + admEscape(p.phone) : ''}</p>
                         ${p.source ? `<p class="text-indigo-700 mt-1 text-[11px] font-bold bg-indigo-50 border border-indigo-100 rounded px-2 py-1 inline-block">🔎 ${admEscape(p.source)}</p>` : ''}
                         ${(p.recommended_kwp || p.monthly_bill || p.est_annual_saving) ? `<p class="text-slate-400 mt-2 bg-slate-50 border border-slate-100 rounded px-2 py-1 inline-block">☀️ ${kwp} · ${bill} · Tasarruf ${saving} · Amorti ${pay}</p>` : ''}
