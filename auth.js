@@ -61,9 +61,60 @@ async function getAccountInfo(user) {
 window.getAccountInfo = getAccountInfo;
 
 // Girişten sonra yönlendirme (rol kilidi YOK — sayfa yenilemede kullanılır)
-async function routeAfterLogin(user) {
+// ⬇️⬇️ ÖDEME BİLGİLERİ — KENDİ BİLGİLERİNİZLE DEĞİŞTİRİN ⬇️⬇️
+const PAYMENT_NAME = "Ad Soyad (hesap sahibi)";
+const PAYMENT_IBAN = "TR00 0000 0000 0000 0000 0000 00";
+// ⬆️⬆️ ------------------------------------------------ ⬆️⬆️
+
+async function getSubscription(info, user) {
+    if (info.type === 'consultant' && info.consultant) return { status: info.consultant.sub_status, endsAt: info.consultant.sub_ends_at };
+    if (info.type === 'installer' && supabaseClient) {
+        try {
+            const { data: prof } = await supabaseClient.from('profiles').select('company_id').eq('id', user.id).maybeSingle();
+            if (prof && prof.company_id) {
+                const { data: co } = await supabaseClient.from('companies').select('sub_status, sub_ends_at').eq('id', prof.company_id).maybeSingle();
+                if (co) return { status: co.sub_status, endsAt: co.sub_ends_at };
+            }
+        } catch (e) { /* sub kolonları yoksa sessiz geç */ }
+    }
+    return null;
+}
+
+function showRenewalScreen(email, sub) {
+    let m = document.getElementById('subRenewalScreen');
+    if (!m) { m = document.createElement('div'); m.id = 'subRenewalScreen'; document.body.appendChild(m); }
+    m.className = 'fixed inset-0 z-[100] bg-slate-900/95 flex items-center justify-center p-4 overflow-y-auto';
+    const endStr = sub && sub.endsAt ? new Date(sub.endsAt).toLocaleDateString('tr-TR') : '';
+    const safe = String(email || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    m.innerHTML = `<div class="bg-white rounded-2xl max-w-md w-full p-7 my-8">
+        <div class="text-center mb-5">
+            <div class="text-4xl mb-2">🔒</div>
+            <h2 class="text-2xl font-black text-slate-800">Aboneliğiniz Sona Erdi</h2>
+            <p class="text-sm text-slate-500 mt-1">Hesabınıza devam etmek için aboneliğinizi yenileyin.${endStr ? ' (Bitiş: ' + endStr + ')' : ''}</p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-4">
+            <div class="flex items-end justify-between mb-3">
+                <div><div class="text-3xl font-black text-slate-800">$299<span class="text-base font-bold text-slate-400">/ay</span></div><div class="text-xs text-slate-500">KDV hariç · USD'ye endeksli TL (güncel kur)</div></div>
+                <span class="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full">AYLIK</span>
+            </div>
+            <div class="border-t border-slate-200 pt-3 space-y-1.5 text-sm">
+                <div class="flex justify-between gap-3"><span class="text-slate-500">Alıcı</span><span class="font-bold text-slate-800 text-right">${PAYMENT_NAME}</span></div>
+                <div class="flex justify-between gap-3"><span class="text-slate-500">IBAN</span><span class="font-bold text-slate-800 text-right">${PAYMENT_IBAN}</span></div>
+                <div class="flex justify-between gap-3"><span class="text-slate-500">Açıklama</span><span class="font-bold text-indigo-600 text-right break-all">${safe}</span></div>
+            </div>
+        </div>
+        <p class="text-xs text-slate-600 mb-4 bg-amber-50 border border-amber-100 rounded-lg p-3">💡 Havale/EFT açıklamasına mutlaka <strong>e-posta adresinizi</strong> yazın. Ödemeniz onaylandığında hesabınız aktifleştirilecek ve tekrar giriş yapabileceksiniz.</p>
+        <button onclick="(async()=>{ try{ if(supabaseClient) await supabaseClient.auth.signOut(); }catch(e){} window.currentConsultant=null; window.location.hash='#home'; window.location.reload(); })()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-lg">Çıkış Yap</button>
+    </div>`;
+    m.classList.remove('hidden');
+}
+
+async function routeByInfo(info, user) {
     window.currentConsultant = null;
-    const info = await getAccountInfo(user);
+    if (info.type !== 'admin') {
+        const sub = await getSubscription(info, user);
+        if (sub && sub.endsAt && new Date(sub.endsAt).getTime() < Date.now()) { showRenewalScreen(user.email, sub); return 'expired'; }
+    }
     if (info.type === 'consultant') {
         window.currentConsultant = info.consultant;
         window.__consultantEmail = user.email;
@@ -71,6 +122,10 @@ async function routeAfterLogin(user) {
     }
     await fetchUserProfile(user.id, user.email);
     return info.type;
+}
+async function routeAfterLogin(user) {
+    const info = await getAccountInfo(user);
+    return routeByInfo(info, user);
 }
 
 // YENİ FİRMA KAYIT İŞLEMİ (Multi-tenant: companies + profiles atomik oluşur)
@@ -174,10 +229,9 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
                 await supabaseClient.auth.signOut();
                 alert('Bu hesap bir danışman hesabıdır. Lütfen "Danışman" ile giriş yapın.');
             } else {
-                window.currentConsultant = (info.type === 'consultant') ? info.consultant : null;
-                if (info.type === 'consultant') { window.__consultantEmail = data.user.email; }
-                else { await fetchUserProfile(data.user.id, data.user.email); }
-                window.location.hash = '#app'; document.getElementById('loginForm').reset();
+                const r = await routeByInfo(info, data.user);
+                if (r !== 'expired') window.location.hash = '#app';
+                document.getElementById('loginForm').reset();
             }
         }
     }
