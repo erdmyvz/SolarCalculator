@@ -148,6 +148,7 @@
             <div class="flex justify-between items-center p-4 max-w-7xl mx-auto">
                 <a href="#home" class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">epcmerkezim</a>
                 <div class="space-x-4 flex items-center">
+                    <button onclick="openPublicModule('aboutModule'); if(window.renderAbout) renderAbout();" class="text-sm font-bold text-gray-300 hover:text-white transition">Hakkımda</button>
                     <button onclick="document.getElementById('trackingSection').scrollIntoView()" class="text-sm font-bold text-gray-300 hover:text-white transition">Başvuru Takip</button>
                     <a href="#auth" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-bold text-sm transition shadow-lg">Kurumsal Giriş</a>
                 </div>
@@ -228,6 +229,21 @@
                 </div>
             </div>
         </div>
+
+        <footer class="bg-slate-900 border-t border-slate-800 text-slate-400 py-10 px-6">
+            <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <a href="#home" class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">epcmerkezim</a>
+                    <p class="text-xs mt-1">Güneş enerjisi operasyon ve yönetim merkezi</p>
+                </div>
+                <div class="flex items-center gap-5 text-sm">
+                    <button onclick="openPublicModule('aboutModule'); if(window.renderAbout) renderAbout();" class="hover:text-white font-bold transition">Hakkımda</button>
+                    <a href="https://www.instagram.com/erdm.yvz" target="_blank" rel="noopener" class="hover:text-white transition">Instagram</a>
+                    <a href="mailto:erdem.yvz@hotmail.com" class="hover:text-white transition">İletişim</a>
+                </div>
+            </div>
+            <p class="text-center text-xs text-slate-600 mt-6">© 2026 epcmerkezim · Erdem Yavuz</p>
+        </footer>
     </div>
 
     <div id="leadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
@@ -1123,6 +1139,54 @@
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Danışmanlık Al</span>
             </div>
             <div id="consultantsRoot"></div>
+        </div>
+
+        <!-- ============================ HAKKIMDA / ERDEM YAVUZ ============================ -->
+        <div id="aboutModule" class="hidden bg-white p-6 md:p-10 rounded-xl shadow-lg w-full max-w-5xl mx-auto mt-4 animate-fade-in border border-slate-200">
+            <div class="mb-8 border-b pb-4 flex items-center">
+                <button onclick="closeAllAndShowMenu()" class="text-slate-500 hover:text-emerald-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
+                <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Hakkımda</span>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center md:items-start gap-8 mb-8">
+                <div class="shrink-0">
+                    <img id="aboutPhoto" alt="Profil" class="hidden w-40 h-40 md:w-48 md:h-48 rounded-2xl object-cover shadow-lg border-4 border-white ring-1 ring-slate-200">
+                    <div id="aboutPhotoFallback" class="w-40 h-40 md:w-48 md:h-48 rounded-2xl bg-gradient-to-br from-emerald-500 to-orange-500 flex items-center justify-center text-white text-5xl font-black shadow-lg">EY</div>
+                </div>
+                <div class="text-center md:text-left flex-1">
+                    <h1 id="aboutName" class="text-3xl md:text-4xl font-black text-slate-900"></h1>
+                    <p id="aboutTitle" class="text-emerald-700 font-bold mt-1"></p>
+                    <p id="aboutTagline" class="text-slate-500 text-sm mt-1"></p>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 justify-center md:justify-start mt-3 text-xs text-slate-500">
+                        <span id="aboutLocationWrap" class="hidden items-center gap-1">📍&nbsp;<span id="aboutLocation"></span></span>
+                        <span id="aboutEduWrap" class="hidden items-center gap-1">🎓&nbsp;<span id="aboutEdu"></span></span>
+                    </div>
+                    <div id="aboutExpertise" class="flex flex-wrap gap-2 justify-center md:justify-start mt-4"></div>
+                </div>
+            </div>
+
+            <p id="aboutIntro" class="text-slate-600 leading-relaxed mb-10" style="white-space: pre-line;"></p>
+
+            <div class="space-y-6">
+                <section class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                    <h2 class="text-xl font-black text-slate-800 mb-3 flex items-center gap-2"><span>⚡</span> <span id="aboutSec1Title"></span></h2>
+                    <p id="aboutSec1Body" class="text-slate-600 leading-relaxed text-sm md:text-base" style="white-space: pre-line;"></p>
+                </section>
+                <section class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                    <h2 class="text-xl font-black text-slate-800 mb-3 flex items-center gap-2"><span>🚁</span> <span id="aboutSec2Title"></span></h2>
+                    <p id="aboutSec2Body" class="text-slate-600 leading-relaxed text-sm md:text-base" style="white-space: pre-line;"></p>
+                </section>
+                <section class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                    <h2 class="text-xl font-black text-slate-800 mb-3 flex items-center gap-2"><span>🤖</span> <span id="aboutSec3Title"></span></h2>
+                    <p id="aboutSec3Body" class="text-slate-600 leading-relaxed text-sm md:text-base" style="white-space: pre-line;"></p>
+                </section>
+            </div>
+
+            <div class="mt-10">
+                <h2 class="text-xl font-black text-slate-800 mb-4 flex items-center gap-2"><span>📬</span> İletişim & Bağlantılar</h2>
+                <div id="aboutContacts" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+                <p class="text-xs text-slate-400 mt-4">Teknolojiye, enerjiye ve görselliğe dair çözümler ile profesyonel işbirlikleri için iletişime geçebilirsiniz.</p>
+            </div>
         </div>
 
     </div> <div id="printArea"></div>
