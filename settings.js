@@ -47,3 +47,46 @@ window.stageLabel = function (k) {
         (data || []).forEach(r => { window.EPC_STAGES[r.key] = { label: r.label, description: r.description }; });
     } catch (e) { /* tablo yoksa koddaki varsayılanlar kullanılır */ }
 })();
+
+/* --- Site içeriği (Hakkımda vb.) — admin panelinden düzenlenir --- */
+window.EPC_CONTENT = {}; // { key: value } — DB'den dolar
+
+// Kod içi varsayılanlar: DB boş/erişilemezse sayfa yine dolu görünür.
+window.EPC_CONTENT_DEFAULTS = {
+    about_name: 'Erdem Yavuz',
+    about_title: 'Elektrik-Elektronik Mühendisi',
+    about_tagline: 'Yenilenebilir enerji, dijital otomasyon ve görsel prodüksiyon',
+    about_location: 'İstanbul, Türkiye',
+    about_edu: 'Marmara Üniversitesi Teknoloji Fakültesi — Elektrik-Elektronik Mühendisliği',
+    about_expertise: 'Fotovoltaik (PV) Sistemler, İnverter Teknolojileri, Batarya Depolama, EŞ Şarj İstasyonları, Drone Videografi, n8n Otomasyon',
+    about_intro: 'Erdem Yavuz; yenilenebilir enerji, dijital otomasyon ve görsel prodüksiyon alanlarında yenilikçi projeler üreten bir Elektrik-Elektronik Mühendisidir. Marmara Üniversitesi Teknoloji Fakültesi Elektrik-Elektronik Mühendisliği bölümünden mezun olduktan sonra, mühendislik disiplinini teknoloji, estetik ve modern iş modelleriyle harmanlayarak çok yönlü bir kariyer inşa etmiştir.',
+    about_sec1_title: 'Mühendislik Vizyonu ve EPCMERKEZİM',
+    about_sec1_body: 'Güneş enerjisi sektöründe fotovoltaik (PV) sistemler, evirici (inverter) teknolojileri, batarya depolama ve elektrikli araç şarj istasyonları üzerine derin bir uzmanlığa sahiptir. Temiz enerji çözümlerinin uçtan uca mimarisini kurguladığı EPCMERKEZİM projesi ile, enerji sektöründeki mühendislik, tedarik ve kurulum vizyonunu dijitalleştirerek sektöre değer katmaya odaklanmaktadır. Sistem boyutlandırmadan, on-grid/off-grid sistem yol haritalarına ve ısı pompası entegrasyonlarına kadar geleceğin enerji ekosistemleri üzerinde aktif olarak çalışmaktadır.',
+    about_sec2_title: 'Havadan Prodüksiyon ve Estetik: Teknik Uçuş',
+    about_sec2_body: 'Mühendislik perspektifini yaratıcı görsel hikaye anlatıcılığı ile birleştirdiği Teknik Uçuş markasının kurucusudur. Teknik Uçuş çatısı altında; gayrimenkul profesyonelleri, inşaat şirketleri ve mimari projeler için üst düzey drone videografisi hizmeti sunmaktadır. Lüks villalar, detaylı arazi/parsel çekimleri ve büyük endüstriyel tesislerin tanıtımları için profesyonel havadan görüntüleme ve kurgu çalışmaları gerçekleştirerek projelerin pazarlama gücünü artırmaktadır.',
+    about_sec3_title: 'Dijital Sistemler ve Otomasyon',
+    about_sec3_body: 'Sadece sahada değil, dijital arka planda da modern iş modelleri inşa eden Erdem Yavuz; n8n gibi platformlar üzerinden iş akışlarını otomatikleştirerek, satış temsilcisi botları, veri izleme sistemleri ve kendi kendini yürüten dijital ürün teslimat boru hatları (pipeline) tasarlamaktadır.',
+    about_instagram: 'https://www.instagram.com/erdm.yvz',
+    about_phone: '0 531 995 69 30',
+    about_email: 'erdem.yvz@hotmail.com'
+};
+
+// Değer okuyucu: önce DB (admin), sonra kod varsayılanı, sonra boş.
+window.siteContent = function (key) {
+    const v = window.EPC_CONTENT[key];
+    if (v !== undefined && v !== null && String(v).length) return v;
+    const d = window.EPC_CONTENT_DEFAULTS[key];
+    return (d !== undefined && d !== null) ? d : '';
+};
+
+(async function loadContent() {
+    if (typeof supabaseClient === 'undefined' || !supabaseClient) return;
+    try {
+        const { data } = await supabaseClient.from('site_content').select('key, value');
+        (data || []).forEach(r => { window.EPC_CONTENT[r.key] = r.value; });
+        const mod = document.getElementById('aboutModule');
+        if (typeof window.renderAbout === 'function' && mod && !mod.classList.contains('hidden')) {
+            window.renderAbout();
+        }
+    } catch (e) { /* tablo yoksa varsayılanlar kullanılır */ }
+})();

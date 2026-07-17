@@ -258,3 +258,65 @@ const backButtons = [
 backButtons.forEach(id => { 
     document.getElementById(id)?.addEventListener('click', closeAllAndShowMenu); 
 });
+
+/* ============================================================================
+   HAKKIMDA (site_content) — ziyaretçi görünümü. Değerleri siteContent() okur.
+   ============================================================================ */
+window.renderAbout = function () {
+    const S = window.siteContent || (() => '');
+    const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || ''; };
+    const setOpt = (wrapId, id, val) => {
+        const wrap = document.getElementById(wrapId), el = document.getElementById(id);
+        if (el) el.textContent = val || '';
+        if (wrap) { wrap.classList.toggle('hidden', !val); if (val) wrap.classList.add('inline-flex'); }
+    };
+    const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    // Foto (yoksa EY baş harf bloğu görünür)
+    const photo = document.getElementById('aboutPhoto');
+    const fallback = document.getElementById('aboutPhotoFallback');
+    const url = S('about_photo_url');
+    if (photo && fallback) {
+        if (url) { photo.src = url; photo.classList.remove('hidden'); fallback.classList.add('hidden'); }
+        else { photo.classList.add('hidden'); fallback.classList.remove('hidden'); }
+    }
+
+    setText('aboutName', S('about_name'));
+    setText('aboutTitle', S('about_title'));
+    setText('aboutTagline', S('about_tagline'));
+    setOpt('aboutLocationWrap', 'aboutLocation', S('about_location'));
+    setOpt('aboutEduWrap', 'aboutEdu', S('about_edu'));
+    setText('aboutIntro', S('about_intro'));
+    setText('aboutSec1Title', S('about_sec1_title'));
+    setText('aboutSec1Body',  S('about_sec1_body'));
+    setText('aboutSec2Title', S('about_sec2_title'));
+    setText('aboutSec2Body',  S('about_sec2_body'));
+    setText('aboutSec3Title', S('about_sec3_title'));
+    setText('aboutSec3Body',  S('about_sec3_body'));
+
+    // Uzmanlık etiketleri (virgülle ayrılmış → chip)
+    const exp = document.getElementById('aboutExpertise');
+    if (exp) {
+        const chips = String(S('about_expertise') || '').split(',').map(s => s.trim()).filter(Boolean);
+        exp.innerHTML = chips.map(c =>
+            `<span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-3 py-1 rounded-full">${esc(c)}</span>`
+        ).join('');
+    }
+
+    // İletişim kartları (yalnız dolu olanlar; renkler literal)
+    const box = document.getElementById('aboutContacts');
+    if (box) {
+        const items = [
+            { v:S('about_linkedin'),  icon:'💼', label:'LinkedIn',              sub:'Profesyonel geçmişim ve iş ağım', href:S('about_linkedin'),  cls:'hover:border-blue-400' },
+            { v:S('about_youtube'),   icon:'▶️', label:'YouTube — Teknik Uçuş', sub:'Drone projeleri & video içerikler', href:S('about_youtube'),   cls:'hover:border-red-400' },
+            { v:S('about_instagram'), icon:'📸', label:'Instagram',             sub:'Günlük profesyonel paylaşımlar', href:S('about_instagram'), cls:'hover:border-pink-400' },
+            { v:S('about_phone'),     icon:'📞', label:'Telefon',               sub:S('about_phone'), href:'tel:' + String(S('about_phone')).replace(/\s/g,''), cls:'hover:border-emerald-400' },
+            { v:S('about_email'),     icon:'✉️', label:'E-posta',               sub:S('about_email'), href:'mailto:' + S('about_email'), cls:'hover:border-emerald-400' }
+        ].filter(i => i.v);
+        box.innerHTML = items.map(i => `
+            <a href="${esc(i.href)}" ${/^https?:/.test(i.href) ? 'target="_blank" rel="noopener"' : ''} class="flex items-center gap-3 bg-white border border-slate-200 ${i.cls} hover:shadow-md rounded-xl p-4 transition no-underline">
+                <span class="text-2xl">${i.icon}</span>
+                <div><p class="font-bold text-slate-800 text-sm">${esc(i.label)}</p><p class="text-xs text-slate-500">${esc(i.sub)}</p></div>
+            </a>`).join('');
+    }
+};

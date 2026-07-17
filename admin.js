@@ -180,6 +180,9 @@ async function fetchAdminData() {
     // 9) GENEL AŞAMA ETİKETLERİ (yalnız admin görür)
     await renderStageAdmin();
 
+    // 9b) HAKKIMDA / SİTE İÇERİĞİ (yalnız admin görür)
+    await renderAboutAdmin();
+
     // 10) DANIŞMAN BAŞVURULARI (onay akışı)
     await renderConsultantsAdmin();
 
@@ -1175,4 +1178,122 @@ window.adminSubReduce = function (table, id, months) {
 window.adminSubEnd = function (table, id) {
     if (!confirm('Bu aboneliği hemen sonlandırmak (süresini bugüne çekmek) istediğinize emin misiniz?')) return;
     _subUpdate(table, id, new Date(Date.now() - 60000).toISOString());
+};
+
+
+// ============================================================================
+// HAKKIMDA / SİTE İÇERİĞİ (site_content — yalnız admin)
+// Ziyaretçi "Hakkımda" sayfasının tüm alanları + büyük profil fotoğrafı.
+// ============================================================================
+const ABOUT_SCHEMA = [
+    { key:'about_photo_url', label:'Profil Fotoğrafı',                   type:'image' },
+    { key:'about_name',      label:'Ad Soyad',                           type:'text' },
+    { key:'about_title',     label:'Unvan',                              type:'text' },
+    { key:'about_tagline',   label:'Kısa Slogan',                        type:'text' },
+    { key:'about_location',  label:'Konum',                              type:'text' },
+    { key:'about_edu',       label:'Eğitim / Sertifika',                 type:'text' },
+    { key:'about_expertise', label:'Uzmanlık Etiketleri (virgülle ayır)',type:'text' },
+    { key:'about_intro',     label:'Giriş Paragrafı',                    type:'area' },
+    { key:'about_sec1_title',label:'1. Bölüm Başlığı',                   type:'text' },
+    { key:'about_sec1_body', label:'1. Bölüm Metni',                     type:'area' },
+    { key:'about_sec2_title',label:'2. Bölüm Başlığı',                   type:'text' },
+    { key:'about_sec2_body', label:'2. Bölüm Metni',                     type:'area' },
+    { key:'about_sec3_title',label:'3. Bölüm Başlığı',                   type:'text' },
+    { key:'about_sec3_body', label:'3. Bölüm Metni',                     type:'area' },
+    { key:'about_linkedin',  label:'LinkedIn URL',                       type:'text' },
+    { key:'about_youtube',   label:'YouTube URL',                        type:'text' },
+    { key:'about_instagram', label:'Instagram URL',                      type:'text' },
+    { key:'about_phone',     label:'Telefon',                            type:'text' },
+    { key:'about_email',     label:'E-posta',                            type:'text' }
+];
+let _aboutVals = {};
+
+function ensureAboutSection() {
+    if (document.getElementById('aboutAdminRoot')) return document.getElementById('aboutAdminRoot');
+    const admin = document.getElementById('adminPaneContent') || document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'aboutAdminRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 class="text-lg font-black text-slate-800">👤 Hakkımda / Site İçeriği</h3>
+            <button onclick="saveAbout()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg">Kaydet</button>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Ziyaretçi "Hakkımda" sayfasındaki tüm metinler ve profil fotoğrafı. Kaydedince anında yayınlanır.</p>
+        <div id="aboutList"></div>`;
+    admin.appendChild(card);
+    return card;
+}
+
+async function renderAboutAdmin() {
+    const wrap = ensureAboutSection();
+    if (!wrap || !supabaseClient) return;
+    const box = document.getElementById('aboutList');
+    box.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+    const { data, error } = await supabaseClient.from('site_content').select('key, value');
+    if (error) { box.innerHTML = `<p class="text-xs text-red-500">Yüklenemedi: ${error.message}</p>`; return; }
+    _aboutVals = {};
+    (data || []).forEach(r => { _aboutVals[r.key] = r.value; });
+    const val = (k) => (_aboutVals[k] !== undefined && _aboutVals[k] !== null)
+        ? _aboutVals[k]
+        : ((window.EPC_CONTENT_DEFAULTS && window.EPC_CONTENT_DEFAULTS[k]) || '');
+
+    box.innerHTML = ABOUT_SCHEMA.map(f => {
+        if (f.type === 'image') {
+            const cur = val(f.key);
+            return `<div class="mb-4 border border-slate-200 rounded-lg p-3">
+                <label class="text-xs font-bold text-slate-700 block mb-2">${admEscape(f.label)}</label>
+                <div class="flex items-center gap-4">
+                    <img id="aboutImgPreview" src="${admEscape(cur)}" class="w-20 h-20 rounded-xl object-cover bg-slate-100 border ${cur ? '' : 'hidden'}">
+                    <div class="flex-1">
+                        <input type="file" id="aboutPhotoFile" accept="image/*" onchange="aboutUploadPhoto()" class="w-full text-xs">
+                        <input type="hidden" id="about_${f.key}" value="${admEscape(cur)}">
+                        <p id="aboutImgStatus" class="text-[11px] text-slate-400 mt-1">JPG/PNG · herkese açık gösterilir</p>
+                    </div>
+                </div>
+            </div>`;
+        }
+        if (f.type === 'area') {
+            return `<div class="mb-3">
+                <label class="text-xs font-bold text-slate-700 block mb-1">${admEscape(f.label)}</label>
+                <textarea id="about_${f.key}" rows="4" class="w-full border border-slate-300 p-2 rounded-lg text-sm">${admEscape(val(f.key))}</textarea>
+            </div>`;
+        }
+        return `<div class="mb-3">
+            <label class="text-xs font-bold text-slate-700 block mb-1">${admEscape(f.label)}</label>
+            <input id="about_${f.key}" value="${admEscape(val(f.key))}" class="w-full border border-slate-300 p-2 rounded-lg text-sm">
+        </div>`;
+    }).join('');
+}
+
+window.aboutUploadPhoto = async function () {
+    const fileInput = document.getElementById('aboutPhotoFile');
+    const status = document.getElementById('aboutImgStatus');
+    if (!fileInput || !fileInput.files || !fileInput.files[0] || !supabaseClient) return;
+    const file = fileInput.files[0];
+    if (status) status.textContent = 'Yükleniyor...';
+    const fileName = `about_${Date.now()}.${file.name.split('.').pop()}`;
+    const { error } = await supabaseClient.storage.from('site-assets').upload(fileName, file, { upsert: true });
+    if (error) { if (status) status.textContent = 'Yükleme hatası: ' + error.message; return; }
+    const { data } = supabaseClient.storage.from('site-assets').getPublicUrl(fileName);
+    const url = data.publicUrl;
+    const hidden = document.getElementById('about_about_photo_url');
+    if (hidden) hidden.value = url;
+    const prev = document.getElementById('aboutImgPreview');
+    if (prev) { prev.src = url; prev.classList.remove('hidden'); }
+    if (status) status.textContent = 'Yüklendi ✓ (kaydetmeyi unutmayın)';
+};
+
+window.saveAbout = async function () {
+    const rows = ABOUT_SCHEMA.map(f => {
+        const el = document.getElementById(`about_${f.key}`);
+        return { key: f.key, value: el ? (el.value || '') : '', updated_at: new Date().toISOString() };
+    });
+    const { error } = await supabaseClient.from('site_content').upsert(rows);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    if (window.EPC_CONTENT) rows.forEach(r => { window.EPC_CONTENT[r.key] = r.value; });
+    if (typeof window.renderAbout === 'function') window.renderAbout();
+    alert('Hakkımda içeriği kaydedildi ve yayınlandı.');
+    renderAboutAdmin();
 };
