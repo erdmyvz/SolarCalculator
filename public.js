@@ -306,10 +306,16 @@ window.renderAbout = function () {
     // İletişim kartları (yalnız dolu olanlar; renkler literal)
     const box = document.getElementById('aboutContacts');
     if (box) {
+        // Şema (https://) eksikse tamamla; tel/mailto'ya dokunma.
+        const norm = (u) => {
+            u = String(u || '').trim();
+            if (!u) return '';
+            return /^(https?:|mailto:|tel:)/i.test(u) ? u : 'https://' + u.replace(/^\/+/, '');
+        };
         const items = [
-            { v:S('about_linkedin'),  icon:'💼', label:'LinkedIn',              sub:'Profesyonel geçmişim ve iş ağım', href:S('about_linkedin'),  cls:'hover:border-blue-400' },
-            { v:S('about_youtube'),   icon:'▶️', label:'YouTube — Teknik Uçuş', sub:'Drone projeleri & video içerikler', href:S('about_youtube'),   cls:'hover:border-red-400' },
-            { v:S('about_instagram'), icon:'📸', label:'Instagram',             sub:'Günlük profesyonel paylaşımlar', href:S('about_instagram'), cls:'hover:border-pink-400' },
+            { v:S('about_linkedin'),  icon:'💼', label:'LinkedIn',              sub:'Profesyonel geçmişim ve iş ağım', href:norm(S('about_linkedin')),  cls:'hover:border-blue-400' },
+            { v:S('about_youtube'),   icon:'▶️', label:'YouTube — Teknik Uçuş', sub:'Drone projeleri & video içerikler', href:norm(S('about_youtube')),   cls:'hover:border-red-400' },
+            { v:S('about_instagram'), icon:'📸', label:'Instagram',             sub:'Günlük profesyonel paylaşımlar', href:norm(S('about_instagram')), cls:'hover:border-pink-400' },
             { v:S('about_phone'),     icon:'📞', label:'Telefon',               sub:S('about_phone'), href:'tel:' + String(S('about_phone')).replace(/\s/g,''), cls:'hover:border-emerald-400' },
             { v:S('about_email'),     icon:'✉️', label:'E-posta',               sub:S('about_email'), href:'mailto:' + S('about_email'), cls:'hover:border-emerald-400' }
         ].filter(i => i.v);
