@@ -730,6 +730,12 @@
             <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-3">Operasyon & Destek</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
+                <button id="btnGoMessages" class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition text-left">
+                    <span class="inline-flex w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 items-center justify-center text-xl mb-3 group-hover:scale-110 transition">💬</span>
+                    <h2 class="text-base font-black text-slate-800 mb-1">Mesajlar</h2>
+                    <p class="text-slate-500 text-xs leading-relaxed">Danışmanlarla danışan bazında yazışın.</p>
+                </button>
+
                 <button id="btnGoProjects" class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-amber-300 transition text-left">
                     <span class="inline-flex w-11 h-11 rounded-xl bg-amber-50 text-amber-600 items-center justify-center text-xl mb-3 group-hover:scale-110 transition">☀️</span>
                     <h2 class="text-base font-black text-slate-800 mb-1">Tesislerim</h2>
@@ -806,6 +812,10 @@
                 <p class="text-[11px] uppercase tracking-[0.18em] font-black text-amber-600 mb-3">İletişim</p>
                 <div id="abContact" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
             </div>
+        </div>
+
+        <div id="messagesModule" class="hidden w-full max-w-4xl mx-auto mt-4 animate-fade-in">
+            <div id="messagesRoot"></div>
         </div>
 
         <div id="quoteModule" class="hidden w-full max-w-7xl mx-auto mt-4 animate-fade-in">
@@ -1576,6 +1586,7 @@
     <script src="notifications.js"></script>
     <script src="about.js"></script>
     <script src="legal.js"></script>
+    <script src="messaging.js"></script>
     
 </body>
 </html>
