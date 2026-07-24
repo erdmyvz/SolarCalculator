@@ -10,6 +10,7 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
 
     let _convs = [], _active = null, _msgs = [], _companies = [], _poll = null;
+    let _tab = 'msgs', _refs = [];   // firma tarafı: Mesajlar / Yönlendirmeler
 
     // ---------------------------------------------------------------- kimlik
     function me() {
@@ -107,14 +108,80 @@
             <p class="font-black text-slate-700">Henüz mesaj yok</p>
             <p class="text-sm text-slate-500 mt-1">${u.role === 'consultant' ? 'Danışanınızı atadığınız firmayla buradan iletişim kurabilirsiniz.' : 'Danışmanlar size buradan mesaj gönderebilir.'}</p></div>`;
 
+        const tabs = u.role === 'company' ? `
+            <div class="flex gap-1 bg-slate-100 p-1 rounded-xl mb-4">
+                <button onclick="msgSetTab('msgs')" class="px-4 py-2 rounded-lg text-sm font-bold transition ${_tab === 'msgs' ? 'bg-indigo-600 text-white shadow' : 'text-slate-600 hover:bg-white'}">Mesajlar</button>
+                <button onclick="msgSetTab('refs')" class="px-4 py-2 rounded-lg text-sm font-bold transition ${_tab === 'refs' ? 'bg-indigo-600 text-white shadow' : 'text-slate-600 hover:bg-white'}">Yönlendirilen Danışanlar</button>
+            </div>` : '';
+
         host.innerHTML = `
             <div class="flex items-center gap-3 mb-5 flex-wrap">
                 ${backBtn}<span class="text-slate-300">/</span>
-                <h2 class="text-lg md:text-xl font-black text-slate-800">💬 Mesajlaşma</h2>
+                <h2 class="text-lg md:text-xl font-black text-slate-800">${u.role === 'company' ? '🤝 Danışman Kanalı' : '💬 Mesajlaşma'}</h2>
                 <div class="ml-auto">${newBtn}</div>
             </div>
+            ${tabs}
             <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">${rows}</div>`;
     }
+
+    const INST = [['atandi','Atandı'],['iletisim','İletişime Geçildi'],['kesif','Keşif Yapıldı'],['teklif','Teklif Verildi'],['sozlesme','Sözleşme'],['kurulum','Kurulum Aşamasında'],['tamamlandi','Tamamlandı']];
+    const INST_CLS = { atandi:'bg-slate-100 text-slate-600', iletisim:'bg-blue-100 text-blue-700', kesif:'bg-cyan-100 text-cyan-700', teklif:'bg-amber-100 text-amber-800', sozlesme:'bg-violet-100 text-violet-700', kurulum:'bg-orange-100 text-orange-700', tamamlandi:'bg-emerald-100 text-emerald-700' };
+
+    window.msgSetTab = async function (t) {
+        _tab = t; _active = null;
+        const u = me(); if (!u) return;
+        if (t === 'refs') { await loadRefs(); drawRefs(u); } else { await loadConvs(); drawList(u); }
+    };
+
+    async function loadRefs() {
+        try { const { data, error } = await supabaseClient.rpc('list_assigned_clients'); if (error) throw error; _refs = data || []; }
+        catch (e) { _refs = []; }
+    }
+
+    function drawRefs(u) {
+        const host = document.getElementById(_hostId); if (!host) return;
+        const opts = (sel) => INST.map(x => `<option value="${x[0]}" ${x[0] === sel ? 'selected' : ''}>${x[1]}</option>`).join('');
+        const body = _refs.length ? _refs.map(r => `
+            <div class="p-4 border-b border-slate-50 last:border-0">
+                <div class="flex items-start justify-between gap-3 flex-wrap">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap mb-0.5">
+                            <span class="font-black text-slate-800">${esc(r.name)}</span>
+                            <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${INST_CLS[r.install_status] || 'bg-slate-100 text-slate-500'}">${esc((INST.find(x => x[0] === r.install_status) || ['','Durum yok'])[1])}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400">${r.phone ? esc(r.phone) : ''}${r.phone && r.email ? ' · ' : ''}${r.email ? esc(r.email) : ''}</div>
+                        <div class="text-[11px] text-indigo-600 font-bold mt-0.5">🎯 Yönlendiren: ${esc(r.consultant_name || 'Danışman')}</div>
+                    </div>
+                    <select onchange="msgSetInstall('${r.id}', this.value)" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white shrink-0">${opts(r.install_status)}</select>
+                </div>
+            </div>`).join('')
+            : `<div class="p-10 text-center"><div class="text-4xl mb-2">🤝</div>
+                <p class="font-black text-slate-700">Henüz yönlendirme yok</p>
+                <p class="text-sm text-slate-500 mt-1">Danışmanlar size danışan yönlendirdiğinde burada görünür.</p></div>`;
+
+        host.innerHTML = `
+            <div class="flex items-center gap-3 mb-5 flex-wrap">
+                <button onclick="msgStop();closeAllAndShowMenu()" class="text-slate-500 hover:text-indigo-600 font-bold">← Menüye Dön</button>
+                <span class="text-slate-300">/</span>
+                <h2 class="text-lg md:text-xl font-black text-slate-800">🤝 Danışman Kanalı</h2>
+            </div>
+            <div class="flex gap-1 bg-slate-100 p-1 rounded-xl mb-4">
+                <button onclick="msgSetTab('msgs')" class="px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-white">Mesajlar</button>
+                <button onclick="msgSetTab('refs')" class="px-4 py-2 rounded-lg text-sm font-bold transition bg-indigo-600 text-white shadow">Yönlendirilen Danışanlar</button>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-2">Durumu güncellediğinizde yönlendiren danışman bildirim alır — süreç şeffaf kalır.</p>
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">${body}</div>`;
+    }
+
+    window.msgSetInstall = async function (clientId, status) {
+        try {
+            const { data, error } = await supabaseClient.rpc('set_client_install_status', { p_client_id: clientId, p_status: status });
+            if (error) throw error;
+            if (data === false) { alert('Bu kayıt için yetkiniz yok.'); return; }
+            const r = _refs.find(x => String(x.id) === String(clientId)); if (r) r.install_status = status;
+            drawRefs(me());
+        } catch (e) { alert('Güncellenemedi: ' + (e.message || e)); }
+    };
 
     window.msgOpen = async function (id) {
         const u = me(); if (!u) return;
@@ -249,7 +316,7 @@
         _poll = setInterval(async () => {
             const u = me(); if (!u) return;
             if (_active) { const before = _msgs.length; await loadMsgs(_active.id); if (_msgs.length !== before) drawThread(u); }
-            else { await loadConvs(); drawList(u); }
+            else if (_tab === 'msgs') { await loadConvs(); drawList(u); }
         }, 20000);
     }
     window.msgStop = function () { if (_poll) { clearInterval(_poll); _poll = null; } };
