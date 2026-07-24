@@ -268,6 +268,13 @@ Bu iznimi dilediğim zaman, gönderilen iletideki ayrılma (ret) hakkını kulla
                 Biçimlendirme: <code>## </code> ile başlık, <code>- </code> ile madde, boş satır ile paragraf.
             </p>
             <div id="legalAdminFields" class="space-y-3"></div>
+            <div class="mt-5 pt-4 border-t border-slate-100">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-black text-slate-800">📋 Onay Defteri <span class="text-slate-400 font-bold">(son 50)</span></span>
+                    <button onclick="renderConsentLog()" class="text-xs font-bold text-indigo-600 hover:underline">Yenile</button>
+                </div>
+                <div id="consentLogBox"></div>
+            </div>
             <div class="flex items-center gap-3 mt-4">
                 <button onclick="saveLegalContent()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-6 py-2.5 rounded-lg">Kaydet</button>
                 <span id="legalSaveMsg" class="text-sm"></span>
@@ -281,6 +288,33 @@ Bu iznimi dilediğim zaman, gönderilen iletideki ayrılma (ret) hakkını kulla
                     <textarea id="lfld_${key}" rows="12" class="w-full border border-slate-300 p-3 rounded-lg text-xs font-mono">${esc(L(key))}</textarea>
                 </div>
             </details>`).join('');
+
+        renderConsentLog();   // onay defterini de doldur
+    };
+
+    // Onay defteri — KVKK ispat yükü için son kayıtlar
+    window.renderConsentLog = async function () {
+        const box = document.getElementById('consentLogBox');
+        if (!box || !window.supabaseClient) return;
+        box.innerHTML = '<p class="text-xs text-slate-400">Yükleniyor...</p>';
+        try {
+            const { data, error } = await supabaseClient.from('consent_logs')
+                .select('*').order('created_at', { ascending: false }).limit(50);
+            if (error) throw error;
+            if (!data || !data.length) { box.innerHTML = '<p class="text-xs text-slate-400">Henüz onay kaydı yok.</p>'; return; }
+            box.innerHTML = `<div class="overflow-x-auto max-h-72 overflow-y-auto border border-slate-100 rounded-lg">
+                <table class="w-full text-xs"><thead class="bg-slate-50 sticky top-0"><tr class="text-left text-slate-500">
+                <th class="p-2">Tarih</th><th class="p-2">Tür</th><th class="p-2">Kişi</th><th class="p-2">İletişim</th><th class="p-2 text-center">KVKK</th><th class="p-2 text-center">Ticari İleti</th></tr></thead><tbody>
+                ${data.map(r => `<tr class="border-b border-slate-50">
+                    <td class="p-2 text-slate-500">${new Date(r.created_at).toLocaleString('tr-TR')}</td>
+                    <td class="p-2">${r.context === 'register' ? 'Kayıt' : 'Başvuru'}</td>
+                    <td class="p-2 font-bold text-slate-700">${esc(r.full_name || '—')}</td>
+                    <td class="p-2 text-slate-500">${esc(r.email || r.phone || '—')}</td>
+                    <td class="p-2 text-center">${r.kvkk_consent ? '✅' : '—'}</td>
+                    <td class="p-2 text-center">${r.marketing_consent ? '✅' : '—'}</td>
+                </tr>`).join('')}
+                </tbody></table></div>`;
+        } catch (e) { box.innerHTML = '<p class="text-xs text-slate-400">Onay defteri okunamadı (consent_log.sql çalıştırıldı mı?).</p>'; }
     };
 
     window.saveLegalContent = async function () {
