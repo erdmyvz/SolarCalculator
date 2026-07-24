@@ -67,6 +67,7 @@ async function loadProjects() {
                     <div class="text-right whitespace-nowrap">
                         <span class="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${admEscape(p.status)}</span>
                         <p class="text-[10px] text-slate-400 mt-2">Kurulum: ${inst}</p>
+                        <button onclick="openProjectDocs('${p.id}','${admEscape(p.facility_code)}','${admEscape(p.customer_name)}')" class="mt-2 mr-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-[11px] font-bold">📁 Evraklar</button>
                         <button onclick="crmCopyText('${admEscape(p.facility_code)}')" class="mt-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-[11px] font-bold">Kodu Kopyala</button>
                     </div>
                 </div>

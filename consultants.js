@@ -2,8 +2,8 @@
    consultants.js — DANIŞMANLIK MODÜLÜ
    - Ziyaretçi: onaylı danışmanları listeler (iletişim GİZLİ); yatırımcı bilgi +
      reklam onayı verince iletişim açılır ve "potansiyel müşteri"ye kaydedilir.
-   - Danışman arayüzü: menü butonları (Profili Düzenle / Mesajlaşma-Yakında /
-     Danışan Takibi CRM-Yakında). Profil düzenlenip onaya gönderilir.
+    - Danışman arayüzü: pano (özet + dikkat listesi + profil gücü) ve kartlar
+      (Profili Düzenle / Mesajlaşma / Danışan Takibi CRM). Profil onaya gönderilir.
    consultants.sql + consultant_leads.sql çalıştırılmış olmalıdır.
    ============================================================================ */
 (function () {
@@ -197,14 +197,7 @@
         if (!root || !_consData) return;
         const c = _consData;
         const first = String(c.full_name || '').trim().split(' ')[0] || 'Danışman';
-        const soonCard = (icon, title, desc) => `
-            <div class="bg-white border border-slate-200 rounded-2xl p-6 opacity-70 relative">
-                <span class="absolute top-3 right-3 bg-slate-100 text-slate-400 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Yakında</span>
-                <div class="text-4xl mb-3">${icon}</div>
-                <h3 class="font-black text-slate-800 mb-1">${title}</h3>
-                <p class="text-sm text-slate-500">${desc}</p>
-            </div>`;
-        root.innerHTML = `
+                root.innerHTML = `
             <div class="mb-5">
                 <h2 class="text-xl md:text-2xl font-black text-slate-800">Merhaba ${esc(first)} 👋</h2>
                 <p class="text-sm text-slate-500 mt-0.5">Danışman panelinize hoş geldiniz — bugünün özeti aşağıda.</p>
@@ -214,7 +207,7 @@
             <div id="consDashAttention" class="mb-5"></div>
             <div id="consDashProfile" class="mb-6"></div>
             <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Araçlar</p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <button onclick="consultantEditProfile()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition">
                     <div class="text-4xl mb-3">📝</div>
                     <h3 class="font-black text-slate-800 mb-1">Profili Düzenle</h3>
@@ -224,6 +217,11 @@
                     <div class="text-4xl mb-3">💬</div>
                     <h3 class="font-black text-slate-800 mb-1">Mesajlaşma</h3>
                     <p class="text-sm text-slate-500">Danışanınızı yönlendirdiğiniz kurulumcu firmalarla yazışın.</p>
+                </button>
+                <button onclick="consultantOpenCampaigns()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-violet-300 transition">
+                    <div class="text-4xl mb-3">📣</div>
+                    <h3 class="font-black text-slate-800 mb-1">Pazarlama</h3>
+                    <p class="text-sm text-slate-500">Kurulum yaptırmamış danışanlarınıza hatırlatma kampanyası hazırlayın.</p>
                 </button>
                 <button onclick="consultantOpenCRM()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition">
                     <div class="text-4xl mb-3">👥</div>
