@@ -23,6 +23,10 @@ async function handleSPA_Routing() {
         landing.classList.remove('hidden');
     } else if (hash === '#auth' && auth) {
         auth.classList.remove('hidden');
+    } else if (hash === '#hakkimda') {
+        // QR / doğrudan paylaşılan bağlantı → Hakkımda sayfası
+        if (typeof openPublicModule === 'function') openPublicModule('aboutModule');
+        if (typeof renderAbout === 'function') renderAbout();
     } else if (hash === '#app' && app) {
         // Eğer uygulama (panel) kısmına girmek istiyorsa, oturum (session) kontrolü yap
         if(supabaseClient) {
@@ -63,7 +67,7 @@ window.openPublicModule = function(moduleId) {
     window.openedFromPublic = true; // YENİ: Kullanıcının vitrinden (ziyaretçi olarak) girdiğini hafızaya aldık
 
     // Başka bir panel açık kalmasın diye önce TÜM modülleri gizle (admin paneli + ziyaretçi sayfası üst üste binmesin)
-    ['crmModule','adminModule','calculatorModule','simulationModule','evCalcModule','companyManagementModule','techSupportModule','salesAssistantModule','educationModule','regulationsModule','amortizationModule','hardwareModule','consultantsModule','consultantPanelModule'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+    ['crmModule','adminModule','calculatorModule','simulationModule','evCalcModule','companyManagementModule','techSupportModule','salesAssistantModule','educationModule','regulationsModule','amortizationModule','hardwareModule','consultantsModule','consultantPanelModule','aboutModule'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
 
     document.getElementById('landingContainer').classList.add('hidden');
     document.getElementById('appContainer').classList.remove('hidden');
@@ -88,7 +92,7 @@ window.openPublicModule = function(moduleId) {
 
 
 window.closeAllAndShowMenu = function() {
-    const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'educationModule', 'regulationsModule', 'amortizationModule', 'hardwareModule', 'consultantsModule', 'consultantPanelModule', 'quoteModule'];
+    const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'educationModule', 'regulationsModule', 'amortizationModule', 'hardwareModule', 'consultantsModule', 'consultantPanelModule', 'quoteModule', 'aboutModule'];
     mods.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
     
     const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');

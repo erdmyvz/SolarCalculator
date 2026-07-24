@@ -259,70 +259,154 @@ backButtons.forEach(id => {
     document.getElementById(id)?.addEventListener('click', closeAllAndShowMenu); 
 });
 
-/* ============================================================================
-   HAKKIMDA (site_content) — ziyaretçi görünümü. Değerleri siteContent() okur.
-   ============================================================================ */
-window.renderAbout = function () {
-    const S = window.siteContent || (() => '');
-    const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || ''; };
-    const setOpt = (wrapId, id, val) => {
-        const wrap = document.getElementById(wrapId), el = document.getElementById(id);
-        if (el) el.textContent = val || '';
-        if (wrap) { wrap.classList.toggle('hidden', !val); if (val) wrap.classList.add('inline-flex'); }
+// ============================================================================
+// HERO HIZLI HESAP — ziyaretçi ilk ekran (ana hesaplayıcıyla aynı formül)
+// ============================================================================
+window.heroQuickCalc = function () {
+    const billEl = document.getElementById('heroBill'), box = document.getElementById('heroResult');
+    if (!billEl || !box) return;
+    const bill = parseFloat(billEl.value) || 0;
+    const tariff = parseFloat(document.getElementById('heroTariff')?.value) || 2.5;
+    box.classList.remove('hidden');
+    if (bill <= 0) { box.innerHTML = '<p class="mt-4 text-amber-300 text-sm font-bold">Lütfen aylık fatura tutarınızı girin.</p>'; return; }
+
+    const S = window.EPC_SETTINGS || {};
+    const YIELD = S.solarYield  || (typeof SOLAR_YIELD_KWH_PER_KWP !== 'undefined' ? SOLAR_YIELD_KWH_PER_KWP : 1500);
+    const PRICE = S.pricePerKwp || (typeof REF_PRICE_PER_KWP_TL    !== 'undefined' ? REF_PRICE_PER_KWP_TL    : 30000);
+    const PANEL = S.kwpPerPanel || (typeof KWP_PER_PANEL           !== 'undefined' ? KWP_PER_PANEL           : 0.55);
+
+    const monthlyKwh = bill / tariff, yearlyKwh = monthlyKwh * 12;
+    const kwp = yearlyKwh / YIELD;
+    const panels = Math.max(1, Math.ceil(kwp / PANEL));
+    const investment = kwp * PRICE;
+    const annualSaving = bill * 12;
+    const payback = annualSaving > 0 ? investment / annualSaving : 0;
+    const fmt = n => Math.round(n).toLocaleString('tr-TR');
+
+    // Ana hesaplayıcıyla aynı özet nesnesi (rapor/lead akışları bunu kullanır)
+    window.lastCalc = {
+        monthly_kwh: Math.round(monthlyKwh), yearly_kwh: Math.round(yearlyKwh),
+        monthly_bill: Math.round(bill), recommended_kwp: +kwp.toFixed(2),
+        est_investment: Math.round(investment), est_annual_saving: Math.round(annualSaving),
+        payback_years: +payback.toFixed(1), tariff: tariff
     };
-    const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-    // Foto (yoksa EY baş harf bloğu görünür)
-    const photo = document.getElementById('aboutPhoto');
-    const fallback = document.getElementById('aboutPhotoFallback');
-    const url = S('about_photo_url');
-    if (photo && fallback) {
-        if (url) { photo.src = url; photo.classList.remove('hidden'); fallback.classList.add('hidden'); }
-        else { photo.classList.add('hidden'); fallback.classList.remove('hidden'); }
-    }
+    const tile = (label, value, unit, accent) =>
+        `<div class="bg-white/10 border border-white/15 rounded-xl p-3 text-center">
+            <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1">${label}</p>
+            <p class="text-xl md:text-2xl font-black ${accent}">${value}<span class="text-xs font-bold text-slate-300 ml-0.5">${unit}</span></p>
+        </div>`;
 
-    setText('aboutName', S('about_name'));
-    setText('aboutTitle', S('about_title'));
-    setText('aboutTagline', S('about_tagline'));
-    setOpt('aboutLocationWrap', 'aboutLocation', S('about_location'));
-    setOpt('aboutEduWrap', 'aboutEdu', S('about_edu'));
-    setText('aboutIntro', S('about_intro'));
-    setText('aboutSec1Title', S('about_sec1_title'));
-    setText('aboutSec1Body',  S('about_sec1_body'));
-    setText('aboutSec2Title', S('about_sec2_title'));
-    setText('aboutSec2Body',  S('about_sec2_body'));
-    setText('aboutSec3Title', S('about_sec3_title'));
-    setText('aboutSec3Body',  S('about_sec3_body'));
+    box.innerHTML = `
+        <div class="mt-5 pt-5 border-t border-white/15 animate-fade-in">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+                ${tile('Önerilen Sistem', kwp.toFixed(1), 'kWp', 'text-emerald-300')}
+                ${tile('Yıllık Üretim', fmt(yearlyKwh), 'kWh', 'text-white')}
+                ${tile('Yıllık Tasarruf', '₺' + fmt(annualSaving), '', 'text-amber-300')}
+                ${tile('Geri Ödeme', payback.toFixed(1), 'yıl', 'text-white')}
+            </div>
+            <p class="text-[11px] text-slate-400 mb-4">≈ ${panels} panel · Tahmini yatırım ₺${fmt(investment)} · Türkiye ortalama değerleriyle yaklaşık hesaptır; kesin sonuç için çatı keşfi gerekir.</p>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <button onclick="heroGoLead()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white font-black py-3 rounded-xl transition shadow-lg">📩 Ücretsiz Çatı Keşfi İste</button>
+                <button onclick="openPublicModule('calculatorModule')" class="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-3 rounded-xl transition">🔎 Detaylı Hesap Yap</button>
+            </div>
+        </div>`;
+};
 
-    // Uzmanlık etiketleri (virgülle ayrılmış → chip)
-    const exp = document.getElementById('aboutExpertise');
-    if (exp) {
-        const chips = String(S('about_expertise') || '').split(',').map(s => s.trim()).filter(Boolean);
-        exp.innerHTML = chips.map(c =>
-            `<span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-3 py-1 rounded-full">${esc(c)}</span>`
-        ).join('');
-    }
+// Hesap sonucundan doğrudan keşif başvurusu — hesap özeti nota işlenir
+window.heroGoLead = function () {
+    if (typeof openLeadModal === 'function') openLeadModal('kurulum');
+    const c = window.lastCalc;
+    if (!c) return;
+    const summary = `[Hızlı hesap] Aylık fatura: ${c.monthly_bill} TL · Önerilen sistem: ${c.recommended_kwp} kWp · Yıllık üretim: ${c.yearly_kwh} kWh · Tahmini yıllık tasarruf: ${c.est_annual_saving} TL · Geri ödeme: ${c.payback_years} yıl`;
+    const dt = document.getElementById('leadDetails') || document.getElementById('leadNotes') || document.querySelector('#leadPublicForm textarea');
+    if (dt && !String(dt.value || '').trim()) dt.value = summary;
+};
 
-    // İletişim kartları (yalnız dolu olanlar; renkler literal)
-    const box = document.getElementById('aboutContacts');
-    if (box) {
-        // Şema (https://) eksikse tamamla; tel/mailto'ya dokunma.
-        const norm = (u) => {
-            u = String(u || '').trim();
-            if (!u) return '';
-            return /^(https?:|mailto:|tel:)/i.test(u) ? u : 'https://' + u.replace(/^\/+/, '');
-        };
-        const items = [
-            { v:S('about_linkedin'),  icon:'💼', label:'LinkedIn',              sub:'Profesyonel geçmişim ve iş ağım', href:norm(S('about_linkedin')),  cls:'hover:border-blue-400' },
-            { v:S('about_youtube'),   icon:'▶️', label:'YouTube — Teknik Uçuş', sub:'Drone projeleri & video içerikler', href:norm(S('about_youtube')),   cls:'hover:border-red-400' },
-            { v:S('about_instagram'), icon:'📸', label:'Instagram',             sub:'Günlük profesyonel paylaşımlar', href:norm(S('about_instagram')), cls:'hover:border-pink-400' },
-            { v:S('about_phone'),     icon:'📞', label:'Telefon',               sub:S('about_phone'), href:'tel:' + String(S('about_phone')).replace(/\s/g,''), cls:'hover:border-emerald-400' },
-            { v:S('about_email'),     icon:'✉️', label:'E-posta',               sub:S('about_email'), href:'mailto:' + S('about_email'), cls:'hover:border-emerald-400' }
-        ].filter(i => i.v);
-        box.innerHTML = items.map(i => `
-            <a href="${esc(i.href)}" ${/^https?:/.test(i.href) ? 'target="_blank" rel="noopener"' : ''} class="flex items-center gap-3 bg-white border border-slate-200 ${i.cls} hover:shadow-md rounded-xl p-4 transition no-underline">
-                <span class="text-2xl">${i.icon}</span>
-                <div><p class="font-bold text-slate-800 text-sm">${esc(i.label)}</p><p class="text-xs text-slate-500">${esc(i.sub)}</p></div>
-            </a>`).join('');
-    }
+// ============================================================================
+// GÜVEN ŞERİDİ — canlı sayaçlar (yalnızca anlamlı seviyede gösterilir)
+// ============================================================================
+const TRUST_MIN = 3;   // bu sayının altındaki değerler gösterilmez (rakam şişirmemek için)
+
+function trustCountUp(el, target) {
+    const dur = 900, t0 = performance.now();
+    const tick = (t) => {
+        const p = Math.min(1, (t - t0) / dur);
+        el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+        if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+}
+
+window.loadTrustStrip = async function () {
+    const box = document.getElementById('trustCounts');
+    if (!box || !window.supabaseClient) return;
+    try {
+        const [rc, rf] = await Promise.all([
+            supabaseClient.rpc('list_approved_consultants'),
+            supabaseClient.rpc('list_companies')
+        ]);
+        const nc = (rc && rc.data ? rc.data.length : 0);
+        const nf = (rf && rf.data ? rf.data.length : 0);
+        const tiles = [];
+        if (nc >= TRUST_MIN) tiles.push(['🎯', nc, 'Onaylı Bağımsız Danışman', 'text-emerald-300']);
+        if (nf >= TRUST_MIN) tiles.push(['🏢', nf, 'Kayıtlı Kurulumcu Firma', 'text-amber-300']);
+        if (!tiles.length) return;   // yeterli veri yoksa şerit hiç görünmez
+        box.className = 'grid gap-3 mb-5 mx-auto ' + (tiles.length === 1 ? 'grid-cols-1 max-w-xs' : 'grid-cols-2 max-w-xl');
+        box.innerHTML = tiles.map((t, i) => `
+            <div class="bg-white/5 border border-white/10 rounded-xl py-4 px-3 text-center">
+                <div class="text-2xl mb-1">${t[0]}</div>
+                <p class="text-2xl md:text-3xl font-black ${t[3]}"><span id="trustN${i}">0</span></p>
+                <p class="text-[11px] text-slate-400 font-bold mt-0.5">${t[2]}</p>
+            </div>`).join('');
+        tiles.forEach((t, i) => { const el = document.getElementById('trustN' + i); if (el) trustCountUp(el, t[1]); });
+    } catch (e) { /* sessiz geç — şerit görünmez */ }
+};
+
+(function initTrustStrip() {
+    let tries = 0;
+    const go = () => {
+        if (!document.getElementById('trustCounts')) return;
+        if (window.supabaseClient) { loadTrustStrip(); return; }
+        if (++tries < 30) setTimeout(go, 200);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(go, 300));
+    else setTimeout(go, 300);
+})();
+
+// ============================================================================
+// GÖRSEL CİLA — bölümler kaydırıldıkça yumuşak belirir (ilerlemeli iyileştirme)
+// ============================================================================
+(function initReveal() {
+    const start = () => {
+        const host = document.getElementById('landingContainer');
+        if (!host || !('IntersectionObserver' in window)) return;
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        const targets = Array.from(host.children).filter(el =>
+            el.tagName !== 'NAV' && !el.classList.contains('tech-gradient') && el.offsetHeight > 40
+        );
+        if (!targets.length) return;
+
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-visible'); io.unobserve(e.target); } });
+        }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+        targets.forEach(el => {
+            const r = el.getBoundingClientRect();
+            if (r.top < window.innerHeight) { el.classList.add('reveal', 'is-visible'); return; } // ekrandakiler direkt görünür
+            el.classList.add('reveal');
+            io.observe(el);
+        });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(start, 250));
+    else setTimeout(start, 250);
+})();
+
+// Hızlı hesap alanına odaklan (Nasıl Çalışır → 1. adım)
+window.heroFocusCalc = function () {
+    const el = document.getElementById('heroBill');
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => el.focus({ preventScroll: true }), 450);
 };

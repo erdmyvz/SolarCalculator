@@ -176,11 +176,27 @@
         return `<div class="bg-slate-100 border border-slate-200 text-slate-600 rounded-xl p-4 text-sm">📝 Taslak — profilinizi doldurup "Onaya Gönder" ile yayına başvurun.</div>`;
     }
 
-    // 1. seviye: menü (kurulumcu firmalardaki gibi buton/kart menüsü)
+    // 1. seviye: PANO (özet + dikkat gerektirenler + kısayollar)
+    const CST_LBL = { yeni:'Yeni', gorusuluyor:'Görüşülüyor', teklif:'Teklif Aşaması', karar:'Karar Verdi', kuruldu:'Kuruldu', ilgilenmiyor:'İlgilenmiyor' };
+
+    function consProfileScore(c) {
+        const checks = [
+            ['Profil fotoğrafı', !!c.avatar_data],
+            ['Unvan', !!String(c.title || '').trim()],
+            ['Uzmanlık alanları', !!String(c.expertise || '').trim()],
+            ['Hakkımda', !!String(c.bio || '').trim()],
+            ['Motivasyon', !!String(c.motivation || '').trim()],
+            ['Tamamlanan iş sayısı', Number(c.completed_jobs) > 0]
+        ];
+        const done = checks.filter(x => x[1]).length;
+        return { pct: Math.round(done / checks.length * 100), missing: checks.filter(x => !x[1]).map(x => x[0]) };
+    }
+
     function renderConsultantMenu() {
         const root = document.getElementById('consultantPanelRoot');
         if (!root || !_consData) return;
         const c = _consData;
+        const first = String(c.full_name || '').trim().split(' ')[0] || 'Danışman';
         const soonCard = (icon, title, desc) => `
             <div class="bg-white border border-slate-200 rounded-2xl p-6 opacity-70 relative">
                 <span class="absolute top-3 right-3 bg-slate-100 text-slate-400 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Yakında</span>
@@ -189,8 +205,15 @@
                 <p class="text-sm text-slate-500">${desc}</p>
             </div>`;
         root.innerHTML = `
-            <div class="mb-5"><h2 class="text-xl md:text-2xl font-black text-slate-800">🎯 Danışman Panelim</h2></div>
-            <div class="mb-6">${statusBanner(c)}</div>
+            <div class="mb-5">
+                <h2 class="text-xl md:text-2xl font-black text-slate-800">Merhaba ${esc(first)} 👋</h2>
+                <p class="text-sm text-slate-500 mt-0.5">Danışman panelinize hoş geldiniz — bugünün özeti aşağıda.</p>
+            </div>
+            <div class="mb-5">${statusBanner(c)}</div>
+            <div id="consDashStats" class="mb-5"></div>
+            <div id="consDashAttention" class="mb-5"></div>
+            <div id="consDashProfile" class="mb-6"></div>
+            <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Araçlar</p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button onclick="consultantEditProfile()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition">
                     <div class="text-4xl mb-3">📝</div>
@@ -203,6 +226,94 @@
                     <h3 class="font-black text-slate-800 mb-1">Danışan Takibi (CRM)</h3>
                     <p class="text-sm text-slate-500">Görüştüğünüz yatırımcıları/danışanları ekleyin, durumlarını takip edin.</p>
                 </button>
+            </div>`;
+        fillConsultantDash();   // istatistikler arkadan dolar (kabuk asla beklemez)
+    }
+
+    async function fillConsultantDash() {
+        const c = _consData;
+        // --- profil gücü ---
+        const pBox = document.getElementById('consDashProfile');
+        if (pBox && c) {
+            const p = consProfileScore(c);
+            if (p.pct < 100) {
+                pBox.innerHTML = `
+                    <div class="bg-white border border-slate-200 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                            <span class="text-sm font-bold text-slate-700">Profil gücü — %${p.pct}</span>
+                            <button onclick="consultantEditProfile()" class="text-xs font-bold text-indigo-600 hover:underline">Tamamla →</button>
+                        </div>
+                        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2"><div class="h-full bg-indigo-500 rounded-full transition-all" style="width:${p.pct}%"></div></div>
+                        <p class="text-[11px] text-slate-500">Eksik: ${p.missing.map(m => esc(m)).join(' · ')} — dolu profiller ziyaretçi listesinde daha güvenilir görünür.</p>
+                    </div>`;
+            } else { pBox.innerHTML = ''; }
+        }
+
+        // --- danışan istatistikleri ---
+        const sBox = document.getElementById('consDashStats'), aBox = document.getElementById('consDashAttention');
+        if (!sBox || !supabaseClient || !window.currentConsultant) return;
+        sBox.innerHTML = '<p class="text-xs text-slate-400">Özet yükleniyor...</p>';
+        let rows = [];
+        try {
+            const { data, error } = await supabaseClient.from('consultant_clients')
+                .select('id,name,status,install_status,assigned_company_id,assigned_company_name,updated_at')
+                .eq('consultant_id', window.currentConsultant.id);
+            if (error) throw error;
+            rows = data || [];
+        } catch (e) { sBox.innerHTML = ''; return; }
+
+        const total = rows.length;
+        const active = rows.filter(r => r.status !== 'kuruldu' && r.status !== 'ilgilenmiyor').length;
+        const assigned = rows.filter(r => r.assigned_company_id).length;
+        const done = rows.filter(r => r.install_status === 'tamamlandi' || r.status === 'kuruldu').length;
+        const tile = (icon, n, label, cls) => `
+            <div class="bg-white border border-slate-200 rounded-xl p-4 text-center">
+                <div class="text-xl mb-1">${icon}</div>
+                <p class="text-2xl font-black ${cls}">${n}</p>
+                <p class="text-[11px] text-slate-500 font-bold mt-0.5">${label}</p>
+            </div>`;
+        sBox.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            ${tile('👥', total, 'Toplam Danışan', 'text-slate-800')}
+            ${tile('🔄', active, 'Süreçte', 'text-blue-600')}
+            ${tile('🏢', assigned, 'Firmaya Atandı', 'text-amber-600')}
+            ${tile('✅', done, 'Tamamlandı', 'text-emerald-600')}
+        </div>`;
+
+        // --- dikkat gerektirenler ---
+        if (!aBox) return;
+        if (!total) {
+            aBox.innerHTML = `<div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5 text-center">
+                <p class="font-bold text-slate-700 mb-1">Henüz danışan eklemediniz</p>
+                <p class="text-sm text-slate-500 mb-3">Görüştüğünüz yatırımcıları ekleyin; süreçlerini buradan takip edin.</p>
+                <button onclick="consultantOpenCRM()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-lg text-sm">İlk danışanı ekle</button>
+            </div>`;
+            return;
+        }
+        const now = Date.now(), DAY = 86400000, items = [];
+        rows.forEach(r => {
+            if (r.status === 'kuruldu' || r.status === 'ilgilenmiyor') return;
+            const days = r.updated_at ? Math.floor((now - new Date(r.updated_at).getTime()) / DAY) : 0;
+            if (r.status === 'yeni') items.push([r.name, 'Henüz görüşülmedi', days, 'bg-amber-100 text-amber-800']);
+            else if (r.assigned_company_id && !r.install_status) items.push([r.name, 'Firma atandı, kurulum durumu girilmemiş', days, 'bg-blue-100 text-blue-700']);
+            else if (days >= 7) items.push([r.name, days + ' gündür güncellenmedi', days, 'bg-slate-100 text-slate-600']);
+        });
+        items.sort((a, b) => b[2] - a[2]);
+        if (!items.length) {
+            aBox.innerHTML = `<div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-sm text-emerald-800 font-bold">✅ Bekleyen işiniz yok — tüm danışanlarınız güncel.</div>`;
+            return;
+        }
+        aBox.innerHTML = `
+            <div class="bg-white border border-slate-200 rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <span class="text-sm font-black text-slate-800">🔔 Dikkat gerektirenler <span class="text-slate-400 font-bold">(${items.length})</span></span>
+                    <button onclick="consultantOpenCRM()" class="text-xs font-bold text-indigo-600 hover:underline">Tümünü aç →</button>
+                </div>
+                ${items.slice(0, 5).map(it => `
+                    <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-50 last:border-0">
+                        <span class="font-bold text-sm text-slate-700 truncate">${esc(it[0])}</span>
+                        <span class="text-[10px] font-black px-2 py-1 rounded-full shrink-0 ${it[3]}">${esc(it[1])}</span>
+                    </div>`).join('')}
+                ${items.length > 5 ? `<p class="text-[11px] text-slate-400 mt-2">+${items.length - 5} tane daha</p>` : ''}
             </div>`;
     }
     window.renderConsultantMenu = renderConsultantMenu;
