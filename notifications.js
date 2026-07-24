@@ -37,7 +37,7 @@
         const unread = _items.filter(n => !n.is_read).length;
         h.innerHTML = `
             <div class="relative">
-                <button onclick="notifToggle()" title="Bildirimler" class="relative w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center transition">
+                <button onclick="notifToggle(event)" title="Bildirimler" class="relative w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center transition">
                     <span class="text-xl">🔔</span>
                     ${unread ? `<span class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white">${unread > 99 ? '99+' : unread}</span>` : ''}
                 </button>
@@ -66,7 +66,14 @@
             </div>`;
     }
 
-    window.notifToggle = function () { _open = !_open; render(); if (_open) fetchNotifs(); };
+    // ⚠️ ev.stopPropagation() ŞART: render() host'un innerHTML'ini yeniden yazdığı
+    // için tıklanan buton DOM'dan kopar. Olay document'a ulaştığında aşağıdaki
+    // "dışarı tıklama" dinleyicisi koparılmış hedefi dışarısı sanıp paneli
+    // açıldığı anda kapatıyordu (kullanıcıya "tıklanmıyor" gibi görünür).
+    window.notifToggle = function (ev) {
+        if (ev) ev.stopPropagation();
+        _open = !_open; render(); if (_open) fetchNotifs();
+    };
 
     window.notifMarkAll = async function (ev) {
         if (ev) ev.stopPropagation();
@@ -97,6 +104,9 @@
     // panel dışına tıklayınca kapat
     document.addEventListener('click', (e) => {
         if (!_open) return;
+        // Yeniden çizim sırasında DOM'dan kopan bir öğeden gelen olayı yok say;
+        // aksi halde "dışarısı" sanılıp panel yanlışlıkla kapanır.
+        if (!e.target || (e.target.isConnected === false)) return;
         const h = host();
         if (h && !h.contains(e.target)) { _open = false; render(); }
     });
