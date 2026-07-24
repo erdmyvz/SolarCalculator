@@ -189,6 +189,21 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
 
     if (!supabaseClient) { alert("Veritabanı bağlantısı yok."); return; }
 
+    // Sözleşme/KVKK onay kaydı (ispat yükü) — kaydı engellemez
+    try {
+        await supabaseClient.rpc('log_consent', {
+            p_context:  'register',
+            p_full_name: (firstName + ' ' + lastName).trim(),
+            p_phone:     phone,
+            p_email:     email,
+            p_reference: email,
+            p_kvkk:      !!document.getElementById('regTerms')?.checked,
+            p_marketing: false,
+            p_version:   'v1',
+            p_agent:     navigator.userAgent
+        });
+    } catch (e) { /* sessiz geç */ }
+
     // --- DANIŞMAN KAYDI ---
     if (window.authRole === 'consultant') {
         const orig = btn.textContent; btn.textContent = "Kaydediliyor..."; btn.disabled = true;

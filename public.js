@@ -127,6 +127,21 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
         });
         if (error) throw error;
 
+        // KVKK onay kaydı (ispat yükü) — hata olsa bile başvuruyu engellemez
+        try {
+            await supabaseClient.rpc('log_consent', {
+                p_context:  'lead',
+                p_full_name: document.getElementById('leadName').value,
+                p_phone:     document.getElementById('leadPhone').value,
+                p_email:     document.getElementById('leadEmail').value,
+                p_reference: String(code || ''),
+                p_kvkk:      !!document.getElementById('leadKvkk')?.checked,
+                p_marketing: !!document.getElementById('leadConsent')?.checked,
+                p_version:   'v1',
+                p_agent:     navigator.userAgent
+            });
+        } catch (e) { /* sessiz geç */ }
+
         alert(`🎉 Başvurunuz Başarıyla İletildi!\n\nLütfen Proje Takip Kodunuzu Not Edin: ${code}\nBu kod ile anasayfadan sürecinizi şeffafça izleyebilirsiniz.`);
         closeLeadModal();
         document.getElementById('leadTrackInput').value = code;
