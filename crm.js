@@ -20,8 +20,8 @@ function initCRMModule() {
  * Firmanın kendi başvurularını veritabanından yükler.
  * RLS sayesinde otomatik olarak yalnız bu firmaya atanmış kayıtlar gelir.
  */
-// Teklif özelliği şimdilik gizli ("YAKINDA"). İleride açmak için: true yapın.
-const QUOTES_ENABLED = false;
+// Teklif modülü aktif — veri kaynağı: firm_quotes (yeni teklif motoru).
+const QUOTES_ENABLED = true;
 let _quotesByLead = {};
 let _quoteStats = { count: 0, taslak: 0, gonderildi: 0, kabul: 0, ret: 0, kabulTotal: 0 };
 
@@ -46,14 +46,23 @@ async function crmLoadLeads() {
     if (QUOTES_ENABLED) {
         try {
             const { data: qs } = await supabaseClient
-                .from('quotes').select('lead_id, status, total_amount, created_at').order('created_at', { ascending: false });
-            (qs || []).forEach(q => {
+                .from('firm_quotes').select('lead_id, status, totals, created_at').order('created_at', { ascending: false });
+            // firm_quotes durumları → CRM rozet anahtarları
+            const _SMAP = { draft: 'taslak', sent: 'gonderildi', revised: 'gonderildi', accepted: 'kabul', rejected: 'ret' };
+            (qs || []).forEach(row => {
+                if (!row.lead_id) return;                    // elle açılmış teklifler CRM'e bağlı değil
+                const q = {
+                    lead_id: row.lead_id,
+                    status: _SMAP[row.status] || 'taslak',
+                    total_amount: (row.totals && (row.totals.total_try_vat || row.totals.total_try)) || 0,
+                    created_at: row.created_at
+                };
                 if (!_quotesByLead[q.lead_id]) _quotesByLead[q.lead_id] = q; // en güncel teklif
                 _quoteStats.count++;
                 if (_quoteStats[q.status] !== undefined) _quoteStats[q.status]++;
                 if (q.status === 'kabul') _quoteStats.kabulTotal += Number(q.total_amount) || 0;
             });
-        } catch (e) { /* quotes tablosu yoksa sessiz geç */ }
+        } catch (e) { /* firm_quotes tablosu yoksa sessiz geç */ }
     }
 
     await ensureProcessSteps();   // sayaclar/filtre/rozetler 9 adima gore calissin
