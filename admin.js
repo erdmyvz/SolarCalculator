@@ -1082,13 +1082,13 @@ async function renderSubscriptions() {
     root.innerHTML = '<p class="text-slate-400 text-sm">Yükleniyor...</p>';
     try {
         const [r1, r2] = await Promise.all([
-            supabaseClient.from('companies').select('id, name, sub_status, sub_ends_at'),
-            supabaseClient.from('consultants').select('id, full_name, email, sub_status, sub_ends_at')
+            supabaseClient.from('companies').select('id, name, sub_status, sub_ends_at, banned, ban_reason'),
+            supabaseClient.from('consultants').select('id, full_name, email, sub_status, sub_ends_at, banned, ban_reason')
         ]);
         if (r1.error) throw r1.error; if (r2.error) throw r2.error;
         _allSubs = [
-            ...(r1.data || []).map(x => ({ table: 'companies', id: x.id, name: x.name || '(firma)', email: '', type: 'Firma', sub_status: x.sub_status, sub_ends_at: x.sub_ends_at })),
-            ...(r2.data || []).map(x => ({ table: 'consultants', id: x.id, name: x.full_name || '(danışman)', email: x.email || '', type: 'Danışman', sub_status: x.sub_status, sub_ends_at: x.sub_ends_at }))
+            ...(r1.data || []).map(x => ({ table: 'companies', id: x.id, name: x.name || '(firma)', email: '', type: 'Firma', sub_status: x.sub_status, sub_ends_at: x.sub_ends_at, banned: !!x.banned, ban_reason: x.ban_reason })),
+            ...(r2.data || []).map(x => ({ table: 'consultants', id: x.id, name: x.full_name || '(danışman)', email: x.email || '', type: 'Danışman', sub_status: x.sub_status, sub_ends_at: x.sub_ends_at, banned: !!x.banned, ban_reason: x.ban_reason }))
         ];
     } catch (e) { root.innerHTML = `<p class="text-red-500 text-sm">Yüklenemedi: ${e.message}</p>`; return; }
     const info = (s) => {
@@ -1096,6 +1096,7 @@ async function renderSubscriptions() {
         const days = end ? Math.ceil((end.getTime() - Date.now()) / 86400000) : null;
         const expired = days !== null && days < 0;
         let cls = 'bg-amber-100 text-amber-800', label = 'Deneme';
+        if (s.banned) return { days, expired, cls: 'bg-red-600 text-white', label: '⛔ ENGELLİ', end };
         if (expired) { cls = 'bg-red-100 text-red-700'; label = 'Süresi Doldu'; }
         else if (s.sub_status === 'active') { cls = 'bg-emerald-100 text-emerald-700'; label = 'Aktif'; }
         return { days, expired, cls, label, end };
@@ -1119,12 +1120,15 @@ async function renderSubscriptions() {
                 <div class="border border-slate-100 rounded-lg p-3 mb-2 flex items-center justify-between gap-3 flex-wrap">
                     <div class="min-w-0">
                         <div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-slate-800">${admEscape(s.name)}</span><span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">${s.type}</span><span class="text-[10px] font-black px-2 py-0.5 rounded-full ${i.cls}">${i.label}</span></div>
-                        <div class="text-[11px] text-slate-400 mt-0.5">${s.email ? admEscape(s.email) + ' · ' : ''}Bitiş: ${i.end ? i.end.toLocaleDateString('tr-TR') : '—'}${i.days !== null ? (i.days >= 0 ? ' · ' + i.days + ' gün kaldı' : ' · ' + Math.abs(i.days) + ' gün geçti') : ''}</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">${s.banned && s.ban_reason ? '<span class="text-red-600 font-bold">Gerekçe: ' + admEscape(s.ban_reason) + '</span> · ' : ''}${s.email ? admEscape(s.email) + ' · ' : ''}Bitiş: ${i.end ? i.end.toLocaleDateString('tr-TR') : '—'}${i.days !== null ? (i.days >= 0 ? ' · ' + i.days + ' gün kaldı' : ' · ' + Math.abs(i.days) + ' gün geçti') : ''}</div>
                     </div>
                     <div class="flex gap-1.5 shrink-0">
                         <button onclick="adminExtendSub('${s.table}','${s.id}',1)" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+1 Ay</button>
                         <button onclick="adminExtendSub('${s.table}','${s.id}',3)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg">+3 Ay</button>
                         <button onclick="adminSubManage('${s.table}','${s.id}')" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg">⚙️ Ayarla</button>
+                        ${s.banned
+                            ? `<button onclick="adminUnban('${s.table}','${s.id}')" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-lg">Engeli Kaldır</button>`
+                            : `<button onclick="adminBan('${s.table}','${s.id}')" class="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold px-3 py-1.5 rounded-lg">⛔ Engelle</button>`}
                     </div>
                 </div>`; }).join('') : '<p class="text-sm text-slate-400">Kayıt yok.</p>'}
         </div>`;
@@ -1291,3 +1295,29 @@ function setTabBadge(tab, n) {
     b.textContent = n > 99 ? '99+' : String(n);
 }
 window.setTabBadge = setTabBadge;
+
+
+// ---------------------------------------------------------------- ENGELLEME
+window.adminBan = async function (table, id) {
+    const s = _allSubs.find(x => x.table === table && x.id === id);
+    const reason = window.prompt('Engelleme gerekçesi (kullanıcıya gösterilecek):', '');
+    if (reason === null) return;
+    if (!String(reason).trim()) { alert('Gerekçe zorunludur.'); return; }
+    if (!confirm(`"${s ? s.name : ''}" hesabı engellenecek ve giriş yapamayacak. Onaylıyor musunuz?`)) return;
+    try {
+        const { error } = await supabaseClient.from(table)
+            .update({ banned: true, ban_reason: String(reason).trim(), banned_at: new Date().toISOString() }).eq('id', id);
+        if (error) throw error;
+        await renderSubscriptions();
+    } catch (e) { alert('Engellenemedi: ' + (e.message || e)); }
+};
+
+window.adminUnban = async function (table, id) {
+    if (!confirm('Bu hesabın engeli kaldırılacak. Onaylıyor musunuz?')) return;
+    try {
+        const { error } = await supabaseClient.from(table)
+            .update({ banned: false, ban_reason: null, banned_at: null }).eq('id', id);
+        if (error) throw error;
+        await renderSubscriptions();
+    } catch (e) { alert('İşlem başarısız: ' + (e.message || e)); }
+};

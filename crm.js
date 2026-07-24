@@ -651,13 +651,13 @@ function renderDiscoList() {
 
 
 // ============================================================================
-// MÜŞTERİ KARTI: otomatik tüketim hesabı + koşullu alan görünürlüğü + teklif (yakında)
+// MÜŞTERİ KARTI: otomatik tüketim hesabı + koşullu alan görünürlüğü + teklif
 // ============================================================================
 window.crmCreateQuoteForLead = function (id) {
     if (typeof QUOTES_ENABLED !== 'undefined' && QUOTES_ENABLED && typeof crmOpenQuote === 'function') {
         crmOpenQuote(id);
     } else {
-        alert('📄 Teklif oluşturma özelliği çok yakında aktif olacak.\nMüşteri kaydınız hazır; teklif modülü açıldığında buradan oluşturabileceksiniz.');
+        alert('Teklif modülü yüklenemedi. Sayfayı yenileyip (Ctrl+Shift+R) tekrar deneyin.');
     }
 };
 

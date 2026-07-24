@@ -71,17 +71,38 @@ const PAYMENT_IBAN = "TR00 0000 0000 0000 0000 0000 00";
 // ⬆️⬆️ ------------------------------------------------ ⬆️⬆️
 
 async function getSubscription(info, user) {
-    if (info.type === 'consultant' && info.consultant) return { status: info.consultant.sub_status, endsAt: info.consultant.sub_ends_at };
+    if (info.type === 'consultant' && info.consultant) return { status: info.consultant.sub_status, endsAt: info.consultant.sub_ends_at, banned: !!info.consultant.banned, banReason: info.consultant.ban_reason };
     if (info.type === 'installer' && supabaseClient) {
         try {
             const { data: prof } = await supabaseClient.from('profiles').select('company_id').eq('id', user.id).maybeSingle();
             if (prof && prof.company_id) {
-                const { data: co } = await supabaseClient.from('companies').select('sub_status, sub_ends_at').eq('id', prof.company_id).maybeSingle();
-                if (co) return { status: co.sub_status, endsAt: co.sub_ends_at };
+                const { data: co } = await supabaseClient.from('companies').select('sub_status, sub_ends_at, banned, ban_reason').eq('id', prof.company_id).maybeSingle();
+                if (co) return { status: co.sub_status, endsAt: co.sub_ends_at, banned: !!co.banned, banReason: co.ban_reason };
             }
         } catch (e) { /* sub kolonları yoksa sessiz geç */ }
     }
     return null;
+}
+
+function showBanScreen(email, reason) {
+    let m = document.getElementById('banScreen');
+    if (!m) { m = document.createElement('div'); m.id = 'banScreen'; document.body.appendChild(m); }
+    m.className = 'fixed inset-0 z-[100] bg-slate-900/95 flex items-center justify-center p-4 overflow-y-auto';
+    const safe = (t) => String(t == null ? '' : t).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    m.innerHTML = `<div class="bg-white rounded-2xl max-w-md w-full p-7 my-8">
+        <div class="text-center mb-5">
+            <div class="text-4xl mb-2">⛔</div>
+            <h2 class="text-2xl font-black text-slate-800">Hesabınız Engellendi</h2>
+            <p class="text-sm text-slate-500 mt-1">${safe(email)}</p>
+        </div>
+        ${reason ? `<div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+            <p class="text-xs font-black text-red-700 uppercase tracking-wider mb-1">Gerekçe</p>
+            <p class="text-sm text-red-800">${safe(reason)}</p>
+        </div>` : ''}
+        <p class="text-xs text-slate-600 mb-4 bg-slate-50 border border-slate-200 rounded-lg p-3">İtiraz etmek veya bilgi almak için bizimle iletişime geçebilirsiniz.</p>
+        <button onclick="(async()=>{ try{ if(supabaseClient) await supabaseClient.auth.signOut(); }catch(e){} window.currentConsultant=null; window.location.hash='#home'; window.location.reload(); })()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-lg">Çıkış Yap</button>
+    </div>`;
+    m.classList.remove('hidden');
 }
 
 function showRenewalScreen(email, sub) {
@@ -158,6 +179,24 @@ window.showSubModal = function () {
     m.classList.remove('hidden');
 };
 
+// "Beni hatırla" tercihini uygula: oturum jetonunu doğru depoya taşı.
+function applyRememberPreference(remember) {
+    const RX = /^sb-.*-auth-token$/;
+    try {
+        if (remember) {
+            Object.keys(sessionStorage).filter(k => RX.test(k)).forEach(k => {
+                localStorage.setItem(k, sessionStorage.getItem(k));
+                sessionStorage.removeItem(k);
+            });
+        } else {
+            Object.keys(localStorage).filter(k => RX.test(k)).forEach(k => {
+                sessionStorage.setItem(k, localStorage.getItem(k));
+                localStorage.removeItem(k);
+            });
+        }
+    } catch (e) { /* depo erişimi yoksa varsayılan davranış sürer */ }
+}
+
 async function routeByInfo(info, user) {
     window.currentConsultant = null;
     window.__subInfo = null;
@@ -169,6 +208,7 @@ async function routeByInfo(info, user) {
     }
     if (info.type !== 'admin') {
         const sub = await getSubscription(info, user);
+        if (sub && sub.banned) { showBanScreen(user.email, sub.banReason); return 'banned'; }
         window.__subInfo = sub ? { endsAt: sub.endsAt, status: sub.status, email: user.email } : null;
         if (sub && sub.endsAt && new Date(sub.endsAt).getTime() < Date.now()) { showRenewalScreen(user.email, sub); return 'expired'; }
     }
@@ -319,8 +359,9 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
                 await supabaseClient.auth.signOut();
                 alert('Bu hesap bir "' + (LBL[info.type] || info.type) + '" hesabıdır. Lütfen giriş ekranında "' + (LBL[info.type] || '') + '" seçeneğini seçin.');
             } else {
+                applyRememberPreference(!!document.getElementById('rememberMe')?.checked);
                 const r = await routeByInfo(info, data.user);
-                if (r !== 'expired') window.location.hash = '#app';
+                if (r !== 'expired' && r !== 'banned') window.location.hash = '#app';
                 document.getElementById('loginForm').reset();
             }
         }
@@ -348,7 +389,21 @@ async function fetchUserProfile(userId, displayEmail) {
     }
 }
 
-document.getElementById('btnProfile')?.addEventListener('click', () => document.getElementById('profileDropdown').classList.toggle('hidden'));
+document.getElementById('btnProfile')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('profileDropdown').classList.toggle('hidden');
+});
+// Menü dışına tıklayınca veya Esc ile kapansın
+document.addEventListener('click', (e) => {
+    const dd = document.getElementById('profileDropdown');
+    if (!dd || dd.classList.contains('hidden')) return;
+    const btn = document.getElementById('btnProfile');
+    if (dd.contains(e.target) || (btn && btn.contains(e.target))) return;
+    dd.classList.add('hidden');
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.getElementById('profileDropdown')?.classList.add('hidden');
+});
 document.getElementById('btnLogout')?.addEventListener('click', async () => {
     if(supabaseClient) await supabaseClient.auth.signOut(); 
     currentUserProfile = null; window.currentConsultant = null;

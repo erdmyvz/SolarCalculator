@@ -408,7 +408,6 @@
                     </div>
 
                     <div onclick="openPublicModule('consultantsModule'); if(window.renderConsultantsList) renderConsultantsList();" class="bg-slate-50 border border-slate-200 p-8 rounded-3xl shadow-sm hover:shadow-xl hover:border-indigo-300 transition cursor-pointer text-left relative overflow-hidden">
-                        <span class="absolute top-4 right-4 bg-indigo-100 text-indigo-700 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">Yakında</span>
                         <div class="text-4xl mb-4">🎯</div><h3 class="text-2xl font-bold text-slate-800 mb-2">Danışmanlık Al</h3><p class="text-slate-500 text-sm">Sektörün bağımsız uzmanlarından tarafsız danışmanlık alın; doğru kararı birlikte verin.</p>
                     </div>
 
@@ -639,6 +638,11 @@
                 <form id="loginForm" class="space-y-4">
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">E-posta</label><input type="email" id="loginEmail" required class="auth-input"></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Şifre</label><input type="password" id="loginPassword" required class="auth-input"></div>
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="rememberMe" checked class="w-4 h-4 rounded">
+                        <span class="text-xs font-bold text-slate-600">Beni hatırla</span>
+                        <span class="text-[11px] text-slate-400 ml-auto">Kapalıysa tarayıcı kapanınca çıkış yapılır</span>
+                    </label>
                     <button type="submit" id="btnLoginSubmit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl shadow-lg shadow-emerald-600/25 transition">Giriş Yap</button>
                 </form>
                 <form id="registerForm" class="space-y-4 hidden">
@@ -681,6 +685,7 @@
                 </button>
                 <div id="profileDropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-50">
                     <div class="p-4 border-b"><p id="userEmailDisplay" class="text-xs text-slate-500"></p></div>
+                    <button onclick="openProfileModal()" class="w-full text-left px-4 py-3 text-sm text-slate-700 border-b hover:bg-slate-50 font-bold">👤 Profilim</button>
                     <a href="#home" class="block w-full text-left px-4 py-3 text-sm text-slate-700 border-b">Ziyaretçi Arayüzüne Dön</a>
                     <button id="btnLogout" class="w-full text-left px-4 py-3 text-sm text-red-600 font-bold">Güvenli Çıkış</button>
                 </div>
@@ -731,6 +736,12 @@
 
             <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-3">Operasyon & Destek</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                <button id="btnGoCampaigns" class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-violet-300 transition text-left">
+                    <span class="inline-flex w-11 h-11 rounded-xl bg-violet-50 text-violet-600 items-center justify-center text-xl mb-3 group-hover:scale-110 transition">📣</span>
+                    <h2 class="text-base font-black text-slate-800 mb-1">Pazarlama</h2>
+                    <p class="text-slate-500 text-xs leading-relaxed">Kurulum yaptırmamış müşterilere hatırlatma kampanyası.</p>
+                </button>
 
                 <button id="btnGoMessages" class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition text-left">
                     <span class="inline-flex w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 items-center justify-center text-xl mb-3 group-hover:scale-110 transition">🤝</span>
@@ -814,6 +825,10 @@
                 <p class="text-[11px] uppercase tracking-[0.18em] font-black text-amber-600 mb-3">İletişim</p>
                 <div id="abContact" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
             </div>
+        </div>
+
+        <div id="campaignsModule" class="hidden w-full max-w-4xl mx-auto mt-4 animate-fade-in">
+            <div id="campaignsRoot"></div>
         </div>
 
         <div id="investorModule" class="hidden w-full max-w-4xl mx-auto mt-4 animate-fade-in">
@@ -1594,6 +1609,9 @@
     <script src="legal.js"></script>
     <script src="messaging.js"></script>
     <script src="investor.js"></script>
+    <script src="profile.js"></script>
+    <script src="documents.js"></script>
+    <script src="campaigns.js"></script>
     
 </body>
 </html>

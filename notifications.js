@@ -115,14 +115,47 @@
         window.addEventListener('focus', () => { if (_started) fetchNotifs(); });
     }
 
+    function stop() {
+        _started = false; _open = false; _items = [];
+        if (_timer) { clearInterval(_timer); _timer = null; }
+        const h = host(); if (h) h.innerHTML = '';
+    }
+
+    // Oturum durumuna bağlan: giriş yapılınca başlat, çıkışta temizle.
+    // (Önceki sürüm yalnızca sayfa açılışında 20 sn deniyordu; geç giriş yapan
+    //  kullanıcıda zil hiç başlamıyordu.)
+    let _wired = false;
+    function wireAuth() {
+        if (_wired || !window.supabaseClient || !supabaseClient.auth) return;
+        _wired = true;
+        try {
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                if (session) { _started = false; start(); }
+                else { stop(); }
+            });
+        } catch (e) { _wired = false; }
+    }
+
     (function boot() {
         let tries = 0;
         const tick = () => {
-            if (_started) return;
-            start();
-            if (!_started && ++tries < 40) setTimeout(tick, 500);
+            if (window.supabaseClient) { wireAuth(); start(); }
+            if (!_wired && ++tries < 60) setTimeout(tick, 500);   // yalnız bağlanana kadar dene
         };
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(tick, 400));
         else setTimeout(tick, 400);
     })();
+
+    // Teşhis: konsolda `notifDiag()` yazarak durumu görebilirsiniz.
+    window.notifDiag = async function () {
+        const out = { zilAlani: !!host(), supabase: !!window.supabaseClient, baslatildi: _started, oturum: false, tabloOkunuyor: false, kayit: 0, hata: null };
+        try { const { data } = await supabaseClient.auth.getSession(); out.oturum = !!(data && data.session); } catch (e) {}
+        try {
+            const { data, error } = await supabaseClient.from('notifications').select('id').limit(1);
+            if (error) throw error;
+            out.tabloOkunuyor = true; out.kayit = (data || []).length;
+        } catch (e) { out.hata = e.message || String(e); }
+        console.table(out);
+        return out;
+    };
 })();

@@ -9,7 +9,19 @@
 // --- Supabase bağlantısı (anon anahtar herkese açıktır; asıl koruma RLS'tir) ---
 const SUPABASE_URL = 'https://bxcghdbrafzudiigeeud.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_EiDGhm4bT-acQ8xrV9RU4w_4wkUQGys';
-const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+// "Beni hatırla" kapalıyken oturum sessionStorage'da tutulur (sekme kapanınca biter).
+// Açıkken localStorage'da kalır (varsayılan davranış).
+const _epcSessionOnly = (function () {
+    try { return Object.keys(sessionStorage).some(k => /^sb-.*-auth-token$/.test(k)); }
+    catch (e) { return false; }
+})();
+const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        storage: _epcSessionOnly ? window.sessionStorage : window.localStorage
+    }
+}) : null;
 
 // --- CRM aşama etiketleri (leads.status) ---
 const crmStatusLabels = {
