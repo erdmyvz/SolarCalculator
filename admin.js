@@ -194,6 +194,7 @@ async function fetchAdminData() {
 
     // 13) HAKKIMDA DÜZENLEME KARTI (İçerik sekmesi)
     if (typeof renderAboutAdmin === 'function') renderAboutAdmin();
+    if (typeof renderLegalAdmin === 'function') renderLegalAdmin();
 }
 
 // --- Potansiyel müşteriler bölümünü (bir kez) admin paneline enjekte eder ---
