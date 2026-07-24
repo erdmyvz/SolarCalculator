@@ -220,7 +220,11 @@
                     <h3 class="font-black text-slate-800 mb-1">Profili Düzenle</h3>
                     <p class="text-sm text-slate-500">Ziyaretçi sayfasında görünen profilinizi düzenleyin ve onaya gönderin.</p>
                 </button>
-                ${soonCard('💬', 'Mesajlaşma', 'Yatırımcılarla mesajlaşma yakında burada olacak.')}
+                <button onclick="consultantOpenMessages()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition">
+                    <div class="text-4xl mb-3">💬</div>
+                    <h3 class="font-black text-slate-800 mb-1">Mesajlaşma</h3>
+                    <p class="text-sm text-slate-500">Danışanınızı yönlendirdiğiniz kurulumcu firmalarla yazışın.</p>
+                </button>
                 <button onclick="consultantOpenCRM()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition">
                     <div class="text-4xl mb-3">👥</div>
                     <h3 class="font-black text-slate-800 mb-1">Danışan Takibi (CRM)</h3>
