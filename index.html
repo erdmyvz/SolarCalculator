@@ -529,6 +529,9 @@
                         <button onclick="openPublicModule('consultantsModule')" class="hover:text-white transition font-bold">Danışmanlar</button>
                         <button onclick="document.getElementById('pricingSection').scrollIntoView({behavior:'smooth'})" class="hover:text-white transition font-bold">Fiyatlandırma</button>
                         <button onclick="document.getElementById('trackingSection').scrollIntoView()" class="hover:text-white transition font-bold">Başvuru Takip</button>
+                        <button onclick="openLegalPage('legal_kvkk')" class="hover:text-white transition font-bold">KVKK</button>
+                        <button onclick="openLegalPage('legal_privacy')" class="hover:text-white transition font-bold">Gizlilik</button>
+                        <button onclick="openLegalPage('legal_terms')" class="hover:text-white transition font-bold">Kullanım Şartları</button>
                     </div>
                     <span class="text-xs">Güneş enerjisinde dijital dönüşüm</span>
                 </div>
@@ -602,7 +605,17 @@
                     <textarea id="leadDetails" required rows="3" class="w-full p-2.5 border rounded-lg text-sm"></textarea>
                 </div>
                 
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg mt-2 transition shadow-lg">Başvuruyu Gönder</button>
+                <div class="mt-4 pt-4 border-t border-slate-100 space-y-2.5">
+                        <label class="flex items-start gap-2.5 cursor-pointer">
+                            <input type="checkbox" id="leadKvkk" required class="mt-0.5 w-4 h-4 rounded shrink-0">
+                            <span class="text-xs text-slate-600 leading-relaxed"><button type="button" onclick="openLegalTab('kvkk')" class="text-emerald-700 font-bold underline">KVKK Aydınlatma Metni</button>'ni okudum; kişisel verilerimin talebimin karşılanması amacıyla işlenmesini ve ilgili kurulumcu firma/danışman ile paylaşılmasını kabul ediyorum. <span class="text-red-500">*</span></span>
+                        </label>
+                        <label class="flex items-start gap-2.5 cursor-pointer">
+                            <input type="checkbox" id="leadConsent" class="mt-0.5 w-4 h-4 rounded shrink-0">
+                            <span class="text-xs text-slate-500 leading-relaxed">Tarafıma ticari elektronik ileti gönderilmesine izin veriyorum (isteğe bağlı) — <button type="button" onclick="openLegalTab('acik-riza')" class="text-slate-600 font-bold underline">Açık Rıza Metni</button></span>
+                        </label>
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg mt-2 transition shadow-lg">Başvuruyu Gönder</button>
             </form>
         </div>
     </div>
@@ -635,6 +648,10 @@
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Telefon</label><input type="tel" id="regPhone" required class="auth-input"></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">E-posta</label><input type="email" id="regEmail" required class="auth-input"></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Şifre</label><input type="password" id="regPassword" required minlength="6" class="auth-input"></div>
+                    <label class="flex items-start gap-2.5 cursor-pointer">
+                        <input type="checkbox" id="regTerms" required class="mt-0.5 w-4 h-4 rounded shrink-0">
+                        <span class="text-xs text-slate-500 leading-relaxed"><button type="button" onclick="openLegalTab('kullanim-sartlari')" class="text-emerald-700 font-bold underline">Kullanım Şartları</button>, <button type="button" onclick="openLegalTab('abonelik-sozlesmesi')" class="text-emerald-700 font-bold underline">Abonelik Sözleşmesi</button> ve <button type="button" onclick="openLegalTab('kvkk')" class="text-emerald-700 font-bold underline">KVKK Aydınlatma Metni</button>'ni okudum, kabul ediyorum. <span class="text-red-500">*</span></span>
+                    </label>
                     <button type="submit" id="btnRegisterSubmit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-black py-3 rounded-xl shadow-lg transition">Firmayı Sisteme Kaydet</button>
                 </form>
                 <div class="mt-5 pt-5 border-t border-slate-100 text-center">
@@ -740,6 +757,10 @@
             </div>
         </div>
         
+        <div id="legalModule" class="hidden w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+            <div id="legalRoot"></div>
+        </div>
+
         <div id="aboutModule" class="hidden w-full max-w-5xl mx-auto mt-4 animate-fade-in">
             <button onclick="window.location.hash='#home'" class="text-slate-500 hover:text-indigo-600 font-bold mb-4">← Ana Sayfaya Dön</button>
 
@@ -1554,6 +1575,7 @@
     <script src="consultants.js"></script>
     <script src="notifications.js"></script>
     <script src="about.js"></script>
+    <script src="legal.js"></script>
     
 </body>
 </html>

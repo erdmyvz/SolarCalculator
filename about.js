@@ -76,6 +76,7 @@
             if (error) throw error;
             (data || []).forEach(r => { window.EPC_CONTENT[r.key] = r.value; });
         } catch (e) { /* tablo yoksa varsayılanlarla devam */ }
+        try { window.dispatchEvent(new Event('epc-content-loaded')); } catch (e) {}
         // Yarış durumu: sayfa zaten açıksa yeniden çiz
         const m = document.getElementById('aboutModule');
         if (m && !m.classList.contains('hidden')) renderAbout();
