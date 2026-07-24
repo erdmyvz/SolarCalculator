@@ -23,6 +23,14 @@ const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_U
     }
 }) : null;
 
+// --- ⚠️ KÜRESEL KÖPRÜ (silme!) ----------------------------------------------
+// Klasik <script> içinde `const`/`let` ile tanımlanan değişkenler window
+// nesnesine YAZILMAZ (yalnız `var` ve fonksiyon bildirimleri yazılır).
+// Sonradan eklenen modüller (profile, notifications, about, legal, documents,
+// messaging, campaigns, quote, public) bağlantıyı `window.supabaseClient`
+// üzerinden yokluyor; bu köprü olmadan hepsi sessizce devre dışı kalır.
+window.supabaseClient = supabaseClient;
+
 // --- CRM aşama etiketleri (leads.status) ---
 const crmStatusLabels = {
     'yeni_basvuru':      { text: '1. Yeni Başvuru',      css: 'bg-blue-100 text-blue-800' },
@@ -45,3 +53,19 @@ function admEscape(s) {
 let currentUserProfile = null;      // Giriş yapan firmanın profili
 let crmLeads = [];                  // CRM müşteri listesi (veritabanından yüklenir)
 window.isApp3DInitialized = false;  // 3D sahnesinin tekrar tekrar yüklenmesini engeller
+
+// --- ⚠️ KÜRESEL KÖPRÜ (silme!) ----------------------------------------------
+// Yukarıdaki `let` bildirimleri de window'a yazılmaz. profile/messaging/
+// documents/campaigns modülleri `window.currentUserProfile` okuyor. Düz atama
+// yetmez (auth.js girişte değişkeni yeniden atıyor), bu yüzden erişimci
+// tanımlıyoruz: okuma da yazma da tek kaynağa gider.
+Object.defineProperty(window, 'currentUserProfile', {
+    get: () => currentUserProfile,
+    set: (v) => { currentUserProfile = v; },
+    configurable: true
+});
+Object.defineProperty(window, 'crmLeads', {
+    get: () => crmLeads,
+    set: (v) => { crmLeads = v; },
+    configurable: true
+});
