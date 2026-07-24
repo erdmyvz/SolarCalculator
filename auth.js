@@ -31,13 +31,16 @@ window.authSetRole = function (role) {
     window.authRole = role;
     const on = 'auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-emerald-600 bg-emerald-600 text-white';
     const off = 'auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white';
-    const f = document.getElementById('roleFirma'), c = document.getElementById('roleConsultant');
+    const f = document.getElementById('roleFirma'), c = document.getElementById('roleConsultant'), i = document.getElementById('roleInvestor');
     if (f) f.className = role === 'firma' ? on : off;
     if (c) c.className = role === 'consultant' ? on : off;
+    if (i) i.className = role === 'investor' ? on : off;
     const wrap = document.getElementById('regCompanyWrap');
     if (wrap) wrap.classList.toggle('hidden', role !== 'firma');
     const rb = document.getElementById('btnRegisterSubmit');
-    if (rb) rb.textContent = role === 'consultant' ? 'Danışman Olarak Kayıt Ol' : 'Firmayı Sisteme Kaydet';
+    if (rb) rb.textContent = role === 'consultant' ? 'Danışman Olarak Kayıt Ol'
+                          : role === 'investor'   ? 'Yatırımcı Olarak Kayıt Ol'
+                          : 'Firmayı Sisteme Kaydet';
 };
 
 // Girişten sonra rol tespiti: danışman mı, firma/admin mi?
@@ -50,6 +53,7 @@ async function getAccountInfo(user) {
             if (prof) role = prof.role;
         } catch (e) { /* profiles okunamadı */ }
         if (role === 'admin') return { type: 'admin', consultant: null };
+        if (role === 'investor') return { type: 'investor', consultant: null };
         try {
             const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', user.id).maybeSingle();
             if (cons) consultant = cons;
@@ -157,6 +161,12 @@ window.showSubModal = function () {
 async function routeByInfo(info, user) {
     window.currentConsultant = null;
     window.__subInfo = null;
+    if (info.type === 'investor') {
+        // Yatırımcı ücret ödemez; abonelik kontrolü uygulanmaz.
+        try { await supabaseClient.rpc('claim_my_leads'); } catch (e) { /* geçmiş başvuru eşleştirme */ }
+        if (typeof showInvestorPanel === 'function') showInvestorPanel();
+        return 'investor';
+    }
     if (info.type !== 'admin') {
         const sub = await getSubscription(info, user);
         window.__subInfo = sub ? { endsAt: sub.endsAt, status: sub.status, email: user.email } : null;
@@ -234,6 +244,24 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
         return;
     }
 
+    // --- YATIRIMCI KAYDI ---
+    if (window.authRole === 'investor') {
+        const orig = btn.textContent; btn.textContent = "Kaydediliyor..."; btn.disabled = true;
+        try {
+            const { error: signUpErr } = await supabaseClient.auth.signUp({
+                email, password,
+                options: { data: { role: 'investor', full_name: (firstName + ' ' + lastName).trim(), phone: phone } }
+            });
+            if (signUpErr) throw signUpErr;
+            try { await supabaseClient.auth.signOut(); } catch (e) {}
+            alert("✅ Kaydınız oluşturuldu! Sizlere mail doğrulama linki gönderdik. Lütfen e-postanızı doğrulayın, sonra giriş yapın.");
+            document.getElementById('registerForm').reset(); document.getElementById('tabLogin').click();
+        } catch (err) {
+            alert("Kayıt Hatası: " + (err.message || err));
+        } finally { btn.textContent = orig; btn.disabled = false; }
+        return;
+    }
+
     // --- KURULUMCU FİRMA KAYDI ---
     const company = document.getElementById('regCompany').value;
     if (!company || company.trim().length < 3) {
@@ -285,13 +313,11 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         }
         else if (data.user) {
             const info = await getAccountInfo(data.user);
-            const wantConsultant = (window.authRole === 'consultant');
-            if (wantConsultant && info.type !== 'consultant') {
+            const LBL = { installer: 'Kurulumcu Firma', consultant: 'Danışman', investor: 'Yatırımcı' };
+            const expected = { firma: 'installer', consultant: 'consultant', investor: 'investor' }[window.authRole || 'firma'] || 'installer';
+            if (info.type !== 'admin' && info.type !== expected) {
                 await supabaseClient.auth.signOut();
-                alert('Bu hesap bir danışman hesabı değil. Lütfen "Kurulumcu Firma" ile giriş yapın.');
-            } else if (!wantConsultant && info.type === 'consultant') {
-                await supabaseClient.auth.signOut();
-                alert('Bu hesap bir danışman hesabıdır. Lütfen "Danışman" ile giriş yapın.');
+                alert('Bu hesap bir "' + (LBL[info.type] || info.type) + '" hesabıdır. Lütfen giriş ekranında "' + (LBL[info.type] || '') + '" seçeneğini seçin.');
             } else {
                 const r = await routeByInfo(info, data.user);
                 if (r !== 'expired') window.location.hash = '#app';

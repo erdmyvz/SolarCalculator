@@ -176,7 +176,7 @@
             outline: none; border-color: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,.15);
         }
         /* Rol butonları ve sekmeler: JS className yazar → yalnız CSS ile iyileştir */
-        body .auth-role { transition: transform .15s ease, box-shadow .15s ease; }
+        body .auth-role { transition: transform .15s ease, box-shadow .15s ease; font-size: 0.76rem; padding: 0.6rem 0.35rem; line-height: 1.15; }
         body .auth-role:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -8px rgba(15,23,42,.5); }
         body #tabLogin, body #tabRegister { transition: color .15s ease; letter-spacing: -0.01em; }
 
@@ -629,7 +629,9 @@
             </div>
             <div class="p-7 md:p-8">
                 <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Hesap türü</p>
-                <div class="grid grid-cols-2 gap-2 mb-6"><button type="button" id="roleFirma" onclick="authSetRole('firma')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-emerald-600 bg-emerald-600 text-white">🏢 Kurulumcu Firma</button><button type="button" id="roleConsultant" onclick="authSetRole('consultant')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white">🎯 Danışman</button></div>
+                <div class="grid grid-cols-3 gap-2 mb-6"><button type="button" id="roleFirma" onclick="authSetRole('firma')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-emerald-600 bg-emerald-600 text-white">🏢 Kurulumcu Firma</button><button type="button" id="roleConsultant" onclick="authSetRole('consultant')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white">🎯 Danışman</button>
+                    <button type="button" id="roleInvestor" onclick="authSetRole('investor')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white">👤 Yatırımcı</button>
+                </div>
                 <div class="flex border-b border-gray-200 mb-6">
                     <button id="tabLogin" class="w-1/2 pb-3 text-center font-bold text-emerald-600 border-b-2 border-emerald-600">Giriş Yap</button>
                     <button id="tabRegister" class="w-1/2 pb-3 text-center font-bold text-gray-400 hover:text-gray-600">Kayıt Ol</button>
@@ -731,9 +733,9 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
                 <button id="btnGoMessages" class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition text-left">
-                    <span class="inline-flex w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 items-center justify-center text-xl mb-3 group-hover:scale-110 transition">💬</span>
-                    <h2 class="text-base font-black text-slate-800 mb-1">Mesajlar</h2>
-                    <p class="text-slate-500 text-xs leading-relaxed">Danışmanlarla danışan bazında yazışın.</p>
+                    <span class="inline-flex w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 items-center justify-center text-xl mb-3 group-hover:scale-110 transition">🤝</span>
+                    <h2 class="text-base font-black text-slate-800 mb-1">Danışman Kanalı</h2>
+                    <p class="text-slate-500 text-xs leading-relaxed">Mesajlar ve size yönlendirilen danışanların kurulum durumu.</p>
                 </button>
 
                 <button id="btnGoProjects" class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-amber-300 transition text-left">
