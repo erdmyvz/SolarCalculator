@@ -42,10 +42,12 @@
     const PANEL_KWP = 0.5;                       // 500 Wp'lik panel
     const PANEL_M2  = 2.5;                       // panel başına ~2,5 m²
     const M2_PER_KWP = PANEL_M2 / PANEL_KWP;     // = 5,0 m²/kWp (çatı kısıtı için)
-    const PRICE_USD_PER_KWP = 1000;              // 1 kWp panel + 1 kWe inverter = 1.000 $
-    const BATTERY_USD_PER_KWH = 300;             // batarya: 1 kWh = 300 $
-    // Abonelik (tarife) grubuna göre ORTALAMA birim fiyat (₺/kWh) — göstergedir.
-    const TARIFFS = { mesken: 2.50, ticarethane: 3.50, sanayi: 3.00, tarimsal: 2.20 };
+    // Fiyat/tarife değerleri admin panelinden (app_settings) yönetilir; yoksa varsayılan.
+    const TARIFF_DEFAULTS = { mesken: 2.50, ticarethane: 3.50, sanayi: 3.00, tarimsal: 2.20 };
+    const TARIFF_KEYS = { mesken: 'tariffMesken', ticarethane: 'tariffTicarethane', sanayi: 'tariffSanayi', tarimsal: 'tariffTarimsal' };
+    function tariffOf(g) { const v = Number((window.EPC_SETTINGS || {})[TARIFF_KEYS[g]]); return v > 0 ? v : (TARIFF_DEFAULTS[g] || TARIFF_DEFAULTS.mesken); }
+    function priceUsdPerKwp() { const v = Number((window.EPC_SETTINGS || {}).usdPerKwp); return v > 0 ? v : 1000; }        // panel + inverter, $/kWp
+    function batteryUsdPerKwh() { const v = Number((window.EPC_SETTINGS || {}).batteryUsdPerKwh); return v > 0 ? v : 300; } // batarya, $/kWh
     const TARIFF_LABEL = { mesken: 'Mesken (konut)', ticarethane: 'Ticarethane / iş yeri', sanayi: 'Sanayi', tarimsal: 'Tarımsal sulama' };
     function usdTry() { const v = Number((window.EPC_SETTINGS || {}).usdTry); return v > 0 ? v : 42; } // yaklaşık kur (ayarlardan gelebilir)
 
@@ -457,7 +459,7 @@
         const box = document.getElementById('baBillEstimate'); if (!box) return;
         const monthly = num(document.getElementById('baMonthly')?.value);
         const g = document.getElementById('baTariff')?.value || 'mesken';
-        const unit = TARIFFS[g] || TARIFFS.mesken;
+        const unit = tariffOf(g);
         if (monthly == null || monthly <= 0) {
             box.innerHTML = 'Aylık tüketiminizi girince tahmini fatura tutarınızı <b>abonelik tipine göre otomatik</b> hesaplarız.';
             return;
@@ -503,7 +505,7 @@
         };
 
         const s = S();
-        const unit = TARIFFS[tariffGroup] || TARIFFS.mesken;      // ortalama ₺/kWh
+        const unit = tariffOf(tariffGroup);                       // ortalama ₺/kWh (admin ayarlı)
         const monthlyBill = monthly != null ? monthly * unit : null;
 
         _ex = Object.assign(_ex || {}, {
@@ -530,8 +532,9 @@
 
         // Maliyet (USD, ortalama fiyat) → geri ödeme için TL'ye çevrilir
         const rate = usdTry();
-        const panelInverterUsd = kwpReal * PRICE_USD_PER_KWP;     // 1.000 $/kWp (panel + inverter)
-        const batteryUsd = (batteryOn && batteryKwh) ? batteryKwh * BATTERY_USD_PER_KWH : 0;
+        const usdKwp = priceUsdPerKwp(), usdBatKwh = batteryUsdPerKwh();
+        const panelInverterUsd = kwpReal * usdKwp;                // $/kWp (panel + inverter, admin ayarlı)
+        const batteryUsd = (batteryOn && batteryKwh) ? batteryKwh * usdBatKwh : 0;
         const totalUsd = panelInverterUsd + batteryUsd;
         const totalTl = totalUsd * rate;
         const annualSaving = offset * unit;                      // ₺/yıl
@@ -550,7 +553,7 @@
         notes.push('Fiyatlar ortalama/gösterge niteliğindedir; marka-model seçimi, güncel ekipman fiyatları ve döviz kuruna göre farklılaşır. Size özel net fiyat, keşif sonrası verilir.');
         notes.push('Devlet teşvikleri, vergi avantajları ve mahsuplaşma başvuru süreçleri bölgeye ve mevzuata göre değişir; güncel durumu firma/danışman aktarır.');
 
-        _design = { kwp: kwpReal, panels, requiredRoof, production, offset, coverage, unit, monthlyBill, rate, panelInverterUsd, batteryUsd, totalUsd, totalTl, annualSaving, payback, batteryOn, batteryKwh, tariffGroup, limited, notes };
+        _design = { kwp: kwpReal, panels, requiredRoof, production, offset, coverage, unit, monthlyBill, rate, usdKwp, usdBatKwh, panelInverterUsd, batteryUsd, totalUsd, totalTl, annualSaving, payback, batteryOn, batteryKwh, tariffGroup, limited, notes };
         renderReport();
     };
 
@@ -595,7 +598,7 @@
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-3">
                 <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1">Tahmini Yatırım <span class="text-emerald-600">(ortalama fiyat)</span></p>
                 <p class="text-3xl font-black text-slate-800">$${fmt(d.totalUsd)} <span class="text-base font-bold text-slate-400">≈ ₺${fmt(d.totalTl)}</span></p>
-                <p class="text-xs text-slate-500 mt-1">Panel + inverter: <b>$${fmt(d.panelInverterUsd)}</b> (${d.kwp.toFixed(1)} kWp × 1.000 $/kWp)${d.batteryUsd ? ` &nbsp;·&nbsp; Batarya: <b>$${fmt(d.batteryUsd)}</b> (${d.batteryKwh} kWh × 300 $/kWh)` : ''}</p>
+                <p class="text-xs text-slate-500 mt-1">Panel + inverter: <b>$${fmt(d.panelInverterUsd)}</b> (${d.kwp.toFixed(1)} kWp × ${fmt(d.usdKwp)} $/kWp)${d.batteryUsd ? ` &nbsp;·&nbsp; Batarya: <b>$${fmt(d.batteryUsd)}</b> (${d.batteryKwh} kWh × ${fmt(d.usdBatKwh)} $/kWh)` : ''}</p>
                 <p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 mt-2 inline-block">⚠️ Bu bir <b>ortalama / gösterge</b> fiyattır. Net fiyat; marka, ekipman ve güncel döviz kuruna göre değişir.</p>
             </div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -606,7 +609,7 @@
             </div>
             ${notesHtml}
             <p class="text-[11px] text-slate-400 mt-4 leading-relaxed">
-                Bu rapor; Türkiye ortalama verim değeri (${s.solarYield} kWh/kWp/yıl), 500 Wp (~2,5 m²) panel ve ortalama fiyatlarla ($1.000/kWp panel+inverter, batarya $300/kWh, ≈${d.rate}₺ kur) hazırlanmış <b>gösterge niteliğinde</b> bir ön çalışmadır. Kesin sistem tasarımı, üretim ve net fiyat; saha keşfi, çatı yönü/eğimi ve güncel ekipman fiyatlarıyla firma tarafından belirlenir.
+                Bu rapor; Türkiye ortalama verim değeri (${s.solarYield} kWh/kWp/yıl), 500 Wp (~2,5 m²) panel ve ortalama fiyatlarla ($${fmt(d.usdKwp)}/kWp panel+inverter, batarya $${fmt(d.usdBatKwh)}/kWh, ≈${d.rate}₺ kur) hazırlanmış <b>gösterge niteliğinde</b> bir ön çalışmadır. Kesin sistem tasarımı, üretim ve net fiyat; saha keşfi, çatı yönü/eğimi ve güncel ekipman fiyatlarıyla firma tarafından belirlenir.
             </p>
         </div>
 

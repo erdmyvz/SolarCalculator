@@ -841,7 +841,14 @@ const SETTINGS_SCHEMA = [
     { key: 'batteryDod',    label: 'Batarya deşarj derinliği (0-1)',   cat: 'Batarya',       step: '0.05', def: 0.9 },
     { key: 'inverterEff',   label: 'İnverter verimi (0-1)',            cat: 'Batarya',       step: '0.01', def: 0.95 },
     { key: 'batteryModule', label: 'Batarya ünite boyutu (kWh)',       cat: 'Batarya',       step: '1',    def: 5 },
-    { key: 'inverterSurge', label: 'İnverter kalkış katsayısı',        cat: 'Batarya',       step: '0.1',  def: 1.3 }
+    { key: 'inverterSurge', label: 'İnverter kalkış katsayısı',        cat: 'Batarya',       step: '0.1',  def: 1.3 },
+    { key: 'usdTry',            label: 'USD/TRY kuru (₺)',                 cat: 'Fatura Analizi', step: '0.5', def: 42 },
+    { key: 'usdPerKwp',         label: 'Panel + inverter ($/kWp)',         cat: 'Fatura Analizi', step: '50',  def: 1000 },
+    { key: 'batteryUsdPerKwh',  label: 'Batarya ($/kWh)',                  cat: 'Fatura Analizi', step: '25',  def: 300 },
+    { key: 'tariffMesken',      label: 'Mesken tarifesi (TL/kWh)',         cat: 'Fatura Analizi', step: '0.1', def: 2.5 },
+    { key: 'tariffTicarethane', label: 'Ticarethane tarifesi (TL/kWh)',    cat: 'Fatura Analizi', step: '0.1', def: 3.5 },
+    { key: 'tariffSanayi',      label: 'Sanayi tarifesi (TL/kWh)',         cat: 'Fatura Analizi', step: '0.1', def: 3.0 },
+    { key: 'tariffTarimsal',    label: 'Tarımsal tarife (TL/kWh)',         cat: 'Fatura Analizi', step: '0.1', def: 2.2 }
 ];
 let _settingsVals = {};
 

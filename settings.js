@@ -15,7 +15,15 @@ window.EPC_SETTINGS = {
     batteryDod: 0.9,
     inverterEff: 0.95,
     batteryModule: 5,
-    inverterSurge: 1.3
+    inverterSurge: 1.3,
+    // Fatura Analizi modülü (admin panelinden düzenlenir)
+    usdTry: 42,
+    usdPerKwp: 1000,
+    batteryUsdPerKwh: 300,
+    tariffMesken: 2.5,
+    tariffTicarethane: 3.5,
+    tariffSanayi: 3.0,
+    tariffTarimsal: 2.2
 };
 
 (async function loadSettings() {
