@@ -302,6 +302,19 @@
                         <p class="text-sm text-slate-400">Tüm araçlar ücretsiz · Kayıt gerekmez</p>
                     </div>
 
+                    <!-- BAYRAK ARAÇ: FATURA ANALİZİ -->
+                    <button onclick="openPublicModule('billAnalyzerModule'); if(window.openBillAnalyzer) openBillAnalyzer();" class="w-full glass-panel p-6 md:p-8 rounded-2xl ring-2 ring-emerald-400/60 hover:-translate-y-1 transition text-left cursor-pointer group relative mb-5 overflow-hidden">
+                        <span class="absolute top-5 right-5 text-[10px] font-black tracking-wider bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full">EN HIZLI YOL</span>
+                        <div class="flex flex-col md:flex-row md:items-center gap-5">
+                            <div class="text-5xl md:text-6xl group-hover:scale-110 transition origin-left shrink-0">🧾</div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-2xl md:text-3xl font-black text-white mb-1">Faturanı Yükle, Sistemini Gör</h3>
+                                <p class="text-sm text-slate-300 mb-3 max-w-2xl">Elektrik faturanı PDF veya fotoğraf olarak yükle; tüketimini otomatik analiz edip sana uygun güneş enerjisi sistemini birkaç soruyla tasarlayalım. Hiç teknik bilgi gerekmez.</p>
+                                <span class="inline-flex items-center gap-1 text-emerald-300 font-black text-sm">Faturamı yükle →</span>
+                            </div>
+                        </div>
+                    </button>
+
                     <!-- ÖNE ÇIKANLAR -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
                         <button onclick="openPublicModule('simulationModule')" class="glass-panel p-7 md:p-8 rounded-2xl ring-1 ring-emerald-400/40 hover:-translate-y-2 transition text-left cursor-pointer group relative">
@@ -778,6 +791,12 @@
         
         <div id="legalModule" class="hidden w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div id="legalRoot"></div>
+        </div>
+
+        <!-- FATURA ANALİZİ & GES TASARIM SİHİRBAZI (ziyaretçi) -->
+        <div id="billAnalyzerModule" class="hidden w-full max-w-4xl mx-auto mt-4 animate-fade-in">
+            <button onclick="window.location.hash='#home'" class="text-slate-500 hover:text-emerald-600 font-bold mb-4">← Ana Sayfaya Dön</button>
+            <div id="billAnalyzerRoot"></div>
         </div>
 
         <div id="aboutModule" class="hidden w-full max-w-5xl mx-auto mt-4 animate-fade-in">
@@ -1612,6 +1631,7 @@
     <script src="profile.js"></script>
     <script src="documents.js"></script>
     <script src="campaigns.js"></script>
+    <script src="bill_analyzer.js"></script>
     
 </body>
 </html>
