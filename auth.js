@@ -65,10 +65,10 @@ async function getAccountInfo(user) {
 window.getAccountInfo = getAccountInfo;
 
 // Girişten sonra yönlendirme (rol kilidi YOK — sayfa yenilemede kullanılır)
-// ⬇️⬇️ ÖDEME BİLGİLERİ — KENDİ BİLGİLERİNİZLE DEĞİŞTİRİN ⬇️⬇️
-const PAYMENT_NAME = "Ad Soyad (hesap sahibi)";
-const PAYMENT_IBAN = "TR00 0000 0000 0000 0000 0000 00";
-// ⬆️⬆️ ------------------------------------------------ ⬆️⬆️
+// ⬇️⬇️ ÖDEME BİLGİLERİ ⬇️⬇️
+const PAYMENT_NAME = "Erdem Yavuz (Garanti Bankası)";
+const PAYMENT_IBAN = "TR30 0006 2000 3360 0006 6155 50";
+// ⬆️⬆️ ---------------- ⬆️⬆️
 
 async function getSubscription(info, user) {
     if (info.type === 'consultant' && info.consultant) return { status: info.consultant.sub_status, endsAt: info.consultant.sub_ends_at, banned: !!info.consultant.banned, banReason: info.consultant.ban_reason };
@@ -159,6 +159,30 @@ function updateSubCounter() {
     el.innerHTML = `<button onclick="showSubModal()" title="Abonelik / uzatma" class="border ${cls} font-bold text-xs px-3 py-1.5 rounded-full hover:opacity-80 whitespace-nowrap">⏳ ${label}</button>`;
 }
 
+// Abonelik bitişine ≤7 gün kala giriş sonrası uyarı şeridi göster.
+// ✕ ile kapatılınca aynı gün tekrar çıkmaz; ertesi gün yeniden görünür.
+// (pg_cron olmadığı için "bitiş bildirimi" girişte istemci tarafında üretilir.)
+function maybeShowSubExpiryBanner() {
+    const s = window.__subInfo;
+    if (!s || !s.endsAt) return;
+    const days = Math.ceil((new Date(s.endsAt).getTime() - Date.now()) / 86400000);
+    if (days < 0 || days > 7) return;
+    const today = new Date().toISOString().slice(0, 10);
+    try { if (localStorage.getItem('subExpiryDismissed') === today) return; } catch (e) { /* depo yoksa her girişte göster */ }
+    let b = document.getElementById('subExpiryBanner');
+    if (!b) { b = document.createElement('div'); b.id = 'subExpiryBanner'; document.body.appendChild(b); }
+    const label = days === 0 ? 'Aboneliğinizin son günü!' : 'Aboneliğinizin bitmesine ' + days + ' gün kaldı.';
+    b.innerHTML = `
+        <div class="fixed top-16 left-1/2 -translate-x-1/2 z-[85] w-[calc(100%-2rem)] max-w-xl">
+            <div class="bg-amber-50 border border-amber-300 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 flex-wrap">
+                <span class="text-xl shrink-0">⏳</span>
+                <span class="text-sm font-bold text-amber-800 flex-1 min-w-[180px]">${label} Kesinti yaşamamak için süreyi şimdi uzatın.</span>
+                <button onclick="showSubModal()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-black px-3 py-1.5 rounded-lg whitespace-nowrap">Ödeme Bilgileri</button>
+                <button onclick="(function(){ try{localStorage.setItem('subExpiryDismissed','${today}')}catch(e){}; var el=document.getElementById('subExpiryBanner'); if(el) el.remove(); })()" title="Bugün için kapat" class="text-amber-400 hover:text-amber-600 text-lg leading-none px-1">✕</button>
+            </div>
+        </div>`;
+}
+
 window.showSubModal = function () {
     const s = window.__subInfo || {};
     const days = s.endsAt ? Math.ceil((new Date(s.endsAt).getTime() - Date.now()) / 86400000) : null;
@@ -216,10 +240,12 @@ async function routeByInfo(info, user) {
         window.currentConsultant = info.consultant;
         window.__consultantEmail = user.email;
         updateSubCounter();
+        maybeShowSubExpiryBanner();
         return 'consultant';
     }
     await fetchUserProfile(user.id, user.email);
     updateSubCounter();
+    maybeShowSubExpiryBanner();
     return info.type;
 }
 async function routeAfterLogin(user) {
