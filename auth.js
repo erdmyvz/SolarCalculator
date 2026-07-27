@@ -54,6 +54,9 @@ async function getAccountInfo(user) {
         } catch (e) { /* profiles okunamadı */ }
         if (role === 'admin') return { type: 'admin', consultant: null };
         if (role === 'investor') return { type: 'investor', consultant: null };
+        // Magic-link ile oluşan hesap: profiles satırı (trigger) gecikse/oluşmasa bile
+        // kayıt metadata'sındaki rol üzerinden yatırımcı say (defansif güvenlik ağı).
+        if (!role && user.user_metadata && user.user_metadata.role === 'investor') return { type: 'investor', consultant: null };
         try {
             const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', user.id).maybeSingle();
             if (cons) consultant = cons;
@@ -252,6 +255,40 @@ async function routeAfterLogin(user) {
     const info = await getAccountInfo(user);
     return routeByInfo(info, user);
 }
+
+// ---------------------------------------------------------------------------
+// YATIRIMCI MAGIC-LINK: e-postaya tek tıklık giriş bağlantısı gönderir.
+// Hesap yoksa Supabase oluşturur; metadata'daki rol, handle_new_investor
+// trigger'ının yatırımcı profili açmasını sağlar. Bağlantı tıklanınca site
+// açılır, router.js'teki oturum restore akışı yatırımcıyı panele sokar ve
+// claim_my_leads geçmiş başvuruları hesaba bağlar. Harici e-posta sağlayıcısı
+// GEREKMEZ (Supabase Auth'un yerleşik e-postası; SMTP panelden bağlanabilir).
+// ---------------------------------------------------------------------------
+window.sendInvestorMagicLink = async function (email, fullName, phone) {
+    if (!supabaseClient) return { ok: false, error: 'Bağlantı yok' };
+    email = String(email || '').trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: 'Geçerli bir e-posta gerekli' };
+    try {
+        const { error } = await supabaseClient.auth.signInWithOtp({
+            email,
+            options: {
+                shouldCreateUser: true,
+                emailRedirectTo: window.location.origin + window.location.pathname,
+                data: { role: 'investor', full_name: fullName || '', phone: phone || '' }
+            }
+        });
+        if (error) throw error;
+        return { ok: true };
+    } catch (err) { return { ok: false, error: err.message || String(err) }; }
+};
+
+// Ana sayfadan "Yatırımcı Girişi": giriş ekranını yatırımcı rolü seçili açar.
+window.openInvestorLogin = function () {
+    try { if (typeof authSetRole === 'function') authSetRole('investor'); } catch (e) {}
+    try { document.getElementById('tabLogin')?.click(); } catch (e) {}
+    window.location.hash = '#auth';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
 
 // YENİ FİRMA KAYIT İŞLEMİ (Multi-tenant: companies + profiles atomik oluşur)
 document.getElementById('registerForm')?.addEventListener('submit', async (e) => {

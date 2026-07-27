@@ -677,10 +677,11 @@
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Ad Soyad *</label><input id="bqName" value="${esc(e.name || '')}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
                 <div class="grid grid-cols-2 gap-3">
                     <div><label class="block text-xs font-bold text-slate-600 mb-1">Telefon *</label><input id="bqPhone" type="tel" placeholder="05..." class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
-                    <div><label class="block text-xs font-bold text-slate-600 mb-1">E-posta</label><input id="bqEmail" type="email" placeholder="opsiyonel" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">E-posta *</label><input id="bqEmail" type="email" placeholder="ornek@eposta.com" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
                 </div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Adres / İl-İlçe *</label><input id="bqAddress" value="${esc(e.address || '')}" placeholder="Kurulum yeri" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
 
+                <p class="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-md px-2.5 py-2">📬 E-postanıza <b>tek tıklık yatırımcı paneli giriş bağlantısı</b> göndereceğiz; başvurunuzu ve gelen teklifleri oradan takip edersiniz.</p>
                 <label class="flex items-start gap-2.5 cursor-pointer pt-1">
                     <input type="checkbox" id="bqKvkk" class="mt-0.5 w-4 h-4 rounded shrink-0">
                     <span class="text-[11px] text-slate-500 leading-relaxed"><button type="button" onclick="openLegalTab('kvkk')" class="text-emerald-700 font-bold underline">KVKK Aydınlatma Metni</button>'ni okudum; bilgilerimin talebimin karşılanması için kurulumcu firmalarla paylaşılmasına onay veriyorum. <span class="text-red-500">*</span></span>
@@ -726,7 +727,8 @@
         const kvkk = !!document.getElementById('bqKvkk').checked;
         const marketing = !!document.getElementById('bqMarketing').checked;
 
-        if (!name || !phone || !address) { res.innerHTML = '<p class="text-red-500 text-sm font-bold">Ad, telefon ve adres zorunludur.</p>'; return; }
+        if (!name || !phone || !address || !email) { res.innerHTML = '<p class="text-red-500 text-sm font-bold">Ad, telefon, e-posta ve adres zorunludur.</p>'; return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.innerHTML = '<p class="text-red-500 text-sm font-bold">Geçerli bir e-posta adresi girin.</p>'; return; }
         if (!kvkk) { res.innerHTML = '<p class="text-red-500 text-sm font-bold">Devam etmek için KVKK onayı gereklidir.</p>'; return; }
         if (!window.supabaseClient) { res.innerHTML = '<p class="text-red-500 text-sm font-bold">Bağlantı yok, lütfen sonra tekrar deneyin.</p>'; return; }
 
@@ -754,25 +756,27 @@
                 });
             } catch (e) { /* sessiz geç */ }
 
+            // Hesap-temelli takip: e-postaya tek tıklık giriş bağlantısı gönder.
+            let _mail = { ok: false, error: '' };
+            try { _mail = await sendInvestorMagicLink(email, name, phone); } catch (e) { _mail = { ok: false, error: String(e && e.message || e) }; }
             res.innerHTML = `<div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center mt-1">
                 <div class="text-3xl mb-1">🎉</div>
                 <p class="font-black text-slate-800">Talebiniz iletildi!</p>
-                <p class="text-sm text-slate-600 mt-1">Takip kodunuz: <b class="text-emerald-700">${esc(String(code || ''))}</b></p>
-                <p class="text-xs text-slate-400 mt-1">Bu kodla ana sayfadan sürecinizi izleyebilirsiniz.</p>
-                <button onclick="baAfterQuote('${esc(String(code || ''))}')" class="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm">Tamam</button>
+                ${_mail.ok
+                    ? `<p class="text-sm text-slate-600 mt-1">📬 <b class="text-emerald-700">${esc(email)}</b> adresine yatırımcı paneli <b>giriş bağlantısı</b> gönderdik.</p>
+                       <p class="text-xs text-slate-400 mt-1">Bağlantıya tıklayın: başvurunuz hesabınıza bağlanır; süreci izler, gelen teklifleri karşılaştırırsınız. Gelmezse spam klasörüne bakın.</p>`
+                    : `<p class="text-sm text-slate-600 mt-1">Süreci takip etmek için "Yatırımcı Girişi" ile <b>${esc(email)}</b> adresinizi kullanın.</p>
+                       ${_mail.error ? `<p class="text-xs text-amber-600 mt-1">(Giriş bağlantısı gönderilemedi: ${esc(_mail.error)})</p>` : ''}`}
+                <button onclick="baAfterQuote()" class="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm">Tamam</button>
             </div>`;
         } catch (err) {
             res.innerHTML = `<p class="text-red-500 text-sm font-bold">Gönderilemedi: ${esc(err.message || err)}</p>`;
         }
     };
 
-    window.baAfterQuote = function (code) {
+    window.baAfterQuote = function () {
+        // Takip artık hesap üzerinden: modalı kapat, kullanıcı e-postasındaki bağlantıyla girer.
         document.getElementById('baQuoteModal')?.classList.add('hidden');
-        // Ana sayfadaki takip alanına kodu yaz ve sorgula (mevcut akış)
-        const ti = document.getElementById('leadTrackInput');
-        if (ti && code) { ti.value = code; }
-        window.location.hash = '#home';
-        setTimeout(() => { const b = document.getElementById('btnTrackQuery'); if (b && code) b.click(); }, 300);
     };
 
 })();

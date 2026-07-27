@@ -102,6 +102,7 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
 
             alert(`🔧 Servis talebiniz iletildi!\n\nTakip Kodunuz: ${code}\nBu kod ile anasayfadan durumu izleyebilirsiniz.`);
             closeLeadModal();
+            document.getElementById('srvTrackBox')?.setAttribute('open', '');
             document.getElementById('leadTrackInput').value = code;
             document.getElementById('btnTrackQuery').click();
             return;
@@ -142,10 +143,16 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
             });
         } catch (e) { /* sessiz geç */ }
 
-        alert(`🎉 Başvurunuz Başarıyla İletildi!\n\nLütfen Proje Takip Kodunuzu Not Edin: ${code}\nBu kod ile anasayfadan sürecinizi şeffafça izleyebilirsiniz.`);
+        // Takip kodu yerine hesap-temelli takip: e-postaya tek tıklık giriş bağlantısı.
         closeLeadModal();
-        document.getElementById('leadTrackInput').value = code;
-        document.getElementById('btnTrackQuery').click();
+        const _lEmail = document.getElementById('leadEmail').value;
+        let _mail = { ok: false, error: '' };
+        try { _mail = await sendInvestorMagicLink(_lEmail, document.getElementById('leadName').value, document.getElementById('leadPhone').value); } catch (e) { _mail = { ok: false, error: String(e && e.message || e) }; }
+        if (_mail.ok) {
+            alert(`🎉 Başvurunuz Başarıyla İletildi!\n\n📬 ${_lEmail} adresine YATIRIMCI PANELİ giriş bağlantısı gönderdik.\nE-postanızdaki bağlantıya tıklayın: başvurunuz hesabınıza otomatik bağlanır; süreci adım adım izler, gelen teklifleri tek ekranda karşılaştırırsınız.\n\nBağlantı birkaç dakika içinde gelmezse spam/gereksiz klasörünü kontrol edin.`);
+        } else {
+            alert(`🎉 Başvurunuz Başarıyla İletildi!\n\nSüreci takip etmek için ana sayfadaki "Yatırımcı Girişi" ile ${_lEmail} adresinizi kullanarak hesap oluşturabilirsiniz.` + (_mail.error ? `\n\n(Not: Giriş bağlantısı gönderilemedi — ${_mail.error})` : ''));
+        }
 
     } catch (err) {
         alert("Başvuru gönderilemedi: " + (err.message || err));
