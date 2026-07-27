@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
+  "trailingSlash": false,
   "headers": [
     {
       "source": "/sitemap.xml",
@@ -24,9 +25,6 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/((?!blog/|blog$|sitemap\\.xml|robots\\.txt|og\\.png|api/|.*\\.[a-zA-Z0-9]+$).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/blog", "destination": "/blog/index.html" }
   ]
 }
