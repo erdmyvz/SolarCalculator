@@ -1,0 +1,9 @@
+# epcmerkezim — arama motoru erişim kuralları
+User-agent: *
+Allow: /
+
+# Uygulama içi durum/oturum parametreleri indekslenmesin (SEO değeri yok)
+Disallow: /*?*token=
+Disallow: /*?*ref=
+
+Sitemap: https://epcmerkezim.com/sitemap.xml
