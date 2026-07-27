@@ -842,13 +842,15 @@ const SETTINGS_SCHEMA = [
     { key: 'inverterEff',   label: 'İnverter verimi (0-1)',            cat: 'Batarya',       step: '0.01', def: 0.95 },
     { key: 'batteryModule', label: 'Batarya ünite boyutu (kWh)',       cat: 'Batarya',       step: '1',    def: 5 },
     { key: 'inverterSurge', label: 'İnverter kalkış katsayısı',        cat: 'Batarya',       step: '0.1',  def: 1.3 },
-    { key: 'usdTry',            label: 'USD/TRY kuru (₺)',                 cat: 'Fatura Analizi', step: '0.5', def: 42 },
-    { key: 'usdPerKwp',         label: 'Panel + inverter ($/kWp)',         cat: 'Fatura Analizi', step: '50',  def: 1000 },
-    { key: 'batteryUsdPerKwh',  label: 'Batarya ($/kWh)',                  cat: 'Fatura Analizi', step: '25',  def: 300 },
-    { key: 'tariffMesken',      label: 'Mesken tarifesi (TL/kWh)',         cat: 'Fatura Analizi', step: '0.1', def: 2.5 },
-    { key: 'tariffTicarethane', label: 'Ticarethane tarifesi (TL/kWh)',    cat: 'Fatura Analizi', step: '0.1', def: 3.5 },
-    { key: 'tariffSanayi',      label: 'Sanayi tarifesi (TL/kWh)',         cat: 'Fatura Analizi', step: '0.1', def: 3.0 },
-    { key: 'tariffTarimsal',    label: 'Tarımsal tarife (TL/kWh)',         cat: 'Fatura Analizi', step: '0.1', def: 2.2 }
+    { key: 'usdTry',            label: 'USD/TRY kuru (₺)',                cat: 'Fatura Analizi', step: '0.5', def: 42 },
+    { key: 'usdPerKwp',         label: 'Panel + inverter ($/kWp)',        cat: 'Fatura Analizi', step: '50',  def: 1000 },
+    { key: 'batteryUsdPerKwh',  label: 'Batarya ($/kWh)',                 cat: 'Fatura Analizi', step: '25',  def: 300 },
+    { key: 'tariffMesken',      label: 'Mesken tarifesi (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 2.5 },
+    { key: 'tariffTicarethane', label: 'Ticarethane tarifesi (TL/kWh)',   cat: 'Fatura Analizi', step: '0.1', def: 3.5 },
+    { key: 'tariffSanayi',      label: 'Sanayi tarifesi (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 3.0 },
+    { key: 'tariffTarimsal',    label: 'Tarımsal tarife (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 2.2 },
+    { key: 'maint_clean_months',   label: 'Panel temizliği periyodu (ay)',  cat: 'Bakım Hatırlatma', step: '1', def: 6 },
+    { key: 'maint_service_months', label: 'Yıllık bakım periyodu (ay)',      cat: 'Bakım Hatırlatma', step: '1', def: 12 }
 ];
 let _settingsVals = {};
 
@@ -1328,3 +1330,275 @@ window.adminUnban = async function (table, id) {
         await renderSubscriptions();
     } catch (e) { alert('İşlem başarısız: ' + (e.message || e)); }
 };
+
+// ============================================================================
+// GLOBAL ARAMA + TOPLU İŞLEM  (yalnız admin)
+// Çalışan fetchAdminData'ya dokunmaz; verileri bağımsız çeker, tek indekste arar.
+// ============================================================================
+(function () {
+    let _idx = [];          // birleşik arama indeksi
+    let _loaded = false;
+    let _filter = 'all';
+    let _sel = new Set();    // seçili lead id'leri (toplu atama)
+    let _companies = [];
+
+    const esc = (v) => (typeof admEscape === 'function' ? admEscape(v) : String(v == null ? '' : v));
+    const low = (v) => String(v == null ? '' : v).toLocaleLowerCase('tr');
+
+    // Tailwind Play CDN dinamik (string-birleşimi) sınıfları GÖREMEZ; tam sınıf adları sabit yazılır.
+    const TYPE_META = {
+        lead:       { label: 'Başvuru',    icon: '📥', badge: 'bg-emerald-100 text-emerald-700', hov: 'hover:border-emerald-300', tab: 'ops' },
+        service:    { label: 'Servis',     icon: '🔧', badge: 'bg-red-100 text-red-700',         hov: 'hover:border-red-300',     tab: 'ops' },
+        prospect:   { label: 'Potansiyel', icon: '🌱', badge: 'bg-amber-100 text-amber-700',     hov: 'hover:border-amber-300',   tab: 'ops' },
+        user:       { label: 'Kullanıcı',  icon: '👤', badge: 'bg-slate-200 text-slate-700',     hov: 'hover:border-slate-400',   tab: 'companies' },
+        consultant: { label: 'Danışman',   icon: '🎯', badge: 'bg-indigo-100 text-indigo-700',   hov: 'hover:border-indigo-300',  tab: 'consultants' }
+    };
+
+    window.adminSearchInit = async function () {
+        if (_loaded) return;
+        await loadIndex();
+    };
+    window.adminSearchReload = async function () { _loaded = false; _sel.clear(); await loadIndex(); adminSearchRun(); };
+
+    async function loadIndex() {
+        const box = document.getElementById('admSearchResults');
+        if (box) box.innerHTML = '<p class="text-sm text-slate-400 text-center py-10">Veriler yükleniyor...</p>';
+        _idx = [];
+        if (!supabaseClient) return;
+
+        // Firmalar (hem indeks hem toplu atama açılırı için)
+        try { const { data } = await supabaseClient.from('companies').select('id, name').order('name'); _companies = data || []; } catch (e) { _companies = []; }
+        const compName = {}; _companies.forEach(c => compName[c.id] = c.name);
+
+        const pull = async (table, sel) => { try { const { data } = await supabaseClient.from(table).select(sel); return data || []; } catch (e) { return []; } };
+
+        const [leads, srv, prospects, profiles, consultants] = await Promise.all([
+            pull('leads', '*'),
+            pull('service_requests', '*'),
+            pull('prospects', '*').catch(() => []),
+            pull('profiles', '*, companies(name)'),
+            pull('consultants', '*').catch(() => [])
+        ]);
+
+        leads.forEach(l => _idx.push({
+            type: 'lead', id: l.id, title: l.full_name, sub: (compName[l.company_id] ? '→ ' + compName[l.company_id] : 'Havuzda'),
+            code: l.tracking_code, phone: l.phone, email: l.email, addr: l.address, notes: l.notes,
+            assignable: !l.company_id, created: l.created_at, raw: l
+        }));
+        srv.forEach(t => _idx.push({
+            type: 'service', id: t.id, title: t.full_name, sub: 'Durum: ' + (t.status || '-'),
+            code: t.tracking_code, phone: t.phone, email: t.email, addr: t.address, notes: t.problem_desc,
+            created: t.created_at, raw: t
+        }));
+        prospects.forEach(p => _idx.push({
+            type: 'prospect', id: p.id, title: p.full_name, sub: 'Kaynak: ' + (p.source || '-'),
+            phone: p.phone, email: p.email, notes: p.status, created: p.created_at, raw: p
+        }));
+        profiles.forEach(u => _idx.push({
+            type: 'user', id: u.id, title: ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || u.email,
+            sub: (u.companies && u.companies.name ? u.companies.name + ' · ' : '') + (u.role || ''),
+            phone: u.phone, email: u.email, created: u.created_at, raw: u
+        }));
+        consultants.forEach(c => _idx.push({
+            type: 'consultant', id: c.id, title: c.full_name || c.name || c.email,
+            sub: 'Durum: ' + (c.status || '-'), phone: c.phone, email: c.email, created: c.created_at, raw: c
+        }));
+
+        _loaded = true;
+        // toplu atama firma açılırı
+        const csel = document.getElementById('admBulkCompany');
+        if (csel) csel.innerHTML = '<option value="">Firma seçin...</option>' + _companies.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    }
+
+    window.adminSearchFilter = function (f) {
+        _filter = f;
+        document.querySelectorAll('.admSearchChip').forEach(b => {
+            const on = b.getAttribute('data-f') === f;
+            b.className = 'admSearchChip text-xs font-bold px-3 py-1.5 rounded-full ' + (on ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600');
+        });
+        adminSearchRun();
+    };
+
+    window.adminSearchRun = function () {
+        const box = document.getElementById('admSearchResults');
+        const q = low((document.getElementById('admSearchInput') || {}).value).trim();
+        if (!box) return;
+        if (!_loaded) { box.innerHTML = '<p class="text-sm text-slate-400 text-center py-10">Yükleniyor...</p>'; return; }
+
+        let rows = _idx;
+        if (_filter !== 'all') rows = rows.filter(r => r.type === _filter);
+        if (q) {
+            const terms = q.split(/\s+/).filter(Boolean);
+            rows = rows.filter(r => {
+                const hay = low([r.title, r.sub, r.code, r.phone, r.email, r.addr, r.notes].join(' '));
+                return terms.every(t => hay.includes(t));
+            });
+        }
+        // en yeni önce
+        rows = rows.slice().sort((a, b) => new Date(b.created || 0) - new Date(a.created || 0));
+
+        const total = rows.length;
+        rows = rows.slice(0, 60); // performans: ilk 60
+
+        if (!total) { box.innerHTML = `<p class="text-sm text-slate-400 text-center py-10">Eşleşen kayıt yok${q ? ' — "' + esc(q) + '"' : ''}.</p>`; updateBulkBar(); return; }
+
+        box.innerHTML = `<p class="text-xs text-slate-400 px-1">${total} sonuç${total > 60 ? ' (ilk 60 gösteriliyor, aramayı daraltın)' : ''}</p>` + rows.map(rowHtml).join('');
+        updateBulkBar();
+    };
+
+    function rowHtml(r) {
+        const m = TYPE_META[r.type];
+        const checkbox = (r.type === 'lead' && r.assignable)
+            ? `<input type="checkbox" onclick="event.stopPropagation()" onchange="adminSearchToggle('${esc(r.id)}', this.checked)" ${_sel.has(r.id) ? 'checked' : ''} class="w-4 h-4 rounded shrink-0 mt-1" title="Toplu atama için seç">`
+            : `<span class="w-4 shrink-0"></span>`;
+        const bits = [r.phone && '📞 ' + esc(r.phone), r.email && '✉️ ' + esc(r.email), r.code && '🔖 ' + esc(r.code), r.addr && '📍 ' + esc(r.addr)].filter(Boolean).join('  ·  ');
+        const dt = r.created ? new Date(r.created).toLocaleDateString('tr-TR') : '';
+        return `<div class="flex items-start gap-3 bg-white border border-slate-200 rounded-xl p-3 ${m.hov} hover:shadow-sm transition cursor-pointer" onclick="adminSearchGoto('${r.type}')">
+            ${checkbox}
+            <span class="text-lg shrink-0">${m.icon}</span>
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-black text-slate-800 text-sm">${esc(r.title) || '(isimsiz)'}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${m.badge}">${m.label}</span>
+                    ${r.sub ? `<span class="text-[11px] text-slate-400">${esc(r.sub)}</span>` : ''}
+                </div>
+                ${bits ? `<p class="text-[11px] text-slate-500 mt-1 truncate">${bits}</p>` : ''}
+            </div>
+            <span class="text-[10px] text-slate-400 whitespace-nowrap shrink-0">${dt}</span>
+        </div>`;
+    }
+
+    window.adminSearchGoto = function (type) {
+        const m = TYPE_META[type]; if (m && typeof adminShowTab === 'function') adminShowTab(m.tab);
+    };
+
+    window.adminSearchToggle = function (id, on) {
+        if (on) _sel.add(id); else _sel.delete(id);
+        updateBulkBar();
+    };
+    window.adminSearchClearSel = function () { _sel.clear(); adminSearchRun(); };
+
+    function updateBulkBar() {
+        const bar = document.getElementById('admBulkBar'), cnt = document.getElementById('admBulkCount');
+        if (!bar) return;
+        // seçili ama artık listede olmayanları koru; sadece sayaç güncelle
+        if (cnt) cnt.textContent = _sel.size;
+        bar.classList.toggle('hidden', _sel.size === 0);
+    }
+
+    window.adminBulkAssign = async function () {
+        const sel = document.getElementById('admBulkCompany');
+        const companyId = sel ? sel.value : '';
+        if (!companyId) { alert('Lütfen atanacak firmayı seçin.'); return; }
+        if (!_sel.size) return;
+        const ids = [..._sel];
+        const cname = _companies.find(c => String(c.id) === String(companyId));
+        if (!confirm(`${ids.length} başvuru "${cname ? cname.name : 'seçili firma'}" firmasına atanacak. Onaylıyor musunuz?`)) return;
+
+        try {
+            const { error } = await supabaseClient.from('leads').update({ company_id: companyId }).in('id', ids);
+            if (error) throw error;
+            // indeksten güncelle: bu leadler artık atanmış
+            _idx.forEach(r => { if (r.type === 'lead' && _sel.has(r.id)) { r.assignable = false; r.sub = '→ ' + (cname ? cname.name : ''); r.raw.company_id = companyId; } });
+            _sel.clear();
+            adminSearchRun();
+            alert(`✅ ${ids.length} başvuru firmaya atandı.`);
+            // Operasyon sekmesindeki havuz da güncellensin
+            if (typeof fetchAdminData === 'function') fetchAdminData();
+        } catch (err) {
+            alert('Atama başarısız: ' + (err.message || err));
+        }
+    };
+})();
+
+// ============================================================================
+// HATA KAYITLARI  (yalnız admin) — error_logs tablosunu görüntüle/yönet
+// ============================================================================
+(function () {
+    let _init = false;
+    const esc = (v) => (typeof admEscape === 'function' ? admEscape(v) : String(v == null ? '' : v));
+
+    const SRC_LABEL = {
+        'window.onerror': ['JS Hatası', 'bg-red-100 text-red-700'],
+        'unhandledrejection': ['Promise', 'bg-amber-100 text-amber-700'],
+        'resource': ['Kaynak', 'bg-indigo-100 text-indigo-700'],
+        'manual': ['Elle', 'bg-slate-200 text-slate-700']
+    };
+    const ROLE_LABEL = { admin: 'Admin', investor: 'Yatırımcı', installer: 'Kurulumcu', consultant: 'Danışman', visitor: 'Ziyaretçi' };
+
+    window.adminErrorsInit = async function () {
+        if (_init) { adminErrorsRun(); return; }
+        _init = true;
+        await adminErrorsRun();
+    };
+
+    window.adminErrorsRun = async function () {
+        const box = document.getElementById('admErrorsList');
+        if (!box || !supabaseClient) return;
+        const onlyUnseen = !!(document.getElementById('admErrUnseen') || {}).checked;
+        box.innerHTML = '<p class="text-sm text-slate-400 text-center py-8">Yükleniyor...</p>';
+        try {
+            const { data, error } = await supabaseClient.rpc('list_error_logs', { p_only_unseen: onlyUnseen, p_limit: 150 });
+            if (error) throw error;
+            renderList(data || []);
+        } catch (err) {
+            box.innerHTML = `<p class="text-sm text-red-500 text-center py-8">Hata kayıtları okunamadı: ${esc(err.message || err)}<br><span class="text-xs text-slate-400">error_logs.sql çalıştırıldı mı?</span></p>`;
+        }
+        adminErrorsBadge();
+    };
+
+    function renderList(rows) {
+        const box = document.getElementById('admErrorsList');
+        if (!rows.length) { box.innerHTML = '<div class="bg-white border border-dashed border-slate-300 rounded-xl p-8 text-center"><div class="text-3xl mb-1">✅</div><p class="text-sm font-bold text-slate-600">Kayıtlı hata yok</p><p class="text-xs text-slate-400 mt-1">Her şey yolunda görünüyor.</p></div>'; return; }
+        box.innerHTML = rows.map(r => {
+            const sl = SRC_LABEL[r.source] || SRC_LABEL.manual;
+            const dt = r.created_at ? new Date(r.created_at).toLocaleString('tr-TR') : '';
+            const path = (() => { try { return new URL(r.url).hash || new URL(r.url).pathname; } catch (e) { return r.url || ''; } })();
+            return `<div class="bg-white border ${r.seen ? 'border-slate-200' : 'border-red-200 ring-1 ring-red-100'} rounded-xl p-4">
+                <div class="flex items-start justify-between gap-3 flex-wrap">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap mb-1">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${sl[1]}">${sl[0]}</span>
+                            ${r.hit_count > 1 ? `<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-900 text-white">×${r.hit_count}</span>` : ''}
+                            ${!r.seen ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-600 text-white">YENİ</span>' : ''}
+                            <span class="text-[11px] text-slate-400">${esc(ROLE_LABEL[r.role] || r.role || 'Ziyaretçi')}</span>
+                        </div>
+                        <p class="text-sm font-bold text-slate-800 break-words">${esc(r.message)}</p>
+                        ${path ? `<p class="text-[11px] text-slate-400 mt-1 font-mono break-all">📍 ${esc(path)}</p>` : ''}
+                        ${r.stack ? `<details class="mt-2"><summary class="text-[11px] text-slate-500 cursor-pointer font-bold">Yığın izi (stack)</summary><pre class="text-[10px] text-slate-500 bg-slate-50 border border-slate-100 rounded-lg p-2 mt-1 overflow-x-auto whitespace-pre-wrap break-all">${esc(r.stack)}</pre></details>` : ''}
+                        ${r.user_agent ? `<p class="text-[10px] text-slate-300 mt-1 truncate" title="${esc(r.user_agent)}">${esc(r.user_agent)}</p>` : ''}
+                    </div>
+                    <span class="text-[10px] text-slate-400 whitespace-nowrap shrink-0">${dt}</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    window.adminErrorsMarkSeen = async function () {
+        if (!supabaseClient) return;
+        try { await supabaseClient.rpc('mark_errors_seen'); await adminErrorsRun(); } catch (e) { alert('İşlem başarısız: ' + (e.message || e)); }
+    };
+
+    window.adminErrorsClear = async function () {
+        if (!supabaseClient) return;
+        if (!confirm('Tüm hata kayıtları kalıcı olarak silinecek. Onaylıyor musunuz?')) return;
+        try { await supabaseClient.rpc('clear_error_logs', { p_older_than_days: 0 }); await adminErrorsRun(); } catch (e) { alert('Silme başarısız: ' + (e.message || e)); }
+    };
+
+    // Sekme rozeti: okunmamış hata sayısı
+    window.adminErrorsBadge = async function () {
+        if (!supabaseClient) return;
+        try {
+            const { data } = await supabaseClient.rpc('count_unseen_errors');
+            const n = Number(data) || 0;
+            const b = document.getElementById('admErrBadge');
+            if (b) { b.textContent = n; b.classList.toggle('hidden', n === 0); }
+        } catch (e) { /* sessiz */ }
+    };
+})();
+
+// Admin paneli her açıldığında hata rozetini bir kez güncelle (giriş sonrası)
+setTimeout(function () {
+    const card = document.getElementById('adminPanelCard');
+    if (card) card.addEventListener('click', function () { if (window.adminErrorsBadge) setTimeout(window.adminErrorsBadge, 400); });
+}, 0);
