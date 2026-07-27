@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/sitemap.xml",
@@ -20,6 +21,12 @@
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=86400" }
       ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!blog/|blog$|sitemap\\.xml|robots\\.txt|og\\.png|api/|.*\\.[a-zA-Z0-9]+$).*)",
+      "destination": "/index.html"
     }
   ]
 }
