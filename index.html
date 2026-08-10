@@ -325,11 +325,9 @@
             <div class="flex justify-between items-center p-4 max-w-7xl mx-auto">
                 <a href="#home" class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">epcmerkezim</a>
                 <div class="flex items-center gap-2 md:gap-4">
-                    <button onclick="document.getElementById('pricingSection').scrollIntoView({behavior:'smooth'})" class="hidden md:inline text-sm font-bold text-gray-300 hover:text-white transition">Fiyatlandırma</button>
                     <a href="/hakkimda" onclick="openAboutPage();return false" class="hidden md:inline text-sm font-bold text-gray-300 hover:text-white transition">Hakkımda</a>
                     <a href="/blog/" class="hidden md:inline text-sm font-bold text-gray-300 hover:text-white transition">Solar Akademi</a>
-                    <button onclick="openInvestorLogin()" class="hidden sm:inline text-sm font-bold text-gray-300 hover:text-white transition">Yatırımcı Girişi</button>
-                    <a href="#auth" class="hidden sm:inline-block border border-slate-600 hover:border-slate-400 text-slate-200 hover:text-white px-4 py-2 rounded-lg font-bold text-sm transition">Kurumsal Giriş</a>
+                    <a href="#auth" class="hidden sm:inline-block border border-slate-600 hover:border-slate-400 text-slate-200 hover:text-white px-4 py-2 rounded-lg font-bold text-sm transition">Giriş Yap</a>
                     <button onclick="openLeadModal('kurulum')" class="btn-sun px-4 md:px-5 py-2 rounded-lg font-black text-sm whitespace-nowrap">☀️ Ücretsiz Teklif</button>
                 </div>
             </div>
@@ -503,65 +501,6 @@
             </div>
         </div>
 
-        <!-- FİYATLANDIRMA -->
-        <div id="pricingSection" class="tech-gradient text-white py-20 px-6">
-            <div class="max-w-5xl mx-auto">
-                <div class="text-center mb-10">
-                    <p class="text-[11px] uppercase tracking-[0.18em] font-black text-emerald-300 mb-3">Platforma Katılın</p>
-                    <h2 class="text-3xl md:text-4xl font-black mb-3">Tek Fiyat, Tüm Özellikler</h2>
-                    <p class="text-slate-300 max-w-2xl mx-auto">Kurulumcu firma ya da bağımsız danışman — paket seçmek yok, gizli kalem yok. Tüm modüller tek fiyata dahil.</p>
-                </div>
-
-                <div class="glass-panel rounded-3xl p-7 md:p-10 mb-6">
-                    <div class="flex flex-col md:flex-row items-center justify-between gap-6 pb-7 border-b border-white/15">
-                        <div class="text-center md:text-left">
-                            <div class="flex items-end justify-center md:justify-start gap-2 mb-1">
-                                <span class="text-5xl md:text-6xl font-black">$299</span>
-                                <span class="text-xl font-bold text-slate-300 mb-2">/ ay</span>
-                            </div>
-                            <p class="text-sm text-slate-300">KDV hariç · USD'ye endeksli TL olarak tahsil edilir</p>
-                        </div>
-                        <div class="text-center md:text-right">
-                            <span class="inline-block bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-black px-4 py-2 rounded-full mb-3">🎁 İLK 30 GÜN ÜCRETSİZ</span>
-                            <p class="text-xs text-slate-400">Kurulum ücreti yok · Taahhüt yok · İstediğiniz zaman bırakın</p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-7">
-                        <div>
-                            <h3 class="font-black text-lg mb-3 flex items-center gap-2">🏢 Kurulumcu Firma</h3>
-                            <ul class="space-y-2 text-sm text-slate-300">
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Satış CRM ve 9 adımlı proje/TEDAŞ süreç takibi</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Teklif motoru — markalı PDF teklif, ürün kataloğu, fiyat ve marj yönetimi</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Platformdan gelen nitelikli müşteri adayları</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Servis, bakım ve temizlik talebi yönetimi</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Yönetim panosu ve tesis (GES) takibi</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Yapay zeka destekli süreç ve satış araçları</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Uygulama içi anlık bildirimler</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 class="font-black text-lg mb-3 flex items-center gap-2">🎯 Bağımsız Danışman</h3>
-                            <ul class="space-y-2 text-sm text-slate-300">
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Ziyaretçi sayfasında yayınlanan onaylı profil</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Danışan takibi (CRM) — durum ve kurulum aşaması</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Kurulumcu firma atama ve yönlendirme</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Yatırımcı taleplerinin doğrudan iletilmesi</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Danışman panosu ve takip hatırlatmaları</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Profil fotoğrafı ve uzmanlık vitrini</li>
-                                <li class="flex gap-2"><span class="text-emerald-400 shrink-0">✓</span> Uygulama içi anlık bildirimler</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="text-center">
-                    <button onclick="window.location.hash='#auth'" class="bg-emerald-500 hover:bg-emerald-400 text-white font-black px-10 py-4 rounded-xl shadow-2xl shadow-emerald-500/25 transition text-lg">30 Gün Ücretsiz Başla →</button>
-                    <p class="text-xs text-slate-400 mt-3">Deneme süresi boyunca tüm özellikler açıktır. Ödeme, deneme bitiminde banka havalesi ile alınır.</p>
-                </div>
-            </div>
-        </div>
-
         <!-- SIKÇA SORULAN SORULAR -->
         <div class="bg-white py-20 px-6 border-t border-slate-100">
             <div class="max-w-3xl mx-auto">
@@ -642,7 +581,6 @@
                         <a href="/danismanlar" onclick="openPublicModule('consultantsModule'); if(window.renderConsultantsList) renderConsultantsList(); return false" class="hover:text-white transition font-bold">Danışmanlar</a>
                         <a href="/hakkimda" onclick="openAboutPage();return false" class="hover:text-white transition font-bold">Hakkımda</a>
                         <a href="/blog/" class="hover:text-white transition font-bold">Solar Akademi</a>
-                        <button onclick="document.getElementById('pricingSection').scrollIntoView({behavior:'smooth'})" class="hover:text-white transition font-bold">Fiyatlandırma</button>
                         <button onclick="openInvestorLogin()" class="hover:text-white transition font-bold">Yatırımcı Girişi</button>
                         <a href="/kvkk" onclick="openLegalPage('legal_kvkk');return false" class="hover:text-white transition font-bold">KVKK</a>
                         <a href="/gizlilik" onclick="openLegalPage('legal_privacy');return false" class="hover:text-white transition font-bold">Gizlilik</a>
@@ -741,7 +679,7 @@
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
             <div class="bg-gradient-to-br from-emerald-600 to-emerald-700 p-7 text-center">
                 <h1 class="text-3xl font-black text-white">epcmerkezim</h1>
-                <p class="text-emerald-50/85 text-sm mt-1 font-medium">Kurumsal Giriş</p>
+                <p class="text-emerald-50/85 text-sm mt-1 font-medium">Giriş / Kayıt</p>
             </div>
             <div class="p-7 md:p-8">
                 <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Hesap türü</p>
@@ -803,6 +741,7 @@
                 <div id="profileDropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 z-50">
                     <div class="p-4 border-b"><p id="userEmailDisplay" class="text-xs text-slate-500"></p></div>
                     <button onclick="openProfileModal()" class="w-full text-left px-4 py-3 text-sm text-slate-700 border-b hover:bg-slate-50 font-bold">👤 Profilim</button>
+                    <button id="btnPricingMenu" onclick="openPricing()" class="hidden w-full text-left px-4 py-3 text-sm text-slate-700 border-b hover:bg-slate-50 font-bold">💳 Abonelik &amp; Fiyatlandırma</button>
                     <a href="#home" class="block w-full text-left px-4 py-3 text-sm text-slate-700 border-b">Ziyaretçi Arayüzüne Dön</a>
                     <button id="btnLogout" class="w-full text-left px-4 py-3 text-sm text-red-600 font-bold">Güvenli Çıkış</button>
                 </div>
@@ -1722,6 +1661,99 @@
 
     </div> <div id="printArea"></div>
 
+    <!-- ============ FİYATLANDIRMA / ABONELİK (yalnız giriş yapmış firma & danışman) ============ -->
+    <div id="pricingModal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm overflow-y-auto p-4">
+        <div class="min-h-full flex items-start justify-center py-8">
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden animate-fade-in">
+                <div class="tech-gradient text-white p-6 flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-[11px] uppercase tracking-[0.18em] font-black text-emerald-300 mb-1">Aboneliğiniz</p>
+                        <h2 class="text-2xl font-black">Fiyatlandırma &amp; Paket İçeriği</h2>
+                    </div>
+                    <button onclick="closePricing()" aria-label="Kapat" class="text-slate-300 hover:text-white text-3xl leading-none font-bold shrink-0">&times;</button>
+                </div>
+                <div class="p-6 md:p-8">
+                    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b border-slate-200 mb-6">
+                        <div>
+                            <div class="flex items-end gap-2">
+                                <span class="text-4xl md:text-5xl font-black text-slate-900">$299</span>
+                                <span class="text-lg font-bold text-slate-400 mb-1">/ ay</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">KDV hariç · USD'ye endeksli TL olarak tahsil edilir</p>
+                            <p id="pricingSubStatus" class="hidden text-xs font-bold text-emerald-600 mt-2"></p>
+                        </div>
+                        <div class="text-left sm:text-right">
+                            <span class="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-black px-3 py-1.5 rounded-full">Tek paket · Tüm modüller dahil</span>
+                            <p class="text-[11px] text-slate-400 mt-2">Taahhüt yok · İstediğiniz zaman bırakın</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="font-black text-slate-800 mb-3 flex items-center gap-2">🏢 Kurulumcu Firma</h3>
+                            <ul class="space-y-2 text-sm text-slate-600">
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Satış CRM ve 9 adımlı proje/TEDAŞ süreç takibi</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Teklif motoru — markalı PDF teklif, ürün kataloğu, fiyat ve marj yönetimi</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Platformdan gelen nitelikli müşteri adayları</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Servis, bakım ve temizlik talebi yönetimi</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Yönetim panosu ve tesis (GES) takibi</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Yapay zeka destekli süreç ve satış araçları</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Uygulama içi anlık bildirimler</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-slate-800 mb-3 flex items-center gap-2">🎯 Bağımsız Danışman</h3>
+                            <ul class="space-y-2 text-sm text-slate-600">
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Ziyaretçi sayfasında yayınlanan onaylı profil</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Danışan takibi (CRM) — durum ve kurulum aşaması</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Kurulumcu firma atama ve yönlendirme</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Yatırımcı taleplerinin doğrudan iletilmesi</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Danışman panosu ve takip hatırlatmaları</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Profil fotoğrafı ve uzmanlık vitrini</li>
+                                <li class="flex gap-2"><span class="text-emerald-500 shrink-0">✓</span> Uygulama içi anlık bildirimler</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mt-7 pt-5 border-t border-slate-200">
+                        <p class="text-sm text-slate-600"><b class="text-slate-800">Ödeme:</b> Deneme süresi bitiminde banka havalesi ile alınır. Fatura ve ödeme bilgileri için bizimle iletişime geçebilirsiniz.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+      // Fiyatlandırma modalı — yalnız giriş yapmış firma & danışmana (yatırımcıya değil) gösterilir.
+      window.openPricing = function () {
+          var m = document.getElementById('pricingModal'); if (!m) return;
+          try {
+              var el = document.getElementById('pricingSubStatus');
+              var s = window.__subInfo;
+              if (el && s && s.endsAt) {
+                  el.textContent = 'Aboneliğiniz ' + new Date(s.endsAt).toLocaleDateString('tr-TR') + ' tarihine kadar geçerli.';
+                  el.classList.remove('hidden');
+              } else if (el) { el.classList.add('hidden'); }
+          } catch (e) {}
+          document.getElementById('profileDropdown') && document.getElementById('profileDropdown').classList.add('hidden');
+          m.classList.remove('hidden');
+      };
+      window.closePricing = function () { var m = document.getElementById('pricingModal'); if (m) m.classList.add('hidden'); };
+      (function () {
+          var modal = document.getElementById('pricingModal');
+          if (modal) modal.addEventListener('click', function (e) { if (e.target === modal) window.closePricing(); });
+          document.addEventListener('keydown', function (e) { if (e.key === 'Escape') window.closePricing(); });
+          // Rol geçidi: profil menüsü açılırken fiyatlandırma öğesini role göre göster/gizle
+          function isInvestorNow() {
+              if (window.currentConsultant) return false;             // danışman
+              var p = window.currentUserProfile;
+              if (p && p.role) return p.role === 'investor';          // firma/admin/…
+              return true;                                            // profil yok + danışman değil → yatırımcı
+          }
+          var bp = document.getElementById('btnProfile');
+          if (bp) bp.addEventListener('click', function () {
+              var b = document.getElementById('btnPricingMenu');
+              if (b) b.classList.toggle('hidden', isInvestorNow());
+          });
+      })();
+    </script>
     <script src="core.js"></script>
     <script src="errorlog.js"></script>
     <script src="settings.js"></script>
