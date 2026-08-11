@@ -41,8 +41,11 @@ async function handleSPA_Routing() {
         app.classList.remove('hidden');
         if (window.currentConsultant && typeof showConsultantPanel === 'function') {
             showConsultantPanel(window.currentConsultant, window.__consultantEmail);
+        } else if (!window.currentUserProfile && typeof showInvestorPanel === 'function') {
+            // Yatırımcı: firma profili yok ve danışman değil → YATIRIMCI paneli (kurulumcu menüsü DEĞİL)
+            showInvestorPanel();
         } else {
-            closeAllAndShowMenu(); // Panele girildiğinde önce ana menüyü (Dashboard) göster
+            closeAllAndShowMenu(); // firma/admin → yönetim menüsü (Dashboard)
         }
     }
 }
