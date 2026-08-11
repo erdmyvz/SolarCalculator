@@ -144,14 +144,17 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
         } catch (e) { /* sessiz geç */ }
 
         // Takip kodu yerine hesap-temelli takip: e-postaya tek tıklık giriş bağlantısı.
-        closeLeadModal();
+        // ÖNEMLİ: Değerleri formu KAPATMADAN önce oku — closeLeadModal() formu .reset() ile sıfırlıyor.
         const _lEmail = document.getElementById('leadEmail').value;
+        const _lName  = document.getElementById('leadName').value;
+        const _lPhone = document.getElementById('leadPhone').value;
+        closeLeadModal();
         let _mail = { ok: false, error: '' };
-        try { _mail = await sendInvestorMagicLink(_lEmail, document.getElementById('leadName').value, document.getElementById('leadPhone').value); } catch (e) { _mail = { ok: false, error: String(e && e.message || e) }; }
+        try { _mail = await sendInvestorMagicLink(_lEmail, _lName, _lPhone); } catch (e) { _mail = { ok: false, error: String(e && e.message || e) }; }
         if (_mail.ok) {
             alert(`🎉 Başvurunuz Başarıyla İletildi!\n\n📬 ${_lEmail} adresine YATIRIMCI PANELİ giriş bağlantısı gönderdik.\nE-postanızdaki bağlantıya tıklayın: başvurunuz hesabınıza otomatik bağlanır; süreci adım adım izler, gelen teklifleri tek ekranda karşılaştırırsınız.\n\nBağlantı birkaç dakika içinde gelmezse spam/gereksiz klasörünü kontrol edin.`);
         } else {
-            alert(`🎉 Başvurunuz Başarıyla İletildi!\n\nSüreci takip etmek için ana sayfadaki "Yatırımcı Girişi" ile ${_lEmail} adresinizi kullanarak hesap oluşturabilirsiniz.` + (_mail.error ? `\n\n(Not: Giriş bağlantısı gönderilemedi — ${_mail.error})` : ''));
+            alert(`🎉 Başvurunuz Başarıyla İletildi!\n\nSüreci takip etmek için ana sayfadaki "Giriş Yap" ile ${_lEmail} adresinizi kullanarak hesap oluşturabilirsiniz.` + (_mail.error ? `\n\n(Not: Giriş bağlantısı gönderilemedi — ${_mail.error})` : ''));
         }
 
     } catch (err) {
