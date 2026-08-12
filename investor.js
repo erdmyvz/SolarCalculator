@@ -157,6 +157,7 @@
                                 <div class="text-[11px] mt-1 ${p.company_name ? 'text-emerald-700 font-bold' : 'text-slate-400 italic'}">
                                     ${p.company_name ? '🏢 ' + esc(p.company_name) : 'Firma ataması bekleniyor'}
                                 </div>
+                                ${p.facility_code ? `<div class="text-[11px] mt-1 text-amber-700 font-bold">🏭 Tesisiniz: ${esc(p.facility_code)}${p.install_date ? ' · Kuruldu ' + new Date(p.install_date).toLocaleDateString('tr-TR') : ''}${p.system_kwp ? ' · ' + esc(p.system_kwp) + ' kWp' : ''}</div>` : ''}
                             </div>
                             <span class="text-slate-300 text-sm shrink-0">→</span>
                         </div>
