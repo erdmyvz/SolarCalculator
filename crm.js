@@ -336,7 +336,7 @@ async function renderFacilityZone(lead) {
                 <div class="flex items-center justify-between gap-3 flex-wrap">
                     <div>
                         <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Tesis Kaydı</div>
-                        <p class="text-sm text-slate-600">Bu proje devreye alındı. Yatırımcıya kalıcı bir tesis kodu vermek için tesisi oluşturun.</p>
+                        <p class="text-sm text-slate-600">Bu proje devreye alındı. Kalıcı tesis (GES) kaydını oluşturun; yatırımcının hesabına otomatik bağlanır ve panelinde görünür.</p>
                     </div>
                     <button onclick="crmCreateFacility('${lead.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap">☀️ Tesis Oluştur</button>
                 </div>`;
@@ -352,11 +352,11 @@ async function renderFacilityZone(lead) {
  * Tamamlanan müşteriyi kalıcı tesise dönüştürür (GES kodu üretir).
  */
 window.crmCreateFacility = async function(leadId) {
-    if (!confirm("Bu müşteriyi kalıcı bir tesise dönüştürmek istediğinize emin misiniz?\nYatırımcıya verilecek GES tesis kodu oluşturulacak.")) return;
+    if (!confirm("Bu müşteriyi kalıcı bir tesise (GES kaydına) dönüştürmek istediğinize emin misiniz?\nTesis, yatırımcının hesabına otomatik bağlanacak.")) return;
     try {
         const { data: code, error } = await supabaseClient.rpc('create_project_from_lead', { p_lead_id: leadId });
         if (error) throw error;
-        alert(`✅ Tesis oluşturuldu!\n\nTesis Kodu: ${code}\n\nBu kodu yatırımcıya verin; bakım/temizlik/servis taleplerinde kullanacak.`);
+        alert(`✅ Tesis oluşturuldu!\n\nTesis Kodu: ${code}\n\nBu tesis, müşterinin e-postasıyla yatırımcının hesabına otomatik bağlandı; yatırımcı kendi panelinde görür.\n(Kod, bakım/temizlik/servis taleplerinde referans olarak kullanılır.)`);
         await crmLoadLeads();
         crmOpenLeadDetails(leadId);
     } catch (err) {
@@ -367,6 +367,24 @@ window.crmCreateFacility = async function(leadId) {
 /**
  * Bir metni panoya kopyalar.
  */
+window.crmDeleteLead = async function () {
+    const id = document.getElementById('modalLeadId').value;
+    if (!id) return;
+    const lead = crmLeads.find(l => l.id === id);
+    const name = lead ? (lead.full_name || 'bu müşteri') : 'bu müşteri';
+    if (!confirm(`"${name}" kaydını KALICI olarak silmek üzeresiniz.\n\nMüşteri + tüm teklifleri + varsa tesisi (GES kaydı) ve bağlı servis/bakım/belge kayıtları geri alınamaz biçimde silinir.\n\nDevam edilsin mi?`)) return;
+    if (!confirm('Son onay: Bu işlem GERİ ALINAMAZ. Silinsin mi?')) return;
+    try {
+        const { error } = await supabaseClient.rpc('delete_lead_cascade', { p_lead_id: id });
+        if (error) throw error;
+        if (typeof crmCloseModal === 'function') crmCloseModal();
+        await crmLoadLeads();
+        alert('✅ Müşteri ve ilgili tüm kayıtlar silindi.');
+    } catch (err) {
+        alert('Silinemedi: ' + (err.message || err));
+    }
+};
+
 window.crmCopyText = function(text) {
     if (navigator.clipboard) {
         navigator.clipboard.writeText(text).then(
