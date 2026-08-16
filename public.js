@@ -242,12 +242,10 @@ const menuMap = {
     'btnGoEducation': 'educationModule',
     'btnGoRegulations': 'regulationsModule',
     'btnGoCRM': 'crmModule',
-    'btnGoCompanyMgmt': 'companyManagementModule',
     'btnGoCalculator': 'calculatorModule',
     'btnGoSimulation': 'simulationModule',
     'btnGoEVCalc': 'evCalcModule',
-    'btnGoTechSupport': 'techSupportModule',
-    'btnGoSalesAssistant': 'salesAssistantModule'
+    'btnGoTechSupport': 'techSupportModule'
 };
 
 for (const [btnId, modId] of Object.entries(menuMap)) {
