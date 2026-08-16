@@ -135,20 +135,21 @@
         const el = root(); if (!el) return;
         el.innerHTML = `
         <div class="gw-wrap">
-            ${navHTML(null)}
+            <nav class="gw-nav"><div class="gw-nav-inner" style="justify-content:center">
+                <a href="#home" class="gw-logo">epcmerkezim</a>
+            </div></nav>
             <div class="gw-hero">
                 <p class="gw-kicker">Türkiye'nin bağımsız güneş enerjisi platformu</p>
                 <h1 class="gw-title">Size uygun yolu <span>seçin</span></h1>
-                <p class="gw-sub">Yatırımcı, kurulumcu firma veya danışman — hangi taraftaysanız
-                    sizin için tasarlanmış deneyimle başlayın.</p>
 
                 <div class="gw-cards">
                     <div class="gw-card" style="--gw-accent:#34d399" onclick="window.location.hash='#yatirimci'">
                         <span class="gw-glow"></span>
                         <span class="gw-emoji">☀️</span>
                         <h3>Yatırımcıyım,<br>GES kurdurmak istiyorum</h3>
-                        <p>Faturanı yükle sistemini gör, teklif al, kurulum sürecini adım adım
-                           şeffaf biçimde takip et. Ücretsiz.</p>
+                        <p>Evinize veya iş yerinize güneş enerjisi santrali (GES) kurdurmak
+                           istiyorsanız buradasınız. Faturanızı yükleyin, size uygun sistemi ve
+                           maliyeti görün, onaylı firmalardan ücretsiz teklif alın.</p>
                         <span class="gw-cta">Başla →</span>
                     </div>
 
@@ -156,8 +157,9 @@
                         <span class="gw-glow"></span>
                         <span class="gw-emoji">🏗️</span>
                         <h3>Kurulumcu Firmayım,<br>GES kuruyorum</h3>
-                        <p>Satış CRM, teklif motoru, TEDAŞ süreç takibi ve servis yönetimi
-                           tek panelde. Size aktarılan yatırımcı taleplerini yönetin.</p>
+                        <p>GES kurulumu yapan bir firmaysanız buradasınız. Müşteri (CRM) ve teklif
+                           yönetimi, TEDAŞ süreç takibi, servis talepleri ve size aktarılan yatırımcı
+                           talepleri tek panelde.</p>
                         <span class="gw-cta">Firma panelini keşfet →</span>
                     </div>
 
@@ -165,8 +167,9 @@
                         <span class="gw-glow"></span>
                         <span class="gw-emoji">🎯</span>
                         <h3>Danışmanlık<br>hizmeti veriyorum</h3>
-                        <p>Onaylı profiliniz yatırımcı arayüzünde görünsün, gelen danışmanlık
-                           taleplerine teklif verin, danışanlarınızı takip edin.</p>
+                        <p>Güneş enerjisinde bağımsız danışmanlık veriyorsanız buradasınız. Onaylı
+                           profiliniz yatırımcılara görünür; gelen danışmanlık taleplerine teklif verir,
+                           danışanlarınızı takip edersiniz.</p>
                         <span class="gw-cta">Danışman panelini keşfet →</span>
                     </div>
                 </div>
