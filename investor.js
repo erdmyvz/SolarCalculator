@@ -7,7 +7,7 @@
     const esc = (s) => (typeof admEscape === 'function' ? admEscape(s) : String(s == null ? '' : s)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
 
-    let _projects = [], _quotes = [], _me = null;
+    let _projects = [], _quotes = [], _me = null, _diag = null, _claimed = false;
 
     const LEAD_ST = {
         yeni: ['Yeni Başvuru', 'bg-slate-100 text-slate-600'],
@@ -49,6 +49,27 @@
     function qPayback(q) { const p = qPrice(q), sv = qSaving(q); return (p && sv) ? p / sv : null; }
     function qCoverage(q) { const s = qSys(q), prod = pos(s.annual_prod), cons = pos(s.annual_cons); return (prod && cons) ? Math.min(Math.round(prod / cons * 100), 100) : null; }
 
+    // --- Tanılama: yalnız debug açıkken görünür (canlı yatırımcıya gösterilmez) ---
+    // Açmak için konsolda: window.__INV_DEBUG = true; showInvestorPanel();
+    // veya kalıcı: localStorage.setItem('invDebug','1');
+    function debugOn() {
+        try { return /debug/i.test(location.hash) || window.__INV_DEBUG === true
+            || (window.localStorage && localStorage.getItem('invDebug') === '1'); }
+        catch (e) { return false; }
+    }
+    function diagHTML() {
+        const d = _diag || {};
+        const row = (k, v) => `<div><span style="color:#94a3b8">${esc(k)}:</span> <b>${esc(String(v == null ? '—' : v))}</b></div>`;
+        return `<div style="background:#0f172a;color:#e2e8f0;border-radius:12px;padding:12px;font:12px/1.6 ui-monospace,monospace;margin-bottom:16px;word-break:break-all">
+            <div style="color:#fbbf24;font-weight:800;margin-bottom:6px">🔧 Yatırımcı Tanılama</div>
+            ${row('auth.uid()', d.uid)}
+            ${row('email', d.email)}
+            ${row('list_my_projects', d.projects + ' satır' + (d.pErr ? ' · HATA: ' + d.pErr : ''))}
+            ${row('list_my_quotes', d.quotes + ' satır' + (d.qErr ? ' · HATA: ' + d.qErr : ''))}
+            ${row('claim_my_leads', d.claimErr ? 'HATA: ' + d.claimErr : JSON.stringify(d.claim))}
+        </div>`;
+    }
+
     async function whoAmI() {
         if (_me) return _me;
         try {
@@ -88,8 +109,41 @@
     };
 
     async function loadData() {
-        try { const { data } = await supabaseClient.rpc('list_my_projects'); _projects = data || []; } catch (e) { _projects = []; }
-        try { const { data } = await supabaseClient.rpc('list_my_quotes');   _quotes   = data || []; } catch (e) { _quotes = []; }
+        _diag = { uid: null, email: '', projects: 0, quotes: 0, pErr: null, qErr: null, claim: null, claimErr: null };
+        try {
+            const { data: u } = await supabaseClient.auth.getUser();
+            _diag.uid = u && u.user ? u.user.id : null;
+            _diag.email = u && u.user ? u.user.email : '';
+        } catch (e) {}
+
+        // Defansif: giriş anında kaçmış/başarısız olmuş olabilecek eşleştirmeyi (leads → hesap)
+        // bir kez daha dene. claim_my_leads e-postaya göre bağlar, idempotenttir; tekrar zararsız.
+        if (!_claimed) {
+            _claimed = true;
+            try {
+                const { data, error } = await supabaseClient.rpc('claim_my_leads');
+                if (error) { _diag.claimErr = error.message || String(error); console.warn('[investor] claim_my_leads:', error); }
+                else { _diag.claim = data; }
+            } catch (e) { _diag.claimErr = e.message || String(e); }
+        }
+
+        // ÖNEMLİ: Supabase rpc() hata durumunda THROW ETMEZ; hatayı { error } içinde döner.
+        // Eski kod yalnız { data } okuyordu → RLS/SQL hataları SESSİZCE boş panele dönüşüyordu.
+        try {
+            const { data, error } = await supabaseClient.rpc('list_my_projects');
+            if (error) { _diag.pErr = error.message || String(error); _projects = []; console.error('[investor] list_my_projects:', error); }
+            else { _projects = data || []; }
+        } catch (e) { _diag.pErr = e.message || String(e); _projects = []; console.error('[investor] list_my_projects exception:', e); }
+
+        try {
+            const { data, error } = await supabaseClient.rpc('list_my_quotes');
+            if (error) { _diag.qErr = error.message || String(error); _quotes = []; console.error('[investor] list_my_quotes:', error); }
+            else { _quotes = data || []; }
+        } catch (e) { _diag.qErr = e.message || String(e); _quotes = []; console.error('[investor] list_my_quotes exception:', e); }
+
+        _diag.projects = _projects.length; _diag.quotes = _quotes.length;
+        window.__invDiag = _diag;
+        console.info('[investor] tanılama:', _diag);
     }
 
     // ---------------------------------------------------------------- ana ekran
@@ -102,12 +156,28 @@
                 <h2 class="text-xl md:text-2xl font-black text-slate-800">Merhaba ${esc(first)} 👋</h2>
                 <p class="text-sm text-slate-500 mt-0.5">Güneş enerjisi yatırım sürecinizi buradan şeffafça takip edin.</p>
             </div>
+            <div id="invDiag"></div>
             <div id="invStats" class="mb-5"></div>
             <div id="invProjects" class="mb-6"></div>
             <div id="invQuotes"></div>`;
         document.getElementById('invProjects').innerHTML = '<p class="text-sm text-slate-400">Yükleniyor...</p>';
 
         await loadData();
+
+        // Gerçek RPC hatası varsa yumuşak uyarı (yanıltıcı "başvurunuz yok" yerine),
+        // ve yalnız debug açıkken teknik tanılama kutusu.
+        try {
+            const dd = document.getElementById('invDiag');
+            if (dd) {
+                let html = '';
+                if (_diag && (_diag.pErr || _diag.qErr)) {
+                    html += `<div class="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl p-3 mb-4">
+                        ⚠️ Verileriniz şu an yüklenemedi. Lütfen sayfayı yenileyin; sorun sürerse bizimle iletişime geçin.</div>`;
+                }
+                if (debugOn()) html += diagHTML();
+                dd.innerHTML = html;
+            }
+        } catch (e) {}
 
         // özet
         const done = _projects.filter(p => p.status === 'tamamlandi').length;
