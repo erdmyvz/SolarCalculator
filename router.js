@@ -9,18 +9,33 @@
 // ============================================================================
 async function handleSPA_Routing() {
     const hash = window.location.hash || '#home';
-    const landing = document.getElementById('landingContainer');
+    const gateway = document.getElementById('gatewayContainer'); // YENİ: 3 rol seçim ekranı
+    const landing = document.getElementById('landingContainer');  // = yatırımcı funnel'ı
     const auth = document.getElementById('authContainer');
     const app = document.getElementById('appContainer');
     
     // Önce her yeri gizle
+    if(gateway) gateway.classList.add('hidden');
     if(landing) landing.classList.add('hidden');
     if(auth) auth.classList.add('hidden');
     if(app) app.classList.add('hidden');
     
     // Hash'e göre ilgili alanı aç
-    if (hash === '#home' && landing) {
+    if ((hash === '#home' || hash === '') && gateway) {
+        // AÇILIŞ: 3 rol butonu
+        gateway.classList.remove('hidden');
+        if (typeof renderGateway === 'function') renderGateway();
+    } else if (hash === '#yatirimci' && landing) {
+        // 1. buton → Yatırımcı funnel'ı (mevcut vitrin)
         landing.classList.remove('hidden');
+    } else if (hash === '#kurulumcu' && gateway) {
+        // 2. buton → Kurulumcu firma funnel'ı
+        gateway.classList.remove('hidden');
+        if (typeof renderInstallerFunnel === 'function') renderInstallerFunnel();
+    } else if (hash === '#danisman' && gateway) {
+        // 3. buton → Danışman funnel'ı
+        gateway.classList.remove('hidden');
+        if (typeof renderConsultantFunnel === 'function') renderConsultantFunnel();
     } else if (hash === '#auth' && auth) {
         auth.classList.remove('hidden');
     } else if (typeof legalOpenByHash === 'function' && legalOpenByHash(hash)) {
