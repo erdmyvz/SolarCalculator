@@ -36,8 +36,17 @@ async function handleSPA_Routing() {
         // 3. buton → Danışman funnel'ı
         gateway.classList.remove('hidden');
         if (typeof renderConsultantFunnel === 'function') renderConsultantFunnel();
-    } else if (hash === '#auth' && auth) {
+    } else if ((hash === '#yatirimciauth' || hash === '#kurulumcuauth' || hash === '#danismanauth') && auth) {
+        // ROLE ÖZEL giriş/kayıt ekranı — yalnız ilgili rol gösterilir, seçici gizli
         auth.classList.remove('hidden');
+        const _role = hash === '#kurulumcuauth' ? 'firma'
+                    : hash === '#danismanauth'  ? 'consultant'
+                    : 'investor';
+        if (typeof openAuthForRole === 'function') openAuthForRole(_role);
+    } else if (hash === '#auth' && auth) {
+        // Genel giriş ekranı (yedek) — rol seçici görünür
+        auth.classList.remove('hidden');
+        if (typeof authUnlockRole === 'function') authUnlockRole();
     } else if (typeof legalOpenByHash === 'function' && legalOpenByHash(hash)) {
         // yasal metin sayfaları: #kvkk #gizlilik #cerez #kullanim-sartlari #abonelik-sozlesmesi #acik-riza
     } else if (hash === '#hakkimda') {
@@ -74,7 +83,8 @@ window.addEventListener('load', async () => {
             let _r = 'installer';
             if (typeof routeAfterLogin === 'function') { _r = await routeAfterLogin(session.user); }
             else { await fetchUserProfile(session.user.id, session.user.email); }
-            if (_r !== 'expired' && _r !== 'banned' && (window.location.hash === '#auth' || window.location.hash === '')) {
+            const _authHashes = ['#auth', '#yatirimciauth', '#kurulumcuauth', '#danismanauth', ''];
+            if (_r !== 'expired' && _r !== 'banned' && _authHashes.includes(window.location.hash)) {
                 window.location.hash = '#app'; // Zaten giriş yapmışsa direkt panele al
             }
         }

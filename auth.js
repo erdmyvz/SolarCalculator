@@ -43,6 +43,28 @@ window.authSetRole = function (role) {
                           : 'Firmayı Sisteme Kaydet';
 };
 
+// Role ÖZEL giriş/kayıt ekranı: rolü kilitle, rol seçiciyi gizle.
+// Router #yatirimciauth / #kurulumcuauth / #danismanauth için çağırır.
+// gwGoAuth ilk sekmeyi (login/register) window.__authMode ile bildirir.
+window.openAuthForRole = function (role) {
+    try { if (typeof authSetRole === 'function') authSetRole(role); } catch (e) {}
+    document.getElementById('authRoleLabel')?.classList.add('hidden');
+    document.getElementById('authRoleGrid')?.classList.add('hidden');
+    const mode = (window.__authMode === 'register') ? 'register' : 'login';
+    window.__authMode = null;
+    try { document.getElementById(mode === 'register' ? 'tabRegister' : 'tabLogin')?.click(); } catch (e) {}
+    const back = document.getElementById('authBackLink');
+    if (back) back.setAttribute('href', role === 'firma' ? '#kurulumcu' : role === 'consultant' ? '#danisman' : '#yatirimci');
+    try { window.scrollTo({ top: 0 }); } catch (e) {}
+};
+// Genel #auth: rol seçiciyi geri göster (kilidi aç).
+window.authUnlockRole = function () {
+    document.getElementById('authRoleLabel')?.classList.remove('hidden');
+    document.getElementById('authRoleGrid')?.classList.remove('hidden');
+    const back = document.getElementById('authBackLink');
+    if (back) back.setAttribute('href', '#home');
+};
+
 // Girişten sonra rol tespiti: danışman mı, firma/admin mi?
 // Hesap türünü belirle: 'admin' | 'consultant' | 'installer'
 async function getAccountInfo(user) {
@@ -284,9 +306,8 @@ window.sendInvestorMagicLink = async function (email, fullName, phone) {
 
 // Ana sayfadan "Yatırımcı Girişi": giriş ekranını yatırımcı rolü seçili açar.
 window.openInvestorLogin = function () {
-    try { if (typeof authSetRole === 'function') authSetRole('investor'); } catch (e) {}
-    try { document.getElementById('tabLogin')?.click(); } catch (e) {}
-    window.location.hash = '#auth';
+    window.__authMode = 'login';
+    window.location.hash = '#yatirimciauth';
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
