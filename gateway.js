@@ -102,11 +102,18 @@
         document.head.appendChild(s);
     }
 
-    // --- Auth ekranına rolü seçili biçimde git ---
+    // Role özel auth ekranına git (yalnız o rolün giriş/kayıt sayfası açılır).
     function gwGoAuth(role, mode) {
-        try { if (typeof authSetRole === 'function') authSetRole(role); } catch (e) {}
-        try { document.getElementById(mode === 'register' ? 'tabRegister' : 'tabLogin')?.click(); } catch (e) {}
-        window.location.hash = '#auth';
+        window.__authMode = (mode === 'register') ? 'register' : 'login';
+        const h = role === 'firma' ? '#kurulumcuauth'
+                : role === 'consultant' ? '#danismanauth'
+                : '#yatirimciauth';
+        if (window.location.hash === h) {
+            // Aynı hash → hashchange tetiklenmez; doğrudan uygula
+            if (typeof openAuthForRole === 'function') openAuthForRole(role);
+        } else {
+            window.location.hash = h;
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     window.gwGoAuth = gwGoAuth;

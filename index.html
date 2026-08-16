@@ -330,7 +330,7 @@
                 <div class="flex items-center gap-2 md:gap-4">
                     <a href="/hakkimda" onclick="openAboutPage();return false" class="hidden md:inline text-sm font-bold text-gray-300 hover:text-white transition">Hakkımda</a>
                     <a href="/blog/" class="hidden md:inline text-sm font-bold text-gray-300 hover:text-white transition">Solar Akademi</a>
-                    <a href="#auth" class="hidden sm:inline-block border border-slate-600 hover:border-slate-400 text-slate-200 hover:text-white px-4 py-2 rounded-lg font-bold text-sm transition">Giriş Yap</a>
+                    <a href="#yatirimciauth" class="hidden sm:inline-block border border-slate-600 hover:border-slate-400 text-slate-200 hover:text-white px-4 py-2 rounded-lg font-bold text-sm transition">Giriş Yap</a>
                     <button onclick="openLeadModal('kurulum')" class="btn-sun px-4 md:px-5 py-2 rounded-lg font-black text-sm whitespace-nowrap">☀️ Ücretsiz Teklif</button>
                 </div>
             </div>
@@ -678,15 +678,15 @@
     </div>
 
     <div id="authContainer" class="hidden w-full min-h-screen flex flex-col items-center justify-center p-4 tech-gradient">
-        <div class="absolute top-6 left-6 z-10"><a href="#home" class="text-slate-400 hover:text-white font-bold text-sm transition">← Ziyaretçi Ekranına Dön</a></div>
+        <div class="absolute top-6 left-6 z-10"><a id="authBackLink" href="#home" class="text-slate-400 hover:text-white font-bold text-sm transition">← Ziyaretçi Ekranına Dön</a></div>
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
             <div class="bg-gradient-to-br from-emerald-600 to-emerald-700 p-7 text-center">
                 <h1 class="text-3xl font-black text-white">epcmerkezim</h1>
                 <p class="text-emerald-50/85 text-sm mt-1 font-medium">Giriş / Kayıt</p>
             </div>
             <div class="p-7 md:p-8">
-                <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Hesap türü</p>
-                <div class="grid grid-cols-3 gap-2 mb-6"><button type="button" id="roleFirma" onclick="authSetRole('firma')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-emerald-600 bg-emerald-600 text-white">🏢 Kurulumcu Firma</button><button type="button" id="roleConsultant" onclick="authSetRole('consultant')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white">🎯 Danışman</button>
+                <p id="authRoleLabel" class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Hesap türü</p>
+                <div id="authRoleGrid" class="grid grid-cols-3 gap-2 mb-6"><button type="button" id="roleFirma" onclick="authSetRole('firma')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-emerald-600 bg-emerald-600 text-white">🏢 Kurulumcu Firma</button><button type="button" id="roleConsultant" onclick="authSetRole('consultant')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white">🎯 Danışman</button>
                     <button type="button" id="roleInvestor" onclick="authSetRole('investor')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white">👤 Yatırımcı</button>
                 </div>
                 <div class="flex border-b border-gray-200 mb-6">
