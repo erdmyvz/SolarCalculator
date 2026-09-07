@@ -662,7 +662,7 @@
                         <span class="text-2xl shrink-0 group-hover:scale-110 transition">🚗</span>
                         <span><span class="block text-sm font-bold text-white leading-tight">Elektrikli Araç</span><span class="block text-[11px] text-slate-400 leading-tight mt-0.5">Güneşten şarj planlaması</span></span>
                     </button>
-                    <button onclick="openPublicModule('hardwareModule')" class="glass-panel hover:-translate-y-1 transition text-left cursor-pointer group flex items-center" style="gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r-md);min-height:var(--s7)">
+                    <button id="hwLauncher" onclick="openPublicModule('hardwareModule'); if(window.openHardwareCompare) openHardwareCompare();" class="glass-panel hover:-translate-y-1 transition text-left cursor-pointer group flex items-center" style="gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r-md);min-height:var(--s7)">
                         <span class="text-2xl shrink-0 group-hover:scale-110 transition">⚖️</span>
                         <span><span class="block text-sm font-bold text-white leading-tight">Donanım Karşılaştırma</span><span class="block text-[11px] text-slate-400 leading-tight mt-0.5">Panel, inverter, batarya kıyası</span></span>
                     </button>

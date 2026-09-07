@@ -174,6 +174,9 @@ async function fetchAdminData() {
     // 7) DAĞITIM ŞİRKETLERİ (yalnız admin görür)
     await renderDiscoAdmin();
 
+    // 7b) DONANIM KARŞILAŞTIRMA (yalnız admin görür)
+    await renderHardwareAdmin();
+
     // 8) AYARLAR / PARAMETRELER (yalnız admin görür)
     await renderSettingsAdmin();
 
@@ -732,6 +735,218 @@ window.psDelete = async (id) => {
     const { error } = await supabaseClient.from('process_steps').delete().eq('id', id);
     if (error) { alert('Silinemedi: ' + error.message); return; }
     renderProcessAdmin();
+};
+
+
+// ============================================================================
+// DONANIM KARŞILAŞTIRMA YÖNETİMİ (hardware_categories + hardware_items)
+// Ziyaretçiye gösterilen tablo buradan doldurulur. Ürün verisi kodda TUTULMAZ;
+// her satır üretici kataloğundan doğrulanıp kaynağıyla birlikte girilir.
+// hardware.sql çalıştırılmış olmalıdır.
+// ============================================================================
+let _hwCats = [];
+let _hwItems = {};
+
+function ensureHardwareSection() {
+    if (document.getElementById('hwAdminRoot')) return document.getElementById('hwAdminRoot');
+    const admin = document.getElementById('adminPaneContent') || document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'hwAdminRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 class="text-lg font-black text-slate-800">⚖️ Donanım Karşılaştırma</h3>
+            <button onclick="hwNewCat()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg">+ Kategori</button>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Ziyaretçi "Donanım Karşılaştırma" aracındaki tablo. Yayında satır yoksa araç ana sayfada hiç görünmez.</p>
+        <div id="hwList" class="space-y-4"></div>`;
+    admin.appendChild(card);
+    return card;
+}
+
+async function renderHardwareAdmin() {
+    const wrap = ensureHardwareSection();
+    if (!wrap || !supabaseClient) return;
+    const box = document.getElementById('hwList');
+    box.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+
+    const [cat, item] = await Promise.all([
+        supabaseClient.from('hardware_categories').select('*').order('sort_order'),
+        supabaseClient.from('hardware_items').select('*').order('sort_order')
+    ]);
+    if (cat.error) {
+        box.innerHTML = `<p class="text-xs text-red-500">Yüklenemedi: ${admEscape(cat.error.message)}<br><span class="text-slate-400">hardware.sql çalıştırıldı mı?</span></p>`;
+        return;
+    }
+    _hwCats = cat.data || [];
+    _hwItems = {};
+    (item.data || []).forEach(r => { (_hwItems[r.category_key] = _hwItems[r.category_key] || []).push(r); });
+
+    if (!_hwCats.length) { box.innerHTML = '<p class="text-xs text-slate-400 italic">Henüz kategori yok.</p>'; return; }
+
+    box.innerHTML = _hwCats.map(c => {
+        const rows = _hwItems[c.key] || [];
+        const cols = Array.isArray(c.cols) ? c.cols : [];
+        const satirlar = rows.map(r => {
+            const cells = Array.isArray(r.cells) ? r.cells : [];
+            return `
+            <div class="flex items-center justify-between gap-2 border border-slate-200 rounded-lg p-2 pl-3">
+                <div class="min-w-0">
+                    <strong class="text-sm text-slate-800">${admEscape(cells[0])}</strong>
+                    ${r.is_published ? '' : '<span class="text-[10px] text-amber-600 font-bold ml-1">(taslak)</span>'}
+                    ${r.source_url ? '<span class="text-[10px] text-emerald-600 font-bold ml-1">kaynaklı</span>' : '<span class="text-[10px] text-red-500 font-bold ml-1">kaynak yok</span>'}
+                    <div class="text-[11px] text-slate-400 truncate">${admEscape(cells.slice(1).filter(Boolean).join(' · '))}</div>
+                </div>
+                <span class="flex gap-1 flex-shrink-0">
+                    <button onclick="hwEditItem('${r.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Düzenle</button>
+                    <button onclick="hwDeleteItem('${r.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Sil</button>
+                </span>
+            </div>`;
+        }).join('') || '<p class="text-[11px] text-slate-400 italic pl-1">Bu kategoride satır yok — sekme ziyaretçiye gösterilmiyor.</p>';
+
+        return `
+        <div class="border border-slate-200 rounded-xl p-3">
+            <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                <div class="min-w-0">
+                    <strong class="text-sm text-slate-800">${admEscape(c.label)}</strong>
+                    <span class="text-[11px] text-slate-400 ml-1">${cols.length} sütun · ${rows.length} satır</span>
+                </div>
+                <span class="flex gap-1 flex-shrink-0">
+                    <button onclick="hwNewItem('${admEscape(c.key)}')" class="text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-1 rounded">+ Ürün</button>
+                    <button onclick="hwEditCat('${admEscape(c.key)}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Kategori</button>
+                    <button onclick="hwDeleteCat('${admEscape(c.key)}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Sil</button>
+                </span>
+            </div>
+            <div class="space-y-1.5">${satirlar}</div>
+        </div>`;
+    }).join('');
+}
+
+// ------------------------------------------------------------------ kategori
+window.hwNewCat = () => openHwCatModal(null);
+window.hwEditCat = (key) => openHwCatModal(_hwCats.find(c => c.key === key));
+function openHwCatModal(c) {
+    const e = c || {};
+    const cols = Array.isArray(e.cols) ? e.cols : [];
+    eduModal(`
+        <h3 class="text-lg font-black text-slate-800 mb-4">${c ? 'Kategoriyi Düzenle' : 'Yeni Kategori'}</h3>
+        <div class="space-y-3">
+            <div class="flex gap-3">
+                <div class="flex-1"><label class="text-xs font-bold text-slate-600">Sekme adı</label><input id="hwCatLabel" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.label)}"></div>
+                <div class="w-24"><label class="text-xs font-bold text-slate-600">Sıra</label><input id="hwCatOrder" type="number" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${e.sort_order ?? 0}"></div>
+            </div>
+            <div><label class="text-xs font-bold text-slate-600">Açıklama (tablonun üstünde çıkar)</label><textarea id="hwCatGuide" rows="3" class="w-full p-2 border border-slate-300 rounded-lg text-sm">${admEscape(e.guide)}</textarea></div>
+            <div>
+                <label class="text-xs font-bold text-slate-600">Sütun başlıkları (her satıra bir tane)</label>
+                <textarea id="hwCatCols" rows="8" class="w-full p-2 border border-slate-300 rounded-lg text-sm font-mono">${admEscape(cols.join('\n'))}</textarea>
+                <p class="text-[10px] text-slate-400 mt-1">İlk sütun marka/model olmalı; tabloda kalın gösterilir. Sütunu değiştirirsen mevcut ürün satırlarını da güncelle.</p>
+            </div>
+            <label class="flex items-center gap-2 text-sm text-slate-600"><input id="hwCatPub" type="checkbox" ${(e.is_published !== false) ? 'checked' : ''}> Yayında</label>
+        </div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="eduCloseModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-lg">İptal</button>
+            <button onclick="hwSaveCat('${c ? admEscape(c.key) : ''}')" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-lg">Kaydet</button>
+        </div>`);
+}
+window.hwSaveCat = async (key) => {
+    const label = document.getElementById('hwCatLabel').value.trim();
+    if (!label) { alert('Sekme adı gerekli.'); return; }
+    const cols = document.getElementById('hwCatCols').value.split('\n').map(x => x.trim()).filter(Boolean);
+    if (!cols.length) { alert('En az bir sütun başlığı gerekli.'); return; }
+    const base = {
+        label,
+        guide: document.getElementById('hwCatGuide').value.trim() || null,
+        cols,
+        sort_order: parseInt(document.getElementById('hwCatOrder').value) || 0,
+        is_published: document.getElementById('hwCatPub').checked
+    };
+    let error;
+    if (key) {
+        ({ error } = await supabaseClient.from('hardware_categories').update(base).eq('key', key));
+    } else {
+        const yeniKey = eduSlugify(label) || ('kat-' + Math.random().toString(36).slice(2, 6));
+        ({ error } = await supabaseClient.from('hardware_categories').insert([{ ...base, key: yeniKey }]));
+    }
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    eduCloseModal(); renderHardwareAdmin();
+};
+window.hwDeleteCat = async (key) => {
+    const n = (_hwItems[key] || []).length;
+    if (!confirm(`Bu kategori ve içindeki ${n} ürün satırı silinecek. Emin misiniz?`)) return;
+    const { error } = await supabaseClient.from('hardware_categories').delete().eq('key', key);
+    if (error) { alert('Silinemedi: ' + error.message); return; }
+    renderHardwareAdmin();
+};
+
+// --------------------------------------------------------------------- ürün
+window.hwNewItem = (catKey) => openHwItemModal(catKey, null);
+window.hwEditItem = (id) => {
+    for (const k in _hwItems) {
+        const it = _hwItems[k].find(r => r.id === id);
+        if (it) return openHwItemModal(k, it);
+    }
+};
+function openHwItemModal(catKey, it) {
+    const cat = _hwCats.find(c => c.key === catKey);
+    if (!cat) { alert('Kategori bulunamadı.'); return; }
+    const cols = Array.isArray(cat.cols) ? cat.cols : [];
+    const e = it || {};
+    const cells = Array.isArray(e.cells) ? e.cells : [];
+
+    // Alanlar kategorinin sütunlarından üretilir; şema değişince form da değişir.
+    const alanlar = cols.map((c, i) => `
+        <div>
+            <label class="text-xs font-bold text-slate-600">${admEscape(c)}${i === 0 ? ' <span class="text-red-500">*</span>' : ''}</label>
+            <input id="hwCell${i}" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(cells[i])}">
+        </div>`).join('');
+
+    eduModal(`
+        <h3 class="text-lg font-black text-slate-800 mb-1">${it ? 'Ürünü Düzenle' : 'Yeni Ürün'}</h3>
+        <p class="text-xs text-slate-400 mb-4">${admEscape(cat.label)} · ${cols.length} alan</p>
+        <div class="space-y-3">
+            ${alanlar}
+            <div class="border-t border-slate-100 pt-3 space-y-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-600">Kaynak bağlantısı (üretici kataloğu)</label>
+                    <input id="hwSource" type="url" placeholder="https://..." class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.source_url)}">
+                    <p class="text-[10px] text-slate-400 mt-1">Ziyaretçiye "Katalog ↗" bağlantısı olarak gösterilir. Doğrulanabilirlik platformun iddiası — boş bırakmamaya çalışın.</p>
+                </div>
+                <div class="flex gap-3">
+                    <div class="flex-1"><label class="text-xs font-bold text-slate-600">Doğrulama tarihi</label><input id="hwVerified" type="date" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.verified_on)}"></div>
+                    <div class="w-24"><label class="text-xs font-bold text-slate-600">Sıra</label><input id="hwOrder" type="number" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${e.sort_order ?? 0}"></div>
+                    <label class="flex items-end gap-2 text-sm text-slate-600 pb-2"><input id="hwPub" type="checkbox" ${(e.is_published !== false) ? 'checked' : ''}> Yayında</label>
+                </div>
+            </div>
+        </div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="eduCloseModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-lg">İptal</button>
+            <button onclick="hwSaveItem('${admEscape(catKey)}','${it ? it.id : ''}',${cols.length})" class="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-lg">Kaydet</button>
+        </div>`);
+}
+window.hwSaveItem = async (catKey, id, colCount) => {
+    const cells = [];
+    for (let i = 0; i < colCount; i++) cells.push(document.getElementById('hwCell' + i).value.trim());
+    if (!cells[0]) { alert('İlk alan (marka/model) gerekli.'); return; }
+    const base = {
+        category_key: catKey,
+        cells,
+        source_url: document.getElementById('hwSource').value.trim() || null,
+        verified_on: document.getElementById('hwVerified').value || null,
+        sort_order: parseInt(document.getElementById('hwOrder').value) || 0,
+        is_published: document.getElementById('hwPub').checked
+    };
+    const { error } = id
+        ? await supabaseClient.from('hardware_items').update(base).eq('id', id)
+        : await supabaseClient.from('hardware_items').insert([base]);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    eduCloseModal(); renderHardwareAdmin();
+};
+window.hwDeleteItem = async (id) => {
+    if (!confirm('Bu ürün satırı silinecek. Emin misiniz?')) return;
+    const { error } = await supabaseClient.from('hardware_items').delete().eq('id', id);
+    if (error) { alert('Silinemedi: ' + error.message); return; }
+    renderHardwareAdmin();
 };
 
 

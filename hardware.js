@@ -1,115 +1,110 @@
 /* ============================================================================
    hardware.js — DONANIM KARŞILAŞTIRMA (Ziyaretçi Modülü)
    openPublicModule('hardwareModule') ile açılır.
-   İnverter / Batarya / Panel kategorilerini yan yana kıyaslar.
 
-   ⚠️ NOT: Aşağıdaki HW_DATA tablosu ÖRNEK/PLACEHOLDER verilerdir.
-   Gerçek katalog, spesifikasyon ve fiyat verilerinizle güncelleyin.
-   (İleride bu veri Supabase'ten de çekilebilir.)
+   Veri Supabase'ten gelir (hardware_categories + hardware_items); kod içinde
+   ürün verisi TUTULMAZ. Daha önce burada sabit kodlanmış bir tablo vardı ve
+   gerçek marka adlarının yanında doğrulanmamış değerler gösteriyordu — bağımsız
+   bilgi iddiasındaki bir platformda bu kabul edilemezdi.
+
+   Veri yoksa araç ziyaretçiye hiç gösterilmez: vitrindeki başlatma kartı
+   gizlenir, modül açılsa bile boş durum metni çıkar.
+
+   hardware.sql çalıştırılmış olmalıdır.
    index.html'de core.js'ten sonra yüklenmelidir.
    ============================================================================ */
 (function () {
     const root = document.getElementById('hardwareRoot');
     if (!root) return;
 
+    const esc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
     document.getElementById('btnBackFromHardware')?.addEventListener('click', () => {
         if (typeof closeAllAndShowMenu === 'function') closeAllAndShowMenu();
     });
 
-    // --- ÖRNEK VERİ (buradan güncelleyin) ---
-    const HW_DATA = {
-        inverter: {
-            label: 'İnverter',
-            guide: 'Şebeke bağlantılı basit sistemlerde string inverter yeterlidir. Kesintide çalışmak veya batarya kullanmak istiyorsanız <strong>hibrit inverter</strong> seçmelisiniz.',
-            cols: ['Marka / Model', 'Tip', 'Güç (kW)', 'MPPT', 'Verim', 'Hibrit', 'Garanti', 'Öne Çıkan'],
-            rows: [
-                ['Fronius Symo GEN24', 'Hibrit', '3–10', '2', '%98,2', '✅', '10 yıl', 'Yüksek verim + yedekleme'],
-                ['Victron MultiPlus-II', 'Hibrit', '3–10', '2', '%96,5', '✅', '5 yıl', 'Off-grid / ada modda güçlü'],
-                ['Deye SUN-Hybrid', 'Hibrit', '5–12', '2', '%97,6', '✅', '5 yıl', 'Fiyat / performans'],
-                ['Solax X3-Hybrid G4', 'Hibrit', '5–15', '2', '%97,8', '✅', '10 yıl', 'Geniş batarya uyumu'],
-            ],
-        },
-        battery: {
-            label: 'Batarya',
-            guide: 'Kesinti sırasında evi ayakta tutmak için batarya kapasitesi (kWh) ve deşarj derinliği (DoD) önemlidir. LiFePO4 kimyası uzun ömür ve güvenlik sağlar.',
-            cols: ['Marka / Model', 'Kimya', 'Kapasite', 'DoD', 'Çevrim', 'Modüler', 'Garanti', 'Öne Çıkan'],
-            rows: [
-                ['Pylontech US5000', 'LiFePO4', '4,8 kWh', '%95', '6000+', '✅', '10 yıl', 'Yaygın, kanıtlanmış'],
-                ['Deye BOS-G', 'LiFePO4', '5,1 kWh', '%95', '6000+', '✅', '10 yıl', 'Yüksek akım desteği'],
-                ['Solax T-BAT H', 'LiFePO4', '5,8 kWh', '%90', '6000+', '✅', '10 yıl', 'Solax inverter uyumu'],
-                ['Victron 12.8/200', 'LiFePO4', '2,56 kWh', '%90', '5000+', '✅', '10 yıl', 'Ada/karavan sistemleri'],
-            ],
-        },
-        panel: {
-            label: 'Panel',
-            guide: 'Aynı çatı alanında daha çok üretim için panel <strong>verimi (%)</strong> ve gölge/sıcak iklim performansına bakın. Tier-1 üreticiler uzun vadeli üretim garantisi verir.',
-            cols: ['Marka / Seri', 'Hücre', 'Güç (Wp)', 'Verim', 'Tip', 'Sıcaklık Katsayısı', 'Garanti (Üretim)', 'Öne Çıkan'],
-            rows: [
-                ['Jinko Tiger Neo', 'N-Type', '580–620', '%22,5', 'Monofasial', '−0,29%/°C', '30 yıl', 'Düşük ışıkta güçlü'],
-                ['LONGi Hi-MO 6', 'N-Type', '570–590', '%22,8', 'Monofasial', '−0,29%/°C', '25 yıl', 'Yüksek verim'],
-                ['Trina Vertex S+', 'N-Type', '440–450', '%22,3', 'Monofasial', '−0,30%/°C', '25 yıl', 'Konut çatısına ideal boyut'],
-                ['Canadian TOPHiKu6', 'N-Type', '575–595', '%22,5', 'Bifasial', '−0,30%/°C', '30 yıl', 'Bifasial ekstra üretim'],
-            ],
-        },
-    };
+    let CATS = [];          // hardware_categories satırları
+    let ITEMS = {};         // { category_key: [item, ...] }
+    let active = null;
+    let loaded = false;
 
-    const CATS = ['inverter', 'battery', 'panel'];
-    let active = 'inverter';
+    // ---------------------------------------------------------------- veri
+    async function fetchData() {
+        if (typeof supabaseClient === 'undefined' || !supabaseClient) return false;
+        const [cat, item] = await Promise.all([
+            supabaseClient.from('hardware_categories').select('*').order('sort_order'),
+            supabaseClient.from('hardware_items').select('*').order('sort_order')
+        ]);
+        if (cat.error || item.error) return false;
 
-    function tabBtn(cat) {
-        const on = cat === active;
-        return `<button data-cat="${cat}" class="hw-tab px-5 py-2.5 rounded-lg text-sm font-bold transition ${on ? 'bg-emerald-600 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">${HW_DATA[cat].label}</button>`;
+        ITEMS = {};
+        (item.data || []).forEach(r => {
+            (ITEMS[r.category_key] = ITEMS[r.category_key] || []).push(r);
+        });
+        // Yalnız içinde en az bir satır olan kategoriyi göster: başlıkları hazır
+        // ama ürünü girilmemiş bir sekme ziyaretçi için boş vaattir.
+        CATS = (cat.data || []).filter(c => (ITEMS[c.key] || []).length > 0);
+        active = CATS.length ? CATS[0].key : null;
+        loaded = true;
+        return CATS.length > 0;
+    }
+
+    // ------------------------------------------------------------- görünüm
+    function tabBtn(c) {
+        const on = c.key === active;
+        return `<button data-cat="${esc(c.key)}" class="hw-tab px-5 py-2.5 rounded-lg text-sm font-bold transition ${
+            on ? 'bg-emerald-600 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+        }">${esc(c.label)}</button>`;
     }
 
     function renderTable() {
-        const d = HW_DATA[active];
+        const cat = CATS.find(c => c.key === active);
+        if (!cat) return '';
+        const cols = Array.isArray(cat.cols) ? cat.cols : [];
+        const rows = ITEMS[cat.key] || [];
+
+        // En son doğrulama tarihi — ziyaretçi verinin ne kadar taze olduğunu görsün.
+        const tarihler = rows.map(r => r.verified_on).filter(Boolean).sort();
+        const sonDogrulama = tarihler.length ? tarihler[tarihler.length - 1] : null;
+
+        const kaynakVar = rows.some(r => r.source_url);
+
         return `
-            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-sm text-blue-800">💡 ${d.guide}</div>
+            ${cat.guide ? `<div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-sm text-blue-800">💡 ${cat.guide}</div>` : ''}
             <div class="overflow-x-auto border border-slate-200 rounded-xl">
                 <table class="w-full text-sm min-w-[720px]">
                     <thead class="bg-slate-50 text-slate-500 text-[11px] uppercase tracking-wider">
-                        <tr>${d.cols.map((c, i) => `<th class="${i === 0 ? 'text-left' : 'text-center'} px-4 py-3">${c}</th>`).join('')}</tr>
+                        <tr>
+                            ${cols.map((c, i) => `<th class="${i === 0 ? 'text-left' : 'text-center'} px-4 py-3">${esc(c)}</th>`).join('')}
+                            ${kaynakVar ? '<th class="text-center px-4 py-3">Kaynak</th>' : ''}
+                        </tr>
                     </thead>
                     <tbody>
-                        ${d.rows.map(r => `
+                        ${rows.map(r => {
+                            const cells = Array.isArray(r.cells) ? r.cells : [];
+                            return `
                             <tr class="border-t border-slate-100 hover:bg-slate-50">
-                                ${r.map((cell, i) => i === 0
-                                    ? `<td class="px-4 py-3 font-bold text-slate-800">${cell}</td>`
-                                    : `<td class="px-4 py-3 text-center text-slate-600">${cell}</td>`).join('')}
-                            </tr>`).join('')}
+                                ${cols.map((_, i) => i === 0
+                                    ? `<td class="px-4 py-3 font-bold text-slate-800">${esc(cells[i])}</td>`
+                                    : `<td class="px-4 py-3 text-center text-slate-600">${esc(cells[i])}</td>`).join('')}
+                                ${kaynakVar ? `<td class="px-4 py-3 text-center">${
+                                    r.source_url
+                                        ? `<a href="${esc(r.source_url)}" target="_blank" rel="noopener nofollow" class="text-emerald-700 font-bold hover:underline">Katalog ↗</a>`
+                                        : '<span class="text-slate-300">—</span>'
+                                }</td>` : ''}
+                            </tr>`;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
+            ${sonDogrulama ? `<p class="text-[11px] text-slate-400 mt-2">🗓️ Bu tablodaki değerler en son ${esc(sonDogrulama)} tarihinde üretici kataloglarından doğrulandı.</p>` : ''}
         `;
-    }
-
-    function render() {
-        root.innerHTML = `
-            <p class="text-slate-500 text-sm mb-2 font-medium">Sisteminizin kalbini oluşturan ekipmanları yan yana kıyaslayın; ihtiyacınıza en uygun donanımı seçin.</p>
-            <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-[11px] text-amber-800 mb-5">📌 Aşağıdaki değerler örnek referans verilerdir; kesin karar öncesi güncel üretici kataloglarını doğrulayın.</div>
-            <div id="hwTabs" class="flex flex-wrap gap-2 mb-5">${CATS.map(tabBtn).join('')}</div>
-            <div id="hwBody">${renderTable()}</div>
-            <div class="mt-6 bg-slate-900 text-white p-5 rounded-xl flex flex-col md:flex-row items-center justify-between gap-3">
-                <div>
-                    <p class="font-black">Hangi donanım size uygun, emin değil misiniz?</p>
-                    <p class="text-slate-300 text-sm">Uzmanlarımız çatınıza ve bütçenize göre doğru markayı önersin.</p>
-                </div>
-                <button onclick="openLeadModal('kurulum')" class="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-5 py-3 rounded-lg whitespace-nowrap">Uzman Görüşü Al ›</button>
-            </div>
-        `;
-        root.querySelectorAll('.hw-tab').forEach(b => {
-            b.addEventListener('click', () => {
-                active = b.getAttribute('data-cat');
-                // Yalnız sekme + tablo alanını tazele
-                document.getElementById('hwTabs').innerHTML = CATS.map(tabBtn).join('');
-                document.getElementById('hwBody').innerHTML = renderTable();
-                bindTabs();
-            });
-        });
     }
 
     function bindTabs() {
-        document.querySelectorAll('.hw-tab').forEach(b => {
+        root.querySelectorAll('.hw-tab').forEach(b => {
             b.addEventListener('click', () => {
                 active = b.getAttribute('data-cat');
                 document.getElementById('hwTabs').innerHTML = CATS.map(tabBtn).join('');
@@ -119,5 +114,59 @@
         });
     }
 
-    render();
+    const uzmanCTA = `
+        <div class="mt-6 bg-slate-900 text-white p-5 rounded-xl flex flex-col md:flex-row items-center justify-between gap-3">
+            <div>
+                <p class="font-black">Hangi donanım size uygun, emin değil misiniz?</p>
+                <p class="text-slate-300 text-sm">Uzmanlarımız çatınıza ve bütçenize göre doğru markayı önersin.</p>
+            </div>
+            <button onclick="openLeadModal('kurulum')" class="bg-emerald-500 hover:bg-emerald-600 text-white font-black px-5 py-3 rounded-lg whitespace-nowrap">Uzman Görüşü Al ›</button>
+        </div>`;
+
+    function renderBos() {
+        root.innerHTML = `
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center">
+                <div class="text-4xl mb-3">⚖️</div>
+                <h3 class="text-lg font-black text-slate-800 mb-2">Donanım karşılaştırma tablosu hazırlanıyor</h3>
+                <p class="text-sm text-slate-500 max-w-md mx-auto">Marka ve model verilerini yayınlamadan önce her satırı üretici kataloğundan doğruluyoruz. Doğrulanmamış hiçbir değeri buraya koymuyoruz.</p>
+            </div>
+            ${uzmanCTA}`;
+    }
+
+    function render() {
+        if (!CATS.length) { renderBos(); return; }
+        root.innerHTML = `
+            <p class="text-slate-500 text-sm mb-2 font-medium">Sisteminizin kalbini oluşturan ekipmanları yan yana kıyaslayın; ihtiyacınıza en uygun donanımı seçin.</p>
+            <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-[11px] text-amber-800 mb-5">📌 Değerler üretici kataloglarından alınmıştır ve bilgilendirme amaçlıdır; sipariş öncesi güncel teknik dokümanı satıcınızdan teyit edin.</div>
+            <div id="hwTabs" class="flex flex-wrap gap-2 mb-5">${CATS.map(tabBtn).join('')}</div>
+            <div id="hwBody">${renderTable()}</div>
+            ${uzmanCTA}`;
+        bindTabs();
+    }
+
+    // Modül açıldığında çağrılır (veri bir kez yüklenir, sonra önbellekten).
+    window.openHardwareCompare = async function () {
+        if (loaded) { render(); return; }
+        root.innerHTML = '<p class="text-slate-400 text-sm">Donanım verileri yükleniyor...</p>';
+        try { await fetchData(); } catch (e) { loaded = true; }
+        render();
+    };
+
+    // ---- Vitrindeki başlatma kartı: veri yoksa hiç gösterme ----
+    // Boş bir aracı ana sayfadan linklemek ziyaretçiyi boşa yönlendirir.
+    (async function baslaticiKartiniAyarla() {
+        const kart = document.getElementById('hwLauncher');
+        if (!kart || typeof supabaseClient === 'undefined' || !supabaseClient) return;
+        try {
+            const { count, error } = await supabaseClient
+                .from('hardware_items')
+                .select('id', { count: 'exact', head: true })
+                .eq('is_published', true);
+            if (error) throw error;
+            if (!count) kart.classList.add('hidden');
+        } catch (e) {
+            // Tablo yoksa/erişilemezse kartı gizle: boş araç göstermektense hiç gösterme.
+            kart.classList.add('hidden');
+        }
+    })();
 })();
