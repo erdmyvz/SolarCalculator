@@ -45,16 +45,23 @@ window.authSetRole = function (role) {
 
 // Role ÖZEL giriş/kayıt ekranı: rolü kilitle, rol seçiciyi gizle.
 // Router #yatirimciauth / #kurulumcuauth / #danismanauth için çağırır.
-// gwGoAuth ilk sekmeyi (login/register) window.__authMode ile bildirir.
+// İlk sekme (giriş/kayıt) window.__authMode veya sessionStorage ile bildirilir.
 window.openAuthForRole = function (role) {
     try { if (typeof authSetRole === 'function') authSetRole(role); } catch (e) {}
     document.getElementById('authRoleLabel')?.classList.add('hidden');
     document.getElementById('authRoleGrid')?.classList.add('hidden');
-    const mode = (window.__authMode === 'register') ? 'register' : 'login';
+    // Niyet iki kaynaktan gelebilir: uygulama içi (window.__authMode) veya
+    // /kurulumcu · /danisman statik sayfalarındaki CTA (sessionStorage).
+    let intent = window.__authMode;
+    if (!intent) {
+        try { intent = sessionStorage.getItem('epcAuthMode'); sessionStorage.removeItem('epcAuthMode'); }
+        catch (e) { /* özel mod: yok say */ }
+    }
+    const mode = (intent === 'register') ? 'register' : 'login';
     window.__authMode = null;
     try { document.getElementById(mode === 'register' ? 'tabRegister' : 'tabLogin')?.click(); } catch (e) {}
     const back = document.getElementById('authBackLink');
-    if (back) back.setAttribute('href', role === 'firma' ? '#kurulumcu' : role === 'consultant' ? '#danisman' : '#yatirimci');
+    if (back) back.setAttribute('href', role === 'firma' ? '/kurulumcu' : role === 'consultant' ? '/danisman' : '#yatirimci');
     try { window.scrollTo({ top: 0 }); } catch (e) {}
 };
 // Genel #auth: rol seçiciyi geri göster (kilidi aç).

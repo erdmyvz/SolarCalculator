@@ -6,25 +6,108 @@
     {
       "source": "/sitemap.xml",
       "headers": [
-        { "key": "Content-Type", "value": "application/xml; charset=utf-8" },
-        { "key": "Cache-Control", "value": "public, max-age=3600" }
+        {
+          "key": "Content-Type",
+          "value": "application/xml; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
       ]
     },
     {
       "source": "/robots.txt",
       "headers": [
-        { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
-        { "key": "Cache-Control", "value": "public, max-age=3600" }
+        {
+          "key": "Content-Type",
+          "value": "text/plain; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600"
+        }
       ]
     },
     {
       "source": "/og.png",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
+    {
+      "source": "/role-page.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
       ]
     }
   ],
   "rewrites": [
-    { "source": "/blog", "destination": "/blog/index.html" }
+    {
+      "source": "/blog",
+      "destination": "/blog/index.html"
+    },
+    {
+      "source": "/kurulumcu",
+      "destination": "/kurulumcu/index.html"
+    },
+    {
+      "source": "/danisman",
+      "destination": "/danisman/index.html"
+    },
+    {
+      "source": "/fatura-analizi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/hesaplayici",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/akademi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/kurulum-sureci",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/danismanlar",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/hakkimda",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/kvkk",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/gizlilik",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/cerez",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/kullanim-sartlari",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/abonelik-sozlesmesi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/acik-riza",
+      "destination": "/index.html"
+    }
   ]
 }

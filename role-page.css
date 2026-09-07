@@ -1,0 +1,201 @@
+/* ============================================================================
+   role-page.css — ROL SAYFALARI (/kurulumcu · /danisman)
+   Uygulamadan bağımsız, arama motorlarının okuyabildiği statik sayfalar için.
+   Ölçek index.html ile aynı: boşluk Fibonacci, tipografi √φ adımlı, ölçü 61.8ch.
+   ============================================================================ */
+:root{
+    --phi:1.618;
+
+    /* Fibonacci boşluk basamakları */
+    --s1:5px; --s2:8px; --s3:13px; --s4:21px;
+    --s5:34px; --s6:55px; --s7:89px; --s8:144px;
+
+    /* Modüler tipografi ölçeği (taban 16px, oran √φ = 1.272) */
+    --fs-xs:.688rem; --fs-sm:.875rem; --fs-base:1rem;
+    --fs-md:1.272rem; --fs-lg:1.618rem; --fs-xl:2.058rem;
+    --fs-2xl:2.618rem; --fs-3xl:4.236rem;
+
+    /* Satır uzunlukları */
+    --measure:61.8ch; --measure-narrow:38ch; --measure-head:21ch;
+
+    /* Yuvarlatma */
+    --r-sm:8px; --r-md:13px; --r-lg:21px; --r-xl:34px;
+
+    /* Renkler */
+    --navy:#0B1B2E; --navy-2:#12263D; --navy-3:#081524;
+    --line:#1e3350;
+    --amber:#F59E0B; --amber-l:#FBBF24; --emerald:#10B981; --emerald-l:#34D399;
+    --ink:#e2e8f0; --muted:#94a3b8;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+    margin:0;
+    font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;
+    background:
+        radial-gradient(1000px 460px at 50% -6%, rgba(245,158,11,.10), transparent 62%),
+        linear-gradient(180deg,var(--navy) 0%,var(--navy-3) 100%);
+    background-attachment:fixed;
+    color:var(--ink);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:'Sora',ui-sans-serif,sans-serif;letter-spacing:-.03em;line-height:1.15;margin:0}
+p{margin:0}
+a{color:var(--emerald-l);text-decoration:none}
+a:hover{text-decoration:underline}
+img{max-width:100%}
+
+.wrap{max-width:1000px;margin:0 auto;padding-inline:var(--s4)}
+.measure{max-width:var(--measure);margin-inline:auto}
+.measure-head{max-width:var(--measure-head);margin-inline:auto}
+
+/* --- Üst çubuk --- */
+.top{
+    position:sticky;top:0;z-index:40;
+    background:rgba(11,27,46,.82);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid rgba(251,191,36,.12);
+}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;
+    gap:var(--s4);padding-block:var(--s3)}
+.brand{font-family:'Sora';font-weight:800;font-size:var(--fs-md);letter-spacing:-.03em;
+    background:linear-gradient(90deg,#fcd34d,var(--emerald-l));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+.brand:hover{text-decoration:none}
+.top nav{display:flex;align-items:center;gap:var(--s2)}
+.nav-link{color:#cbd5e1;font-weight:700;font-size:var(--fs-sm);
+    padding:var(--s2) var(--s3);border-radius:var(--r-sm);transition:color .15s,background .15s}
+.nav-link:hover{color:#fff;background:rgba(255,255,255,.06);text-decoration:none}
+.nav-login{border:1px solid #475569;color:var(--ink);font-weight:700;font-size:var(--fs-sm);
+    padding:var(--s2) var(--s4);border-radius:var(--r-sm);white-space:nowrap;transition:border-color .15s,color .15s}
+.nav-login:hover{border-color:#94a3b8;color:#fff;text-decoration:none}
+
+/* --- Bölüm ritmi --- */
+.section{padding-block:clamp(var(--s6),6.2vw,var(--s7))}
+.section-head{text-align:center;margin-bottom:var(--s6)}
+.kicker{font-size:var(--fs-xs);font-weight:900;text-transform:uppercase;
+    letter-spacing:.18em;color:var(--amber-l);margin-bottom:var(--s3)}
+.section-head h2{font-size:clamp(1.6rem,3.4vw,var(--fs-xl));color:#fff;margin-bottom:var(--s3)}
+.section-head p{color:var(--muted);font-size:var(--fs-base)}
+
+/* --- Kahraman alan --- */
+.hero{padding-top:clamp(var(--s6),7vw,var(--s7));padding-bottom:clamp(var(--s6),6.2vw,var(--s7));
+    text-align:center}
+.back{display:inline-flex;align-items:center;gap:var(--s1);color:var(--muted);
+    font-size:var(--fs-sm);font-weight:700;margin-bottom:var(--s5)}
+.back:hover{color:var(--ink);text-decoration:none}
+.hero h1{font-size:clamp(1.9rem,4.8vw,var(--fs-2xl));color:#fff;
+    margin-bottom:var(--s4);text-wrap:balance}
+.hero h1 span{background:linear-gradient(90deg,#fcd34d,var(--emerald-l));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .lede{color:var(--muted);font-size:var(--fs-md);line-height:1.55;margin-bottom:var(--s4)}
+.hero .micro{color:#64748b;font-size:var(--fs-sm)}
+
+/* --- Özellik ızgarası --- */
+.feat{display:grid;grid-template-columns:1fr;gap:var(--s3)}
+@media(min-width:768px){.feat{grid-template-columns:repeat(2,1fr);gap:var(--s4)}}
+.feat-item{display:flex;gap:var(--s3);align-items:flex-start;
+    background:var(--navy-2);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:var(--s4);
+    transition:border-color .2s ease,transform .2s ease}
+.feat-item:hover{border-color:rgba(251,191,36,.35);transform:translateY(-2px)}
+.feat-item .ic{font-size:var(--fs-lg);flex-shrink:0;line-height:1}
+.feat-item h3{color:#fff;font-weight:800;font-size:var(--fs-base);margin-bottom:var(--s1)}
+.feat-item p{color:var(--muted);font-size:var(--fs-sm);line-height:1.55}
+
+/* --- Süreç adımları --- */
+.steps{display:grid;grid-template-columns:1fr;gap:var(--s4);counter-reset:step}
+@media(min-width:768px){.steps{grid-template-columns:repeat(3,1fr)}}
+.step{position:relative;background:var(--navy-2);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:var(--s5) var(--s4) var(--s4)}
+.step::before{counter-increment:step;content:counter(step);
+    position:absolute;top:calc(-1 * var(--s3));left:var(--s4);
+    width:var(--s5);height:var(--s5);border-radius:999px;
+    background:linear-gradient(135deg,var(--amber),var(--amber-l));
+    color:#111827;font-family:'Sora';font-weight:800;font-size:var(--fs-sm);
+    display:flex;align-items:center;justify-content:center}
+.step h3{color:#fff;font-size:var(--fs-base);font-weight:800;margin-bottom:var(--s2)}
+.step p{color:var(--muted);font-size:var(--fs-sm);line-height:1.55}
+
+/* --- Fiyat şeridi: iç dolgu altın oranlı --- */
+.pricebar{background:linear-gradient(120deg,#065f46,#0f766e);
+    border-radius:var(--r-lg);padding:var(--s6) var(--s4);
+    text-align:center;margin-bottom:var(--s5)}
+.pricebar .trial{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.16em;
+    font-weight:900;color:#6ee7b7;margin-bottom:var(--s2)}
+.pricebar .price{font-family:'Sora';font-size:var(--fs-xl);font-weight:800;
+    color:#fff;letter-spacing:-.03em;margin-bottom:var(--s1)}
+.pricebar .price small{font-size:var(--fs-base);font-weight:700;color:#d1fae5}
+.pricebar .note{font-size:var(--fs-sm);color:#d1fae5;line-height:1.55;
+    max-width:var(--measure);margin-inline:auto}
+
+/* --- Eylem çifti: birincil / ikincil genişlik oranı φ : 1 --- */
+/* Genişlikler doğrudan altın kesitten verilir (61.8 / 38.2). Flex büyümesi
+   içeriğin min-content genişliğine takılıp oranı kaydırıyordu; yüzde sabit. */
+.actions{display:flex;gap:var(--s3);max-width:36rem;margin:0 auto}
+.actions > a:first-child{flex:0 0 calc(61.8% - var(--s3) * .618);min-width:0}
+.actions > a:last-child{flex:0 0 calc(38.2% - var(--s3) * .382);min-width:0}
+@media(max-width:560px){.actions{flex-direction:column}
+    .actions > a:first-child,.actions > a:last-child{flex:0 0 auto}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
+    min-height:var(--s6);border-radius:var(--r-md);font-weight:900;
+    line-height:1.15;letter-spacing:-.01em;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;text-align:center}
+.btn:hover{text-decoration:none}
+.btn-primary{background:linear-gradient(100deg,var(--amber),var(--amber-l) 38%,#f97316);
+    color:#111827;padding-inline:var(--s5);font-size:var(--fs-base);
+    box-shadow:0 14px 30px -14px rgba(245,158,11,.7);
+    transition:filter .18s,transform .18s,box-shadow .18s}
+.btn-primary:hover{filter:brightness(1.06);transform:translateY(-1px);
+    box-shadow:0 18px 36px -14px rgba(245,158,11,.8)}
+.btn-ghost{background:rgba(255,255,255,.04);border:1px solid #475569;color:var(--ink);
+    padding-inline:var(--s3);font-size:var(--fs-base);font-weight:800;
+    transition:border-color .15s,color .15s}
+.btn-ghost:hover{border-color:#94a3b8;color:#fff}
+
+/* --- SSS --- */
+.faq{display:flex;flex-direction:column;gap:var(--s2);max-width:var(--measure);margin-inline:auto}
+.faq details{background:var(--navy-2);border:1px solid var(--line);
+    border-radius:var(--r-md);padding:var(--s4);transition:border-color .2s}
+.faq details[open]{border-color:rgba(251,191,36,.35)}
+.faq summary{cursor:pointer;list-style:none;font-weight:800;color:#fff;
+    font-size:var(--fs-base);display:flex;justify-content:space-between;
+    align-items:center;gap:var(--s3)}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";color:var(--amber-l);font-size:var(--fs-md);
+    font-weight:800;flex-shrink:0;transition:transform .2s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq details p{color:var(--muted);font-size:var(--fs-sm);
+    line-height:1.65;margin-top:var(--s3)}
+
+/* --- Çapraz geçiş kutusu (diğer rol) --- */
+.crosslink{background:var(--navy-2);border:1px solid var(--line);
+    border-radius:var(--r-lg);padding:var(--s5);text-align:center;
+    max-width:var(--measure);margin-inline:auto}
+.crosslink h2{color:#fff;font-size:var(--fs-md);margin-bottom:var(--s2)}
+.crosslink p{color:var(--muted);font-size:var(--fs-sm);line-height:1.6;margin-bottom:var(--s4)}
+
+/* --- Alt bilgi --- */
+.foot{border-top:1px solid #1e293b;padding-block:var(--s6);color:var(--muted)}
+.foot .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+    gap:var(--s3);font-size:var(--fs-sm)}
+.foot .links{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4)}
+.foot a{color:#cbd5e1;font-weight:700}
+
+/* --- Erişilebilirlik --- */
+a:focus-visible,summary:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:var(--r-sm)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* --- Dar ekran --- */
+@media(max-width:640px){
+    .top .wrap{padding-inline:var(--s3);gap:var(--s3)}
+    .top .nav-link{display:none}
+    .nav-login{padding:var(--s2) var(--s3);font-size:var(--fs-xs)}
+}
+@media(prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms !important;transition-duration:.001ms !important}
+    html{scroll-behavior:auto}
+}

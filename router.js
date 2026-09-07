@@ -28,14 +28,11 @@ async function handleSPA_Routing() {
     } else if (hash === '#yatirimci' && landing) {
         // 1. buton → Yatırımcı funnel'ı (mevcut vitrin)
         landing.classList.remove('hidden');
-    } else if (hash === '#kurulumcu' && gateway) {
-        // 2. buton → Kurulumcu firma funnel'ı
-        gateway.classList.remove('hidden');
-        if (typeof renderInstallerFunnel === 'function') renderInstallerFunnel();
-    } else if (hash === '#danisman' && gateway) {
-        // 3. buton → Danışman funnel'ı
-        gateway.classList.remove('hidden');
-        if (typeof renderConsultantFunnel === 'function') renderConsultantFunnel();
+    } else if (hash === '#kurulumcu' || hash === '#danisman') {
+        // Rol funnel'ları statik, taranabilir sayfalara taşındı. Eski bağlantılar
+        // (paylaşılmış linkler, yer imleri) yeni adrese kalıcı olarak yönlendirilir.
+        window.location.replace(hash === '#kurulumcu' ? '/kurulumcu' : '/danisman');
+        return;
     } else if ((hash === '#yatirimciauth' || hash === '#kurulumcuauth' || hash === '#danismanauth') && auth) {
         // ROLE ÖZEL giriş/kayıt ekranı — yalnız ilgili rol gösterilir, seçici gizli
         auth.classList.remove('hidden');
@@ -76,6 +73,45 @@ async function handleSPA_Routing() {
 
 window.addEventListener('hashchange', handleSPA_Routing);
 
+/* ----------------------------------------------------------------------------
+   Yol adı → uygulama görünümü eşlemesi
+   /fatura-analizi, /hakkimda, /kvkk gibi adresler footer ve noscript'te
+   bağlantı olarak veriliyor; vercel.json bunları index.html'e yönlendiriyor.
+   Ziyaretçi (veya tarayıcı botu) bu adresi doğrudan açtığında rol seçim ekranı
+   yerine vaat edilen içeriği görmeli. Bu tablo o eşlemeyi kurar.
+   ---------------------------------------------------------------------------- */
+const EPC_PATH_VIEWS = {
+    '/fatura-analizi':      { module: 'billAnalyzerModule', init: 'openBillAnalyzer' },
+    '/hesaplayici':         { module: 'calculatorModule' },
+    '/akademi':             { module: 'educationModule' },
+    '/kurulum-sureci':      { module: 'regulationsModule' },
+    '/danismanlar':         { module: 'consultantsModule', init: 'renderConsultantsList' },
+    '/hakkimda':            { hash: '#hakkimda' },
+    '/kvkk':                { hash: '#kvkk' },
+    '/gizlilik':            { hash: '#gizlilik' },
+    '/cerez':               { hash: '#cerez' },
+    '/kullanim-sartlari':   { hash: '#kullanim-sartlari' },
+    '/abonelik-sozlesmesi': { hash: '#abonelik-sozlesmesi' },
+    '/acik-riza':           { hash: '#acik-riza' }
+};
+
+// Adresteki yol bir görünüme karşılık geliyorsa onu açar. Hash zaten varsa
+// kullanıcının niyeti önceliklidir; dokunulmaz. Açıldıysa true döner.
+function applyPathView() {
+    if (window.location.hash) return false;
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    const view = EPC_PATH_VIEWS[path];
+    if (!view) return false;
+
+    if (view.hash) { window.location.hash = view.hash; return true; }
+    if (typeof openPublicModule === 'function') {
+        openPublicModule(view.module);
+        if (view.init && typeof window[view.init] === 'function') window[view.init]();
+        return true;
+    }
+    return false;
+}
+
 window.addEventListener('load', async () => {
     if(supabaseClient) {
         const { data: { session } } = await supabaseClient.auth.getSession();
@@ -89,7 +125,8 @@ window.addEventListener('load', async () => {
             }
         }
     }
-    handleSPA_Routing();
+    // Yol adı bir görünüme işaret ediyorsa onu aç; değilse normal hash yönlendirmesi.
+    if (!applyPathView()) handleSPA_Routing();
 });
 
 
