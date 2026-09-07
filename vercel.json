@@ -63,51 +63,51 @@
     },
     {
       "source": "/fatura-analizi",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/hesaplayici",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/akademi",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/kurulum-sureci",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/danismanlar",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/hakkimda",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/kvkk",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/gizlilik",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/cerez",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/kullanim-sartlari",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/abonelik-sozlesmesi",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/acik-riza",
-      "destination": "/index.html"
+      "destination": "/"
     }
   ]
 }
