@@ -137,9 +137,11 @@ const LOAD_PROFILE = [
     0.55, 0.41, 0.34, 0.32, 0.36, 0.39, 0.35, 0.32,
     0.36, 0.49, 0.72, 0.96, 1.02, 0.90, 0.61, 0.32
 ];
+// Fatura girildiğinde profil bu katsayıyla ölçeklenir (şekil aynı, seviye değişir)
+let LOAD_SCALE = 1;
 function loadAt(h) {
     const i = Math.floor(h) % 24, j = (i + 1) % 24, f = h - Math.floor(h);
-    return LOAD_PROFILE[i] + (LOAD_PROFILE[j] - LOAD_PROFILE[i]) * f;
+    return (LOAD_PROFILE[i] + (LOAD_PROFILE[j] - LOAD_PROFILE[i]) * f) * LOAD_SCALE;
 }
 
 // --- ASHRAE açık hava katsayıları (Ocak→Aralık) ---
@@ -532,7 +534,123 @@ function buildGrid(scene) {
 }
 
 // ---------- EKRAN ÜSTÜ ARAYÜZ (kontrol çubuğu + enerji paneli) ----------
+/* ----------------------------------------------------------------------------
+   YERLEŞİM
+   Paneller büyüdükçe alt kontrol çubuğunun altına giriyor ve üst üste biniyordu.
+   Çözüm: iki kenar sütunu kendi içinde kayar, alt çubuğun üstünde biter; çubuk
+   ortada, sütunların arasında durur. Dar ekranda sütunlar katlanabilir.
+   ---------------------------------------------------------------------------- */
+function ensureColumns(container) {
+    let sol = document.getElementById('simLeftCol');
+    if (!sol) {
+        sol = document.createElement('div');
+        sol.id = 'simLeftCol';
+        sol.className = 'absolute left-4 z-20 flex flex-col gap-3';
+        sol.style.top = '1rem'; sol.style.bottom = '5.25rem';
+        sol.style.width = '18rem'; sol.style.overflowY = 'auto'; sol.style.overflowX = 'hidden';
+        sol.style.scrollbarWidth = 'thin';
+        container.appendChild(sol);
+
+        // index.html'deki skor kutusunu bu sütuna al — tek kaydırma bağlamı olsun
+        const skor = document.getElementById('scoreDisplay')?.closest('div.absolute');
+        if (skor) {
+            skor.className = 'bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 text-white shadow-2xl flex-shrink-0';
+            skor.style.pointerEvents = 'none';
+            sol.appendChild(skor);
+        }
+    }
+    let sag = document.getElementById('simRightCol');
+    if (!sag) {
+        sag = document.createElement('div');
+        sag.id = 'simRightCol';
+        sag.className = 'absolute right-4 z-20 flex flex-col gap-2';
+        sag.style.top = '1rem'; sag.style.bottom = '5.25rem';
+        sag.style.width = '17rem'; sag.style.overflowY = 'auto'; sag.style.overflowX = 'hidden';
+        sag.style.scrollbarWidth = 'thin';
+        container.appendChild(sag);
+    }
+    return { sol, sag };
+}
+
+/* Kontrol çubuğu ekran genişliğine göre bir veya iki satıra sarıyor; yüksekliği
+   sabit varsaymak çakışmaya yol açıyordu. Sütun alt sınırını çubuğu ölçerek
+   belirliyoruz — her genişlikte ve tam ekranda doğru kalır. */
+function layoutColumns() {
+    const cb = document.getElementById('simControlBar');
+    const sol = document.getElementById('simLeftCol'), sag = document.getElementById('simRightCol');
+    if (!cb || !sol || !sag) return;
+    const alt = Math.round(cb.offsetHeight) + 22;
+    sol.style.bottom = alt + 'px';
+    sag.style.bottom = alt + 'px';
+
+    // Dar ekranda sütunlar sahneyi tamamen kapatmasın
+    const c = document.getElementById('three-canvas-container');
+    const dar = c && c.clientWidth < 900;
+    sol.style.width = dar ? '15rem' : '18rem';
+    sag.style.width = dar ? '14.5rem' : '17rem';
+}
+
+// Kenar sütunlarını gizle/göster — 3B sahneyi tam görmek isteyenler için
+window.simTogglePanels = function () {
+    const sol = document.getElementById('simLeftCol'), sag = document.getElementById('simRightCol');
+    const gizli = sol.style.display === 'none';
+    sol.style.display = gizli ? 'flex' : 'none';
+    sag.style.display = gizli ? 'flex' : 'none';
+    const b = document.getElementById('simPanelsBtn');
+    if (b) b.textContent = gizli ? '🗂 Panelleri gizle' : '🗂 Panelleri göster';
+};
+
+/* Tam ekran.
+   Önce gerçek Fullscreen API denenir. iOS Safari'de eleman tam ekranı yoktur,
+   izin verilmeyen iframe'lerde de reddedilir; bu yüzden başarısız olursa
+   sayfayı kaplayan CSS moduna düşülür. Kullanıcı her koşulda tam ekran alır. */
+let _cssTamEkran = false;
+
+function setCssFullscreen(ac) {
+    const c = document.getElementById('three-canvas-container');
+    if (!c) return;
+    _cssTamEkran = ac;
+    if (ac) {
+        c.dataset.eskiStil = c.getAttribute('style') || '';
+        c.style.position = 'fixed'; c.style.inset = '0'; c.style.zIndex = '9999';
+        c.style.height = '100vh'; c.style.width = '100vw';
+        c.style.borderRadius = '0'; c.style.borderWidth = '0';
+        document.body.style.overflow = 'hidden';
+    } else {
+        c.setAttribute('style', c.dataset.eskiStil || '');
+        document.body.style.overflow = '';
+    }
+    onFsChange();
+}
+
+window.simFullscreen = function () {
+    const c = document.getElementById('three-canvas-container');
+    if (!c) return;
+    if (document.fullscreenElement) { document.exitFullscreen?.(); return; }
+    if (_cssTamEkran) { setCssFullscreen(false); return; }
+
+    const iste = c.requestFullscreen || c.webkitRequestFullscreen;
+    if (!iste) { setCssFullscreen(true); return; }
+    try {
+        const p = iste.call(c);
+        if (p && p.catch) p.catch(() => setCssFullscreen(true));
+    } catch (e) { setCssFullscreen(true); }
+};
+
+// Escape ile CSS modundan çık (gerçek tam ekranı tarayıcı kendi kapatır)
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && _cssTamEkran) setCssFullscreen(false); });
+
+function onFsChange() {
+    const c = document.getElementById('three-canvas-container');
+    const b = document.getElementById('simFsBtn');
+    const tam = !!document.fullscreenElement || _cssTamEkran;
+    if (b) b.textContent = tam ? '⤡ Çık (Esc)' : '⛶ Tam ekran';
+    if (c && !_cssTamEkran) c.style.borderRadius = document.fullscreenElement ? '0' : '';
+    setTimeout(() => { onWindowResize3D(); layoutColumns(); }, 60);
+}
+
 function injectOverlays(container) {
+    const { sol, sag } = ensureColumns(container);
     if (!document.getElementById('efFlowStyle')) {
         const st = document.createElement('style');
         st.id = 'efFlowStyle';
@@ -540,11 +658,36 @@ function injectOverlays(container) {
         document.head.appendChild(st);
     }
 
+    // Sağ sütun sekmeleri: Akış · Yıllık · Evim
+    if (!document.getElementById('simRightTabs')) {
+        const tb = document.createElement('div');
+        tb.id = 'simRightTabs';
+        tb.className = 'flex gap-1 bg-slate-900/85 backdrop-blur-md rounded-xl border border-white/15 p-1 flex-shrink-0';
+        tb.innerHTML = ['akis:⚡ Akış', 'yil:📅 Yıllık', 'ev:🏠 Evim'].map((x, i) => {
+            const [k, ad] = x.split(':');
+            return `<button data-tab="${k}" class="sim-rtab flex-1 text-[10px] font-black py-1.5 rounded-lg ${i === 0 ? 'bg-white/20 text-white' : 'text-white/60 hover:bg-white/10'}">${ad}</button>`;
+        }).join('');
+        sag.appendChild(tb);
+        tb.addEventListener('click', e => {
+            const b = e.target.closest('.sim-rtab'); if (!b) return;
+            const k = b.dataset.tab;
+            tb.querySelectorAll('.sim-rtab').forEach(x => {
+                x.className = 'sim-rtab flex-1 text-[10px] font-black py-1.5 rounded-lg ' +
+                    (x.dataset.tab === k ? 'bg-white/20 text-white' : 'text-white/60 hover:bg-white/10');
+            });
+            document.getElementById('energyFlowPanel').style.display = k === 'akis' ? '' : 'none';
+            document.getElementById('yearPanel').style.display = k === 'yil' ? '' : 'none';
+            document.getElementById('homePanel').style.display = k === 'ev' ? '' : 'none';
+            if (k === 'yil') renderYearly();
+            if (k === 'ev') renderHome();
+        });
+    }
+
     // Sağ: Enerji Akış Paneli
     if (!document.getElementById('energyFlowPanel')) {
         const ef = document.createElement('div');
         ef.id = 'energyFlowPanel';
-        ef.className = 'absolute top-4 right-4 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 text-white w-64 shadow-2xl z-10';
+        ef.className = 'bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/20 text-white shadow-2xl flex-shrink-0';
         ef.style.pointerEvents = 'none';
         const row = (icon, id, bar) => `<div class="mb-2">
             <div class="flex justify-between text-xs font-bold mb-1"><span>${icon}</span><span id="${id}">-</span></div>
@@ -577,17 +720,34 @@ function injectOverlays(container) {
                 </div>
             </div>
         `;
-        container.appendChild(ef);
+        sag.appendChild(ef);
+    }
+
+    if (!document.getElementById('yearPanel')) {
+        const yp = document.createElement('div');
+        yp.id = 'yearPanel';
+        yp.className = 'bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/20 text-white shadow-2xl flex-shrink-0';
+        yp.style.display = 'none';
+        yp.innerHTML = `<h4 class="font-black mb-2 text-sm">📅 Yıllık Üretim</h4>
+            <div id="yearBody" class="text-white"></div>
+            <button onclick="renderYearly()" class="w-full mt-2 bg-white/10 hover:bg-white/20 text-[10px] font-bold py-1.5 rounded-lg">↻ Yeniden hesapla</button>`;
+        sag.appendChild(yp);
+    }
+
+    if (!document.getElementById('homePanel')) {
+        const hp = document.createElement('div');
+        hp.id = 'homePanel';
+        hp.className = 'bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/20 text-white shadow-2xl flex-shrink-0 text-xs';
+        hp.style.display = 'none';
+        hp.innerHTML = `<h4 class="font-black mb-2 text-sm">🏠 Evim</h4><div id="homeBody"></div>`;
+        sag.appendChild(hp);
     }
 
     // Sol alt: Sistem kurulum paneli — ekle / çıkar / yönlendir
     if (!document.getElementById('simBuildPanel')) {
         const bp = document.createElement('div');
         bp.id = 'simBuildPanel';
-        bp.className = 'absolute left-4 bg-slate-900/85 backdrop-blur-md rounded-xl border border-white/15 text-white shadow-2xl z-20 w-72 text-xs';
-        bp.style.top = '13.5rem';
-        bp.style.maxHeight = 'calc(100% - 16rem)';
-        bp.style.overflowY = 'auto';
+        bp.className = 'bg-slate-900/88 backdrop-blur-md rounded-xl border border-white/15 text-white shadow-2xl text-xs flex-shrink-0';
 
         const sayacSatir = (etiket, ikon, id, ipucu) => `
             <div class="flex items-center gap-2 py-1.5" title="${ipucu}">
@@ -632,17 +792,27 @@ function injectOverlays(container) {
 
             <div class="px-3 py-2">
                 <div class="font-black text-[11px] tracking-wide mb-2">🌳 ÇEVRE (GÖLGE)</div>
-                <label class="flex items-center gap-2 py-1 cursor-pointer">
-                    <input type="checkbox" data-obs="bina" class="w-4 h-4 rounded accent-amber-500">
-                    <span class="font-bold flex-1">Komşu bina (güneybatı)</span>
-                </label>
-                <label class="flex items-center gap-2 py-1 cursor-pointer">
-                    <input type="checkbox" data-obs="agac" class="w-4 h-4 rounded accent-amber-500">
-                    <span class="font-bold flex-1">Ağaç (güneydoğu)</span>
-                </label>
+                ${OBSTACLES.map(o => `
+                <div class="py-1">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" data-obs="${o.key}" class="w-4 h-4 rounded accent-amber-500">
+                        <span class="font-bold flex-1">${o.ad}</span>
+                        <span id="obs_${o.key}_ozet" class="text-[10px] text-white/50 font-mono"></span>
+                    </label>
+                    <div id="obs_${o.key}_ayar" class="hidden pl-6 pt-1 space-y-1">
+                        <label class="flex items-center gap-2">
+                            <span class="w-12 text-[10px] text-white/60">Yükseklik</span>
+                            <input data-obs-h="${o.key}" type="range" min="3" max="20" step="0.5" value="${o.h}" class="flex-1 accent-amber-500">
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <span class="w-12 text-[10px] text-white/60">Mesafe</span>
+                            <input data-obs-z="${o.key}" type="range" min="5" max="26" step="0.5" value="${o.z}" class="flex-1 accent-amber-500">
+                        </label>
+                    </div>
+                </div>`).join('')}
                 <p id="simShadeNote" class="text-[10px] text-white/60 mt-1 leading-tight"></p>
             </div>`;
-        container.appendChild(bp);
+        sol.appendChild(bp);
 
         bp.addEventListener('click', (e) => {
             const b = e.target.closest('button'); if (!b) return;
@@ -669,6 +839,17 @@ function injectOverlays(container) {
                 refreshBuildPanel();
             });
         });
+        // Yükseklik ve mesafe: hem 3B nesneyi hem gölge hesabını aynı anda değiştirir
+        bp.querySelectorAll('[data-obs-h],[data-obs-z]').forEach(sl => {
+            sl.addEventListener('input', e => {
+                const el = e.target;
+                const key = el.dataset.obsH || el.dataset.obsZ;
+                const o = OBSTACLES.find(x => x.key === key); if (!o) return;
+                if (el.dataset.obsH) o.h = parseFloat(el.value); else o.z = parseFloat(el.value);
+                applyObstacleTransform(o);
+                refreshBuildPanel();
+            });
+        });
 
         document.getElementById('simAzimuth').addEventListener('change', e => {
             SIM.azimuthDeg = parseFloat(e.target.value); applyRoofOrientation(); refreshBuildPanel();
@@ -685,7 +866,8 @@ function injectOverlays(container) {
     if (!document.getElementById('simControlBar')) {
         const cb = document.createElement('div');
         cb.id = 'simControlBar';
-        cb.className = 'absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/15 shadow-2xl z-10 flex items-center gap-3';
+        cb.className = 'absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-900/88 backdrop-blur-md px-3 py-2 rounded-xl border border-white/15 shadow-2xl z-30 flex flex-wrap items-center justify-center gap-2 gap-y-1.5';
+        cb.style.maxWidth = 'min(52rem, calc(100% - 2rem))';
         cb.innerHTML = `
             <button id="simReset" class="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-lg">↺ Sıfırla</button>
             <div class="w-px h-6 bg-white/20"></div>
@@ -705,6 +887,9 @@ function injectOverlays(container) {
                 <option value="0.45">⛅ Parçalı</option>
                 <option value="0.8">☁️ Kapalı</option>
             </select>
+            <div class="w-px h-6 bg-white/20"></div>
+            <button id="simPanelsBtn" onclick="simTogglePanels()" class="bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap">🗂 Panelleri gizle</button>
+            <button id="simFsBtn" onclick="simFullscreen()" class="bg-amber-500/85 hover:bg-amber-500 text-slate-900 text-[11px] font-black px-2.5 py-1.5 rounded-lg whitespace-nowrap">⛶ Tam ekran</button>
         `;
         container.appendChild(cb);
         document.getElementById('simReset').addEventListener('click', resetSim);
@@ -727,6 +912,13 @@ function injectOverlays(container) {
         document.getElementById('simSeason').addEventListener('change', e => { SIM.dayOfYear = parseInt(e.target.value, 10); updateScore(); });
         document.getElementById('simCloud').addEventListener('change', e => { SIM.cloud = parseFloat(e.target.value); updateScore(); });
     }
+
+    // Kontrol çubuğu hazır olduktan SONRA yerleşimi hizala ve tam ekranı bağla
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    layoutColumns();
+    const cbEl = document.getElementById('simControlBar');
+    if (window.ResizeObserver && cbEl) new ResizeObserver(layoutColumns).observe(cbEl);
 }
 
 function updateClock() {
@@ -771,6 +963,161 @@ function narrate() {
         return 'Kış güneşi alçak: dikey balkon panelleri, eğik çatı panellerine göre oransal olarak çok daha iyi üretiyor.';
 
     return 'Üretim ve tüketim dengede — evin ihtiyacı doğrudan panellerden karşılanıyor.';
+}
+
+/* ============================================================================
+   YILLIK ÖZET
+   Her ayın 15'i temsilî gün kabul edilip tam gün simüle edilir, ayın gün
+   sayısıyla çarpılır. Aynı motor, aynı gölge ve yön ayarları — yani soldaki
+   seçimler doğrudan yıllık tabloya yansır.
+   ============================================================================ */
+const AY_ADI = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+const AY_GUN = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const AY_TEMSIL = [15, 46, 74, 105, 135, 166, 196, 227, 258, 288, 319, 349];
+
+// Tek günün üretimini hesaplar (canlı durumu bozmadan)
+function simulateDayKwh(n, golgeliMi) {
+    const yedek = { shade: E.shade, el: E.sunElDeg, az: E.sunAzDeg, sr: E.sunrise, ss: E.sunset };
+    const acik = OBSTACLES.map(o => o.on);
+    if (!golgeliMi) OBSTACLES.forEach(o => { o.on = false; });
+
+    const kwp = panelCount * SIM.panelWp / 1000;
+    const bKwp = balconyCount * SIM.balconyWp / 1000;
+    const invKw = Math.max(1.5, kwp / SIM.dcAcRatio);
+    let kwh = 0; const dt = 1 / 60;
+    for (let h = 0; h < 24; h += dt) {
+        const amb = ambientC(n, h, SIM.lat);
+        const ir = irradianceOn(n, h, SIM.lat, SIM.cloud, SIM.tiltDeg, SIM.azimuthDeg);
+        const tf = 1 + SIM.tempCoeff * (amb + (SIM.noct - 20) / 800 * ir.poa - 25);
+        const mm = E.shade > 0.02 && E.shade < 0.98 ? (1 - 0.18 * (1 - Math.abs(2 * E.shade - 1))) : 1;
+        const roof = Math.min(Math.max(0, kwp * (ir.poa / 1000) * tf * SIM.systemLoss * mm) * SIM.invEff, invKw);
+        let balk = 0;
+        if (bKwp > 0) {
+            const irB = irradianceOn(n, h, SIM.lat, SIM.cloud, SIM.balconyTilt, SIM.balconyAz);
+            balk = Math.max(0, bKwp * (irB.poa / 1000) * (1 + SIM.tempCoeff * (amb + (SIM.noct - 20) / 800 * irB.poa - 25)) * SIM.systemLoss) * SIM.invEff;
+        }
+        kwh += (roof + balk) * dt;
+    }
+    OBSTACLES.forEach((o, i) => { o.on = acik[i]; });
+    E.shade = yedek.shade; E.sunElDeg = yedek.el; E.sunAzDeg = yedek.az; E.sunrise = yedek.sr; E.sunset = yedek.ss;
+    return kwh;
+}
+
+function renderYearly() {
+    const kutu = document.getElementById('yearBody');
+    if (!kutu) return;
+    if (panelCount === 0 && balconyCount === 0) {
+        kutu.innerHTML = '<p class="text-[11px] text-white/60 leading-snug">Önce soldan panel ekleyin — yıllık üretim tablosu buraya çıkacak.</p>';
+        return;
+    }
+    kutu.innerHTML = '<p class="text-[11px] text-white/60">Hesaplanıyor…</p>';
+
+    setTimeout(() => {
+        const golgeVar = OBSTACLES.some(o => o.on);
+        const aylik = [], aylikGolgesiz = [];
+        for (let i = 0; i < 12; i++) {
+            aylik.push(simulateDayKwh(AY_TEMSIL[i], true) * AY_GUN[i]);
+            aylikGolgesiz.push(golgeVar ? simulateDayKwh(AY_TEMSIL[i], false) * AY_GUN[i] : 0);
+        }
+        const toplam = aylik.reduce((a, b) => a + b, 0);
+        const toplamGolgesiz = aylikGolgesiz.reduce((a, b) => a + b, 0);
+        const enBuyuk = Math.max(...(golgeVar ? aylikGolgesiz : aylik));
+        const kwp = (panelCount * SIM.panelWp + balconyCount * SIM.balconyWp) / 1000;
+
+        const W = 244, H = 118, pad = 14;
+        const bw = (W - pad * 2) / 12;
+        let cizim = '';
+        for (let i = 0; i < 12; i++) {
+            const hh = enBuyuk > 0 ? (aylik[i] / enBuyuk) * (H - 30) : 0;
+            const hg = enBuyuk > 0 ? (aylikGolgesiz[i] / enBuyuk) * (H - 30) : 0;
+            const x = pad + i * bw;
+            if (golgeVar) cizim += `<rect x="${x + 1}" y="${H - 16 - hg}" width="${bw - 2}" height="${hg}" fill="#64748b" opacity="0.45" rx="1"/>`;
+            cizim += `<rect x="${x + 1}" y="${H - 16 - hh}" width="${bw - 2}" height="${hh}" fill="#fbbf24" rx="1"/>`;
+            cizim += `<text x="${x + bw / 2}" y="${H - 5}" font-size="7" fill="#94a3b8" text-anchor="middle">${AY_ADI[i]}</text>`;
+        }
+
+        kutu.innerHTML = `
+            <svg viewBox="0 0 ${W} ${H}" class="w-full" style="height:118px">${cizim}</svg>
+            <div class="text-[11px] font-bold mt-1">Yıllık üretim: <span class="text-amber-300">${Math.round(toplam).toLocaleString('tr-TR')} kWh</span></div>
+            <div class="text-[10px] text-white/60">${kwp.toFixed(1)} kWp · ${Math.round(toplam / Math.max(kwp, 0.01))} kWh/kWp · ${SIM.cityName}</div>
+            ${golgeVar ? `<div class="mt-2 bg-red-500/15 border border-red-400/30 rounded-lg px-2 py-1 text-[10px] text-red-200 leading-snug">
+                Gri sütunlar gölgesiz hali. Engeller yılda <strong>${Math.round(toplamGolgesiz - toplam).toLocaleString('tr-TR')} kWh</strong>
+                (%${Math.round((1 - toplam / toplamGolgesiz) * 100)}) götürüyor — kaybın neredeyse tamamı kış aylarında.</div>` : ''}
+            <p class="text-[10px] text-white/50 mt-2 leading-snug">Her ayın 15'i temsilî gün alınıp tam gün simüle edildi; yön, eğim, gölge ve bulutluluk ayarları tabloya doğrudan yansır.</p>
+            <p class="text-[10px] text-amber-200/70 mt-1 leading-snug">⚠️ Bu bir <strong>açık hava</strong> hesabıdır (şu an: ${['açık', 'parçalı bulutlu', 'kapalı'][SIM.cloud === 0 ? 0 : SIM.cloud < 0.6 ? 1 : 2]}). Gerçek yıllık üretim, bölgenizin gerçek bulutluluk ve toz koşullarına göre değişir; kesin sonuç için saha etüdü gerekir.</p>`;
+    }, 30);
+}
+
+/* ============================================================================
+   EVİM — çatı alanı ve fatura ile simülasyonu ziyaretçinin evine bağlar
+   Katsayılar platformun geri kalanıyla aynı kaynaktan (window.EPC_SETTINGS)
+   gelir; böylece hesaplayıcı, fatura analizi ve simülasyon aynı dili konuşur.
+   ============================================================================ */
+let evAyarli = false;
+
+function renderHome() {
+    const k = document.getElementById('homeBody');
+    if (!k) return;
+    const S = window.EPC_SETTINGS || {};
+    const m2PerKwp = S.roofM2PerKwp || 5.5;
+    const lc = window.lastCalc;
+
+    k.innerHTML = `
+        <label class="block mb-2">
+            <span class="font-bold">Kullanılabilir çatı alanı</span>
+            <div class="flex items-center gap-2 mt-1">
+                <input id="homeRoof" type="number" min="0" step="5" value="40" class="w-full bg-slate-800 rounded-lg px-2 py-1 border border-white/20 outline-none">
+                <span class="text-white/60">m²</span>
+            </div>
+        </label>
+        <label class="block mb-2">
+            <span class="font-bold">Aylık elektrik faturanız</span>
+            <div class="flex items-center gap-2 mt-1">
+                <input id="homeBill" type="number" min="0" step="50" value="" placeholder="örn. 1500" class="w-full bg-slate-800 rounded-lg px-2 py-1 border border-white/20 outline-none">
+                <span class="text-white/60">TL</span>
+            </div>
+        </label>
+        ${lc && lc.monthly_bill ? `<button id="homeFromCalc" class="w-full bg-emerald-500/80 hover:bg-emerald-500 text-slate-900 font-black rounded-lg py-1.5 mb-2">📄 Hesaplayıcıdaki faturamı kullan (${Math.round(lc.monthly_bill)} TL)</button>` : ''}
+        <button id="homeApply" class="w-full bg-amber-500/90 hover:bg-amber-500 text-slate-900 font-black rounded-lg py-1.5">Evime uygula</button>
+        <div id="homeResult" class="mt-2 text-[10px] text-white/70 leading-snug">
+            Çatı alanı kaç panel sığdığını, fatura da evin gerçek tüketim seviyesini belirler.
+            Uyguladığınızda simülasyon sizin eviniz olur.
+        </div>`;
+
+    document.getElementById('homeApply').onclick = () => {
+        const m2 = parseFloat(document.getElementById('homeRoof').value) || 0;
+        const fatura = parseFloat(document.getElementById('homeBill').value) || 0;
+        const sonuc = [];
+
+        // Çatı alanı → sığan panel sayısı (platformun m²/kWp katsayısıyla)
+        if (m2 > 0) {
+            const kwp = m2 / m2PerKwp;
+            const adet = Math.max(0, Math.min(MAX_PANELS, Math.floor(kwp / (SIM.panelWp / 1000))));
+            panelCount = adet;
+            sonuc.push(`${m2} m² çatıya <strong>${adet} panel</strong> (${(adet * SIM.panelWp / 1000).toFixed(1)} kWp) sığıyor` +
+                       (kwp / (SIM.panelWp / 1000) > MAX_PANELS ? ' — sahnede en fazla 8 panel gösterilebiliyor' : ''));
+        }
+
+        // Fatura → günlük tüketim → yük profilini ölçekle
+        if (fatura > 0) {
+            const tarife = S.tariffMesken || S.tariff || 2.5;
+            const gunlukKwh = (fatura / tarife) / 30;
+            const tabanToplam = LOAD_PROFILE.reduce((a, b) => a + b, 0);
+            LOAD_SCALE = gunlukKwh / tabanToplam;
+            sonuc.push(`Fatura → günde <strong>${gunlukKwh.toFixed(1)} kWh</strong> tüketim (${tarife} TL/kWh ile)`);
+        }
+
+        evAyarli = true;
+        refreshBuildPanel(); refreshSprites(); updateScore();
+        document.getElementById('homeResult').innerHTML =
+            sonuc.length ? sonuc.join('<br>') + '<br><span class="text-amber-300">Günü oynatıp sonucu görün.</span>'
+                         : 'En az bir alan doldurun.';
+    };
+
+    const btn = document.getElementById('homeFromCalc');
+    if (btn) btn.onclick = () => {
+        document.getElementById('homeBill').value = Math.round(window.lastCalc.monthly_bill);
+    };
 }
 
 function updateEnergyPanel() {
@@ -847,6 +1194,16 @@ function applyRoofOrientation() {
 }
 
 /* Kurulum panelini durumla eşitler ve seçime göre kısa bir mühendis notu yazar. */
+/* Engelin yüksekliğini ve mesafesini 3B nesneye uygular.
+   obstacleProfile() aynı o.h / o.z değerlerini okuduğu için ekrandaki gölge ile
+   hesaplanan kayıp otomatik olarak senkron kalır. */
+function applyObstacleTransform(o) {
+    const m = appObjs && appObjs.obstacles && appObjs.obstacles[o.key];
+    if (!m || !m.userData.h0) return;
+    m.scale.y = o.h / m.userData.h0;   // taban yerde kalır, tepe yükselir
+    m.position.z = o.z;
+}
+
 function refreshBuildPanel() {
     const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
     set('cnt_panel', panelCount); set('cnt_balkon', balconyCount);
@@ -871,10 +1228,25 @@ function refreshBuildPanel() {
                      : SIM.tiltDeg > 33 ? 'Dik montaj: kışı kayırır, kar da daha kolay kayar'
                      : 'İstanbul için yıllık optimum 30-35° civarındadır';
 
+    OBSTACLES.forEach(o => {
+        const ay = document.getElementById('obs_' + o.key + '_ayar');
+        if (ay) ay.classList.toggle('hidden', !o.on);
+        const oz = document.getElementById('obs_' + o.key + '_ozet');
+        if (oz) oz.textContent = o.on ? `${o.h.toFixed(0)}m · ${o.z.toFixed(0)}m` : '';
+        const cb = document.querySelector(`[data-obs="${o.key}"]`);
+        if (cb) cb.checked = o.on;
+    });
+
     const acikEngel = OBSTACLES.filter(o => o.on).map(o => o.ad);
-    set('simShadeNote', acikEngel.length
-        ? acikEngel.join(' ve ') + ' doğrudan ışını kesince difüz ışık kalır; dizideki bir panelin gölgelenmesi tüm dizeyi düşürür.'
-        : 'Engel ekleyip günü oynatın — gölgenin üretimden ne götürdüğünü panelde görün.');
+    if (acikEngel.length) {
+        const p = OBSTACLES.filter(o => o.on).map(o => {
+            const pr = obstacleProfile(o);
+            return `${o.ad}: ufuktan ${pr.elMax.toFixed(0)}° yükseklik`;
+        });
+        set('simShadeNote', p.join(' · ') + '. Güneş bu açının altındayken doğrudan ışın kesilir — kışın öğle güneşi bile alçaktır.');
+    } else {
+        set('simShadeNote', 'Engel ekleyip günü oynatın — gölgenin üretimden ne götürdüğünü panelde görün.');
+    }
 }
 
 function refreshSprites() {
@@ -892,6 +1264,10 @@ function addHP() { if (!hpOn) { hpOn = true; refreshSprites(); refreshBuildPanel
 function resetSim() {
     panelCount = 0; balconyCount = 0; countBat = 0; countEV = 0; hpOn = false;
     OBSTACLES.forEach(o => { o.on = false; });
+    OBSTACLES[0].h = 11; OBSTACLES[0].z = 11;
+    OBSTACLES[1].h = 8;  OBSTACLES[1].z = 8;
+    OBSTACLES.forEach(o => applyObstacleTransform(o));
+    LOAD_SCALE = 1;
     batteryLevel = 0; carLevel = 0; waterTemp = 0;
     E.batKwh = 0; E.evKwh = 12; E.tankC = 18;
     E.dProd = E.dCons = E.dImp = E.dExp = E.dShadeLoss = 0; E.lastHour = -1;
@@ -955,6 +1331,7 @@ window.initApp3DScene = function () {
     appObjs.obstacles = {};
     OBSTACLES.forEach(o => {
         const m = o.key === 'agac' ? buildTree(o) : buildNeighbourBuilding(o);
+        m.userData.h0 = o.h;          // inşa anındaki yükseklik — ölçek referansı
         appScene.add(m); appObjs.obstacles[o.key] = m;
     });
 
@@ -1210,6 +1587,7 @@ function onWindowResize3D() {
     if (!c || !appRenderer || !appCamera) return;
     const w = c.clientWidth, h = c.clientHeight; if (!w || !h) return;
     appCamera.aspect = w / h; appCamera.updateProjectionMatrix(); appRenderer.setSize(w, h);
+    layoutColumns();
 }
 
 /* ----------------------------------------------------------------------------
