@@ -177,6 +177,9 @@ async function fetchAdminData() {
     // 7b) DONANIM KARŞILAŞTIRMA (yalnız admin görür)
     await renderHardwareAdmin();
 
+    // 7c) TEDARİKÇİLER (profil · ürün · ilan onayları)
+    await renderSuppliersAdmin();
+
     // 8) AYARLAR / PARAMETRELER (yalnız admin görür)
     await renderSettingsAdmin();
 
@@ -735,6 +738,170 @@ window.psDelete = async (id) => {
     const { error } = await supabaseClient.from('process_steps').delete().eq('id', id);
     if (error) { alert('Silinemedi: ' + error.message); return; }
     renderProcessAdmin();
+};
+
+
+// ============================================================================
+// TEDARİKÇİ YÖNETİMİ (suppliers + supplier_products + supplier_dealer_ads)
+// Profil onayı, ürün onayı ve bayi ilanı onayı. Onaylanan ürün
+// approve_supplier_product() RPC'si ile donanım karşılaştırmasına taşınır.
+// tedarikci.sql çalıştırılmış olmalıdır.
+// ============================================================================
+let _supList = [], _supProds = [], _supAds = [];
+
+async function renderSuppliersAdmin() {
+    const pane = document.getElementById('adminPaneSuppliers');
+    if (!pane || !supabaseClient) return;
+    pane.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+
+    const [sup, prod, ads] = await Promise.all([
+        supabaseClient.from('suppliers').select('*').order('created_at', { ascending: false }),
+        supabaseClient.from('supplier_products').select('*').order('created_at', { ascending: false }),
+        supabaseClient.from('supplier_dealer_ads').select('*').order('created_at', { ascending: false })
+    ]);
+    if (sup.error) {
+        pane.innerHTML = `<div class="bg-white border border-slate-200 rounded-xl p-5">
+            <p class="text-sm text-red-500">Yüklenemedi: ${admEscape(sup.error.message)}</p>
+            <p class="text-xs text-slate-400 mt-1">tedarikci.sql çalıştırıldı mı?</p></div>`;
+        return;
+    }
+    _supList = sup.data || []; _supProds = prod.data || []; _supAds = ads.data || [];
+
+    const bekleyenP = _supList.filter(x => x.status === 'pending');
+    const bekleyenU = _supProds.filter(x => x.status === 'pending');
+    const bekleyenI = _supAds.filter(x => x.status === 'pending');
+
+    const rozet = (st) => ({
+        draft:    '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">Taslak</span>',
+        pending:  '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Onay bekliyor</span>',
+        approved: '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Onaylı</span>',
+        rejected: '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">Reddedildi</span>'
+    })[st] || '';
+
+    const supAd = (id) => { const x = _supList.find(s => s.id === id); return x ? x.company_name : '—'; };
+
+    pane.innerHTML = `
+    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <h3 class="text-lg font-black text-slate-800 mb-1">📦 Tedarikçi Profilleri</h3>
+        <p class="text-xs text-slate-400 mb-4">Onaylanan tedarikçiler kurulumcu firmaların gördüğü dizine girer. Yatırımcıya gösterilmez.</p>
+        ${bekleyenP.length ? `<p class="text-xs font-bold text-amber-700 mb-2">${bekleyenP.length} profil onay bekliyor</p>` : ''}
+        <div class="space-y-2">
+            ${_supList.map(x => `
+                <div class="border border-slate-200 rounded-lg p-3">
+                    <div class="flex items-start justify-between gap-2 flex-wrap">
+                        <div class="min-w-0">
+                            <strong class="text-sm text-slate-800">${admEscape(x.company_name)}</strong> ${rozet(x.status)}
+                            ${x.banned ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-600 text-white">ENGELLİ</span>' : ''}
+                            <div class="text-[11px] text-slate-400">${admEscape(x.city)} · ${admEscape(x.email)} · ${admEscape(x.phone)}</div>
+                            ${(x.categories || []).length ? `<div class="text-[11px] text-slate-500 mt-0.5">${(x.categories || []).map(admEscape).join(' · ')}</div>` : ''}
+                            ${(x.brands || []).length ? `<div class="text-[11px] text-slate-400">Markalar: ${(x.brands || []).map(admEscape).join(', ')}</div>` : ''}
+                            ${x.about ? `<div class="text-[11px] text-slate-500 mt-1 max-w-xl">${admEscape(x.about).slice(0, 200)}</div>` : ''}
+                        </div>
+                        <span class="flex gap-1 flex-shrink-0">
+                            ${x.status !== 'approved' ? `<button onclick="supAdminApprove('${x.id}')" class="text-[11px] bg-emerald-600 text-white font-bold px-2 py-1 rounded">Onayla</button>` : ''}
+                            ${x.status === 'pending' ? `<button onclick="supAdminReject('${x.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Düzeltme İste</button>` : ''}
+                            <button onclick="supAdminToggleBan('${x.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">${x.banned ? 'Engeli Kaldır' : 'Engelle'}</button>
+                        </span>
+                    </div>
+                </div>`).join('') || '<p class="text-xs text-slate-400 italic">Henüz tedarikçi kaydı yok.</p>'}
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <h3 class="text-lg font-black text-slate-800 mb-1">⚖️ Ürün Onayları</h3>
+        <p class="text-xs text-slate-400 mb-4">Onaylanan ürün donanım karşılaştırma tablosuna eklenir. Değerleri kaynak dokümanla karşılaştırın.</p>
+        ${bekleyenU.length ? `<p class="text-xs font-bold text-amber-700 mb-2">${bekleyenU.length} ürün onay bekliyor</p>` : ''}
+        <div class="space-y-2">
+            ${_supProds.map(x => `
+                <div class="border border-slate-200 rounded-lg p-3 flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <strong class="text-sm text-slate-800">${admEscape(x.name)}</strong> ${rozet(x.status)}
+                        ${x.source_url ? `<a href="${admEscape(x.source_url)}" target="_blank" rel="noopener nofollow" class="text-[11px] text-emerald-700 font-bold ml-1">Kaynak ↗</a>`
+                                       : '<span class="text-[10px] font-bold text-red-500 ml-1">kaynak yok</span>'}
+                        <div class="text-[11px] text-slate-400">${admEscape(supAd(x.supplier_id))} · ${admEscape(x.category_key)}</div>
+                        <div class="text-[11px] text-slate-500">${admEscape((x.cells || []).filter(Boolean).join(' · '))}</div>
+                        ${x.note ? `<div class="text-[11px] text-slate-400 italic mt-0.5">Not: ${admEscape(x.note)}</div>` : ''}
+                    </div>
+                    <span class="flex gap-1 flex-shrink-0">
+                        ${x.status !== 'approved' ? `<button onclick="supAdminApproveProduct('${x.id}')" class="text-[11px] bg-emerald-600 text-white font-bold px-2 py-1 rounded">Onayla &amp; Yayınla</button>` : ''}
+                        ${x.status === 'pending' ? `<button onclick="supAdminRejectProduct('${x.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Düzeltme İste</button>` : ''}
+                    </span>
+                </div>`).join('') || '<p class="text-xs text-slate-400 italic">Ürün kaydı yok.</p>'}
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <h3 class="text-lg font-black text-slate-800 mb-1">🤝 Bayi İlanı Onayları</h3>
+        <p class="text-xs text-slate-400 mb-4">Onaylanan ilanlar kurulumcu firmalara gösterilir.</p>
+        ${bekleyenI.length ? `<p class="text-xs font-bold text-amber-700 mb-2">${bekleyenI.length} ilan onay bekliyor</p>` : ''}
+        <div class="space-y-2">
+            ${_supAds.map(x => `
+                <div class="border border-slate-200 rounded-lg p-3 flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <strong class="text-sm text-slate-800">${admEscape(x.title)}</strong> ${rozet(x.status)}
+                        <div class="text-[11px] text-slate-400">${admEscape(supAd(x.supplier_id))} · ${admEscape((x.cities || []).join(', '))}</div>
+                        ${x.body ? `<div class="text-[11px] text-slate-500 mt-0.5 max-w-xl">${admEscape(x.body).slice(0, 200)}</div>` : ''}
+                    </div>
+                    <span class="flex gap-1 flex-shrink-0">
+                        ${x.status !== 'approved' ? `<button onclick="supAdminApproveAd('${x.id}')" class="text-[11px] bg-emerald-600 text-white font-bold px-2 py-1 rounded">Onayla</button>` : ''}
+                        ${x.status === 'pending' ? `<button onclick="supAdminRejectAd('${x.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Reddet</button>` : ''}
+                    </span>
+                </div>`).join('') || '<p class="text-xs text-slate-400 italic">İlan yok.</p>'}
+        </div>
+    </div>`;
+
+    if (typeof setTabBadge === 'function') setTabBadge('suppliers', bekleyenP.length + bekleyenU.length + bekleyenI.length);
+}
+
+window.supAdminApprove = async (id) => {
+    const { error } = await supabaseClient.from('suppliers').update({ status: 'approved', reject_reason: null }).eq('id', id);
+    if (error) { alert('Onaylanamadı: ' + error.message); return; }
+    renderSuppliersAdmin();
+};
+window.supAdminReject = async (id) => {
+    const r = prompt('Tedarikçiye iletilecek düzeltme notu:');
+    if (r === null) return;
+    const { error } = await supabaseClient.from('suppliers').update({ status: 'rejected', reject_reason: r || null }).eq('id', id);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    renderSuppliersAdmin();
+};
+window.supAdminToggleBan = async (id) => {
+    const x = _supList.find(s => s.id === id); if (!x) return;
+    let reason = null;
+    if (!x.banned) { reason = prompt('Engelleme sebebi:'); if (reason === null) return; }
+    const { error } = await supabaseClient.from('suppliers')
+        .update({ banned: !x.banned, ban_reason: x.banned ? null : (reason || null) }).eq('id', id);
+    if (error) { alert('İşlem başarısız: ' + error.message); return; }
+    renderSuppliersAdmin();
+};
+
+window.supAdminApproveProduct = async (id) => {
+    const x = _supProds.find(p => p.id === id);
+    if (x && !x.source_url && !confirm('Bu üründe kaynak bağlantısı yok. Değerleri doğrulanmamış veri olarak yayınlamak platformun bağımsızlık iddiasını zayıflatır.\n\nYine de yayınlansın mı?')) return;
+    const { error } = await supabaseClient.rpc('approve_supplier_product', { p_id: id });
+    if (error) { alert('Yayınlanamadı: ' + error.message); return; }
+    renderSuppliersAdmin();
+    if (typeof renderHardwareAdmin === 'function') renderHardwareAdmin();
+};
+window.supAdminRejectProduct = async (id) => {
+    const r = prompt('Tedarikçiye iletilecek düzeltme notu:');
+    if (r === null) return;
+    const { error } = await supabaseClient.from('supplier_products').update({ status: 'rejected', reject_reason: r || null }).eq('id', id);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    renderSuppliersAdmin();
+};
+
+window.supAdminApproveAd = async (id) => {
+    const { error } = await supabaseClient.from('supplier_dealer_ads').update({ status: 'approved', reject_reason: null }).eq('id', id);
+    if (error) { alert('Onaylanamadı: ' + error.message); return; }
+    renderSuppliersAdmin();
+};
+window.supAdminRejectAd = async (id) => {
+    const r = prompt('Red sebebi:');
+    if (r === null) return;
+    const { error } = await supabaseClient.from('supplier_dealer_ads').update({ status: 'rejected', reject_reason: r || null }).eq('id', id);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    renderSuppliersAdmin();
 };
 
 

@@ -31,15 +31,21 @@ window.authSetRole = function (role) {
     window.authRole = role;
     const on = 'auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-emerald-600 bg-emerald-600 text-white';
     const off = 'auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white';
-    const f = document.getElementById('roleFirma'), c = document.getElementById('roleConsultant'), i = document.getElementById('roleInvestor');
+    const f = document.getElementById('roleFirma'), c = document.getElementById('roleConsultant'),
+          i = document.getElementById('roleInvestor'), t = document.getElementById('roleSupplier');
     if (f) f.className = role === 'firma' ? on : off;
     if (c) c.className = role === 'consultant' ? on : off;
     if (i) i.className = role === 'investor' ? on : off;
+    if (t) t.className = role === 'supplier' ? on : off;
+    // Firma ünvanı alanı hem kurulumcu hem tedarikçi için gerekli (ikisi de tüzel taraf).
     const wrap = document.getElementById('regCompanyWrap');
-    if (wrap) wrap.classList.toggle('hidden', role !== 'firma');
+    if (wrap) wrap.classList.toggle('hidden', role !== 'firma' && role !== 'supplier');
+    const lbl = document.getElementById('regCompanyLabel');
+    if (lbl) lbl.textContent = role === 'supplier' ? 'Resmi Firma Ünvanı (Tedarikçi)' : 'Resmi Firma Ünvanı';
     const rb = document.getElementById('btnRegisterSubmit');
     if (rb) rb.textContent = role === 'consultant' ? 'Danışman Olarak Kayıt Ol'
                           : role === 'investor'   ? 'Yatırımcı Olarak Kayıt Ol'
+                          : role === 'supplier'   ? 'Tedarikçi Olarak Kayıt Ol'
                           : 'Firmayı Sisteme Kaydet';
 };
 
@@ -61,7 +67,9 @@ window.openAuthForRole = function (role) {
     window.__authMode = null;
     try { document.getElementById(mode === 'register' ? 'tabRegister' : 'tabLogin')?.click(); } catch (e) {}
     const back = document.getElementById('authBackLink');
-    if (back) back.setAttribute('href', role === 'firma' ? '/kurulumcu' : role === 'consultant' ? '/danisman' : '#yatirimci');
+    if (back) back.setAttribute('href', role === 'firma' ? '/kurulumcu'
+                                     : role === 'consultant' ? '/danisman'
+                                     : role === 'supplier' ? '/tedarikci' : '#yatirimci');
     try { window.scrollTo({ top: 0 }); } catch (e) {}
 };
 // Genel #auth: rol seçiciyi geri göster (kilidi aç).
@@ -90,6 +98,12 @@ async function getAccountInfo(user) {
             const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', user.id).maybeSingle();
             if (cons) consultant = cons;
         } catch (e) { /* consultants tablosu yoksa sessiz gec */ }
+        if (!consultant) {
+            try {
+                const { data: sup } = await supabaseClient.from('suppliers').select('*').eq('id', user.id).maybeSingle();
+                if (sup) return { type: 'supplier', consultant: null, supplier: sup };
+            } catch (e) { /* suppliers tablosu yoksa sessiz gec */ }
+        }
     }
     if (consultant) return { type: 'consultant', consultant };
     return { type: 'installer', consultant: null };
@@ -104,6 +118,7 @@ const PAYMENT_IBAN = "TR30 0006 2000 3360 0006 6155 50";
 
 async function getSubscription(info, user) {
     if (info.type === 'consultant' && info.consultant) return { status: info.consultant.sub_status, endsAt: info.consultant.sub_ends_at, banned: !!info.consultant.banned, banReason: info.consultant.ban_reason };
+    if (info.type === 'supplier' && info.supplier) return { status: info.supplier.sub_status, endsAt: info.supplier.sub_ends_at, banned: !!info.supplier.banned, banReason: info.supplier.ban_reason };
     if (info.type === 'installer' && supabaseClient) {
         try {
             const { data: prof } = await supabaseClient.from('profiles').select('company_id').eq('id', user.id).maybeSingle();
@@ -255,6 +270,7 @@ function applyRememberPreference(remember) {
 
 async function routeByInfo(info, user) {
     window.currentConsultant = null;
+    window.currentSupplier = null;
     window.__subInfo = null;
     if (info.type === 'investor') {
         // Yatırımcı ücret ödemez; abonelik kontrolü uygulanmaz.
@@ -274,6 +290,14 @@ async function routeByInfo(info, user) {
         updateSubCounter();
         maybeShowSubExpiryBanner();
         return 'consultant';
+    }
+    if (info.type === 'supplier') {
+        window.currentSupplier = info.supplier;
+        window.__supplierEmail = user.email;
+        updateSubCounter();
+        maybeShowSubExpiryBanner();
+        if (typeof showSupplierPanel === 'function') showSupplierPanel(info.supplier, user.email);
+        return 'supplier';
     }
     await fetchUserProfile(user.id, user.email);
     updateSubCounter();
@@ -364,6 +388,47 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
             const { error: insErr } = await supabaseClient.from('consultants').insert({
                 id: session.user.id, full_name: (firstName + ' ' + lastName).trim(),
                 email, phone, avatar_initials: initials, status: 'draft'
+            });
+            if (insErr && insErr.code !== '23505') throw insErr;   // 23505: kayit zaten var
+            await supabaseClient.auth.signOut();
+            alert("✅ Kaydınız oluşturuldu! Sizlere mail doğrulama linki gönderdik. Lütfen e-postanızı doğrulayın, sonra giriş yapın.");
+            document.getElementById('registerForm').reset(); document.getElementById('tabLogin').click();
+        } catch (err) {
+            alert("Kayıt Hatası: " + (err.message || err));
+        } finally { btn.textContent = orig; btn.disabled = false; }
+        return;
+    }
+
+    // --- TEDARİKÇİ KAYDI ---
+    // Danışman akışıyla aynı: auth kaydı açılır, suppliers satırı 'draft' olarak
+    // oluşturulur, oturum kapatılır ve e-posta doğrulaması beklenir. Profil
+    // tamamlanıp onaya gönderilene kadar tedarikçi dizinde görünmez.
+    if (window.authRole === 'supplier') {
+        const supCompany = (document.getElementById('regCompany')?.value || '').trim();
+        if (supCompany.length < 3) {
+            alert("Tedarikçi kaydı için geçerli bir firma ünvanı girmelisiniz."); return;
+        }
+        const orig = btn.textContent; btn.textContent = "Kaydediliyor..."; btn.disabled = true;
+        try {
+            const { error: signUpErr } = await supabaseClient.auth.signUp({
+                email, password,
+                options: { data: { role: 'supplier', full_name: (firstName + ' ' + lastName).trim(), phone: phone } }
+            });
+            if (signUpErr) throw signUpErr;
+            let { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                const { data: si, error: siErr } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (siErr) {
+                    alert("✅ Kaydınız oluşturuldu! Sizlere mail doğrulama linki gönderdik. Lütfen e-postanızı doğrulayın, sonra giriş yapın.");
+                    document.getElementById('registerForm').reset(); document.getElementById('tabLogin').click(); return;
+                }
+                session = si.session;
+            }
+            const { error: insErr } = await supabaseClient.from('suppliers').insert({
+                id: session.user.id,
+                company_name: supCompany,
+                full_name: (firstName + ' ' + lastName).trim(),
+                email, phone, status: 'draft'
             });
             if (insErr && insErr.code !== '23505') throw insErr;   // 23505: kayit zaten var
             await supabaseClient.auth.signOut();

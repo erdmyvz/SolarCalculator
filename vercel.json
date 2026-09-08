@@ -62,6 +62,10 @@
       "destination": "/danisman/index.html"
     },
     {
+      "source": "/tedarikci",
+      "destination": "/tedarikci/index.html"
+    },
+    {
       "source": "/fatura-analizi",
       "destination": "/"
     },

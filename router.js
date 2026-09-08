@@ -28,16 +28,18 @@ async function handleSPA_Routing() {
     } else if (hash === '#yatirimci' && landing) {
         // 1. buton → Yatırımcı funnel'ı (mevcut vitrin)
         landing.classList.remove('hidden');
-    } else if (hash === '#kurulumcu' || hash === '#danisman') {
+    } else if (hash === '#kurulumcu' || hash === '#danisman' || hash === '#tedarikci') {
         // Rol funnel'ları statik, taranabilir sayfalara taşındı. Eski bağlantılar
         // (paylaşılmış linkler, yer imleri) yeni adrese kalıcı olarak yönlendirilir.
-        window.location.replace(hash === '#kurulumcu' ? '/kurulumcu' : '/danisman');
+        window.location.replace(hash === '#kurulumcu' ? '/kurulumcu'
+                              : hash === '#danisman'  ? '/danisman' : '/tedarikci');
         return;
-    } else if ((hash === '#yatirimciauth' || hash === '#kurulumcuauth' || hash === '#danismanauth') && auth) {
+    } else if ((hash === '#yatirimciauth' || hash === '#kurulumcuauth' || hash === '#danismanauth' || hash === '#tedarikciauth') && auth) {
         // ROLE ÖZEL giriş/kayıt ekranı — yalnız ilgili rol gösterilir, seçici gizli
         auth.classList.remove('hidden');
         const _role = hash === '#kurulumcuauth' ? 'firma'
                     : hash === '#danismanauth'  ? 'consultant'
+                    : hash === '#tedarikciauth' ? 'supplier'
                     : 'investor';
         if (typeof openAuthForRole === 'function') openAuthForRole(_role);
     } else if (hash === '#auth' && auth) {
@@ -60,9 +62,11 @@ async function handleSPA_Routing() {
             }
         }
         app.classList.remove('hidden');
-        if (window.currentConsultant && typeof showConsultantPanel === 'function') {
+        if (window.currentSupplier && typeof showSupplierPanel === 'function') {
+            showSupplierPanel(window.currentSupplier, window.__supplierEmail);
+        } else if (window.currentConsultant && typeof showConsultantPanel === 'function') {
             showConsultantPanel(window.currentConsultant, window.__consultantEmail);
-        } else if (!window.currentUserProfile && typeof showInvestorPanel === 'function') {
+        } else if (!window.currentUserProfile && !window.currentSupplier && typeof showInvestorPanel === 'function') {
             // Yatırımcı: firma profili yok ve danışman değil → YATIRIMCI paneli (kurulumcu menüsü DEĞİL)
             showInvestorPanel();
         } else {
@@ -119,7 +123,7 @@ window.addEventListener('load', async () => {
             let _r = 'installer';
             if (typeof routeAfterLogin === 'function') { _r = await routeAfterLogin(session.user); }
             else { await fetchUserProfile(session.user.id, session.user.email); }
-            const _authHashes = ['#auth', '#yatirimciauth', '#kurulumcuauth', '#danismanauth', ''];
+            const _authHashes = ['#auth', '#yatirimciauth', '#kurulumcuauth', '#danismanauth', '#tedarikciauth', ''];
             if (_r !== 'expired' && _r !== 'banned' && _authHashes.includes(window.location.hash)) {
                 window.location.hash = '#app'; // Zaten giriş yapmışsa direkt panele al
             }
@@ -134,7 +138,7 @@ window.openPublicModule = function(moduleId) {
     window.openedFromPublic = true; // YENİ: Kullanıcının vitrinden (ziyaretçi olarak) girdiğini hafızaya aldık
 
     // Başka bir panel açık kalmasın diye önce TÜM modülleri gizle (admin paneli + ziyaretçi sayfası üst üste binmesin)
-    ['crmModule','adminModule','calculatorModule','simulationModule','evCalcModule','companyManagementModule','techSupportModule','salesAssistantModule','educationModule','regulationsModule','amortizationModule','hardwareModule','consultantsModule','consultantPanelModule','aboutModule','legalModule','messagesModule','investorModule','campaignsModule','billAnalyzerModule'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+    ['crmModule','adminModule','calculatorModule','simulationModule','evCalcModule','companyManagementModule','techSupportModule','salesAssistantModule','educationModule','regulationsModule','amortizationModule','hardwareModule','consultantsModule','consultantPanelModule','supplierPanelModule','aboutModule','legalModule','messagesModule','investorModule','campaignsModule','billAnalyzerModule'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
 
     document.getElementById('landingContainer').classList.add('hidden');
     document.getElementById('appContainer').classList.remove('hidden');
@@ -159,7 +163,7 @@ window.openPublicModule = function(moduleId) {
 
 
 window.closeAllAndShowMenu = function() {
-    const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'educationModule', 'regulationsModule', 'amortizationModule', 'hardwareModule', 'consultantsModule', 'consultantPanelModule', 'quoteModule', 'aboutModule', 'legalModule', 'messagesModule', 'investorModule', 'campaignsModule', 'billAnalyzerModule'];
+    const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'educationModule', 'regulationsModule', 'amortizationModule', 'hardwareModule', 'consultantsModule', 'consultantPanelModule','supplierPanelModule', 'quoteModule', 'aboutModule', 'legalModule', 'messagesModule', 'investorModule', 'campaignsModule', 'billAnalyzerModule'];
     mods.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
     
     const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');

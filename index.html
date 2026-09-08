@@ -528,6 +528,7 @@
                 <li><a href="/danismanlar">Bağımsız Danışmanlar</a></li>
                 <li><a href="/kurulumcu">Kurulumcu firmalar için panel</a></li>
                 <li><a href="/danisman">Bağımsız danışmanlar için panel</a></li>
+                <li><a href="/tedarikci">Tedarikçiler için panel</a></li>
                 <li><a href="/hakkimda">Hakkımda</a></li>
             </ul>
         </div>
@@ -854,6 +855,7 @@
                                 <p class="footer-title">Platform</p>
                                 <a href="/kurulumcu" class="footer-link">Kurulumcu Firmalar</a>
                                 <a href="/danisman" class="footer-link">Bağımsız Danışmanlar</a>
+                                <a href="/tedarikci" class="footer-link">Tedarikçiler</a>
                                 <a href="/blog/" class="footer-link">Solar Akademi</a>
                                 <a href="/hakkimda" onclick="openAboutPage();return false" class="footer-link">Hakkımda</a>
                                 <button onclick="openInvestorLogin()" class="footer-link" style="text-align:left">Yatırımcı Girişi</button>
@@ -966,7 +968,8 @@
             </div>
             <div class="p-7 md:p-8">
                 <p id="authRoleLabel" class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Hesap türü</p>
-                <div id="authRoleGrid" class="grid grid-cols-3 gap-2 mb-6"><button type="button" id="roleFirma" onclick="authSetRole('firma')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-emerald-600 bg-emerald-600 text-white">🏢 Kurulumcu Firma</button><button type="button" id="roleConsultant" onclick="authSetRole('consultant')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white">🎯 Danışman</button>
+                <div id="authRoleGrid" class="grid grid-cols-2 gap-2 mb-6"><button type="button" id="roleFirma" onclick="authSetRole('firma')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-emerald-600 bg-emerald-600 text-white">🏢 Kurulumcu Firma</button><button type="button" id="roleConsultant" onclick="authSetRole('consultant')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white">🎯 Danışman</button>
+                    <button type="button" id="roleSupplier" onclick="authSetRole('supplier')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white">📦 Tedarikçi</button>
                     <button type="button" id="roleInvestor" onclick="authSetRole('investor')" class="auth-role px-3 py-2.5 rounded-lg text-sm font-bold border-2 border-slate-200 text-slate-600 bg-white">👤 Yatırımcı</button>
                 </div>
                 <div class="flex border-b border-gray-200 mb-6">
@@ -988,7 +991,7 @@
                         <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Ad</label><input type="text" id="regName" required class="auth-input"></div>
                         <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Soyad</label><input type="text" id="regSurname" required class="auth-input"></div>
                     </div>
-                    <div id="regCompanyWrap"><label class="block text-xs font-bold text-slate-600 mb-1.5">Resmi Firma Ünvanı</label><input type="text" id="regCompany" class="auth-input"></div>
+                    <div id="regCompanyWrap"><label id="regCompanyLabel" class="block text-xs font-bold text-slate-600 mb-1.5">Resmi Firma Ünvanı</label><input type="text" id="regCompany" class="auth-input"></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Telefon</label><input type="tel" id="regPhone" required class="auth-input"></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">E-posta</label><input type="email" id="regEmail" required class="auth-input"></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Şifre</label><input type="password" id="regPassword" required minlength="6" class="auth-input"></div>
@@ -1347,6 +1350,7 @@
                 <button onclick="adminShowTab('content')" data-tab="content" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">📚 İçerik & Süreç</button>
                 <button onclick="adminShowTab('settings')" data-tab="settings" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">⚙️ Ayarlar</button>
                 <button onclick="adminShowTab('consultants')" data-tab="consultants" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">🎯 Danışmanlar</button>
+                <button onclick="adminShowTab('suppliers')" data-tab="suppliers" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">📦 Tedarikçiler</button>
                 <button onclick="adminShowTab('subs')" data-tab="subs" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">💳 Abonelikler</button>
                 <button onclick="adminShowTab('errors'); if(window.adminErrorsInit) adminErrorsInit()" data-tab="errors" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">🐛 Hatalar <span id="admErrBadge" class="tab-badge hidden">0</span></button>
             </div>
@@ -1419,6 +1423,8 @@
             <div id="adminPaneConsultants" class="admin-pane hidden space-y-6">
                 <div id="admConsultantsRoot"></div>
             </div>
+
+            <div id="adminPaneSuppliers" class="admin-pane hidden space-y-6"></div>
 
             <div id="adminPaneSubs" class="admin-pane hidden space-y-6">
                 <div id="admSubsRoot"></div>
@@ -1767,6 +1773,11 @@
             <div id="consultantPanelRoot"></div>
         </div>
 
+        <!-- TEDARİKÇİ PANELİ (suppliers.js doldurur) -->
+        <div id="supplierPanelModule" class="hidden w-full max-w-5xl mx-auto mt-4 animate-fade-in">
+            <div id="supplierPanelRoot"></div>
+        </div>
+
         <div id="companyManagementModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackToMenuFromCompanyMgmt" class="text-slate-500 hover:text-slate-600 font-bold flex items-center transition">← Yönetim Paneli</button>
@@ -2076,6 +2087,7 @@
     <script src="amortization.js"></script>
     <script src="hardware.js"></script>
     <script src="consultants.js"></script>
+    <script src="suppliers.js"></script>
     <script src="notifications.js"></script>
     <script src="about.js"></script>
     <script src="legal.js"></script>

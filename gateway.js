@@ -63,9 +63,14 @@
             font-size:var(--fs-base); line-height:1.6; }
 
         /* Rol kartları — eşit yükseklik, eylem satırı hep altta */
+        /* Üst sıra: yatırımcı tek başına tam genişlikte (birincil yol).
+           Alt sıra: kurulumcu · danışman · tedarikçi — üç profesyonel taraf. */
         .gw-cards { display:grid; grid-template-columns:1fr; gap:var(--s4);
             max-width:1000px; margin:0 auto; }
-        @media(min-width:900px){ .gw-cards{ grid-template-columns:repeat(3,1fr); } }
+        @media(min-width:900px){
+            .gw-cards{ grid-template-columns:repeat(3,1fr); }
+            .gw-cards > .gw-card-lead{ grid-column:1 / -1; }
+        }
         .gw-card { position:relative; display:flex; flex-direction:column; text-align:left;
             background:linear-gradient(160deg,#12263D,#0B1B2E);
             border:1px solid #1e3350; border-radius:var(--r-lg); padding:var(--s5);
@@ -81,6 +86,15 @@
         .gw-card .gw-glow { position:absolute; inset:0; opacity:0; transition:opacity .18s;
             background:radial-gradient(circle at 80% 0%, var(--gw-accent,#34d399) 0%, transparent 45%); }
         .gw-card:hover .gw-glow { opacity:.12; }
+
+        /* Yatırımcı kartı yatay düzende: ikon solda, metin ortada, eylem sağda */
+        @media(min-width:900px){
+            .gw-card-lead{ flex-direction:row; align-items:center; gap:var(--s5); }
+            .gw-card-lead .gw-emoji{ margin-bottom:0; font-size:var(--fs-3xl); flex-shrink:0; }
+            .gw-card-lead .gw-lead-body{ flex:1 1 auto; }
+            .gw-card-lead .gw-cta{ margin-top:0; flex-shrink:0; font-size:var(--fs-base); }
+        }
+        .gw-card-lead .gw-lead-body h3{ margin-bottom:var(--s2); }
 
         /* Funnel sayfaları */
         .gw-funnel { max-width:1000px; margin:0 auto; width:100%;
@@ -160,13 +174,15 @@
                 <h1 class="gw-title">Size uygun yolu <span>seçin</span></h1>
 
                 <div class="gw-cards">
-                    <a href="#yatirimci" class="gw-card" style="--gw-accent:#34d399">
+                    <a href="#yatirimci" class="gw-card gw-card-lead" style="--gw-accent:#34d399">
                         <span class="gw-glow"></span>
                         <span class="gw-emoji" aria-hidden="true">☀️</span>
-                        <h3>Yatırımcıyım,<br>GES kurdurmak istiyorum</h3>
-                        <p>Evinize veya iş yerinize güneş enerjisi santrali (GES) kurdurmak
-                           istiyorsanız buradasınız. Faturanızı yükleyin, size uygun sistemi ve
-                           maliyeti görün, onaylı firmalardan ücretsiz teklif alın.</p>
+                        <span class="gw-lead-body">
+                            <h3>Yatırımcıyım, GES kurdurmak istiyorum</h3>
+                            <p>Evinize veya iş yerinize güneş enerjisi santrali (GES) kurdurmak
+                               istiyorsanız buradasınız. Faturanızı yükleyin, size uygun sistemi ve
+                               maliyeti görün, onaylı firmalardan ücretsiz teklif alın.</p>
+                        </span>
                         <span class="gw-cta">Başla →</span>
                     </a>
 
@@ -188,6 +204,16 @@
                            profiliniz yatırımcılara görünür; gelen danışmanlık taleplerine teklif verir,
                            danışanlarınızı takip edersiniz.</p>
                         <span class="gw-cta">Danışman panelini keşfet →</span>
+                    </a>
+
+                    <a href="/tedarikci" class="gw-card" style="--gw-accent:#38bdf8">
+                        <span class="gw-glow"></span>
+                        <span class="gw-emoji" aria-hidden="true">📦</span>
+                        <h3>Tedarikçiyim,<br>ürün satışı yapıyorum</h3>
+                        <p>Panel, inverter, batarya veya montaj malzemesi tedarik ediyorsanız
+                           buradasınız. Kataloğunuzu yayınlayın, kurulumcu firmalardan fiyat ve
+                           stok talebi alın, bayi ağınızı büyütün.</p>
+                        <span class="gw-cta">Tedarikçi panelini keşfet →</span>
                     </a>
                 </div>
             </div>
