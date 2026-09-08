@@ -97,7 +97,7 @@
         document.getElementById('authContainer')?.classList.add('hidden');
         document.getElementById('appContainer')?.classList.remove('hidden');
         document.getElementById('mainMenu')?.classList.add('hidden');
-        ['crmModule','adminModule','companyManagementModule','techSupportModule','salesAssistantModule',
+        ['supplierDirModule','crmModule','adminModule','companyManagementModule','techSupportModule','salesAssistantModule',
          'dashboardModule','projectsModule','servicesModule','educationModule','regulationsModule',
          'quoteModule','messagesModule','consultantPanelModule','consultantsModule','aboutModule','legalModule']
             .forEach(id => document.getElementById(id)?.classList.add('hidden'));

@@ -1097,6 +1097,12 @@
                     <p class="text-slate-500 text-xs leading-relaxed">Firmanıza atanan bakım/temizlik/arıza taleplerini yönetin.</p>
                 </button>
 
+                <button id="btnGoSuppliers" class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-sky-300 transition text-left">
+                    <span class="inline-flex w-11 h-11 rounded-xl bg-sky-50 text-sky-600 items-center justify-center text-xl mb-3 group-hover:scale-110 transition">📦</span>
+                    <h2 class="text-base font-black text-slate-800 mb-1">Tedarikçiler</h2>
+                    <p class="text-slate-500 text-xs leading-relaxed">Onaylı tedarikçileri görün, fiyat ve stok talebi gönderin, bayi ilanlarına başvurun.</p>
+                </button>
+
             </div>
         </div>
         
@@ -1773,6 +1779,15 @@
             <div id="consultantPanelRoot"></div>
         </div>
 
+        <!-- TEDARİKÇİ DİZİNİ — kurulumcu firma görünümü (supplier_directory.js) -->
+        <div id="supplierDirModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+            <div class="mb-6 border-b pb-4 flex items-center justify-between gap-3 flex-wrap">
+                <button id="btnBackFromSuppliers" class="text-slate-500 hover:text-sky-600 font-bold flex items-center transition">← Panele Dön</button>
+                <h2 class="text-lg font-black text-slate-800">📦 Tedarikçiler</h2>
+            </div>
+            <div id="supplierDirRoot"></div>
+        </div>
+
         <!-- TEDARİKÇİ PANELİ (suppliers.js doldurur) -->
         <div id="supplierPanelModule" class="hidden w-full max-w-5xl mx-auto mt-4 animate-fade-in">
             <div id="supplierPanelRoot"></div>
@@ -2088,6 +2103,7 @@
     <script src="hardware.js"></script>
     <script src="consultants.js"></script>
     <script src="suppliers.js"></script>
+    <script src="supplier_directory.js"></script>
     <script src="notifications.js"></script>
     <script src="about.js"></script>
     <script src="legal.js"></script>

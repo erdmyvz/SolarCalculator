@@ -326,7 +326,7 @@
 
     window.showMessagesModule = function () {
         document.getElementById('mainMenu')?.classList.add('hidden');
-        ['crmModule','adminModule','companyManagementModule','techSupportModule','salesAssistantModule',
+        ['supplierDirModule','crmModule','adminModule','companyManagementModule','techSupportModule','salesAssistantModule',
          'dashboardModule','projectsModule','servicesModule','educationModule','regulationsModule','quoteModule']
             .forEach(id => document.getElementById(id)?.classList.add('hidden'));
         document.getElementById('messagesModule')?.classList.remove('hidden');

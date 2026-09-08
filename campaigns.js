@@ -35,7 +35,7 @@
         else {
             _hostId = 'campaignsRoot';
             document.getElementById('mainMenu')?.classList.add('hidden');
-            ['crmModule','adminModule','companyManagementModule','techSupportModule','salesAssistantModule',
+            ['supplierDirModule','crmModule','adminModule','companyManagementModule','techSupportModule','salesAssistantModule',
              'dashboardModule','projectsModule','servicesModule','educationModule','regulationsModule',
              'quoteModule','messagesModule','investorModule'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
             document.getElementById('campaignsModule')?.classList.remove('hidden');

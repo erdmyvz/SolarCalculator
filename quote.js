@@ -31,7 +31,7 @@
 
     window.showQuoteModule = function (view) {
         document.getElementById('mainMenu')?.classList.add('hidden');
-        ['crmModule','adminModule','companyManagementModule','techSupportModule','salesAssistantModule','dashboardModule','projectsModule','servicesModule','educationModule','regulationsModule'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+        ['supplierDirModule','crmModule','adminModule','companyManagementModule','techSupportModule','salesAssistantModule','dashboardModule','projectsModule','servicesModule','educationModule','regulationsModule'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
         document.getElementById('quoteModule')?.classList.remove('hidden');
         quoteView(view || 'settings');
     };

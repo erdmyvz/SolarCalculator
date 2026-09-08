@@ -138,7 +138,7 @@ window.openPublicModule = function(moduleId) {
     window.openedFromPublic = true; // YENİ: Kullanıcının vitrinden (ziyaretçi olarak) girdiğini hafızaya aldık
 
     // Başka bir panel açık kalmasın diye önce TÜM modülleri gizle (admin paneli + ziyaretçi sayfası üst üste binmesin)
-    ['crmModule','adminModule','calculatorModule','simulationModule','evCalcModule','companyManagementModule','techSupportModule','salesAssistantModule','educationModule','regulationsModule','amortizationModule','hardwareModule','consultantsModule','consultantPanelModule','supplierPanelModule','aboutModule','legalModule','messagesModule','investorModule','campaignsModule','billAnalyzerModule'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+    ['supplierDirModule','crmModule','adminModule','calculatorModule','simulationModule','evCalcModule','companyManagementModule','techSupportModule','salesAssistantModule','educationModule','regulationsModule','amortizationModule','hardwareModule','consultantsModule','consultantPanelModule','supplierPanelModule','aboutModule','legalModule','messagesModule','investorModule','campaignsModule','billAnalyzerModule'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
 
     document.getElementById('landingContainer').classList.add('hidden');
     document.getElementById('appContainer').classList.remove('hidden');
@@ -163,7 +163,7 @@ window.openPublicModule = function(moduleId) {
 
 
 window.closeAllAndShowMenu = function() {
-    const mods = ['crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'educationModule', 'regulationsModule', 'amortizationModule', 'hardwareModule', 'consultantsModule', 'consultantPanelModule','supplierPanelModule', 'quoteModule', 'aboutModule', 'legalModule', 'messagesModule', 'investorModule', 'campaignsModule', 'billAnalyzerModule'];
+    const mods = ['supplierDirModule','crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'educationModule', 'regulationsModule', 'amortizationModule', 'hardwareModule', 'consultantsModule', 'consultantPanelModule','supplierPanelModule', 'quoteModule', 'aboutModule', 'legalModule', 'messagesModule', 'investorModule', 'campaignsModule', 'billAnalyzerModule'];
     mods.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
     
     const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');

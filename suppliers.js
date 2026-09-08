@@ -47,7 +47,7 @@
         document.getElementById('mainMenu')?.classList.add('hidden');
         document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto')?.classList.remove('hidden');
 
-        ['crmModule','adminModule','calculatorModule','simulationModule','evCalcModule',
+        ['supplierDirModule','crmModule','adminModule','calculatorModule','simulationModule','evCalcModule',
          'companyManagementModule','techSupportModule','salesAssistantModule','educationModule',
          'regulationsModule','amortizationModule','hardwareModule','consultantsModule',
          'consultantPanelModule','aboutModule','legalModule','messagesModule','investorModule',
