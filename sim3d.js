@@ -24,12 +24,12 @@
    ============================================================================ */
 
 let appScene, appCamera, appRenderer, appControls, appObjs;
-let panelCount = 0, countBat = 0, countEV = 0, hpOn = false;
+let panelCount = 0, balconyCount = 0, countBat = 0, countEV = 0, hpOn = false;
 let batteryLevel = 0, carLevel = 0, waterTemp = 0;   // 0..1 — yalnız görsel geri bildirim için
 let prodKW = 0, gridFlow = 0, houseLoadKW = 0.4;
 let dayTime = 12, autoDay = true;
 let sprites = [];
-const MAX_PANELS = 8, MAX_BAT = 4, MAX_EV = 2;
+const MAX_PANELS = 8, MAX_BALCONY = 4, MAX_BAT = 4, MAX_EV = 2;
 
 /* ============================================================================
    FİZİK ÇEKİRDEĞİ
@@ -58,9 +58,14 @@ const SIM = {
     cloud: 0,                // 0 açık · 0.45 parçalı · 0.8 kapalı
 
     // Donanım
-    panelWp: 500,            // tek panel tepe gücü (W)
-    tiltDeg: 18.3,           // sahnedeki panel eğimi (rotation.x = 0.32 rad)
-    azimuthDeg: 0,           // 0 = tam güney (sahnede +z güney)
+    panelWp: 500,            // çatı paneli tepe gücü (W)
+    tiltDeg: 18.3,           // çatı paneli eğimi (kullanıcı değiştirir)
+    azimuthDeg: 0,           // çatı yönü: 0 = tam güney, + batı, − doğu
+
+    // Balkon paneli — dikey montaj (fasada asılı), kendi yönü çatıyla aynı
+    balconyWp: 400,          // balkon paneli tepe gücü
+    balconyTilt: 90,         // dikey
+    balconyAz: 0,            // balkon güney cephesinde sabit (ev dönmez)
     tempCoeff: -0.0035,      // %/°C — N-type panel
     noct: 45,
     systemLoss: 0.92,        // kirlenme + kablo + uyumsuzluk
@@ -89,8 +94,12 @@ const E = {
     evKwh: 12,               // araçtaki enerji (başlangıçta %20)
     tankC: 18,               // depo su sıcaklığı
     pvDc: 0, pvAc: 0, clipped: 0,
+    roofKw: 0, balconyKw: 0,
     load: 0, batFlow: 0, evFlow: 0, hpFlow: 0, grid: 0,
-    poa: 0, cellT: 0, ambT: 0, sunElDeg: 0, sunAzDeg: 0,
+    poa: 0, poaBalcony: 0, cellT: 0, ambT: 0, sunElDeg: 0, sunAzDeg: 0,
+    shade: 0,                // 0 = gölge yok · 1 = doğrudan ışın tamamen kesik
+    shadeLossKw: 0,          // gölge yüzünden kaybedilen anlık güç
+    dShadeLoss: 0,           // gün boyu kaybedilen kWh
     sunrise: 6, sunset: 18,
     // Günlük sayaçlar (kWh)
     dProd: 0, dCons: 0, dImp: 0, dExp: 0,
@@ -168,12 +177,67 @@ function ambientC(n, hour, latDeg) {
     return mean + enlemDuzeltme + 5 * Math.cos(2 * Math.PI * (hour - 15) / 24);
 }
 
-// --- Eğik panel yüzeyine düşen ışınım (W/m²) ---
-function irradiance(n, hour, latDeg, cloud) {
+/* ----------------------------------------------------------------------------
+   GÖLGELENME — ufuk profili yöntemi
+   ----------------------------------------------------------------------------
+   Sahadaki her engel (komşu bina, ağaç), panel dizisinden bakıldığında gökyüzünün
+   bir azimut aralığını belirli bir yüksekliğe kadar kapatır. Güneş o aralıktaysa
+   ve engelin tepesinden alçaktaysa DOĞRUDAN ışın kesilir; difüz ışın kalır.
+   Bu, saha etüdünde Solar Pathfinder ile yapılan ölçümün matematiksel karşılığıdır.
+
+   Engellerin azimut ve yükseklik açıları sahnedeki gerçek 3B konumlarından
+   türetilir — yani ekranda gördüğünüz gölge ile hesaptaki kayıp aynı şeydir.
+   ---------------------------------------------------------------------------- */
+const OBSTACLES = [
+    // x: doğu(+)/batı(−) · z: güney(+)/kuzey(−) · h: yükseklik · w,d: genişlik/derinlik
+    { key: 'bina',  ad: 'Komşu bina', on: false, x: -7,  z: 11, w: 9,  d: 7, h: 11 },
+    { key: 'agac',  ad: 'Ağaç',       on: false, x: 6.5, z: 8,  w: 4,  d: 4, h: 8 }
+];
+const ARRAY_POS = { x: 0, y: 4.85, z: 0 };   // panel dizisinin sahnedeki merkezi
+
+// Engelin dizi merkezinden görünen azimut aralığı ve tepe yükseklik açısı
+function obstacleProfile(o) {
+    const kose = [
+        [o.x - o.w / 2, o.z - o.d / 2], [o.x + o.w / 2, o.z - o.d / 2],
+        [o.x - o.w / 2, o.z + o.d / 2], [o.x + o.w / 2, o.z + o.d / 2]
+    ];
+    let azMin = 999, azMax = -999, elMax = 0;
+    for (const [cx, cz] of kose) {
+        // Azimut güneyden ölçülür, batıya doğru pozitif (+z güney, −x batı)
+        const az = Math.atan2(-cx, cz) / RAD;
+        azMin = Math.min(azMin, az); azMax = Math.max(azMax, az);
+        const mesafe = Math.hypot(cx - ARRAY_POS.x, cz - ARRAY_POS.z);
+        elMax = Math.max(elMax, Math.atan2(o.h - ARRAY_POS.y, mesafe) / RAD);
+    }
+    return { azMin, azMax, elMax };
+}
+
+// 0 = gölge yok, 1 = doğrudan ışın tamamen kesik. Kenarlarda yumuşak geçiş.
+function shadeFactor(sunAzDeg, sunElDeg) {
+    let en = 0;
+    for (const o of OBSTACLES) {
+        if (!o.on) continue;
+        const p = obstacleProfile(o);
+        if (sunElDeg >= p.elMax) continue;                       // güneş engelin üstünde
+        const yumusak = 4;                                       // derece — kenar geçişi
+        let yatay = 1;
+        if (sunAzDeg < p.azMin) yatay = Math.max(0, 1 - (p.azMin - sunAzDeg) / yumusak);
+        else if (sunAzDeg > p.azMax) yatay = Math.max(0, 1 - (sunAzDeg - p.azMax) / yumusak);
+        const dikey = Math.min(1, (p.elMax - sunElDeg) / 2);     // tepeye yakınken kısmi
+        en = Math.max(en, yatay * dikey);
+    }
+    return Math.max(0, Math.min(1, en));
+}
+
+/* ----------------------------------------------------------------------------
+   Belirli bir yüzeye (eğim + yön) düşen ışınım.
+   Çatı ve balkon aynı fonksiyonu farklı parametrelerle kullanır.
+   ---------------------------------------------------------------------------- */
+function irradianceOn(n, hour, latDeg, cloud, tiltDeg, azDeg) {
     const sp = sunPosition(n, hour, latDeg);
     E.sunrise = sp.sunrise; E.sunset = sp.sunset;
     E.sunElDeg = sp.el / RAD; E.sunAzDeg = sp.az / RAD;
-    if (sp.el <= 0.5 * RAD) return { poa: 0, sp: sp };
+    if (sp.el <= 0.5 * RAD) { E.shade = 0; return { poa: 0, poaGolgesiz: 0, sp: sp }; }
 
     const m = monthIndex(n);
     const am = 1 / (Math.sin(sp.el) + 0.50572 * Math.pow(sp.el / RAD + 6.07995, -1.6364)); // Kasten-Young
@@ -181,8 +245,7 @@ function irradiance(n, hour, latDeg, cloud) {
     const dhi = ASH_C[m] * dni;                            // yatay difüz
     const ghi = dni * Math.sin(sp.el) + dhi;
 
-    // Gelme açısı: eğim β, yüzey azimutu γ (güneyden)
-    const beta = SIM.tiltDeg * RAD, gamma = SIM.azimuthDeg * RAD;
+    const beta = tiltDeg * RAD, gamma = azDeg * RAD;
     const cosTheta = Math.cos(sp.el) * Math.cos(sp.az - gamma) * Math.sin(beta)
                    + Math.sin(sp.el) * Math.cos(beta);
 
@@ -190,10 +253,20 @@ function irradiance(n, hour, latDeg, cloud) {
     const sky = dhi * (1 + Math.cos(beta)) / 2;            // gökyüzü difüzü
     const gnd = ghi * 0.20 * (1 - Math.cos(beta)) / 2;     // yerden yansıyan (albedo 0.20)
 
-    // Bulut: doğrudan bileşeni büyük ölçüde, difüzü az söndürür
     const k = 1 - cloud;
-    const poa = beam * k * k + sky * (1 - cloud * 0.35) + gnd * k;
-    return { poa: Math.max(0, poa), sp: sp };
+    const golgesiz = beam * k * k + sky * (1 - cloud * 0.35) + gnd * k;
+
+    // Gölge yalnız DOĞRUDAN bileşeni keser; difüz ışık gölgede de gelir.
+    const g = shadeFactor(E.sunAzDeg, E.sunElDeg);
+    E.shade = g;
+    const poa = beam * k * k * (1 - g) + sky * (1 - cloud * 0.35) * (1 - g * 0.25) + gnd * k;
+
+    return { poa: Math.max(0, poa), poaGolgesiz: Math.max(0, golgesiz), sp: sp };
+}
+
+// Geriye dönük sarmalayıcı — çatı yüzeyi
+function irradiance(n, hour, latDeg, cloud) {
+    return irradianceOn(n, hour, latDeg, cloud, SIM.tiltDeg, SIM.azimuthDeg);
 }
 
 function mat(color, opts) {
@@ -312,6 +385,81 @@ function buildHouse(scene) {
     return o;
 }
 
+/* ----------------------------------------------------------------------------
+   ÇEVRE ENGELLERİ — gölgeyi hem gözle hem hesapta üreten nesneler.
+   Konumları OBSTACLES tablosuyla birebir aynı; biri değişirse diğeri de değişir.
+   ---------------------------------------------------------------------------- */
+function buildNeighbourBuilding(o) {
+    const g = new THREE.Group();
+    const govde = new THREE.Mesh(new THREE.BoxGeometry(o.w, o.h, o.d), mat(0x8d8578, { roughness: 0.95 }));
+    govde.position.y = o.h / 2; govde.castShadow = true; govde.receiveShadow = true; g.add(govde);
+    // Pencere sıraları — ölçek hissi verir
+    const cam = new THREE.MeshStandardMaterial({ color: 0x2b3a4a, roughness: 0.25, metalness: 0.3 });
+    for (let k = 1; k * 2.6 < o.h - 1; k++) {
+        for (let i = -1; i <= 1; i++) {
+            const w = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.3, 0.12), cam);
+            w.position.set(i * 2.4, k * 2.6, -o.d / 2 - 0.02); g.add(w);
+        }
+    }
+    const cati = new THREE.Mesh(new THREE.BoxGeometry(o.w + 0.3, 0.3, o.d + 0.3), mat(0x6f685d));
+    cati.position.y = o.h + 0.1; cati.castShadow = true; g.add(cati);
+    g.position.set(o.x, 0, o.z);
+    g.visible = false;
+    return g;
+}
+
+function buildTree(o) {
+    const g = new THREE.Group();
+    const govde = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.42, o.h * 0.45, 10), mat(0x5a4433, { roughness: 1 }));
+    govde.position.y = o.h * 0.225; govde.castShadow = true; g.add(govde);
+    const yaprakMat = mat(0x2f6b3a, { roughness: 0.95 });
+    [[0, 0.62, 1.9], [-0.7, 0.80, 1.5], [0.8, 0.82, 1.45], [0, 0.95, 1.35]].forEach(k => {
+        const y = new THREE.Mesh(new THREE.SphereGeometry(k[2], 14, 12), yaprakMat);
+        y.position.set(k[0], o.h * k[1], 0); y.castShadow = true; g.add(y);
+    });
+    g.position.set(o.x, 0, o.z);
+    g.visible = false;
+    return g;
+}
+
+/* ----------------------------------------------------------------------------
+   BALKON PANELLERİ — güney cephesine dikey monte, kendi mikro inverteriyle.
+   Dikey montaj yazın çatıdan çok daha az, kışın ise oransal olarak daha iyi
+   üretir; alçak kış güneşi dik yüzeye neredeyse tam açıyla gelir.
+   ---------------------------------------------------------------------------- */
+function buildBalcony() {
+    const g = new THREE.Group();
+    const dosemeMat = mat(0xCFC7B8, { roughness: 0.9 });
+    const doseme = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.18, 1.3), dosemeMat);
+    doseme.position.set(1.0, 2.95, 3.6); doseme.castShadow = true; doseme.receiveShadow = true; g.add(doseme);
+    const korkulukMat = mat(0x8a929c, { metalness: 0.5, roughness: 0.5 });
+    for (let i = 0; i < 10; i++) {
+        const d = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.0, 8), korkulukMat);
+        d.position.set(-1.2 + i * 0.49, 3.54, 4.2); g.add(d);
+    }
+    const ust = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.09, 0.12), korkulukMat);
+    ust.position.set(1.0, 4.06, 4.2); g.add(ust);
+
+    // Dikey paneller — korkuluğun dışına asılı
+    const pMat = mat(0x0a1a3a, { roughness: 0.22, metalness: 0.55 });
+    const cizgi = mat(0x21447e, { roughness: 0.3, metalness: 0.4 });
+    g.userData.tiles = [];
+    for (let i = 0; i < MAX_BALCONY; i++) {
+        const t = new THREE.Group();
+        t.add(new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.9, 0.06), pMat));
+        for (let k = -1; k <= 1; k++) {
+            const ln = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.02, 0.075), cizgi);
+            ln.position.set(0, k * 0.28, 0.005); t.add(ln);
+        }
+        t.position.set(-1.15 + i * 1.15, 3.55, 4.28);
+        t.traverse(m => { if (m.isMesh) m.castShadow = true; });
+        t.scale.set(0, 0, 0);
+        g.add(t); g.userData.tiles.push(t);
+    }
+    g.visible = true;
+    return g;
+}
+
 function buildEV(color) {
     const g = new THREE.Group();
     const bm = mat(color, { metalness: 0.55, roughness: 0.35 });
@@ -409,12 +557,15 @@ function injectOverlays(container) {
                 <div class="text-xl font-black text-amber-300"><span id="efProd">0.0</span> kW</div>
                 <div class="text-[9px] text-amber-100/80 leading-tight" id="efIrr">—</div>
             </div>
+            <div id="efSplit" class="text-[9px] text-white/70 text-center mb-1"></div>
+            <div id="efShade" class="hidden bg-slate-900/50 border border-red-400/40 rounded-lg px-2 py-1 mb-2 text-[10px] text-red-200 font-bold text-center"></div>
             <div class="bg-white/15 rounded-lg py-1 text-center mb-2 font-black text-[11px] border border-white/20">🔌 İNVERTER <span id="efClip" class="text-red-300 font-bold"></span></div>
             ${row('🔋 Batarya', 'efBat', true)}
             ${row('🚗 Araç', 'efCar', true)}
             ${row('♨️ Sıcak Su', 'efWater', true)}
             ${row('🏠 Ev', 'efHouse', false)}
             ${row('🔗 Şebeke', 'efGrid', false)}
+            <div id="efStory" class="mt-2 bg-sky-500/15 border border-sky-300/30 rounded-lg px-2 py-1.5 text-[10px] leading-snug text-sky-100"></div>
             <div class="mt-3 pt-2 border-t border-white/15">
                 <div class="text-[10px] font-black text-white/70 mb-1">BUGÜN (kWh)</div>
                 <div class="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] font-bold">
@@ -422,10 +573,112 @@ function injectOverlays(container) {
                     <span class="text-sky-300">Tüketim</span><span id="efDCons" class="text-right">0.0</span>
                     <span class="text-red-300">Şebekeden</span><span id="efDImp" class="text-right">0.0</span>
                     <span class="text-emerald-300">Şebekeye</span><span id="efDExp" class="text-right">0.0</span>
+                    <span class="text-red-200" id="efDShadeLbl">Gölge kaybı</span><span id="efDShade" class="text-right">0.0</span>
                 </div>
             </div>
         `;
         container.appendChild(ef);
+    }
+
+    // Sol alt: Sistem kurulum paneli — ekle / çıkar / yönlendir
+    if (!document.getElementById('simBuildPanel')) {
+        const bp = document.createElement('div');
+        bp.id = 'simBuildPanel';
+        bp.className = 'absolute left-4 bg-slate-900/85 backdrop-blur-md rounded-xl border border-white/15 text-white shadow-2xl z-20 w-72 text-xs';
+        bp.style.top = '13.5rem';
+        bp.style.maxHeight = 'calc(100% - 16rem)';
+        bp.style.overflowY = 'auto';
+
+        const sayacSatir = (etiket, ikon, id, ipucu) => `
+            <div class="flex items-center gap-2 py-1.5" title="${ipucu}">
+                <span class="w-5 text-center">${ikon}</span>
+                <span class="flex-1 font-bold">${etiket}</span>
+                <button data-act="eksi" data-t="${id}" class="w-6 h-6 rounded bg-white/10 hover:bg-white/25 font-black leading-none">−</button>
+                <span id="cnt_${id}" class="w-5 text-center font-mono font-bold">0</span>
+                <button data-act="arti" data-t="${id}" class="w-6 h-6 rounded bg-amber-500/80 hover:bg-amber-500 text-slate-900 font-black leading-none">+</button>
+            </div>`;
+
+        bp.innerHTML = `
+            <div class="px-3 py-2 border-b border-white/15 font-black text-[11px] tracking-wide">🧰 SİSTEMİ KUR</div>
+            <div class="px-3 py-2 border-b border-white/10">
+                ${sayacSatir('Çatı paneli', '🔆', 'panel', '500 Wp · eğik montaj')}
+                ${sayacSatir('Balkon paneli', '🪟', 'balkon', '400 Wp · dikey, mikro inverterli')}
+                ${sayacSatir('Batarya', '🔋', 'bat', '5,1 kWh · 2,5 kW')}
+                ${sayacSatir('Elektrikli araç', '🚗', 'ev', '60 kWh · 7,4 kW şarj')}
+                <div class="flex items-center gap-2 py-1.5" title="Termostatlı, COP 3,2">
+                    <span class="w-5 text-center">♨️</span>
+                    <span class="flex-1 font-bold">Isı pompası</span>
+                    <button data-act="hp" class="px-2 h-6 rounded bg-white/10 hover:bg-white/25 font-bold" id="btnHp">Ekle</button>
+                </div>
+            </div>
+
+            <div class="px-3 py-2 border-b border-white/10">
+                <div class="font-black text-[11px] tracking-wide mb-2">🧭 ÇATI YÖNÜ</div>
+                <select id="simAzimuth" class="w-full bg-slate-800 rounded-lg px-2 py-1 border border-white/20 outline-none font-bold mb-2">
+                    <option value="0">Güney — en verimli</option>
+                    <option value="-45">Güneydoğu</option>
+                    <option value="45">Güneybatı</option>
+                    <option value="-90">Doğu — sabah</option>
+                    <option value="90">Batı — akşam</option>
+                    <option value="180">Kuzey — uygun değil</option>
+                </select>
+                <label class="flex items-center gap-2">
+                    <span class="font-bold w-10">Eğim</span>
+                    <input id="simTilt" type="range" min="0" max="45" step="1" value="18" class="flex-1 accent-amber-500">
+                    <span id="simTiltVal" class="font-mono w-8 text-right">18°</span>
+                </label>
+                <p id="simOrientNote" class="text-[10px] text-white/60 mt-1 leading-tight"></p>
+            </div>
+
+            <div class="px-3 py-2">
+                <div class="font-black text-[11px] tracking-wide mb-2">🌳 ÇEVRE (GÖLGE)</div>
+                <label class="flex items-center gap-2 py-1 cursor-pointer">
+                    <input type="checkbox" data-obs="bina" class="w-4 h-4 rounded accent-amber-500">
+                    <span class="font-bold flex-1">Komşu bina (güneybatı)</span>
+                </label>
+                <label class="flex items-center gap-2 py-1 cursor-pointer">
+                    <input type="checkbox" data-obs="agac" class="w-4 h-4 rounded accent-amber-500">
+                    <span class="font-bold flex-1">Ağaç (güneydoğu)</span>
+                </label>
+                <p id="simShadeNote" class="text-[10px] text-white/60 mt-1 leading-tight"></p>
+            </div>`;
+        container.appendChild(bp);
+
+        bp.addEventListener('click', (e) => {
+            const b = e.target.closest('button'); if (!b) return;
+            const act = b.dataset.act, t = b.dataset.t;
+            if (act === 'hp') { hpOn = !hpOn; if (!hpOn) E.tankC = E.ambT; }
+            else if (act === 'arti') {
+                if (t === 'panel' && panelCount < MAX_PANELS) panelCount++;
+                if (t === 'balkon' && balconyCount < MAX_BALCONY) balconyCount++;
+                if (t === 'bat' && countBat < MAX_BAT) countBat++;
+                if (t === 'ev' && countEV < MAX_EV) countEV++;
+            } else if (act === 'eksi') {
+                if (t === 'panel' && panelCount > 0) panelCount--;
+                if (t === 'balkon' && balconyCount > 0) balconyCount--;
+                if (t === 'bat' && countBat > 0) { countBat--; E.batKwh = Math.min(E.batKwh, countBat * SIM.batKwhPer); }
+                if (t === 'ev' && countEV > 0) { countEV--; E.evKwh = Math.min(E.evKwh, countEV * SIM.evKwh); }
+            } else return;
+            refreshBuildPanel(); refreshSprites(); updateScore();
+        });
+
+        bp.querySelectorAll('[data-obs]').forEach(cb => {
+            cb.addEventListener('change', e => {
+                const o = OBSTACLES.find(x => x.key === e.target.dataset.obs);
+                if (o) o.on = e.target.checked;
+                refreshBuildPanel();
+            });
+        });
+
+        document.getElementById('simAzimuth').addEventListener('change', e => {
+            SIM.azimuthDeg = parseFloat(e.target.value); applyRoofOrientation(); refreshBuildPanel();
+        });
+        document.getElementById('simTilt').addEventListener('input', e => {
+            SIM.tiltDeg = parseFloat(e.target.value);
+            document.getElementById('simTiltVal').textContent = SIM.tiltDeg + '°';
+            applyRoofOrientation(); refreshBuildPanel();
+        });
+        refreshBuildPanel();
     }
 
     // Alt: Zaman/kontrol çubuğu
@@ -484,6 +737,42 @@ function updateClock() {
     const s = document.getElementById('simTime'); if (s && document.activeElement !== s) s.value = dayTime;
 }
 
+/* ----------------------------------------------------------------------------
+   CANLI ANLATIM — o an ne olduğunu ve NEDEN olduğunu tek cümleyle söyler.
+   Simülasyonun asıl amacı sayı göstermek değil, sebebi anlatmak.
+   ---------------------------------------------------------------------------- */
+function narrate() {
+    if (panelCount === 0 && balconyCount === 0)
+        return 'Henüz panel yok: evin tüm elektriği şebekeden geliyor. Soldaki panelden çatıya panel ekleyin.';
+
+    const gunduz = dayTime > E.sunrise && dayTime < E.sunset;
+
+    if (!gunduz)
+        return countBat > 0 && E.batKwh > countBat * SIM.batKwhPer * SIM.batMinSoc
+            ? 'Güneş battı, üretim yok. Ev şu an gündüz depolanan bataryadan besleniyor — panelin asıl değeri burada ortaya çıkıyor.'
+            : 'Güneş battı. Batarya yoksa (veya boşaldıysa) akşam tüketimi şebekeden karşılanır; günün en pahalı saatleri de tam bu saatlerdir.';
+
+    if (E.shade > 0.5)
+        return `Paneller şu an gölgede: doğrudan ışın kesildi, yalnız difüz ışık kaldı. Kış güneşi alçak olduğu için engeller asıl bu mevsimde vurur — yazın aynı bina hiç gölge yapmıyordu.`;
+
+    if (E.clipped > 0.1)
+        return `İnverter tepe gücünde: panellerin ürettiği ${E.clipped.toFixed(1)} kW kırpılıyor. Diziyi inverterden büyük seçmek normaldir; yılda birkaç saat kırpma, kışın daha çok üretim demektir.`;
+
+    if (E.grid < -0.1)
+        return `Üretim tüketimi aşıyor, fazlası şebekeye gidiyor. Batarya ekleyip bu fazlayı akşama saklarsanız öz yeterlilik ciddi biçimde yükselir.`;
+
+    if (E.batFlow > 0.05)
+        return 'Fazla üretim bataryaya yazılıyor. Akşam zirvesinde bu enerji geri çekilecek — güneş öğlen üretir, ev akşam tüketir.';
+
+    if (E.grid > 0.1)
+        return `Üretim tüketimi karşılamıyor, aradaki fark şebekeden çekiliyor (${E.grid.toFixed(2)} kW).`;
+
+    if (balconyCount > 0 && E.balconyKw > E.roofKw * 0.3 && SIM.dayOfYear > 300)
+        return 'Kış güneşi alçak: dikey balkon panelleri, eğik çatı panellerine göre oransal olarak çok daha iyi üretiyor.';
+
+    return 'Üretim ve tüketim dengede — evin ihtiyacı doğrudan panellerden karşılanıyor.';
+}
+
 function updateEnergyPanel() {
     const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
     const bar = (id, pct) => { const e = document.getElementById(id + 'Bar'); if (e) e.style.width = Math.round(Math.max(0, Math.min(100, pct))) + '%'; };
@@ -494,6 +783,19 @@ function updateEnergyPanel() {
         ? `${Math.round(E.poa)} W/m² · panel ${Math.round(E.cellT)}°C · hava ${Math.round(E.ambT)}°C`
         : 'panel yok');
     set('efClip', E.clipped > 0.05 ? `· ${E.clipped.toFixed(1)} kW kırpıldı` : '');
+
+    // Çatı / balkon ayrımı
+    set('efSplit', balconyCount > 0
+        ? `çatı ${E.roofKw.toFixed(2)} kW · balkon ${E.balconyKw.toFixed(2)} kW`
+        : '');
+
+    // Gölge uyarısı — yalnız gerçekten gölge varken görünür
+    const sh = document.getElementById('efShade');
+    if (sh) {
+        const golgeli = E.shade > 0.02 && panelCount > 0;
+        sh.classList.toggle('hidden', !golgeli);
+        if (golgeli) sh.textContent = `🌳 Gölge: doğrudan ışının %${Math.round(E.shade * 100)}'i kesik · −${E.shadeLossKw.toFixed(2)} kW`;
+    }
 
     const batKap = countBat * SIM.batKwhPer;
     set('efBat', countBat > 0 ? `${Math.round(batteryLevel * 100)}% · ${E.batKwh.toFixed(1)}/${batKap.toFixed(1)} kWh` : 'yok');
@@ -513,10 +815,17 @@ function updateEnergyPanel() {
     else if (E.grid < -0.02) set('efGrid', 'veriliyor ' + (-E.grid).toFixed(2) + ' kW');
     else set('efGrid', 'dengede');
 
+    set('efStory', narrate());
+
     set('efDProd', E.dProd.toFixed(1));
     set('efDCons', E.dCons.toFixed(1));
     set('efDImp', E.dImp.toFixed(1));
     set('efDExp', E.dExp.toFixed(1));
+    set('efDShade', E.dShadeLoss.toFixed(1));
+    const gl = document.getElementById('efDShadeLbl'), gv = document.getElementById('efDShade');
+    const gorunur = E.dShadeLoss > 0.05;
+    if (gl) gl.style.opacity = gorunur ? '1' : '0.35';
+    if (gv) gv.style.opacity = gorunur ? '1' : '0.35';
 
     line('efBat', E.batFlow > 0.02 ? 'on' : (E.batFlow < -0.02 ? 'exp' : ''));
     line('efCar', E.evFlow > 0.02 ? 'on' : '');
@@ -526,6 +835,48 @@ function updateEnergyPanel() {
 }
 
 // ---------- BİLEŞEN EKLEME ----------
+/* Çatı dizisinin yönünü ve eğimini sahneye uygular.
+   Düz çatıda balastlı sistemler cephe hattından bağımsız açıyla kurulabilir;
+   bu yüzden ev sabit kalır, yalnız dizi döner. Panel normali güneye (+z)
+   bakarken azimut γ için grup Y ekseninde −γ döndürülür. */
+function applyRoofOrientation() {
+    if (!appObjs || !appObjs.panelGroup) return;
+    appObjs.panelGroup.rotation.y = -SIM.azimuthDeg * RAD;
+    const t = SIM.tiltDeg * RAD;
+    appObjs.panelTiles.forEach(tile => { tile.rotation.x = t; });
+}
+
+/* Kurulum panelini durumla eşitler ve seçime göre kısa bir mühendis notu yazar. */
+function refreshBuildPanel() {
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    set('cnt_panel', panelCount); set('cnt_balkon', balconyCount);
+    set('cnt_bat', countBat); set('cnt_ev', countEV);
+    const hb = document.getElementById('btnHp');
+    if (hb) { hb.textContent = hpOn ? 'Çıkar' : 'Ekle'; hb.className = 'px-2 h-6 rounded font-bold ' + (hpOn ? 'bg-emerald-500/80 hover:bg-emerald-500 text-slate-900' : 'bg-white/10 hover:bg-white/25'); }
+
+    const az = Math.abs(SIM.azimuthDeg);
+    // Notlar modelin kendi verdiği değerlerle uyumlu (İstanbul, 18° eğim):
+    // güney 21,4 · GD/GB 20,3 · doğu/batı 17,9 · kuzey 14,1 kWh/gün
+    const notlar = {
+        0: 'Güney en yüksek yıllık üretimi verir — karşılaştırmaların referansı budur.',
+        45: 'Güneyden 45° sapma alçak eğimde yalnız ~%5 kaybettirir; eğim dikleştikçe bu kayıp büyür.',
+        90: 'Doğu/batı cephede kayıp ~%16. Üretim sabaha ya da akşama kayar — tüketiminiz o saatlerdeyse batı cephe mantıklı olabilir.',
+        180: 'Kuzey cephede kayıp ~%34. Eğimli montaj uygun değildir; panelleri düze yakın kurmak gerekir.'
+    };
+    set('simOrientNote', notlar[az] || '');
+
+    // Eğim notu: dik açı kışı, düşük açı yazı kayırır
+    const tn = document.getElementById('simTiltVal');
+    if (tn) tn.title = SIM.tiltDeg < 12 ? 'Düz montaj: yazı kayırır, kışın zayıf'
+                     : SIM.tiltDeg > 33 ? 'Dik montaj: kışı kayırır, kar da daha kolay kayar'
+                     : 'İstanbul için yıllık optimum 30-35° civarındadır';
+
+    const acikEngel = OBSTACLES.filter(o => o.on).map(o => o.ad);
+    set('simShadeNote', acikEngel.length
+        ? acikEngel.join(' ve ') + ' doğrudan ışını kesince difüz ışık kalır; dizideki bir panelin gölgelenmesi tüm dizeyi düşürür.'
+        : 'Engel ekleyip günü oynatın — gölgenin üretimden ne götürdüğünü panelde görün.');
+}
+
 function refreshSprites() {
     sprites.forEach(s => {
         if (s.userData.kind === 'panel') s.visible = panelCount < MAX_PANELS;
@@ -534,17 +885,24 @@ function refreshSprites() {
         if (s.userData.kind === 'hp') s.visible = !hpOn;
     });
 }
-function addPanel() { if (panelCount < MAX_PANELS) { panelCount++; refreshSprites(); updateScore(); } }
-function addBat() { if (countBat < MAX_BAT) { countBat++; refreshSprites(); updateScore(); } }
-function addEV() { if (countEV < MAX_EV) { countEV++; refreshSprites(); updateScore(); } }
-function addHP() { if (!hpOn) { hpOn = true; refreshSprites(); updateScore(); } }
+function addPanel() { if (panelCount < MAX_PANELS) { panelCount++; refreshSprites(); refreshBuildPanel(); updateScore(); } }
+function addBat() { if (countBat < MAX_BAT) { countBat++; refreshSprites(); refreshBuildPanel(); updateScore(); } }
+function addEV() { if (countEV < MAX_EV) { countEV++; refreshSprites(); refreshBuildPanel(); updateScore(); } }
+function addHP() { if (!hpOn) { hpOn = true; refreshSprites(); refreshBuildPanel(); updateScore(); } }
 function resetSim() {
-    panelCount = 0; countBat = 0; countEV = 0; hpOn = false;
+    panelCount = 0; balconyCount = 0; countBat = 0; countEV = 0; hpOn = false;
+    OBSTACLES.forEach(o => { o.on = false; });
     batteryLevel = 0; carLevel = 0; waterTemp = 0;
     E.batKwh = 0; E.evKwh = 12; E.tankC = 18;
-    E.dProd = E.dCons = E.dImp = E.dExp = 0; E.lastHour = -1;
+    E.dProd = E.dCons = E.dImp = E.dExp = E.dShadeLoss = 0; E.lastHour = -1;
     E.pvDc = E.pvAc = E.clipped = E.batFlow = E.evFlow = E.hpFlow = E.grid = 0;
-    refreshSprites(); updateScore();
+    SIM.azimuthDeg = 0; SIM.tiltDeg = 18.3;
+    const azEl = document.getElementById('simAzimuth'); if (azEl) azEl.value = '0';
+    const tEl = document.getElementById('simTilt'); if (tEl) tEl.value = '18';
+    const tv = document.getElementById('simTiltVal'); if (tv) tv.textContent = '18°';
+    document.querySelectorAll('[data-obs]').forEach(cb => { cb.checked = false; });
+    if (typeof applyRoofOrientation === 'function') applyRoofOrientation();
+    refreshSprites(); refreshBuildPanel(); updateScore();
 }
 
 window.initApp3DScene = function () {
@@ -593,6 +951,16 @@ window.initApp3DScene = function () {
     appObjs.gas = buildGasMeter(); appScene.add(appObjs.gas);
     Object.assign(appObjs, buildGrid(appScene));
 
+    // Çevre engelleri — OBSTACLES tablosuyla aynı konumda
+    appObjs.obstacles = {};
+    OBSTACLES.forEach(o => {
+        const m = o.key === 'agac' ? buildTree(o) : buildNeighbourBuilding(o);
+        appScene.add(m); appObjs.obstacles[o.key] = m;
+    });
+
+    // Balkon (dikey paneller)
+    appObjs.balcony = buildBalcony(); appScene.add(appObjs.balcony);
+
     appObjs.evs = [];
     const evColors = [0x2b3a4a, 0xb0b8c0];
     for (let i = 0; i < MAX_EV; i++) { const ev = buildEV(evColors[i]); ev.position.set(-1.6 + i * 3.4, 0, 7); ev.rotation.y = Math.PI / 2; ev.scale.set(0, 0, 0); appScene.add(ev); appObjs.evs.push(ev); }
@@ -627,6 +995,7 @@ window.initApp3DScene = function () {
     });
 
     window.addEventListener('resize', onWindowResize3D);
+    applyRoofOrientation();
     refreshSprites(); updateScore(); updateClock();
 
     const V = t => new THREE.Vector3(t, t, t);
@@ -668,6 +1037,8 @@ window.initApp3DScene = function () {
 
         // Bileşen görünürlükleri (yumuşak)
         appObjs.panelTiles.forEach((t, i) => t.scale.lerp(V(i < panelCount ? 1 : 0), 0.16));
+        appObjs.balcony.userData.tiles.forEach((t, i) => t.scale.lerp(V(i < balconyCount ? 1 : 0), 0.16));
+        OBSTACLES.forEach(o => { const m = appObjs.obstacles[o.key]; if (m) m.visible = o.on; });
         appObjs.inverter.scale.lerp(V(panelCount > 0 ? 1 : 0), 0.14);
         appObjs.batteries.forEach((b, i) => b.scale.lerp(V(i < countBat ? 1 : 0), 0.16));
         appObjs.evs.forEach((v, i) => v.scale.lerp(V(i < countEV ? 1 : 0), 0.16));
@@ -715,24 +1086,50 @@ window.initApp3DScene = function () {
    ---------------------------------------------------------------------------- */
 function stepEnergy(dtH) {
     const arrayKwp = panelCount * SIM.panelWp / 1000;
+    const balkonKwp = balconyCount * SIM.balconyWp / 1000;
 
-    // --- Işınım ve PV üretimi ---
-    const ir = irradiance(SIM.dayOfYear, dayTime, SIM.lat, SIM.cloud);
-    E.poa = ir.poa;
     E.ambT = ambientC(SIM.dayOfYear, dayTime, SIM.lat);
-    // NOCT modeli: hücre sıcaklığı ışınımla yükselir
-    E.cellT = E.ambT + (SIM.noct - 20) / 800 * E.poa;
-    const tempFactor = 1 + SIM.tempCoeff * (E.cellT - 25);
 
-    E.pvDc = arrayKwp * (E.poa / 1000) * tempFactor * SIM.systemLoss;
-    if (E.pvDc < 0) E.pvDc = 0;
+    // --- ÇATI DİZİSİ ---
+    const ir = irradianceOn(SIM.dayOfYear, dayTime, SIM.lat, SIM.cloud, SIM.tiltDeg, SIM.azimuthDeg);
+    E.poa = ir.poa;
+    E.cellT = E.ambT + (SIM.noct - 20) / 800 * E.poa;      // NOCT modeli
+    const tf = 1 + SIM.tempCoeff * (E.cellT - 25);
 
-    // İnverter: verim + tepe kırpma
+    // Dizi uyumsuzluğu: string inverterde bir panelin gölgelenmesi tüm dizeyi
+    // düşürür. Kısmi gölgede kayıp, ışınım kaybından daha büyüktür — sahada
+    // en çok şaşırtan gerçek budur.
+    const uyumsuzluk = E.shade > 0.02 && E.shade < 0.98 ? (1 - 0.18 * (1 - Math.abs(2 * E.shade - 1))) : 1;
+
+    let roofDc = arrayKwp * (E.poa / 1000) * tf * SIM.systemLoss * uyumsuzluk;
+    if (roofDc < 0) roofDc = 0;
+
+    // --- BALKON DİZİSİ (dikey) ---
+    const irB = balkonKwp > 0
+        ? irradianceOn(SIM.dayOfYear, dayTime, SIM.lat, SIM.cloud, SIM.balconyTilt, SIM.balconyAz)
+        : { poa: 0 };
+    E.poaBalcony = irB.poa;
+    const cellB = E.ambT + (SIM.noct - 20) / 800 * E.poaBalcony;
+    let balkonDc = balkonKwp * (E.poaBalcony / 1000) * (1 + SIM.tempCoeff * (cellB - 25)) * SIM.systemLoss;
+    if (balkonDc < 0) balkonDc = 0;
+
+    E.pvDc = roofDc + balkonDc;
+
+    // İnverter: verim + tepe kırpma (balkon kendi mikro inverteriyle gelir,
+    // kırpma yalnız çatı dizisinde olur)
     const invKw = Math.max(1.5, arrayKwp / SIM.dcAcRatio);
-    const acRaw = E.pvDc * SIM.invEff;
-    E.pvAc = Math.min(acRaw, invKw);
-    E.clipped = Math.max(0, acRaw - E.pvAc);
+    const roofAcRaw = roofDc * SIM.invEff;
+    E.roofKw = Math.min(roofAcRaw, invKw);
+    E.clipped = Math.max(0, roofAcRaw - E.roofKw);
+    E.balconyKw = balkonDc * SIM.invEff;
+    E.pvAc = E.roofKw + E.balconyKw;
     prodKW = E.pvAc;
+
+    // Gölgesiz senaryoyla fark: kullanıcıya "gölge sana kaça mal oluyor" der
+    if (arrayKwp > 0 && ir.poaGolgesiz > ir.poa) {
+        const golgesizDc = arrayKwp * (ir.poaGolgesiz / 1000) * tf * SIM.systemLoss;
+        E.shadeLossKw = Math.max(0, Math.min(golgesizDc * SIM.invEff, invKw) - E.roofKw);
+    } else E.shadeLossKw = 0;
 
     // --- Ev yükü (saatlik profil) ---
     E.load = loadAt(dayTime);
@@ -795,9 +1192,10 @@ function stepEnergy(dtH) {
 
     // --- Günlük sayaçlar (gece yarısı sıfırlanır) ---
     const saat = Math.floor(dayTime);
-    if (E.lastHour > saat) { E.dProd = E.dCons = E.dImp = E.dExp = 0; }
+    if (E.lastHour > saat) { E.dProd = E.dCons = E.dImp = E.dExp = E.dShadeLoss = 0; }
     E.lastHour = saat;
     E.dProd += E.pvAc * dtH;
+    E.dShadeLoss += E.shadeLossKw * dtH;
     E.dCons += (toplamYuk + Math.max(0, E.evFlow)) * dtH;
     if (E.grid > 0) E.dImp += E.grid * dtH; else E.dExp += -E.grid * dtH;
 
