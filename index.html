@@ -681,11 +681,11 @@
                 <div class="phi-head text-center">
                     <p class="kicker text-amber-600">Yol Haritanız</p>
                     <h2 class="font-black text-slate-800" style="font-size:clamp(1.75rem,3.6vw,var(--fs-xl))">Nasıl Çalışır?</h2>
-                    <p class="text-slate-500 measure" style="font-size:var(--fs-base)">İlk hesaptan kurulum sonrası bakıma kadar dört adım — hepsi tek platformda.</p>
+                    <p id="stepsLede" class="text-slate-500 measure" style="font-size:var(--fs-base)">İlk hesaptan kurulum sonrası bakıma kadar dört adım — hepsi tek platformda.</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4" style="gap:var(--s4)">
                     <div class="phi-card bg-white border border-slate-200 hover:shadow-lg hover:border-emerald-300 transition relative">
-                        <span class="absolute -top-3 left-6 w-8 h-8 rounded-full bg-emerald-600 text-white font-black text-sm flex items-center justify-center shadow">1</span>
+                        <span class="step-no absolute -top-3 left-6 w-8 h-8 rounded-full bg-emerald-600 text-white font-black text-sm flex items-center justify-center shadow">1</span>
                         <div class="phi-card-body">
                             <div style="font-size:var(--fs-xl);line-height:1;margin:var(--s2) 0 var(--s3)">📊</div>
                             <h3 class="font-black text-slate-800" style="font-size:var(--fs-md);letter-spacing:-.02em;margin-bottom:var(--s2)">Hesaplayın</h3>
@@ -693,8 +693,8 @@
                         </div>
                         <button onclick="heroFocusCalc()" class="phi-card-cta self-start text-emerald-700 font-bold hover:underline" style="font-size:var(--fs-sm)">Hemen hesapla →</button>
                     </div>
-                    <div class="phi-card bg-white border border-slate-200 hover:shadow-lg hover:border-indigo-300 transition relative">
-                        <span class="absolute -top-3 left-6 w-8 h-8 rounded-full bg-indigo-600 text-white font-black text-sm flex items-center justify-center shadow">2</span>
+                    <div id="stepConsultant" class="phi-card bg-white border border-slate-200 hover:shadow-lg hover:border-indigo-300 transition relative">
+                        <span class="step-no absolute -top-3 left-6 w-8 h-8 rounded-full bg-indigo-600 text-white font-black text-sm flex items-center justify-center shadow">2</span>
                         <div class="phi-card-body">
                             <div style="font-size:var(--fs-xl);line-height:1;margin:var(--s2) 0 var(--s3)">🎯</div>
                             <h3 class="font-black text-slate-800" style="font-size:var(--fs-md);letter-spacing:-.02em;margin-bottom:var(--s2)">Danışmanınızı Seçin</h3>
@@ -703,7 +703,7 @@
                         <button onclick="openPublicModule('consultantsModule')" class="phi-card-cta self-start text-indigo-700 font-bold hover:underline" style="font-size:var(--fs-sm)">Danışmanları gör →</button>
                     </div>
                     <div class="phi-card bg-white border border-slate-200 hover:shadow-lg hover:border-amber-300 transition relative">
-                        <span class="absolute -top-3 left-6 w-8 h-8 rounded-full bg-amber-500 text-white font-black text-sm flex items-center justify-center shadow">3</span>
+                        <span class="step-no absolute -top-3 left-6 w-8 h-8 rounded-full bg-amber-500 text-white font-black text-sm flex items-center justify-center shadow">3</span>
                         <div class="phi-card-body">
                             <div style="font-size:var(--fs-xl);line-height:1;margin:var(--s2) 0 var(--s3)">📄</div>
                             <h3 class="font-black text-slate-800" style="font-size:var(--fs-md);letter-spacing:-.02em;margin-bottom:var(--s2)">Teklif Alın</h3>
@@ -712,7 +712,7 @@
                         <button onclick="openLeadModal('kurulum')" class="phi-card-cta self-start text-amber-700 font-bold hover:underline" style="font-size:var(--fs-sm)">Keşif talebi oluştur →</button>
                     </div>
                     <div class="phi-card bg-white border border-slate-200 hover:shadow-lg hover:border-slate-400 transition relative">
-                        <span class="absolute -top-3 left-6 w-8 h-8 rounded-full bg-slate-700 text-white font-black text-sm flex items-center justify-center shadow">4</span>
+                        <span class="step-no absolute -top-3 left-6 w-8 h-8 rounded-full bg-slate-700 text-white font-black text-sm flex items-center justify-center shadow">4</span>
                         <div class="phi-card-body">
                             <div style="font-size:var(--fs-xl);line-height:1;margin:var(--s2) 0 var(--s3)">🔧</div>
                             <h3 class="font-black text-slate-800" style="font-size:var(--fs-md);letter-spacing:-.02em;margin-bottom:var(--s2)">Kurulum & Süreklilik</h3>
@@ -729,9 +729,9 @@
                 <div class="phi-head text-center">
                     <p class="kicker text-amber-600">Uzman Desteği</p>
                     <h2 class="font-black text-slate-800" style="font-size:clamp(1.75rem,3.6vw,var(--fs-xl))">Profesyonel Destek Alın</h2>
-                    <p class="text-slate-500 measure" style="font-size:var(--fs-base)">Kurulum teklifi, mevcut sisteminiz için teknik servis veya satıcıdan bağımsız danışmanlık — hangisine ihtiyacınız varsa buradan başlayın.</p>
+                    <p id="supportLede" class="text-slate-500 measure" style="font-size:var(--fs-base)">Kurulum teklifi, mevcut sisteminiz için teknik servis veya satıcıdan bağımsız danışmanlık — hangisine ihtiyacınız varsa buradan başlayın.</p>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3" style="gap:var(--s4)">
+                <div id="supportGrid" class="grid grid-cols-1 md:grid-cols-3" style="gap:var(--s4)">
                     <button type="button" onclick="openLeadModal('kurulum')" class="phi-card text-left bg-slate-50 border border-slate-200 shadow-sm hover:shadow-xl hover:border-emerald-300 hover:-translate-y-1 transition">
                         <div class="phi-card-body">
                             <div style="font-size:var(--fs-2xl);line-height:1;margin-bottom:var(--s3)">☀️</div>
@@ -750,7 +750,7 @@
                         <span class="phi-card-cta inline-flex items-center gap-1 font-black text-red-700" style="font-size:var(--fs-sm)">Servis talebi aç →</span>
                     </button>
 
-                    <button type="button" onclick="openPublicModule('consultantsModule'); if(window.renderConsultantsList) renderConsultantsList();" class="phi-card text-left bg-slate-50 border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1 transition">
+                    <button type="button" id="supportConsultant" onclick="openPublicModule('consultantsModule'); if(window.renderConsultantsList) renderConsultantsList();" class="phi-card text-left bg-slate-50 border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1 transition">
                         <div class="phi-card-body">
                             <div style="font-size:var(--fs-2xl);line-height:1;margin-bottom:var(--s3)">🎯</div>
                             <h3 class="font-black text-slate-800" style="font-size:var(--fs-lg);letter-spacing:-.025em;margin-bottom:var(--s2)">Danışmanlık Al</h3>

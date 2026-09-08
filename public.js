@@ -433,3 +433,57 @@ window.heroFocusCalc = function () {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => el.focus({ preventScroll: true }), 450);
 };
+
+// ============================================================================
+// VİTRİN SÜTUNLARI — arkası boş olan vaadi gösterme
+// ----------------------------------------------------------------------------
+// Platform pazaryeri mantığıyla çalışıyor: danışman listesi, donanım tablosu ve
+// tedarikçi dizini ancak içerik girildikçe anlam kazanıyor. İçerik yokken bu
+// bölümleri vitrinde bırakmak ziyaretçiye karşılıksız bir vaat oluyor —
+// "Danışmanları gör" deyip boş listeye düşürmek güveni aşındırır.
+//
+// Kural: LİSTELER içerik yoksa gizlenir; ROL ÇAĞRILARI (gateway'deki kurulumcu/
+// danışman/tedarikçi kartları) her zaman kalır, çünkü onlar davet, liste değil.
+// İlk kayıt girildiği anda bölümler kendiliğinden geri gelir.
+// ============================================================================
+(function () {
+    async function danismanSayisi() {
+        if (typeof supabaseClient === 'undefined' || !supabaseClient) return 0;
+        try {
+            const { data, error } = await supabaseClient.rpc('list_approved_consultants');
+            if (error) throw error;
+            return (data || []).length;
+        } catch (e) { return 0; }   // erişilemezse yok say → gizle
+    }
+
+    function adimlariYenidenNumarala() {
+        const gorunur = [...document.querySelectorAll('.step-no')]
+            .filter(el => { const k = el.closest('.phi-card'); return k && !k.classList.contains('hidden'); });
+        gorunur.forEach((el, i) => { el.textContent = String(i + 1); });
+    }
+
+    async function uygula() {
+        const n = await danismanSayisi();
+        if (n > 0) return;   // içerik var → hiçbir şeye dokunma
+
+        // 1) "Nasıl Çalışır" içindeki danışman adımı
+        document.getElementById('stepConsultant')?.classList.add('hidden');
+        adimlariYenidenNumarala();
+
+        // 2) "Profesyonel Destek" içindeki danışman kartı (3 sütun → 2)
+        const kart = document.getElementById('supportConsultant');
+        if (kart) {
+            kart.classList.add('hidden');
+            const izgara = document.getElementById('supportGrid');
+            if (izgara) izgara.classList.replace('md:grid-cols-3', 'md:grid-cols-2');
+        }
+
+        // 3) Bölüm açıklamaları adım/kart sayısıyla tutarlı kalsın
+        const lede = document.getElementById('stepsLede');
+        if (lede) lede.textContent = 'İlk hesaptan kurulum sonrası bakıma kadar üç adım — hepsi tek platformda.';
+        const sLede = document.getElementById('supportLede');
+        if (sLede) sLede.textContent = 'Kurulum teklifi veya mevcut sisteminiz için teknik servis — hangisine ihtiyacınız varsa buradan başlayın.';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { uygula(); });
+})();
