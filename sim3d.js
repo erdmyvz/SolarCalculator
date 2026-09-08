@@ -1,21 +1,200 @@
 /* ============================================================================
-   sim3d.js — 3D TAM ENERJİ BAĞIMSIZLIĞI SİMÜLASYONU (Three.js r128)
-   - Sadeleştirilmiş modern ev (tek kapı + tek pencere), düzeltilmiş çatı & panel yönü
-   - Sahne içi 3D "+" butonları (etiketli, tıklanabilir) — bileşen ekleme (kademeli)
-   - Güneş doğuş→batış döngüsü (otomatik + manuel kaydırıcı), gökyüzü/ışık/gölge değişir
-   - Sıcak su deposu (güneşte mavi→kırmızı ısınır), batarya/araç dolumu
-   - Animasyonlu şebeke hattı + sağda canlı enerji-akış paneli (ortada inverter)
-   - "Sıfırla" düğmesi, otomatik dönüş KAPALI
-   Not: index.html'deki alt buton çubuğu kaldırılır; sol "Bağımsızlık Skoru" kalır.
+   sim3d.js — 3D ENERJİ BAĞIMSIZLIĞI SİMÜLASYONU (Three.js r128)
+
+   Simülasyon gerçek mühendislik modelleri üzerine kuruludur; gösterdiği
+   sayılar bir GES tasarımcısının kullandığı yöntemlerle hesaplanır:
+
+     · Güneş konumu   — deklinasyon + saat açısı; enleme ve günün sırasına bağlı
+                        gerçek gökyüzü yayı (yazın kuzeydoğudan doğar)
+     · Yerel saat     — boylam ve zaman denklemi düzeltmesiyle Türkiye saati
+     · Işınım         — ASHRAE açık hava modeli, Kasten-Young hava kütlesi
+     · Eğik yüzey     — gelme açısı + gökyüzü difüzü + yerden yansıma
+     · PV             — NOCT hücre sıcaklığı, sıcaklık katsayısı, sistem kayıpları
+     · İnverter       — verim ve DC/AC oranına bağlı tepe kırpma
+     · Ev yükü        — saatlik profil; akşam zirvesi üretim bittikten sonra gelir
+     · Batarya        — kWh kapasite, güç sınırı, DoD, gidiş-dönüş verimi
+     · Skor           — günün gerçek enerji bilançosundan türer (uydurma puan yok)
+
+   Kullanıcı şehri, mevsimi ve bulutluluğu değiştirebilir; üretim buna göre
+   değişir. Amaç "öğlen üretiyorum, akşam tüketiyorum" gerçeğini göstermek —
+   bataryanın neden gerektiği ancak böyle anlaşılır.
+
+   Sahne: 3D "+" butonlarıyla kademeli bileşen ekleme, animasyonlu şebeke hattı,
+   sağda canlı enerji akış paneli ve günlük kWh bilançosu.
    ============================================================================ */
 
 let appScene, appCamera, appRenderer, appControls, appObjs;
 let panelCount = 0, countBat = 0, countEV = 0, hpOn = false;
-let batteryLevel = 0, carLevel = 0, waterTemp = 0;
+let batteryLevel = 0, carLevel = 0, waterTemp = 0;   // 0..1 — yalnız görsel geri bildirim için
 let prodKW = 0, gridFlow = 0, houseLoadKW = 0.4;
 let dayTime = 12, autoDay = true;
 let sprites = [];
 const MAX_PANELS = 8, MAX_BAT = 4, MAX_EV = 2;
+
+/* ============================================================================
+   FİZİK ÇEKİRDEĞİ
+   ----------------------------------------------------------------------------
+   Simülasyon artık uydurma bir sinüs eğrisi değil; sektörde kullanılan standart
+   modellerin sadeleştirilmiş ama doğru uygulamaları üzerine kurulu:
+
+     · Güneş konumu   — Cooper deklinasyon denklemi + saat açısı (enleme bağlı)
+     · Işınım         — ASHRAE açık hava modeli (aylık A/B/C katsayıları)
+     · Eğik yüzey     — gelme açısı + gökyüzü ve yerden yansıyan difüz bileşen
+     · PV çıkışı      — NOCT hücre sıcaklığı ve sıcaklık katsayısıyla derating
+     · İnverter       — verim ve DC/AC oranına bağlı tepe kırpma (clipping)
+     · Ev yükü        — saatlik profil (akşam zirvesi dahil), sabit değil
+     · Batarya        — kWh kapasite, güç sınırı, gidiş-dönüş verimi, DoD
+
+   Amaç, ziyaretçinin "öğlen üretiyorum ama akşam tüketiyorum" gerçeğini
+   gözüyle görmesi. Bataryanın neden gerekli olduğu ancak böyle anlaşılır.
+   ============================================================================ */
+
+const SIM = {
+    // Konum (varsayılan İstanbul). Enlem güneşin yükseldiği açıyı belirler.
+    lat: 41.0,
+    lon: 29.0,
+    cityName: 'İstanbul',
+    dayOfYear: 172,          // 21 Haziran — yaz gündönümü
+    cloud: 0,                // 0 açık · 0.45 parçalı · 0.8 kapalı
+
+    // Donanım
+    panelWp: 500,            // tek panel tepe gücü (W)
+    tiltDeg: 18.3,           // sahnedeki panel eğimi (rotation.x = 0.32 rad)
+    azimuthDeg: 0,           // 0 = tam güney (sahnede +z güney)
+    tempCoeff: -0.0035,      // %/°C — N-type panel
+    noct: 45,
+    systemLoss: 0.92,        // kirlenme + kablo + uyumsuzluk
+    invEff: 0.97,
+    dcAcRatio: 1.2,          // inverter = dizi kWp / 1.2 → tepede kırpma olur
+
+    batKwhPer: 5.1,          // modül başına kapasite (Pylontech/Deye sınıfı)
+    batKwPer: 2.5,           // modül başına şarj/deşarj gücü
+    batMinSoc: 0.10,         // deşarj derinliği sınırı
+    batEff: 0.96,            // tek yön (gidiş-dönüş ≈ %92)
+
+    evKwh: 60,               // araç batarya kapasitesi
+    evChargerKw: 7.4,        // ev tipi AC şarj
+
+    tankLitre: 200,
+    tankSet: 52,             // termostat üst sınırı (°C)
+    tankOn: 45,              // altına düşünce ısıtmaya başlar
+    hpCop: 3.2,              // ısı pompası performans katsayısı
+    hpKw: 0.7,               // elektriksel çekiş
+    tankLossPerH: 0.6        // °C/saat duruş kaybı
+};
+
+// Enerji durumu — gerçek birimlerle
+const E = {
+    batKwh: 0,               // bataryadaki enerji
+    evKwh: 12,               // araçtaki enerji (başlangıçta %20)
+    tankC: 18,               // depo su sıcaklığı
+    pvDc: 0, pvAc: 0, clipped: 0,
+    load: 0, batFlow: 0, evFlow: 0, hpFlow: 0, grid: 0,
+    poa: 0, cellT: 0, ambT: 0, sunElDeg: 0, sunAzDeg: 0,
+    sunrise: 6, sunset: 18,
+    // Günlük sayaçlar (kWh)
+    dProd: 0, dCons: 0, dImp: 0, dExp: 0,
+    lastHour: -1
+};
+
+const RAD = Math.PI / 180;
+
+// Türkiye'den örnek enlemler — kuzey-güney farkı kışın belirgin şekilde ayrışır.
+const CITIES = [
+    { ad: 'Antalya',   lat: 36.9, lon: 30.7 },
+    { ad: 'Adana',     lat: 37.0, lon: 35.3 },
+    { ad: 'İzmir',     lat: 38.4, lon: 27.1 },
+    { ad: 'Konya',     lat: 37.9, lon: 32.5 },
+    { ad: 'Ankara',    lat: 39.9, lon: 32.9 },
+    { ad: 'İstanbul',  lat: 41.0, lon: 29.0 },
+    { ad: 'Erzurum',   lat: 39.9, lon: 41.3 },
+    { ad: 'Trabzon',   lat: 41.0, lon: 39.7 },
+    { ad: 'Edirne',    lat: 41.7, lon: 26.6 }
+];
+
+// Türkiye kalıcı UTC+3 kullanır → standart meridyen 45°E.
+// Kaydırıcıdaki saat YEREL saattir; güneş hesabı güneş saatiyle yapılır.
+const STD_MERIDIAN = 45;
+function solarTime(n, localHour, lonDeg) {
+    const B = 2 * Math.PI * (n - 81) / 365;
+    const eot = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B); // dakika
+    return localHour - (STD_MERIDIAN - lonDeg) / 15 + eot / 60;
+}
+
+// --- Saatlik ev yükü profili (kW). Gece taban ~0,16 · akşam zirvesi ~1,0 ---
+// Toplam ≈ 10,2 kWh/gün — elektrikli beyaz eşyası olan bir Türk konutu.
+const LOAD_PROFILE = [
+    0.19, 0.18, 0.17, 0.16, 0.16, 0.18, 0.26, 0.46,
+    0.55, 0.41, 0.34, 0.32, 0.36, 0.39, 0.35, 0.32,
+    0.36, 0.49, 0.72, 0.96, 1.02, 0.90, 0.61, 0.32
+];
+function loadAt(h) {
+    const i = Math.floor(h) % 24, j = (i + 1) % 24, f = h - Math.floor(h);
+    return LOAD_PROFILE[i] + (LOAD_PROFILE[j] - LOAD_PROFILE[i]) * f;
+}
+
+// --- ASHRAE açık hava katsayıları (Ocak→Aralık) ---
+const ASH_A = [1230, 1215, 1186, 1136, 1104, 1088, 1085, 1107, 1151, 1192, 1221, 1233];
+const ASH_B = [0.142, 0.144, 0.156, 0.180, 0.196, 0.205, 0.207, 0.201, 0.177, 0.160, 0.149, 0.142];
+const ASH_C = [0.058, 0.060, 0.071, 0.097, 0.121, 0.134, 0.136, 0.122, 0.092, 0.073, 0.063, 0.057];
+function monthIndex(n) { return Math.min(11, Math.max(0, Math.floor(((n - 1) / 365) * 12))); }
+
+// --- Güneş konumu: deklinasyon + saat açısı → yükseklik ve azimut ---
+function sunPosition(n, hour, latDeg) {
+    const dec = 23.45 * Math.sin(2 * Math.PI * (284 + n) / 365) * RAD;
+    const lat = latDeg * RAD;
+    const st = solarTime(n, hour, SIM.lon);                    // yerel saat → güneş saati
+    const kayma = st - hour;                                   // güneş saati ile yerel saat farkı
+    const omega = (st - 12) * 15 * RAD;                        // saat açısı
+    const sinEl = Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(omega);
+    const el = Math.asin(Math.max(-1, Math.min(1, sinEl)));    // yükseklik
+    // Azimut güneyden ölçülür, batıya doğru pozitif
+    let az = Math.atan2(Math.sin(omega), Math.cos(omega) * Math.sin(lat) - Math.tan(dec) * Math.cos(lat));
+    // Gündoğumu / günbatımı saat açısı.
+    // Yayınlanan saatler geometrik ufku değil, -0.833°'yi (atmosferik kırılma +
+    // güneş diskinin yarıçapı) esas alır; bu düzeltme olmadan 4-5 dakika sapar.
+    const h0 = -0.833 * RAD;
+    let cosOs = (Math.sin(h0) - Math.sin(lat) * Math.sin(dec)) / (Math.cos(lat) * Math.cos(dec));
+    cosOs = Math.max(-1, Math.min(1, cosOs));
+    const os = Math.acos(cosOs) / RAD / 15;                    // saat cinsinden yarı gün
+    // Gündoğumu/batımı kullanıcıya YEREL saatle gösterilir
+    return { el, az, dec, sunrise: 12 - os - kayma, sunset: 12 + os - kayma };
+}
+
+// --- Ortam sıcaklığı: mevsimlik ortalama + günlük salınım (tepe 15:00) ---
+function ambientC(n, hour, latDeg) {
+    const mean = 14.5 + 9.5 * Math.cos(2 * Math.PI * (n - 200) / 365);   // tepe ≈ 19 Temmuz
+    const enlemDuzeltme = (41 - latDeg) * 0.35;                              // güneyde daha sıcak
+    return mean + enlemDuzeltme + 5 * Math.cos(2 * Math.PI * (hour - 15) / 24);
+}
+
+// --- Eğik panel yüzeyine düşen ışınım (W/m²) ---
+function irradiance(n, hour, latDeg, cloud) {
+    const sp = sunPosition(n, hour, latDeg);
+    E.sunrise = sp.sunrise; E.sunset = sp.sunset;
+    E.sunElDeg = sp.el / RAD; E.sunAzDeg = sp.az / RAD;
+    if (sp.el <= 0.5 * RAD) return { poa: 0, sp: sp };
+
+    const m = monthIndex(n);
+    const am = 1 / (Math.sin(sp.el) + 0.50572 * Math.pow(sp.el / RAD + 6.07995, -1.6364)); // Kasten-Young
+    const dni = ASH_A[m] * Math.exp(-ASH_B[m] * am);      // doğrudan normal
+    const dhi = ASH_C[m] * dni;                            // yatay difüz
+    const ghi = dni * Math.sin(sp.el) + dhi;
+
+    // Gelme açısı: eğim β, yüzey azimutu γ (güneyden)
+    const beta = SIM.tiltDeg * RAD, gamma = SIM.azimuthDeg * RAD;
+    const cosTheta = Math.cos(sp.el) * Math.cos(sp.az - gamma) * Math.sin(beta)
+                   + Math.sin(sp.el) * Math.cos(beta);
+
+    const beam = dni * Math.max(0, cosTheta);
+    const sky = dhi * (1 + Math.cos(beta)) / 2;            // gökyüzü difüzü
+    const gnd = ghi * 0.20 * (1 - Math.cos(beta)) / 2;     // yerden yansıyan (albedo 0.20)
+
+    // Bulut: doğrudan bileşeni büyük ölçüde, difüzü az söndürür
+    const k = 1 - cloud;
+    const poa = beam * k * k + sky * (1 - cloud * 0.35) + gnd * k;
+    return { poa: Math.max(0, poa), sp: sp };
+}
 
 function mat(color, opts) {
     return new THREE.MeshStandardMaterial(Object.assign({ color: color, roughness: 0.7, metalness: 0.05 }, opts || {}));
@@ -225,16 +404,26 @@ function injectOverlays(container) {
         </div>`;
         ef.innerHTML = `
             <h4 class="font-black mb-1 text-sm">⚡ Enerji Akışı</h4>
-            <div class="bg-amber-500/20 border border-amber-400/40 rounded-lg p-2 text-center mb-3">
+            <div class="bg-amber-500/20 border border-amber-400/40 rounded-lg p-2 text-center mb-2">
                 <div class="text-[10px] text-amber-200 font-bold">☀️ ANLIK ÜRETİM</div>
                 <div class="text-xl font-black text-amber-300"><span id="efProd">0.0</span> kW</div>
+                <div class="text-[9px] text-amber-100/80 leading-tight" id="efIrr">—</div>
             </div>
-            <div class="bg-white/15 rounded-lg py-1.5 text-center mb-3 font-black text-sm border border-white/20">🔌 İNVERTER</div>
+            <div class="bg-white/15 rounded-lg py-1 text-center mb-2 font-black text-[11px] border border-white/20">🔌 İNVERTER <span id="efClip" class="text-red-300 font-bold"></span></div>
             ${row('🔋 Batarya', 'efBat', true)}
             ${row('🚗 Araç', 'efCar', true)}
             ${row('♨️ Sıcak Su', 'efWater', true)}
             ${row('🏠 Ev', 'efHouse', false)}
             ${row('🔗 Şebeke', 'efGrid', false)}
+            <div class="mt-3 pt-2 border-t border-white/15">
+                <div class="text-[10px] font-black text-white/70 mb-1">BUGÜN (kWh)</div>
+                <div class="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] font-bold">
+                    <span class="text-amber-300">Üretim</span><span id="efDProd" class="text-right">0.0</span>
+                    <span class="text-sky-300">Tüketim</span><span id="efDCons" class="text-right">0.0</span>
+                    <span class="text-red-300">Şebekeden</span><span id="efDImp" class="text-right">0.0</span>
+                    <span class="text-emerald-300">Şebekeye</span><span id="efDExp" class="text-right">0.0</span>
+                </div>
+            </div>
         `;
         container.appendChild(ef);
     }
@@ -249,46 +438,91 @@ function injectOverlays(container) {
             <div class="w-px h-6 bg-white/20"></div>
             <button id="simPlay" class="text-white text-lg leading-none w-7">⏸</button>
             <span id="simClock" class="text-white text-xs font-mono w-16 text-center">☀️ 12:00</span>
-            <input id="simTime" type="range" min="0" max="24" step="0.1" value="12" class="w-40 accent-amber-500">
+            <input id="simTime" type="range" min="0" max="24" step="0.1" value="12" class="w-32 accent-amber-500">
+            <div class="w-px h-6 bg-white/20"></div>
+            <select id="simCity" class="bg-slate-800 text-white text-[11px] font-bold rounded-lg px-2 py-1 border border-white/20 outline-none"></select>
+            <select id="simSeason" class="bg-slate-800 text-white text-[11px] font-bold rounded-lg px-2 py-1 border border-white/20 outline-none">
+                <option value="172">☀️ 21 Haziran</option>
+                <option value="265">🍂 22 Eylül</option>
+                <option value="355">❄️ 21 Aralık</option>
+                <option value="80">🌱 21 Mart</option>
+            </select>
+            <select id="simCloud" class="bg-slate-800 text-white text-[11px] font-bold rounded-lg px-2 py-1 border border-white/20 outline-none">
+                <option value="0">☀️ Açık</option>
+                <option value="0.45">⛅ Parçalı</option>
+                <option value="0.8">☁️ Kapalı</option>
+            </select>
         `;
         container.appendChild(cb);
         document.getElementById('simReset').addEventListener('click', resetSim);
         document.getElementById('simPlay').addEventListener('click', () => { autoDay = !autoDay; document.getElementById('simPlay').textContent = autoDay ? '⏸' : '▶'; });
         document.getElementById('simTime').addEventListener('input', (e) => { dayTime = parseFloat(e.target.value); autoDay = false; document.getElementById('simPlay').textContent = '▶'; updateClock(); });
+
+        // Konum: enlem güneşin ne kadar yükseleceğini belirler — üretimin
+        // Antalya ile Trabzon arasındaki farkı buradan görünür hale gelir.
+        const sehirSel = document.getElementById('simCity');
+        CITIES.forEach((c, i) => {
+            const o = document.createElement('option');
+            o.value = String(i); o.textContent = '📍 ' + c.ad;
+            if (c.ad === SIM.cityName) o.selected = true;
+            sehirSel.appendChild(o);
+        });
+        sehirSel.addEventListener('change', e => {
+            const c = CITIES[parseInt(e.target.value, 10)];
+            SIM.lat = c.lat; SIM.lon = c.lon; SIM.cityName = c.ad; updateScore();
+        });
+        document.getElementById('simSeason').addEventListener('change', e => { SIM.dayOfYear = parseInt(e.target.value, 10); updateScore(); });
+        document.getElementById('simCloud').addEventListener('change', e => { SIM.cloud = parseFloat(e.target.value); updateScore(); });
     }
 }
 
 function updateClock() {
     const el = document.getElementById('simClock'); if (!el) return;
     const hh = Math.floor(dayTime), mm = Math.floor((dayTime - hh) * 60);
-    const icon = (dayTime > 6 && dayTime < 18) ? '☀️' : '🌙';
+    const icon = (dayTime > E.sunrise && dayTime < E.sunset) ? '☀️' : '🌙';
     el.textContent = `${icon} ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
     const s = document.getElementById('simTime'); if (s && document.activeElement !== s) s.value = dayTime;
 }
 
 function updateEnergyPanel() {
     const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-    const bar = (id, pct) => { const e = document.getElementById(id + 'Bar'); if (e) e.style.width = Math.round(pct) + '%'; };
+    const bar = (id, pct) => { const e = document.getElementById(id + 'Bar'); if (e) e.style.width = Math.round(Math.max(0, Math.min(100, pct))) + '%'; };
     const line = (id, cls) => { const e = document.getElementById(id + 'Line'); if (e) e.className = 'ef-line mt-1' + (cls ? ' ' + cls : ''); };
 
-    set('efProd', prodKW.toFixed(1));
-    set('efBat', countBat > 0 ? Math.round(batteryLevel * 100) + '%' : 'yok');
+    set('efProd', E.pvAc.toFixed(2));
+    set('efIrr', panelCount
+        ? `${Math.round(E.poa)} W/m² · panel ${Math.round(E.cellT)}°C · hava ${Math.round(E.ambT)}°C`
+        : 'panel yok');
+    set('efClip', E.clipped > 0.05 ? `· ${E.clipped.toFixed(1)} kW kırpıldı` : '');
+
+    const batKap = countBat * SIM.batKwhPer;
+    set('efBat', countBat > 0 ? `${Math.round(batteryLevel * 100)}% · ${E.batKwh.toFixed(1)}/${batKap.toFixed(1)} kWh` : 'yok');
     bar('efBat', countBat > 0 ? batteryLevel * 100 : 0);
-    set('efCar', countEV > 0 ? Math.round(carLevel * 100) + '%' : 'yok');
+
+    const evKap = countEV * SIM.evKwh;
+    // ~6 km/kWh ortalama menzil
+    set('efCar', countEV > 0 ? `${Math.round(carLevel * 100)}% · ${Math.round(E.evKwh * 6)} km` : 'yok');
     bar('efCar', countEV > 0 ? carLevel * 100 : 0);
-    set('efWater', hpOn ? Math.round(20 + waterTemp * 40) + '°C' : 'yok');
+
+    set('efWater', hpOn ? `${Math.round(E.tankC)}°C${E.hpFlow > 0 ? ' ısıtıyor' : ''}` : 'yok');
     bar('efWater', hpOn ? waterTemp * 100 : 0);
-    set('efHouse', houseLoadKW.toFixed(1) + ' kW');
-    if (gridFlow > 0.05) set('efGrid', 'çekiliyor ' + gridFlow.toFixed(1) + ' kW');
-    else if (gridFlow < -0.05) set('efGrid', 'veriliyor ' + (-gridFlow).toFixed(1) + ' kW');
+
+    set('efHouse', E.load.toFixed(2) + ' kW');
+
+    if (E.grid > 0.02) set('efGrid', 'çekiliyor ' + E.grid.toFixed(2) + ' kW');
+    else if (E.grid < -0.02) set('efGrid', 'veriliyor ' + (-E.grid).toFixed(2) + ' kW');
     else set('efGrid', 'dengede');
 
-    const charging = prodKW > houseLoadKW;
-    line('efBat', countBat > 0 && charging && batteryLevel < 1 ? 'on' : (countBat > 0 && batteryLevel > 0 && !charging ? 'exp' : ''));
-    line('efCar', countEV > 0 && charging && carLevel < 1 ? 'on' : '');
-    line('efWater', hpOn && charging && waterTemp < 1 ? 'on' : '');
-    line('efHouse', 'on');
-    line('efGrid', gridFlow > 0.05 ? 'imp' : (gridFlow < -0.05 ? 'exp' : ''));
+    set('efDProd', E.dProd.toFixed(1));
+    set('efDCons', E.dCons.toFixed(1));
+    set('efDImp', E.dImp.toFixed(1));
+    set('efDExp', E.dExp.toFixed(1));
+
+    line('efBat', E.batFlow > 0.02 ? 'on' : (E.batFlow < -0.02 ? 'exp' : ''));
+    line('efCar', E.evFlow > 0.02 ? 'on' : '');
+    line('efWater', E.hpFlow > 0 ? 'on' : '');
+    line('efHouse', E.load > 0.01 ? 'on' : '');
+    line('efGrid', E.grid > 0.02 ? 'imp' : (E.grid < -0.02 ? 'exp' : ''));
 }
 
 // ---------- BİLEŞEN EKLEME ----------
@@ -307,6 +541,9 @@ function addHP() { if (!hpOn) { hpOn = true; refreshSprites(); updateScore(); } 
 function resetSim() {
     panelCount = 0; countBat = 0; countEV = 0; hpOn = false;
     batteryLevel = 0; carLevel = 0; waterTemp = 0;
+    E.batKwh = 0; E.evKwh = 12; E.tankC = 18;
+    E.dProd = E.dCons = E.dImp = E.dExp = 0; E.lastHour = -1;
+    E.pvDc = E.pvAc = E.clipped = E.batFlow = E.evFlow = E.hpFlow = E.grid = 0;
     refreshSprites(); updateScore();
 }
 
@@ -398,21 +635,35 @@ window.initApp3DScene = function () {
         requestAnimationFrame(animate);
         const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
 
-        if (autoDay) { dayTime += dt * (24 / 55); if (dayTime >= 24) dayTime -= 24; updateClock(); }
+        const dtH = autoDay ? dt * (24 / 55) : 0;          // geçen simüle saat
+        if (autoDay) { dayTime += dtH; if (dayTime >= 24) dayTime -= 24; updateClock(); }
 
-        // Güneş konumu / ışık / gökyüzü
-        const dayFrac = Math.max(0, Math.min(1, (dayTime - 6) / 12));
-        const az = dayFrac * Math.PI;
-        const sunEl = (dayTime > 6 && dayTime < 18) ? Math.sin(az) : 0;
+        // --- Gerçek güneş konumu: enlem + günün sırası + saat açısı ---
+        // Sahne yönü: +z güney, +x doğu, -x batı (kuzey yarımküre yerleşimi).
+        const sp = sunPosition(SIM.dayOfYear, dayTime, SIM.lat);
+        const elev = sp.el;                                // radyan, ufkun altında negatif
+        const sunEl = Math.max(0, Math.sin(elev));         // ışık şiddeti çarpanı
         const R = 42;
-        appObjs.sun.position.set(Math.cos(az) * R * 0.85, Math.max(-6, sunEl * R * 0.7), 14 + (1 - sunEl) * 8);
-        appObjs.sun.intensity = 0.05 + sunEl * 1.85;
-        appObjs.sunOrb.position.copy(appObjs.sun.position).multiplyScalar(0.85);
-        appObjs.sunOrb.visible = sunEl > 0.02;
-        appObjs.sunOrb.material.color.setRGB(1, 0.78 + sunEl * 0.2, 0.55 + sunEl * 0.35);
-        const sky = lerpStops(sunEl, SKY_STOPS);
+        const ch = Math.cos(elev);
+        appObjs.sun.position.set(-Math.sin(sp.az) * ch * R, Math.sin(elev) * R, Math.cos(sp.az) * ch * R);
+        appObjs.sun.intensity = 0.04 + sunEl * 1.9;
+        appObjs.sunOrb.position.copy(appObjs.sun.position).multiplyScalar(0.82);
+        appObjs.sunOrb.visible = elev > -0.5 * RAD;
+        // Ufka yakınken kızarır (atmosferde uzun yol), tepede beyazlaşır
+        const alcak = 1 - Math.min(1, Math.max(0, elev / (25 * RAD)));
+        appObjs.sunOrb.material.color.setRGB(1, 0.95 - alcak * 0.35, 0.88 - alcak * 0.62);
+        // Işık rengi de aynı şekilde: gündoğumu/batımı turuncu, öğle nötr
+        appObjs.sun.color.setRGB(1, 0.97 - alcak * 0.22, 0.93 - alcak * 0.38);
+
+        // Gökyüzü: sivil alacakaranlıktan (-6°) tam gündüze (18°) geçiş.
+        // Altın saat 0-10° arasıdır; bu yüzden geçiş yavaş olmalı, yoksa güneş
+        // ufuktayken gökyüzü çoktan mavi olur ve sahne sahte durur.
+        const skyT = Math.max(0, Math.min(1, (elev / RAD + 6) / 24));
+        const sky = lerpStops(skyT, SKY_STOPS);
         appScene.background = sky; appScene.fog.color.copy(sky);
-        appObjs.hemi.intensity = 0.28 + sunEl * 0.5;
+        appObjs.hemi.intensity = 0.10 + skyT * 0.55;
+        // Ortam ışığı da gökyüzü rengini alsın (alacakaranlıkta mavi-mor dolgu)
+        appObjs.hemi.color.copy(sky).lerp(new THREE.Color(0xbcd2f0), 0.45);
         appObjs.sun.target.position.set(0, 1.5, 0);
 
         // Bileşen görünürlükleri (yumuşak)
@@ -425,8 +676,8 @@ window.initApp3DScene = function () {
         appObjs.gas.scale.lerp(V(hpOn ? 0 : 1), 0.14);
         if (appObjs.hp.userData.fan && hpOn) appObjs.hp.userData.fan.rotation.z += 0.3;
 
-        // Enerji modeli
-        stepEnergy(dt, sunEl);
+        // Enerji modeli (simüle saat cinsinden)
+        stepEnergy(dtH);
 
         // Görsel geri bildirim: batarya emissive, sıcak su rengi
         appObjs.batAccent.emissiveIntensity = 0.2 + batteryLevel * 1.4;
@@ -451,31 +702,109 @@ window.initApp3DScene = function () {
         appRenderer.render(appScene, appCamera);
 
         acc += dt;
-        if (acc > 0.15) { acc = 0; updateEnergyPanel(); }
+        if (acc > 0.15) { acc = 0; updateEnergyPanel(); updateScore(); }
     }
     animate();
 };
 
-function stepEnergy(dt, sunEl) {
-    prodKW = sunEl * panelCount * 0.45;
-    const carCharging = countEV > 0 && carLevel < 1 && sunEl > 0.05;
-    const hpHeating = hpOn && waterTemp < 1 && sunEl > 0.05;
-    let demand = houseLoadKW + (carCharging ? 1.0 * countEV : 0) + (hpHeating ? 0.8 : 0);
-    let net = prodKW - demand;
-    const r = dt * 0.05;
+/* ----------------------------------------------------------------------------
+   Enerji adımı — dtH: geçen SİMÜLE saat (gerçek saniye değil)
+   Öncelik sırası gerçek bir hibrit inverterin varsayılanıyla aynı:
+     ev yükü → batarya şarjı → araç şarjı → şebekeye verme
+   Açık düşerse: batarya deşarjı → şebekeden çekme
+   ---------------------------------------------------------------------------- */
+function stepEnergy(dtH) {
+    const arrayKwp = panelCount * SIM.panelWp / 1000;
 
-    if (net >= 0) {
-        if (countBat > 0 && batteryLevel < 1) { batteryLevel = Math.min(1, batteryLevel + r * (net / Math.max(0.5, countBat))); }
-        gridFlow = (countBat === 0 || batteryLevel >= 1) ? -net : 0; // batarya doluysa/yoksa fazlayı ver
+    // --- Işınım ve PV üretimi ---
+    const ir = irradiance(SIM.dayOfYear, dayTime, SIM.lat, SIM.cloud);
+    E.poa = ir.poa;
+    E.ambT = ambientC(SIM.dayOfYear, dayTime, SIM.lat);
+    // NOCT modeli: hücre sıcaklığı ışınımla yükselir
+    E.cellT = E.ambT + (SIM.noct - 20) / 800 * E.poa;
+    const tempFactor = 1 + SIM.tempCoeff * (E.cellT - 25);
+
+    E.pvDc = arrayKwp * (E.poa / 1000) * tempFactor * SIM.systemLoss;
+    if (E.pvDc < 0) E.pvDc = 0;
+
+    // İnverter: verim + tepe kırpma
+    const invKw = Math.max(1.5, arrayKwp / SIM.dcAcRatio);
+    const acRaw = E.pvDc * SIM.invEff;
+    E.pvAc = Math.min(acRaw, invKw);
+    E.clipped = Math.max(0, acRaw - E.pvAc);
+    prodKW = E.pvAc;
+
+    // --- Ev yükü (saatlik profil) ---
+    E.load = loadAt(dayTime);
+    houseLoadKW = E.load;
+
+    // --- Isı pompalı su ısıtıcı: termostat ---
+    // Depo soğur; ayar noktasının altına inince ısınır. Güneş varken öncelikli
+    // çalışır, kritik seviyeye düşerse şebekeden de çalışır (gerçek davranış).
+    E.hpFlow = 0;
+    if (hpOn) {
+        E.tankC -= SIM.tankLossPerH * dtH;
+        const yuzeyFazlasi = E.pvAc - E.load;
+        const zorunlu = E.tankC < SIM.tankOn;
+        if (E.tankC < SIM.tankSet && (zorunlu || yuzeyFazlasi > SIM.hpKw)) {
+            E.hpFlow = SIM.hpKw;
+            // Q = P × COP × dt  →  ΔT = Q / (m × c)
+            const kwhIsi = SIM.hpKw * SIM.hpCop * dtH;
+            E.tankC += kwhIsi * 860 / SIM.tankLitre;   // 1 kWh ≈ 860 kcal
+        }
+        E.tankC = Math.max(10, Math.min(70, E.tankC));
     } else {
-        if (countBat > 0 && batteryLevel > 0) {
-            batteryLevel = Math.max(0, batteryLevel - r * (-net / Math.max(0.5, countBat)));
-            gridFlow = batteryLevel <= 0 ? -net : 0;
-        } else gridFlow = -net; // şebekeden çek
+        E.tankC = E.ambT;
     }
-    if (carCharging) carLevel = Math.min(1, carLevel + r * 1.0);
-    if (hpHeating) waterTemp = Math.min(1, waterTemp + r * 0.8);
-    if (!hpHeating && waterTemp > 0) waterTemp = Math.max(0, waterTemp - dt * 0.004);
+
+    const toplamYuk = E.load + E.hpFlow;
+    let fazla = E.pvAc - toplamYuk;
+
+    const batKap = countBat * SIM.batKwhPer;
+    const batGuc = countBat * SIM.batKwPer;
+    const batMin = batKap * SIM.batMinSoc;
+    const evKap = countEV * SIM.evKwh;
+
+    E.batFlow = 0; E.evFlow = 0;
+
+    if (fazla > 0) {
+        // 1) Batarya şarjı
+        if (batKap > 0 && E.batKwh < batKap) {
+            const p = Math.min(fazla, batGuc, (batKap - E.batKwh) / Math.max(dtH, 1e-6));
+            E.batKwh += p * dtH * SIM.batEff;
+            E.batFlow = p; fazla -= p;
+        }
+        // 2) Araç şarjı (güneşten)
+        if (evKap > 0 && E.evKwh < evKap && fazla > 0.2) {
+            const p = Math.min(fazla, countEV * SIM.evChargerKw, (evKap - E.evKwh) / Math.max(dtH, 1e-6));
+            E.evKwh += p * dtH;
+            E.evFlow = p; fazla -= p;
+        }
+        E.grid = -fazla;                     // negatif = şebekeye veriliyor
+    } else {
+        let acik = -fazla;
+        // Bataryadan karşıla
+        if (batKap > 0 && E.batKwh > batMin) {
+            const p = Math.min(acik, batGuc, (E.batKwh - batMin) / Math.max(dtH, 1e-6));
+            E.batKwh -= p * dtH / SIM.batEff;
+            E.batFlow = -p; acik -= p;
+        }
+        E.grid = acik;                       // pozitif = şebekeden çekiliyor
+    }
+    gridFlow = E.grid;
+
+    // --- Günlük sayaçlar (gece yarısı sıfırlanır) ---
+    const saat = Math.floor(dayTime);
+    if (E.lastHour > saat) { E.dProd = E.dCons = E.dImp = E.dExp = 0; }
+    E.lastHour = saat;
+    E.dProd += E.pvAc * dtH;
+    E.dCons += (toplamYuk + Math.max(0, E.evFlow)) * dtH;
+    if (E.grid > 0) E.dImp += E.grid * dtH; else E.dExp += -E.grid * dtH;
+
+    // --- Görsel katman için 0..1 karşılıkları ---
+    batteryLevel = batKap > 0 ? E.batKwh / batKap : 0;
+    carLevel = evKap > 0 ? E.evKwh / evKap : 0;
+    waterTemp = hpOn ? Math.max(0, Math.min(1, (E.tankC - 15) / (SIM.tankSet - 15))) : 0;
 }
 
 function onWindowResize3D() {
@@ -485,25 +814,45 @@ function onWindowResize3D() {
     appCamera.aspect = w / h; appCamera.updateProjectionMatrix(); appRenderer.setSize(w, h);
 }
 
-function updateScore() {
-    let score = 0, grid = 100, carbon = "Yüksek Düzeyde", fossil = "Aktif Kullanımda";
-    if (panelCount > 0) { score += 30; grid -= 30; carbon = "Orta Düzeyde"; }
-    score += countBat * 10; grid -= countBat * 15;
-    if (countBat > 0 && panelCount > 0) carbon = "Düşük";
-    score += countEV * 10; if (countEV > 0) carbon = "Sıfıra Yakın";
-    if (hpOn) { score += 20; grid = Math.max(0, grid - 20); fossil = "İPTAL EDİLDİ"; carbon = "NET ZERO (Sıfır Karbon)"; }
-    score = Math.max(0, Math.min(100, score)); grid = Math.max(0, grid);
+/* ----------------------------------------------------------------------------
+   Skor artık "panel varsa +30 puan" gibi uydurma bir tablo değil; günün o ana
+   kadarki gerçek enerji bilançosundan türüyor:
+       öz yeterlilik = (tüketim − şebekeden çekilen) / tüketim
+   Karbon da Türkiye şebeke emisyon faktörüyle (≈0,44 kg CO₂/kWh) hesaplanıyor.
+   ---------------------------------------------------------------------------- */
+const GRID_CO2 = 0.44;   // kg CO₂ / kWh — Türkiye şebeke ortalaması
 
-    const sEl = document.getElementById('scoreDisplay'), gEl = document.getElementById('gridDepDisplay'), fEl = document.getElementById('fossilDisplay'), cEl = document.getElementById('carbonDisplay');
-    if (sEl) sEl.innerText = "%" + score;
-    if (gEl) gEl.innerText = "%" + grid;
+function updateScore() {
+    const anlamli = E.dCons > 0.15;
+    const ozYeterlilik = anlamli ? Math.max(0, Math.min(100, (1 - E.dImp / E.dCons) * 100)) : 0;
+    const sebekeBagimliligi = 100 - ozYeterlilik;
+
+    // Kaçınılan emisyon: şebekeden çekmek zorunda kalmadığınız her kWh
+    const kacinilan = Math.max(0, E.dCons - E.dImp) * GRID_CO2;
+    const salinan = E.dImp * GRID_CO2;
+
+    const fossil = hpOn ? 'İPTAL EDİLDİ' : 'Aktif Kullanımda';
+
+    const sEl = document.getElementById('scoreDisplay'),
+          gEl = document.getElementById('gridDepDisplay'),
+          fEl = document.getElementById('fossilDisplay'),
+          cEl = document.getElementById('carbonDisplay');
+
+    // Gün ilerlemeden oran hesaplanamaz: kaydırıcıyla gezinirken veya duraklatılmışken
+    // sayaçlar birikmez. Bu durumda %0 yazmak yanıltıcı olur — beklediğini söyle.
+    if (sEl) sEl.innerText = anlamli ? '%' + Math.round(ozYeterlilik) : '—';
+    if (gEl) gEl.innerText = anlamli ? '%' + Math.round(sebekeBagimliligi) : '—';
     if (fEl) fEl.innerText = fossil;
-    if (cEl) cEl.innerText = carbon;
+    if (cEl) cEl.innerText = anlamli
+        ? `${salinan.toFixed(1)} kg salım · ${kacinilan.toFixed(1)} kg tasarruf`
+        : 'günü oynatın ▶';
+
     if (sEl) {
-        sEl.className = "text-xs px-2 py-1 rounded text-white font-bold transition-colors duration-500 shadow";
-        if (score < 30) sEl.classList.add('bg-red-500');
-        else if (score < 70) sEl.classList.add('bg-orange-500');
-        else if (score < 100) sEl.classList.add('bg-emerald-500');
+        sEl.className = 'text-xs px-2 py-1 rounded text-white font-bold transition-colors duration-500 shadow';
+        if (!anlamli) sEl.classList.add('bg-slate-500');
+        else if (ozYeterlilik < 30) sEl.classList.add('bg-red-500');
+        else if (ozYeterlilik < 70) sEl.classList.add('bg-orange-500');
+        else if (ozYeterlilik < 95) sEl.classList.add('bg-emerald-500');
         else sEl.classList.add('bg-emerald-600');
     }
 }
