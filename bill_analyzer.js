@@ -649,10 +649,12 @@
         baUpdateBillEstimate(); baToggleBattery();
     }
 
-    window.baDownloadReport = function () {
+    window.baDownloadReport = async function () {
         const card = document.getElementById('baReportCard')?.parentElement;
         const el = document.getElementById('baReportCard');
-        if (!el || typeof html2pdf === 'undefined') { window.print(); return; }
+        if (!el) { window.print(); return; }
+        // html2pdf (884 KB) tembel yükleniyor; gelmezse tarayıcı yazdırmasına düş.
+        try { await window.epcLoadPdf(); } catch (e) { window.print(); return; }
         // Rapor kartı + detay kartını birlikte al
         const wrap = document.createElement('div');
         wrap.style.cssText = 'background:#fff;padding:20px';

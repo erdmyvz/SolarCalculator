@@ -69,3 +69,39 @@ Object.defineProperty(window, 'crmLeads', {
     set: (v) => { crmLeads = v; },
     configurable: true
 });
+
+// --- TEMBEL KÜTÜPHANE YÜKLEYİCİ ---------------------------------------------
+// Three.js (589 KB), OrbitControls (25 KB) ve html2pdf (884 KB) ilk açılışta
+// gerekmiyor: birincisi yalnız 3D simülasyon açılınca, ikincisi yalnız kullanıcı
+// "PDF indir" deyince lazım. Bunları <script> etiketiyle en baştan yüklemek her
+// ziyaretçiye ~1,5 MB fatura çıkarıyordu. Artık ihtiyaç anında geliyorlar.
+//
+// Aynı URL iki kez istenirse tek bir Promise paylaşılır; başarısız yükleme
+// önbellekten silinir ki kullanıcı tekrar denediğinde yeniden istensin.
+const _epcScriptCache = new Map();
+window.epcLoadScript = function (url) {
+    if (_epcScriptCache.has(url)) return _epcScriptCache.get(url);
+    const p = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = url;
+        s.async = false;             // birden çok betik sırayla çalışsın
+        s.onload = () => resolve();
+        s.onerror = () => { _epcScriptCache.delete(url); s.remove(); reject(new Error(url + ' yüklenemedi')); };
+        document.head.appendChild(s);
+    });
+    _epcScriptCache.set(url, p);
+    return p;
+};
+
+// Three.js + OrbitControls (OrbitControls global THREE'ye bağlı, sırayla gelmeli)
+window.epcLoadThree = function () {
+    if (window.THREE && window.THREE.OrbitControls) return Promise.resolve();
+    return window.epcLoadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js')
+        .then(() => window.epcLoadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'));
+};
+
+// html2pdf (tek dosyalık bundle)
+window.epcLoadPdf = function () {
+    if (typeof window.html2pdf !== 'undefined') return Promise.resolve();
+    return window.epcLoadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+};

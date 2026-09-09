@@ -1,0 +1,22 @@
+{
+  "name": "epcmerkezim — Bağımsız GES Platformu",
+  "short_name": "epcmerkezim",
+  "description": "Elektrik faturanızı analiz edin, size uygun güneş enerjisi sistemini görün, onaylı kurulumculardan ücretsiz teklif alın.",
+  "lang": "tr-TR",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B1B2E",
+  "theme_color": "#0B1B2E",
+  "categories": ["business", "utilities", "finance"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Yatırımcı Araçları", "short_name": "Yatırımcı", "url": "/#yatirimci" },
+    { "name": "Kurulumcu Firmalar", "short_name": "Kurulumcu", "url": "/kurulumcu" }
+  ]
+}

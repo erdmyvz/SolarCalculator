@@ -1281,7 +1281,44 @@ function resetSim() {
     refreshSprites(); refreshBuildPanel(); updateScore();
 }
 
+/* ---------------------------------------------------------------------------
+   AÇILIŞ KAPISI
+   Three.js artık index.html'de <script> ile gelmiyor (589 + 25 KB); ilk kez
+   simülasyon bölümü açıldığında indiriliyor. Bu sarmalayıcı kütüphaneyi
+   getirir, beklerken konteynere bir yükleniyor kartı basar, sonra asıl sahneyi
+   kurar. Yükleme başarısız olursa bayrak sıfırlanır ki kullanıcı tekrar
+   denediğinde yeniden istensin.
+   --------------------------------------------------------------------------- */
 window.initApp3DScene = function () {
+    const container = document.getElementById('three-canvas-container');
+    if (!container || appScene) return;
+
+    if (window.THREE && window.THREE.OrbitControls) { buildApp3DScene(); return; }
+
+    document.getElementById('sim3dYukleniyor')?.remove();   // önceki denemenin hata kartı
+    const bekle = document.createElement('div');
+    bekle.id = 'sim3dYukleniyor';
+    bekle.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;' +
+        'align-items:center;justify-content:center;gap:14px;color:#cbd5e1;font-size:.9rem;' +
+        'background:#0f1b2e;border-radius:var(--r-lg,21px);z-index:2';
+    bekle.innerHTML = '<div style="width:34px;height:34px;border:3px solid rgba(245,158,11,.25);' +
+        'border-top-color:#F59E0B;border-radius:50%;animation:sim3dDon .8s linear infinite"></div>' +
+        '<div>3D motoru yükleniyor…</div>' +
+        '<style>@keyframes sim3dDon{to{transform:rotate(360deg)}}</style>';
+    container.style.position = 'relative';
+    container.appendChild(bekle);
+
+    window.epcLoadThree().then(() => {
+        bekle.remove();
+        buildApp3DScene();
+    }).catch(() => {
+        window.isApp3DInitialized = false;
+        bekle.innerHTML = '<div style="text-align:center;max-width:34ch;line-height:1.5">' +
+            '3D motoru yüklenemedi. İnternet bağlantınızı kontrol edip bölümü yeniden açın.</div>';
+    });
+};
+
+function buildApp3DScene() {
     const container = document.getElementById('three-canvas-container');
     if (!container || appScene) return;
     container.style.position = 'relative';

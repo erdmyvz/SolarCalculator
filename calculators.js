@@ -189,10 +189,12 @@ function renderSolarSolution(v) {
 }
 
 // Gerçek PDF indirme
-function runPdfDownload() {
+async function runPdfDownload() {
     const element = document.getElementById('reportContent');
     if (!element) return;
-    if (typeof html2pdf === 'undefined') { alert('PDF kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edin.'); return; }
+    // html2pdf (884 KB) artık ilk açılışta gelmiyor; yalnız burada indiriliyor.
+    try { await window.epcLoadPdf(); }
+    catch (e) { alert('PDF kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edin.'); return; }
     const opt = {
         margin: 0.4, filename: 'Solar_GES_Raporu.pdf',
         image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 },
@@ -269,7 +271,8 @@ async function submitProspectCapture() {
         if (prospectIntent === 'email') {
             alert('✅ Bilgileriniz alındı! Uzman ekibimiz raporunuz ve size özel değerlendirmeyle en kısa sürede ulaşacak.');
         } else {
-            runPdfDownload();
+            // await: html2pdf tembel yükleniyor, buton "İndiriliyor" halinde kalsın
+            await runPdfDownload();
         }
     } catch (err) {
         alert('Bir sorun oluştu: ' + (err.message || err));
