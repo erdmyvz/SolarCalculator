@@ -61,6 +61,16 @@ async function handleSPA_Routing() {
                 return;
             }
         }
+        // Panel dosyaları normalde routeByInfo'da iniyor; ama bu dala oradan
+        // geçmeden de gelinebilir (elle #app yazmak, önceki yüklemenin hata
+        // vermesi). Aşağıdaki showSupplierPanel/showConsultantPanel/
+        // showInvestorPanel çağrıları o pakete bağlı, o yüzden burada da
+        // garantiye alıyoruz. Zaten yüklüyse anında dönüyor.
+        try { await window.epcLoadPanel(); }
+        catch (e) {
+            alert('Panel dosyaları yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.');
+            return;
+        }
         app.classList.remove('hidden');
         if (window.currentSupplier && typeof showSupplierPanel === 'function') {
             showSupplierPanel(window.currentSupplier, window.__supplierEmail);
@@ -124,7 +134,7 @@ window.addEventListener('load', async () => {
             if (typeof routeAfterLogin === 'function') { _r = await routeAfterLogin(session.user); }
             else { await fetchUserProfile(session.user.id, session.user.email); }
             const _authHashes = ['#auth', '#yatirimciauth', '#kurulumcuauth', '#danismanauth', '#tedarikciauth', ''];
-            if (_r !== 'expired' && _r !== 'banned' && _authHashes.includes(window.location.hash)) {
+            if (_r !== 'expired' && _r !== 'banned' && _r !== 'panel-yuklenemedi' && _authHashes.includes(window.location.hash)) {
                 window.location.hash = '#app'; // Zaten giriş yapmışsa direkt panele al
             }
         }

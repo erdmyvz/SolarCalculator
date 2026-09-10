@@ -105,3 +105,35 @@ window.epcLoadPdf = function () {
     if (typeof window.html2pdf !== 'undefined') return Promise.resolve();
     return window.epcLoadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
 };
+
+// --- PANEL PAKETİ ------------------------------------------------------------
+// Aşağıdaki 13 dosya YALNIZCA giriş yapmış kullanıcının panelinde çalışıyor:
+// CRM, teklif motoru, admin, tedarikçi/yatırımcı panelleri, mesajlaşma… Toplamı
+// ~370 KB ve ziyaretçilerin hiçbiri kullanmıyordu. Artık rol tespitinden hemen
+// sonra (auth.js → routeByInfo) tek seferde yükleniyor.
+//
+// SIRA ÖNEMLİ: liste, dosyaların index.html'deki eski yükleme sırasını birebir
+// koruyor. Aralarındaki bağımlılıklar buna dayanıyor — sırayı değiştirmeyin,
+// yeni bir panel dosyasını da doğru yere ekleyin.
+//
+// NOT: services.js, admin.js'teki openStorageImage'ı kullanıyor. Bu yüzden
+// admin.js paketten ayrı yüklenemez; ayırmak isterseniz önce o fonksiyonu
+// paylaşılan bir dosyaya taşıyın.
+const EPC_PANEL_SCRIPTS = [
+    'crm.js', 'admin.js', 'sales.js', 'projects.js', 'maintenance.js',
+    'services.js', 'quote.js', 'dashboard.js', 'suppliers.js', 'messaging.js',
+    'investor.js', 'documents.js', 'campaigns.js'
+];
+let _epcPanelPromise = null;
+window.epcPanelReady = false;
+window.epcLoadPanel = function () {
+    if (_epcPanelPromise) return _epcPanelPromise;
+    _epcPanelPromise = (async () => {
+        for (const dosya of EPC_PANEL_SCRIPTS) await window.epcLoadScript('/' + dosya);
+        window.epcPanelReady = true;
+    })().catch(err => {
+        _epcPanelPromise = null;           // tekrar denenebilsin
+        throw err;
+    });
+    return _epcPanelPromise;
+};

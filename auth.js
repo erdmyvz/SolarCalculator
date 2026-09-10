@@ -269,6 +269,15 @@ function applyRememberPreference(remember) {
 }
 
 async function routeByInfo(info, user) {
+    // Panel dosyaları (CRM, teklif, admin, tedarikçi/yatırımcı panelleri…) artık
+    // index.html'de <script> ile gelmiyor; rol belli olduğu anda buradan iniyor.
+    // Aşağıdaki showInvestorPanel/showSupplierPanel çağrıları bu pakete bağlı,
+    // bu yüzden ilk iş olarak beklenmeli.
+    try { await window.epcLoadPanel(); }
+    catch (e) {
+        alert('Panel dosyaları yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.');
+        return 'panel-yuklenemedi';
+    }
     window.currentConsultant = null;
     window.currentSupplier = null;
     window.__subInfo = null;
@@ -517,7 +526,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
             } else {
                 applyRememberPreference(!!document.getElementById('rememberMe')?.checked);
                 const r = await routeByInfo(info, data.user);
-                if (r !== 'expired' && r !== 'banned') window.location.hash = '#app';
+                if (r !== 'expired' && r !== 'banned' && r !== 'panel-yuklenemedi') window.location.hash = '#app';
                 document.getElementById('loginForm').reset();
             }
         }
