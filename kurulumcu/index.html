@@ -40,15 +40,12 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ana Sayfa","item":"https://epcmerkezim.com/"},{"@type":"ListItem","position":2,"name":"Kurulumcu Firmalar","item":"https://epcmerkezim.com/kurulumcu"}]}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Deneme süresi için kredi kartı gerekiyor mu?","acceptedAnswer":{"@type":"Answer","text":"Hayır. Kayıt olduğunuzda 30 günlük deneme kendiliğinden başlar ve ödeme bilgisi istenmez. Süre sonunda devam etmek isterseniz aboneliğe geçersiniz."}},{"@type":"Question","name":"Deneme sürümünde hangi modüller açık?","acceptedAnswer":{"@type":"Answer","text":"Tamamı. Satış CRM'i, teklif motoru, süreç takibi, servis yönetimi, tesis kaydı ve yönetim panosu 30 gün boyunca sınırsız kullanılabilir."}},{"@type":"Question","name":"Mevcut müşteri listemi taşıyabilir miyim?","acceptedAnswer":{"@type":"Answer","text":"Evet. Müşterilerinizi panelden tek tek ekleyebilir, her birini kurulum sürecinin ilgili aşamasından başlatabilirsiniz."}},{"@type":"Question","name":"Platformdan bana müşteri yönlendiriliyor mu?","acceptedAnswer":{"@type":"Answer","text":"Evet. Yatırımcıların platform üzerinden oluşturduğu GES talepleri değerlendirilip firmalara yönlendirilir; size atanan talepler doğrudan panelinize düşer."}},{"@type":"Question","name":"Verilerim başka firmalara görünür mü?","acceptedAnswer":{"@type":"Answer","text":"Hayır. Her firma yalnızca kendi kayıtlarını görür; yetkilendirme veritabanı seviyesinde satır bazlı güvenlik kurallarıyla uygulanır."}}]}</script>
 </head>
-<body>
+<body style="--rol-accent:#818cf8">
 
 <header class="top">
     <div class="wrap">
         <a href="/" class="brand">epcmerkezim</a>
         <nav>
-            <a href="/danisman" class="nav-link">Danışmanlara</a>
-            <a href="/tedarikci" class="nav-link">Tedarikçilere</a>
-            <a href="/blog/" class="nav-link">Solar Akademi</a>
             <a href="/#kurulumcuauth" class="nav-login">Giriş Yap</a>
         </nav>
     </div>
@@ -58,7 +55,11 @@
     <!-- ================= KAHRAMAN ALAN ================= -->
     <section class="hero">
         <div class="wrap">
-            <a href="/" class="back">← Rol seçimine dön</a>
+            <nav class="roleswitch" aria-label="Rol seçimi">
+                <a href="/kurulumcu" aria-current="page">Kurulumcu</a>
+                <a href="/danisman">Danışman</a>
+                <a href="/tedarikci">Tedarikçi</a>
+            </nav>
             <p class="kicker">Kurulumcu firmalar için</p>
             <h1>Sahadaki işinizi <span>tek panelden</span> yönetin</h1>
             <p class="lede measure">Excel ve WhatsApp kalabalığını bırakın. Lead'den TEDAŞ kabulüne,
@@ -184,17 +185,6 @@
         </div>
     </section>
 
-    <!-- ================= ÇAPRAZ GEÇİŞ ================= -->
-    <section class="section">
-        <div class="wrap">
-            <div class="crosslink">
-                <h2>Kurulumcu değil, danışman mısınız?</h2>
-                <p>Satıcıdan bağımsız danışmanlık veriyorsanız, onaylı profilinizle platformda görünür
-                   olabilir ve size gelen taleplere doğrudan teklif verebilirsiniz.</p>
-                <a href="/danisman" class="btn btn-ghost" style="padding-inline:var(--s5)">Danışman panelini keşfet →</a>
-            </div>
-        </div>
-    </section>
 </main>
 
 <footer class="foot">

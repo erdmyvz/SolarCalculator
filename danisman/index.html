@@ -40,15 +40,12 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ana Sayfa","item":"https://epcmerkezim.com/"},{"@type":"ListItem","position":2,"name":"Bağımsız Danışmanlar","item":"https://epcmerkezim.com/danisman"}]}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Profilim yatırımcılara nasıl gösteriliyor?","acceptedAnswer":{"@type":"Answer","text":"Uzmanlık alanınızı ve hizmetlerinizi anlatan profiliniz, ziyaretçilerin gördüğü danışman listesinde yayınlanır. İletişim bilgileriniz baştan açık değildir; yatırımcı bilgi ve iletişim onayı verdiğinde açılır."}},{"@type":"Question","name":"Profilimi neden admin onaylıyor?","acceptedAnswer":{"@type":"Answer","text":"Platformun bağımsızlık iddiası yatırımcının gördüğü bilginin doğruluğuna dayanıyor. Bu nedenle her profil düzenlemesi yayınlanmadan önce kontrolden geçer."}},{"@type":"Question","name":"Danışan takibini nasıl yapıyorum?","acceptedAnswer":{"@type":"Answer","text":"Görüştüğünüz yatırımcıları danışan CRM'inize ekler, her birinin durumunu ve kurulum aşamasını takip edersiniz. Gerektiğinde danışanınızı bir kurulumcu firmaya yönlendirebilirsiniz."}},{"@type":"Question","name":"Deneme süresi için kredi kartı gerekiyor mu?","acceptedAnswer":{"@type":"Answer","text":"Hayır. Kayıt olduğunuzda 30 günlük deneme kendiliğinden başlar ve ödeme bilgisi istenmez."}},{"@type":"Question","name":"Kurulumcu firma da olabilir miyim?","acceptedAnswer":{"@type":"Answer","text":"Danışman ve kurulumcu ayrı rollerdir ve ayrı hesapla kullanılır. Kurulum işi de yapıyorsanız kurulumcu firma paneli ayrıca açılabilir."}}]}</script>
 </head>
-<body>
+<body style="--rol-accent:#fbbf24">
 
 <header class="top">
     <div class="wrap">
         <a href="/" class="brand">epcmerkezim</a>
         <nav>
-            <a href="/kurulumcu" class="nav-link">Kurulumculara</a>
-            <a href="/tedarikci" class="nav-link">Tedarikçilere</a>
-            <a href="/blog/" class="nav-link">Solar Akademi</a>
             <a href="/#danismanauth" class="nav-login">Giriş Yap</a>
         </nav>
     </div>
@@ -58,7 +55,11 @@
     <!-- ================= KAHRAMAN ALAN ================= -->
     <section class="hero">
         <div class="wrap">
-            <a href="/" class="back">← Rol seçimine dön</a>
+            <nav class="roleswitch" aria-label="Rol seçimi">
+                <a href="/kurulumcu">Kurulumcu</a>
+                <a href="/danisman" aria-current="page">Danışman</a>
+                <a href="/tedarikci">Tedarikçi</a>
+            </nav>
             <p class="kicker">Bağımsız danışmanlar için</p>
             <h1>Bağımsız güneş enerjisi <span>danışmanı</span> mısınız?</h1>
             <p class="lede measure">Yatırımcılar, satıcıdan bağımsız uzman görüşü arıyor. Onaylı
@@ -185,17 +186,6 @@
         </div>
     </section>
 
-    <!-- ================= ÇAPRAZ GEÇİŞ ================= -->
-    <section class="section">
-        <div class="wrap">
-            <div class="crosslink">
-                <h2>Danışman değil, kurulumcu musunuz?</h2>
-                <p>GES kurulumu yapıyorsanız satış CRM'i, markalı teklif motoru ve TEDAŞ süreç takibi
-                   içeren kurulumcu firma paneli sizin için.</p>
-                <a href="/kurulumcu" class="btn btn-ghost" style="padding-inline:var(--s5)">Firma panelini keşfet →</a>
-            </div>
-        </div>
-    </section>
 </main>
 
 <footer class="foot">
