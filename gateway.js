@@ -52,9 +52,10 @@
 
         /* Kahraman alan — dikey ritim Fibonacci */
         .gw-hero { flex:1; max-width:1120px; margin:0 auto; width:100%;
-            padding:clamp(var(--s6),8vw,var(--s8)) var(--s4) var(--s7); text-align:center; }
-        .gw-kicker { font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:.22em;
-            font-weight:900; color:#fbbf24; margin-bottom:var(--s3); }
+            padding:clamp(var(--s5),4vw,var(--s7)) var(--s4) var(--s7); text-align:center; }
+        .gw-kicker { font-size:clamp(.82rem,1.5vw,var(--fs-md)); text-transform:uppercase;
+            letter-spacing:.16em; font-weight:900; color:#fbbf24; margin-bottom:var(--s4);
+            text-wrap:balance; }
         .gw-title { font-size:clamp(2.1rem,5.4vw,var(--fs-2xl)); line-height:1.08; font-weight:900;
             color:#fff; letter-spacing:-.035em; margin-bottom:var(--s4); text-wrap:balance; }
         .gw-title span { background:linear-gradient(90deg,#fcd34d,#34d399);
@@ -79,8 +80,7 @@
             box-shadow:0 26px 52px -30px rgba(0,0,0,.85); }
         .gw-card .gw-emoji { font-size:var(--fs-2xl); line-height:1; margin-bottom:var(--s4); display:block; }
         .gw-card h3 { font-size:var(--fs-lg); font-weight:900; color:#fff;
-            letter-spacing:-.025em; margin-bottom:var(--s2); line-height:1.2; }
-        .gw-card p { font-size:var(--fs-sm); color:#94a3b8; line-height:1.6; flex:1 1 auto; margin:0; }
+            letter-spacing:-.025em; margin:0; line-height:1.2; flex:1 1 auto; }
         .gw-card .gw-cta { display:inline-flex; align-items:center; gap:var(--s1); font-weight:900;
             font-size:var(--fs-sm); color:var(--gw-accent,#34d399); margin-top:var(--s4); }
         .gw-card .gw-glow { position:absolute; inset:0; opacity:0; transition:opacity .18s;
@@ -94,7 +94,7 @@
             .gw-card-lead .gw-lead-body{ flex:1 1 auto; }
             .gw-card-lead .gw-cta{ margin-top:0; flex-shrink:0; font-size:var(--fs-base); }
         }
-        .gw-card-lead .gw-lead-body h3{ margin-bottom:var(--s2); }
+        .gw-card-lead .gw-lead-body h3{ margin:0; }
 
         /* Funnel sayfaları */
         .gw-funnel { max-width:1000px; margin:0 auto; width:100%;
@@ -179,9 +179,6 @@
                         <span class="gw-emoji" aria-hidden="true">☀️</span>
                         <span class="gw-lead-body">
                             <h3>Yatırımcıyım, GES kurdurmak istiyorum</h3>
-                            <p>Evinize veya iş yerinize güneş enerjisi santrali (GES) kurdurmak
-                               istiyorsanız buradasınız. Faturanızı yükleyin, size uygun sistemi ve
-                               maliyeti görün, onaylı firmalardan ücretsiz teklif alın.</p>
                         </span>
                         <span class="gw-cta">Başla →</span>
                     </a>
@@ -190,9 +187,6 @@
                         <span class="gw-glow"></span>
                         <span class="gw-emoji" aria-hidden="true">🏗️</span>
                         <h3>Kurulumcu Firmayım,<br>GES kuruyorum</h3>
-                        <p>GES kurulumu yapan bir firmaysanız buradasınız. Müşteri (CRM) ve teklif
-                           yönetimi, TEDAŞ süreç takibi, servis talepleri ve size aktarılan yatırımcı
-                           talepleri tek panelde.</p>
                         <span class="gw-cta">Firma panelini keşfet →</span>
                     </a>
 
@@ -200,9 +194,6 @@
                         <span class="gw-glow"></span>
                         <span class="gw-emoji" aria-hidden="true">🎯</span>
                         <h3>Danışmanlık<br>hizmeti veriyorum</h3>
-                        <p>Güneş enerjisinde bağımsız danışmanlık veriyorsanız buradasınız. Onaylı
-                           profiliniz yatırımcılara görünür; gelen danışmanlık taleplerine teklif verir,
-                           danışanlarınızı takip edersiniz.</p>
                         <span class="gw-cta">Danışman panelini keşfet →</span>
                     </a>
 
@@ -210,9 +201,6 @@
                         <span class="gw-glow"></span>
                         <span class="gw-emoji" aria-hidden="true">📦</span>
                         <h3>Tedarikçiyim,<br>ürün satışı yapıyorum</h3>
-                        <p>Panel, inverter, batarya veya montaj malzemesi tedarik ediyorsanız
-                           buradasınız. Kataloğunuzu yayınlayın, kurulumcu firmalardan fiyat ve
-                           stok talebi alın, bayi ağınızı büyütün.</p>
                         <span class="gw-cta">Tedarikçi panelini keşfet →</span>
                     </a>
                 </div>
