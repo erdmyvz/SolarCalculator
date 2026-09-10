@@ -95,7 +95,7 @@
             --s5: 34px; --s6: 55px;  --s7: 89px;  --s8: 144px;
 
             /* Modüler tipografi ölçeği */
-            --fs-xs:   .688rem;
+            --fs-xs:   .75rem;    /* 11 px okunmuyordu; mikro etiket tabanı 12 px */
             --fs-sm:   .875rem;
             --fs-base: 1rem;
             --fs-md:   1.272rem;
@@ -122,11 +122,26 @@
         body .measure-narrow { max-width: var(--measure-narrow); margin-inline: auto; }
         body .measure-head   { max-width: var(--measure-head);   margin-inline: auto; }
 
+        /* --- Küçük araç kartları --------------------------------------------
+           Altı kart var ama "Donanım Karşılaştırma" veri yokken gizleniyor;
+           3 sütunlu ızgarada geriye 5 kart kalınca son satır sola yaslanıp
+           sağda boşluk bırakıyordu. Flex + ortalama ile eksik satır simetrik
+           duruyor, kartlar aynı genişlikte kalıyor (grow yok, bilerek). */
+        body .phi-tool-grid { display: flex; flex-wrap: wrap; justify-content: center;
+                              gap: var(--s3); }
+        body .phi-tool-grid > * { flex: 0 1 calc((100% - var(--s3)) / 2); min-width: 0; }
+        @media (min-width: 768px) {
+            body .phi-tool-grid > * { flex: 0 1 calc((100% - var(--s3) * 2) / 3); }
+        }
+
         /* --- Bölüm başlığı bloğu: kicker → başlık → açıklama, φ aralıklı --- */
         body .phi-head            { margin-bottom: var(--s6); }
-        body .phi-head .kicker    { font-size: var(--fs-xs); font-weight: 900;
-                                    text-transform: uppercase; letter-spacing: .18em;
-                                    margin-bottom: var(--s2); }
+        /* Kicker büyük harf + geniş harf aralığıyla yazıldığı için 11 px'te
+           okunmuyordu. Bir kademe yukarı (14 px) alındı, aralık .18em'den
+           .14em'e indirildi: büyük puntoda o kadar açıklık kelimeyi dağıtıyor. */
+        body .kicker              { font-size: var(--fs-sm); font-weight: 900;
+                                    text-transform: uppercase; letter-spacing: .14em;
+                                    margin-bottom: var(--s2); text-wrap: balance; }
         body .phi-head h2         { margin-bottom: var(--s3); letter-spacing: -.025em; }
         body .phi-head p          { margin-bottom: 0; }
 
@@ -275,8 +290,8 @@
         body .footer-grid { grid-template-columns: 1fr; gap: var(--s5); }
         @media (min-width: 640px) { body .footer-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (min-width: 900px) { body .footer-grid { grid-template-columns: 1.618fr 1fr 1fr 1fr; gap: var(--s6); } }
-        body .footer-title { color: #fff; font-weight: 900; font-size: var(--fs-xs);
-                             text-transform: uppercase; letter-spacing: .14em; margin-bottom: var(--s3); }
+        body .footer-title { color: #fff; font-weight: 900; font-size: var(--fs-sm);
+                             text-transform: uppercase; letter-spacing: .12em; margin-bottom: var(--s3); }
         body .footer-link:not(.hidden)  { display: block; font-size: var(--fs-sm); font-weight: 600;
                              color: #94a3b8; padding-block: var(--s1); transition: color .15s ease; }
         body .footer-link:hover { color: #fff; }
@@ -546,7 +561,7 @@
     <!-- YATIRIMCI FUNNEL'I — #yatirimci hash'inde router açar (SEO içeriği DOM'da kalır) -->
     <div id="landingContainer" class="w-full min-h-screen hidden">
         <nav class="site-nav fixed top-0 w-full z-50">
-            <div class="flex justify-between items-center max-w-7xl mx-auto" style="padding:var(--s3) var(--s4);gap:var(--s4)">
+            <div class="flex justify-between items-center max-w-6xl mx-auto" style="padding:var(--s3) var(--s4);gap:var(--s4)">
                 <a href="#home" class="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-emerald-400" style="font-size:var(--fs-md);letter-spacing:-.03em">epcmerkezim</a>
                 <div class="flex items-center" style="gap:var(--s2)">
                     <a href="/hakkimda" onclick="openAboutPage();return false" class="nav-link hidden md:inline-flex">Hakkımda</a>
@@ -562,7 +577,7 @@
             <div class="max-w-6xl mx-auto text-center hero-stage relative">
                 <div class="sun-orb" aria-hidden="true"></div>
 
-                <p class="kicker text-amber-400" style="font-size:var(--fs-xs);font-weight:900;text-transform:uppercase;letter-spacing:.18em;margin-bottom:var(--s3)">Türkiye'nin bağımsız güneş enerjisi platformu</p>
+                <p class="kicker text-amber-400">Türkiye'nin bağımsız güneş enerjisi platformu</p>
 
                 <h1 class="font-black measure-head" style="font-size:clamp(2.4rem,6.2vw,var(--fs-3xl));line-height:1.04;letter-spacing:-.035em;text-wrap:balance;margin-bottom:var(--s4)">Elektrik Faturanızı<br><span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-emerald-400">Güneşe Devredin</span></h1>
 
@@ -596,7 +611,7 @@
                 </div>
 
                 <!-- GÜVEN ŞERİDİ -->
-                <div class="max-w-5xl mx-auto">
+                <div class="max-w-6xl mx-auto">
                     <div id="trustCounts" class="hidden"></div>
                     <div class="phi-badges">
                         <span class="inline-flex items-center gap-2 bg-white/5 border border-amber-400/20 text-slate-300 font-bold" style="font-size:var(--fs-sm);padding:var(--s2) var(--s3);border-radius:999px">🛡️ Satıcıdan bağımsız hesaplama</span>
@@ -654,30 +669,30 @@
                 </div>
 
                 <!-- DİĞER ARAÇLAR -->
-                <div class="grid grid-cols-2 md:grid-cols-3" style="gap:var(--s3)">
+                <div class="phi-tool-grid">
                     <button onclick="openPublicModule('calculatorModule')" class="glass-panel hover:-translate-y-1 transition text-left cursor-pointer group flex items-center" style="gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r-md);min-height:var(--s7)">
                         <span class="text-2xl shrink-0 group-hover:scale-110 transition">📊</span>
-                        <span><span class="block text-sm font-bold text-white leading-tight">Tüketim Hesaplayıcı</span><span class="block text-[11px] text-slate-400 leading-tight mt-0.5">Faturanıza göre GES kapasitesi</span></span>
+                        <span><span class="block text-sm font-bold text-white leading-tight">Tüketim Hesaplayıcı</span><span class="block text-xs text-slate-400 leading-tight mt-0.5">Faturanıza göre GES kapasitesi</span></span>
                     </button>
                     <button onclick="openPublicModule('amortizationModule')" class="glass-panel hover:-translate-y-1 transition text-left cursor-pointer group flex items-center" style="gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r-md);min-height:var(--s7)">
                         <span class="text-2xl shrink-0 group-hover:scale-110 transition">💰</span>
-                        <span><span class="block text-sm font-bold text-white leading-tight">Amortisman</span><span class="block text-[11px] text-slate-400 leading-tight mt-0.5">Yatırım geri dönüş süresi</span></span>
+                        <span><span class="block text-sm font-bold text-white leading-tight">Amortisman</span><span class="block text-xs text-slate-400 leading-tight mt-0.5">Yatırım geri dönüş süresi</span></span>
                     </button>
                     <button onclick="openPublicModule('batteryModule')" class="glass-panel hover:-translate-y-1 transition text-left cursor-pointer group flex items-center" style="gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r-md);min-height:var(--s7)">
                         <span class="text-2xl shrink-0 group-hover:scale-110 transition">🔋</span>
-                        <span><span class="block text-sm font-bold text-white leading-tight">Batarya</span><span class="block text-[11px] text-slate-400 leading-tight mt-0.5">Kesintide yedekleme ihtiyacı</span></span>
+                        <span><span class="block text-sm font-bold text-white leading-tight">Batarya</span><span class="block text-xs text-slate-400 leading-tight mt-0.5">Kesintide yedekleme ihtiyacı</span></span>
                     </button>
                     <button onclick="openPublicModule('evCalcModule')" class="glass-panel hover:-translate-y-1 transition text-left cursor-pointer group flex items-center" style="gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r-md);min-height:var(--s7)">
                         <span class="text-2xl shrink-0 group-hover:scale-110 transition">🚗</span>
-                        <span><span class="block text-sm font-bold text-white leading-tight">Elektrikli Araç</span><span class="block text-[11px] text-slate-400 leading-tight mt-0.5">Güneşten şarj planlaması</span></span>
+                        <span><span class="block text-sm font-bold text-white leading-tight">Elektrikli Araç</span><span class="block text-xs text-slate-400 leading-tight mt-0.5">Güneşten şarj planlaması</span></span>
                     </button>
                     <button id="hwLauncher" onclick="openPublicModule('hardwareModule'); if(window.openHardwareCompare) openHardwareCompare();" class="glass-panel hover:-translate-y-1 transition text-left cursor-pointer group flex items-center" style="gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r-md);min-height:var(--s7)">
                         <span class="text-2xl shrink-0 group-hover:scale-110 transition">⚖️</span>
-                        <span><span class="block text-sm font-bold text-white leading-tight">Donanım Karşılaştırma</span><span class="block text-[11px] text-slate-400 leading-tight mt-0.5">Panel, inverter, batarya kıyası</span></span>
+                        <span><span class="block text-sm font-bold text-white leading-tight">Donanım Karşılaştırma</span><span class="block text-xs text-slate-400 leading-tight mt-0.5">Panel, inverter, batarya kıyası</span></span>
                     </button>
                     <button onclick="openPublicModule('educationModule')" class="glass-panel hover:-translate-y-1 transition text-left cursor-pointer group flex items-center" style="gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r-md);min-height:var(--s7)">
                         <span class="text-2xl shrink-0 group-hover:scale-110 transition">🎓</span>
-                        <span><span class="block text-sm font-bold text-white leading-tight">Solar Akademi</span><span class="block text-[11px] text-slate-400 leading-tight mt-0.5">Temel terimler ve rehberler</span></span>
+                        <span><span class="block text-sm font-bold text-white leading-tight">Solar Akademi</span><span class="block text-xs text-slate-400 leading-tight mt-0.5">Temel terimler ve rehberler</span></span>
                     </button>
                 </div>
             </div>
@@ -733,7 +748,7 @@
         </div>
 
         <div class="bg-white phi-section px-6">
-            <div class="max-w-5xl mx-auto">
+            <div class="max-w-6xl mx-auto">
                 <div class="phi-head text-center">
                     <p class="kicker text-amber-600">Uzman Desteği</p>
                     <h2 class="font-black text-slate-800" style="font-size:clamp(1.75rem,3.6vw,var(--fs-xl))">Profesyonel Destek Alın</h2>
@@ -809,7 +824,7 @@
 
         <!-- KAPANIŞ CTA BANDI -->
         <div class="tech-gradient phi-section text-white px-6 border-t border-slate-800">
-            <div class="max-w-4xl mx-auto text-center">
+            <div class="max-w-3xl mx-auto text-center">
                 <div class="phi-head">
                     <p class="kicker text-amber-400">Bugün Başlayın</p>
                     <h2 class="font-black measure-head" style="font-size:clamp(1.9rem,4.6vw,var(--fs-2xl));line-height:1.1;letter-spacing:-.03em">Güneşe Geçişin En Şeffaf Yolu</h2>
@@ -822,7 +837,7 @@
                 </div>
 
                 <div id="trackingSection" class="glass-panel text-white max-w-2xl mx-auto text-left" style="border-radius:var(--r-xl);padding:clamp(var(--s4),4vw,var(--s6))">
-                    <p class="kicker text-emerald-400" style="font-size:var(--fs-xs);font-weight:900;text-transform:uppercase;letter-spacing:.18em;margin-bottom:var(--s2)">Yatırımcılara Özel · Ücretsiz</p>
+                    <p class="kicker text-emerald-400">Yatırımcılara Özel · Ücretsiz</p>
                     <h3 class="font-black" style="font-size:var(--fs-lg);letter-spacing:-.025em;margin-bottom:var(--s2)">Başvurunuzu Hesabınızla Takip Edin</h3>
                     <p class="text-slate-300" style="font-size:var(--fs-sm);line-height:1.6;margin-bottom:var(--s4)">Teklif istediğinizde e-postanıza <b class="text-white">tek tıklık giriş bağlantısı</b> gönderiyoruz — şifre uğraşı yok. Yatırımcı panelinizde:</p>
                     <ul class="text-slate-200" style="font-size:var(--fs-sm);display:flex;flex-direction:column;gap:var(--s2);margin-bottom:var(--s5)">

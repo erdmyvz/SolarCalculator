@@ -11,7 +11,7 @@
     --s5:34px; --s6:55px; --s7:89px; --s8:144px;
 
     /* Modüler tipografi ölçeği (taban 16px, oran √φ = 1.272) */
-    --fs-xs:.688rem; --fs-sm:.875rem; --fs-base:1rem;
+    --fs-xs:.75rem; --fs-sm:.875rem; --fs-base:1rem;   /* xs 11→12 px: mikro etiket tabanı */
     --fs-md:1.272rem; --fs-lg:1.618rem; --fs-xl:2.058rem;
     --fs-2xl:2.618rem; --fs-3xl:4.236rem;
 
@@ -47,7 +47,7 @@ a{color:var(--emerald-l);text-decoration:none}
 a:hover{text-decoration:underline}
 img{max-width:100%}
 
-.wrap{max-width:1000px;margin:0 auto;padding-inline:var(--s4)}
+.wrap{max-width:1152px;margin:0 auto;padding-inline:var(--s4)}  /* index.html ile aynı ray */
 .measure{max-width:var(--measure);margin-inline:auto}
 .measure-head{max-width:var(--measure-head);margin-inline:auto}
 
@@ -75,8 +75,10 @@ img{max-width:100%}
 /* --- Bölüm ritmi --- */
 .section{padding-block:clamp(var(--s6),6.2vw,var(--s7))}
 .section-head{text-align:center;margin-bottom:var(--s6)}
-.kicker{font-size:var(--fs-xs);font-weight:900;text-transform:uppercase;
-    letter-spacing:.18em;color:var(--amber-l);margin-bottom:var(--s3)}
+/* index.html'deki .kicker ile aynı: büyük harf + geniş aralık 11 px'te
+   okunmuyordu; bir kademe yukarı, aralık .18em → .14em. */
+.kicker{font-size:var(--fs-sm);font-weight:900;text-transform:uppercase;
+    letter-spacing:.14em;color:var(--amber-l);margin-bottom:var(--s3);text-wrap:balance}
 .section-head h2{font-size:clamp(1.6rem,3.4vw,var(--fs-xl));color:#fff;margin-bottom:var(--s3)}
 .section-head p{color:var(--muted);font-size:var(--fs-base)}
 

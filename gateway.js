@@ -30,7 +30,7 @@
         .gw-nav { position:sticky; top:0; z-index:40; background:rgba(11,27,46,.82);
             backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
             border-bottom:1px solid rgba(251,191,36,.12); }
-        .gw-nav-inner { max-width:1120px; margin:0 auto; display:flex; align-items:center;
+        .gw-nav-inner { max-width:1152px; margin:0 auto; display:flex; align-items:center;
             justify-content:space-between; gap:var(--s4); padding:var(--s3) var(--s4); }
         .gw-logo { font-size:var(--fs-md); font-weight:800; letter-spacing:-.03em;
             background:linear-gradient(90deg,#fcd34d,#34d399);
@@ -51,7 +51,7 @@
         }
 
         /* Kahraman alan — dikey ritim Fibonacci */
-        .gw-hero { flex:1; max-width:1120px; margin:0 auto; width:100%;
+        .gw-hero { flex:1; max-width:1152px; margin:0 auto; width:100%;
             padding:clamp(var(--s5),4vw,var(--s7)) var(--s4) var(--s7); text-align:center; }
         .gw-kicker { font-size:clamp(.82rem,1.5vw,var(--fs-md)); text-transform:uppercase;
             letter-spacing:.16em; font-weight:900; color:#fbbf24; margin-bottom:var(--s4);
@@ -67,7 +67,7 @@
         /* Üst sıra: yatırımcı tek başına tam genişlikte (birincil yol).
            Alt sıra: kurulumcu · danışman · tedarikçi — üç profesyonel taraf. */
         .gw-cards { display:grid; grid-template-columns:1fr; gap:var(--s4);
-            max-width:1000px; margin:0 auto; }
+            max-width:1152px; margin:0 auto; }
         @media(min-width:900px){
             .gw-cards{ grid-template-columns:repeat(3,1fr); }
             .gw-cards > .gw-card-lead{ grid-column:1 / -1; }
@@ -97,7 +97,7 @@
         .gw-card-lead .gw-lead-body h3{ margin:0; }
 
         /* Funnel sayfaları */
-        .gw-funnel { max-width:1000px; margin:0 auto; width:100%;
+        .gw-funnel { max-width:1152px; margin:0 auto; width:100%;
             padding:var(--s6) var(--s4) var(--s7); }
         .gw-back { display:inline-flex; align-items:center; gap:var(--s1); color:#94a3b8;
             background:none; border:none; cursor:pointer; font-size:var(--fs-sm); font-weight:700;
