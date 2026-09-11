@@ -121,23 +121,21 @@
 
         const investment = kwp * systemPrice;
 
-        // 25 yıllık projeksiyon
+        // 25 yıllık projeksiyon — core.js'teki ORTAK model.
+        // Fatura Analizi de aynı fonksiyonu çağırıyor; ikisi bir daha
+        // farklı geri ödeme söyleyemesin diye tek yere taşındı.
         const YEARS = 25;
-        let cumulative = 0, breakevenYears = null, prevCum = 0;
-        const rows = [];
-        for (let i = 1; i <= YEARS; i++) {
-            const production = kwp * yieldKwh * Math.pow(1 - degr, i - 1);
-            const yearPrice  = price * Math.pow(1 + inflation, i - 1);
-            const saving     = production * yearPrice;
-            prevCum = cumulative;
-            cumulative += saving;
-            if (breakevenYears === null && cumulative >= investment && investment > 0) {
-                const frac = saving > 0 ? (investment - prevCum) / saving : 0;
-                breakevenYears = (i - 1) + Math.min(Math.max(frac, 0), 1);
-            }
-            rows.push({ year: i, production, yearPrice, saving, cumulative });
-        }
-        const firstYearSaving = rows[0] ? rows[0].saving : 0;
+        const pb = window.epcPayback({
+            yatirim: investment, yillikUretim: kwp * yieldKwh,
+            birimFiyat: price, zamOrani: inflation, yipranma: degr, yil: YEARS
+        });
+        const breakevenYears = pb.yil;
+        const rows = pb.satirlar.map(x => ({
+            year: x.yil, production: x.uretim, yearPrice: x.birimFiyat,
+            saving: x.tasarruf, cumulative: x.birikim
+        }));
+        const cumulative = pb.birikim;
+        const firstYearSaving = pb.ilkYilTasarruf;
         const net25 = cumulative - investment;
 
         // --- KPI kartları ---

@@ -1216,14 +1216,29 @@ window.dcDelete = async (id) => {
 const SETTINGS_SCHEMA = [
     { key: 'solarYield',    label: 'Yıllık üretim (kWh/kWp)',          cat: 'Güneş Sistemi', step: '1',    def: 1500 },
     { key: 'roofM2PerKwp',  label: 'Çatı alanı (m²/kWp)',              cat: 'Güneş Sistemi', step: '0.1',  def: 5.5 },
-    { key: 'kwpPerPanel',   label: 'Panel gücü (kWp/panel)',           cat: 'Güneş Sistemi', step: '0.01', def: 0.55 },
+    { key: 'kwpPerPanel',   label: 'Panel gücü (kWp/panel)',           cat: 'Güneş Sistemi', step: '0.01', def: 0.5 },
     { key: 'pricePerKwp',   label: 'Kurulum bedeli (TL/kWp)',          cat: 'Güneş Sistemi', step: '500',  def: 30000 },
     { key: 'co2PerKwh',     label: 'CO₂ katsayısı (kg/kWh)',           cat: 'Güneş Sistemi', step: '0.01', def: 0.45 },
     { key: 'tariff',        label: 'Elektrik tarifesi (TL/kWh)',       cat: 'Güneş Sistemi', step: '0.1',  def: 2.5 },
+
+    // Şehir bazlı özgül üretim (kWh/kWp/yıl). BOŞ bırakılırsa ulusal
+    // 'solarYield' kullanılır. Gerçek değerleri GEPA veya PVGIS'ten okuyup
+    // girin — enlemden türetilemez, farkın çoğu bulutluluktan gelir.
+    { key: 'solarYield_antalya',    label: 'Antalya verimi (kWh/kWp/yıl)',      cat: 'Şehir Verimleri', step: '10', def: '' },
+    { key: 'solarYield_adana',      label: 'Adana verimi (kWh/kWp/yıl)',        cat: 'Şehir Verimleri', step: '10', def: '' },
+    { key: 'solarYield_izmir',      label: 'İzmir verimi (kWh/kWp/yıl)',        cat: 'Şehir Verimleri', step: '10', def: '' },
+    { key: 'solarYield_konya',      label: 'Konya verimi (kWh/kWp/yıl)',        cat: 'Şehir Verimleri', step: '10', def: '' },
+    { key: 'solarYield_ankara',     label: 'Ankara verimi (kWh/kWp/yıl)',       cat: 'Şehir Verimleri', step: '10', def: '' },
+    { key: 'solarYield_istanbul',   label: 'İstanbul verimi (kWh/kWp/yıl)',     cat: 'Şehir Verimleri', step: '10', def: '' },
+    { key: 'solarYield_erzurum',    label: 'Erzurum verimi (kWh/kWp/yıl)',      cat: 'Şehir Verimleri', step: '10', def: '' },
+    { key: 'solarYield_trabzon',    label: 'Trabzon verimi (kWh/kWp/yıl)',      cat: 'Şehir Verimleri', step: '10', def: '' },
+    { key: 'solarYield_edirne',     label: 'Edirne verimi (kWh/kWp/yıl)',       cat: 'Şehir Verimleri', step: '10', def: '' },
     { key: 'batteryDod',    label: 'Batarya deşarj derinliği (0-1)',   cat: 'Batarya',       step: '0.05', def: 0.9 },
     { key: 'inverterEff',   label: 'İnverter verimi (0-1)',            cat: 'Batarya',       step: '0.01', def: 0.95 },
     { key: 'batteryModule', label: 'Batarya ünite boyutu (kWh)',       cat: 'Batarya',       step: '1',    def: 5 },
     { key: 'inverterSurge', label: 'İnverter kalkış katsayısı',        cat: 'Batarya',       step: '0.1',  def: 1.3 },
+    { key: 'tariffInflationPct', label: 'Yıllık elektrik zammı (%)',      cat: 'Güneş Sistemi', step: '1',   def: 25 },
+    { key: 'panelDegradationPct',label: 'Panel yıpranması (%/yıl)',        cat: 'Güneş Sistemi', step: '0.1', def: 0.7 },
     { key: 'usdTry',            label: 'USD/TRY kuru (₺)',                cat: 'Fatura Analizi', step: '0.5', def: 42 },
     { key: 'usdPerKwp',         label: 'Panel + inverter ($/kWp)',        cat: 'Fatura Analizi', step: '50',  def: 1000 },
     { key: 'batteryUsdPerKwh',  label: 'Batarya ($/kWh)',                 cat: 'Fatura Analizi', step: '25',  def: 300 },

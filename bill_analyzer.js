@@ -22,26 +22,50 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
     // --- Ayar okuyucu (hesap anında EPC_SETTINGS'ten; varsayılana düşüş korumalı) ---
+    // Ayar okuyucu. Eskiden altı alan okunuyordu ama beşi S()'in dışına hiç
+    // çıkmıyordu — yani admin panelindeki "Çatı alanı (m²/kWp)" ve "CO₂" gibi
+    // ayarlar bu modülde sessizce etkisizdi. Artık okunan her alan kullanılıyor.
     function S() {
-        const d = { solarYield: 1500, roofM2PerKwp: 5.5, kwpPerPanel: 0.55, pricePerKwp: 30000, co2PerKwh: 0.45, tariff: 2.5 };
+        const d = { solarYield: 1500, roofM2PerKwp: 5.5, kwpPerPanel: 0.5, co2PerKwh: 0.45 };
         const s = window.EPC_SETTINGS || {};
         return {
-            solarYield:  Number(s.solarYield)  || d.solarYield,
-            roofM2PerKwp:Number(s.roofM2PerKwp)|| d.roofM2PerKwp,
-            kwpPerPanel: Number(s.kwpPerPanel) || d.kwpPerPanel,
-            pricePerKwp: Number(s.pricePerKwp) || d.pricePerKwp,
-            co2PerKwh:   Number(s.co2PerKwh)   || d.co2PerKwh,
-            tariff:      Number(s.tariff)      || d.tariff
+            solarYield:   Number(s.solarYield)   || d.solarYield,
+            roofM2PerKwp: Number(s.roofM2PerKwp) || d.roofM2PerKwp,
+            kwpPerPanel:  Number(s.kwpPerPanel)  || d.kwpPerPanel,
+            co2PerKwh:    Number(s.co2PerKwh)    || d.co2PerKwh
         };
     }
 
     const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('tr-TR');
-    const num = (v) => { const n = parseFloat(String(v == null ? '' : v).replace(/\./g, '').replace(',', '.').replace(/[^0-9.]/g, '')); return isNaN(n) ? null : n; };
+    // Türkçe (1.250,75) ve İngilizce/OCR (1,250.75) biçimlerini ayırt eder.
+    // Eskiden her zaman Türkçe varsayılıyordu; "1,250.75 kWh" → 1,25 kWh oluyordu.
+    const num = (v) => {
+        let t = String(v == null ? '' : v).trim().replace(/[^0-9.,]/g, '');
+        if (!t) return null;
+        const sonNokta = t.lastIndexOf('.'), sonVirgul = t.lastIndexOf(',');
+        if (sonNokta >= 0 && sonVirgul >= 0) {
+            // İkisi de varsa SONDAKİ ondalık ayraçtır, diğeri binlik.
+            if (sonNokta > sonVirgul) t = t.replace(/,/g, '');          // 1,250.75
+            else t = t.replace(/\./g, '').replace(',', '.');            // 1.250,75
+        } else if (sonVirgul >= 0) {
+            // Yalnız virgül: 3+ hane izliyorsa binlik (1,250), değilse ondalık (12,5)
+            t = /,\d{3}(?:\D|$)/.test(t) ? t.replace(/,/g, '') : t.replace(',', '.');
+        } else if (sonNokta >= 0) {
+            // Yalnız nokta: 3+ hane izliyorsa binlik (1.250), değilse ondalık (12.5)
+            t = /\.\d{3}(?:\D|$)/.test(t) ? t.replace(/\./g, '') : t;
+        }
+        const n = parseFloat(t.replace(/[^0-9.]/g, ''));
+        return isNaN(n) ? null : n;
+    };
 
     // --- Modül sabitleri (kullanıcı talebine göre) ------------------------------
-    const PANEL_KWP = 0.5;                       // 500 Wp'lik panel
-    const PANEL_M2  = 2.5;                       // panel başına ~2,5 m²
-    const M2_PER_KWP = PANEL_M2 / PANEL_KWP;     // = 5,0 m²/kWp (çatı kısıtı için)
+    // Panel gücü admin ayarından (kwpPerPanel), fiziksel alanı ondan türetiliyor.
+    // Çatı KISITI ise ayrı bir ayardan (roofM2PerKwp) geliyor: yürüme payı ve
+    // gölgelenme aralığı dahil kullanılabilir alan, çıplak panel alanından
+    // büyüktür. Eskiden ikisi de 5,0'a sabitlenmişti ve ayar boşa gidiyordu.
+    function panelKwp()  { return S().kwpPerPanel; }
+    function panelM2()   { return panelKwp() * 5.0; }      // ~5 m²/kWp çıplak panel
+    function m2PerKwp()  { return S().roofM2PerKwp; }      // yerleşim payı dahil
     // Fiyat/tarife değerleri admin panelinden (app_settings) yönetilir; yoksa varsayılan.
     const TARIFF_DEFAULTS = { mesken: 2.50, ticarethane: 3.50, sanayi: 3.00, tarimsal: 2.20 };
     const TARIFF_KEYS = { mesken: 'tariffMesken', ticarethane: 'tariffTicarethane', sanayi: 'tariffSanayi', tarimsal: 'tariffTarimsal' };
@@ -202,13 +226,29 @@
         const low = t.toLowerCase();
         const grabNum = (re) => { const m = low.match(re); return m ? num(m[1]) : null; };
 
+        // ENDEKS TUZAĞI: faturada "Eski/İlk Endeks 12.480 kWh · Yeni/Son Endeks
+        // 12.800 kWh" satırları var. Eskiden genel yedek kalıp bunlardan ilkini
+        // tüketim sanıp 12.480 kWh/ay okuyordu → 100 kWp'lik konut önerisi.
+        // Endeks satırlarını önce ayıklıyoruz; ikisi de okunursa FARKI alıyoruz.
+        const endeksler = [...low.matchAll(/(?:ilk|son|eski|yeni|önceki|onceki|ge[çc]en|ge[çc]erli)\s*endeks[^0-9]{0,15}?([0-9][0-9\.\, ]{1,12})/g)]
+            .map(m => num(m[1])).filter(x => x != null);
+        let endeksFarki = null;
+        if (endeksler.length >= 2) {
+            const f = Math.max(...endeksler) - Math.min(...endeksler);
+            if (f > 0) endeksFarki = f;
+        }
+        // Yedek kalıbı ararken endeks bağlamındaki sayıları görmezden gel.
+        const lowSade = low.replace(/(?:ilk|son|eski|yeni|önceki|onceki|ge[çc]en|ge[çc]erli)\s*endeks[^0-9]{0,15}?[0-9][0-9\.\, ]{1,12}\s*(?:kwh)?/g, ' ');
+        const grabSade = (re) => { const m = lowSade.match(re); return m ? num(m[1]) : null; };
+
         // Tüketim (kWh) — birkaç yaygın kalıp
         let yearlyKwh = grabNum(/y[ıi]ll[ıi]k[^0-9]{0,20}?([0-9][0-9\.\, ]{1,12})\s*kwh/);
         let monthlyKwh =
             grabNum(/toplam\s*t[üu]ketim[^0-9]{0,15}?([0-9][0-9\.\, ]{1,10})\s*kwh/) ||
             grabNum(/t[üu]ketim[^0-9]{0,15}?([0-9][0-9\.\, ]{1,10})\s*kwh/) ||
             grabNum(/aktif\s*enerji[^0-9]{0,15}?([0-9][0-9\.\, ]{1,10})\s*kwh/) ||
-            grabNum(/([0-9][0-9\.\, ]{1,10})\s*kwh/);
+            endeksFarki ||
+            grabSade(/([0-9][0-9\.\, ]{1,10})\s*kwh/);
 
         // Zamanlı tarife (T1+T2+T3) toplamı — daha güvenilir aylık tüketim
         const touMatches = [...low.matchAll(/t[123][^0-9]{0,8}?([0-9][0-9\.\, ]{1,10})\s*kwh/g)].map(m => num(m[1])).filter(x => x != null);
@@ -365,6 +405,14 @@
                         </select>
                         <p class="text-[11px] text-slate-400 mt-1">Faturadan okunamazsa lütfen seçin.</p>
                     </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Şehir</label>
+                        <select id="baCity" onchange="baUpdateBillEstimate()" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">
+                            <option value="">Türkiye ortalaması</option>
+                            ${(window.EPC_CITIES || []).map(c => `<option value="${c.key}">${esc(c.ad)}</option>`).join('')}
+                        </select>
+                        <p class="text-[11px] text-slate-400 mt-1">Aynı panel Antalya'da ve Trabzon'da farklı üretir.</p>
+                    </div>
                 </div>
                 <div id="baBillEstimate" class="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-600"></div>
             </div>
@@ -411,13 +459,10 @@
                     </div>
                 </div>
 
-                <p class="block text-xs font-bold text-slate-600 mb-2">Aşağıdaki belgelerden hangileri sizde mevcut?</p>
-                <div class="space-y-2 mb-2">
-                    ${docRow('baDocIskan', 'İskân / Yapı Kullanma İzni', 'GES başvurusunda çoğunlukla zorunludur', true)}
-                    ${docRow('baDocTapu', 'Tapu veya kira sözleşmesi', 'Mülk sahipliği / kullanım hakkı')}
-                    ${docRow('baDocFatura', 'Güncel elektrik aboneliği / son fatura', 'Yüklediğiniz belge bunu karşılıyor olabilir')}
-                </div>
-                <p class="text-[11px] text-slate-400">Belgeniz yoksa da devam edebilirsiniz; firma temin sürecinde yardımcı olur.</p>
+                <!-- Belge soruları (iskân/tapu/fatura) BURADAN KALDIRILDI.
+                     Hesabı hiç etkilemiyorlardı — yalnız uyarı metni ve lead notu
+                     üretiyorlardı — ama sonucu görmeden önce üç soru daha sormak
+                     gereksiz sürtünmeydi. Artık "Teklif İste" adımında soruluyor. -->
             </div>
 
             <div class="flex flex-col sm:flex-row gap-3">
@@ -498,37 +543,60 @@
         const tariffGroup = document.getElementById('baTariff')?.value || 'mesken';
         const batteryOn = document.getElementById('baBattery')?.value === 'yes';
         const batteryKwh = batteryOn ? num(document.getElementById('baBatteryKwh')?.value) : null;
-        const docs = {
-            iskan:  document.getElementById('baDocIskan')?.value || 'unsure',
-            tapu:   document.getElementById('baDocTapu')?.value || 'unsure',
-            fatura: document.getElementById('baDocFatura')?.value || 'unsure'
-        };
+        // Belgeler artık teklif adımında soruluyor; hesabı etkilemiyorlar.
+        const docs = (_ex && _ex.docs) || { iskan: 'unsure', tapu: 'unsure', fatura: 'unsure' };
+        const city = document.getElementById('baCity')?.value || '';
 
         const s = S();
         const unit = tariffOf(tariffGroup);                       // ortalama ₺/kWh (admin ayarlı)
         const monthlyBill = monthly != null ? monthly * unit : null;
+        const cy = window.epcCityYield(city);                     // şehir verimi (yoksa ulusal)
+        const verim = cy.verim;
+
+        // MAKULLÜK KONTROLÜ — endeks/OCR hatası ya da elle yazım hatası
+        // saçma bir sisteme dönüşmeden önce kullanıcıya sorulur. Eskiden
+        // 12.480 kWh/ay girdisi sessizce 100 kWp / 200 panel öneriyordu.
+        const aylikEsdeger = yearly / 12;
+        const UST = { mesken: 2000, ticarethane: 20000, sanayi: 500000, tarimsal: 50000 };
+        const ust = UST[tariffGroup] || UST.mesken;
+        if (aylikEsdeger > ust && !window.__baMakulOnay) {
+            window.__baMakulOnay = true;   // ikinci "Hesapla" onay sayılır
+            if (err) err.innerHTML = '<div class="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">' +
+                '<b>Bu tüketim olağandışı görünüyor.</b> ' + fmt(aylikEsdeger) + ' kWh/ay, ' +
+                esc(TARIFF_LABEL[tariffGroup] || tariffGroup).toLowerCase() + ' için beklenenin çok üstünde. ' +
+                'Faturadaki <b>sayaç endeksini</b> (ör. 12.480) tüketim yerine yazmış olabilirsiniz — tüketim, iki endeksin farkıdır. ' +
+                'Değer doğruysa “Hesapla”ya tekrar basın.</div>';
+            return;
+        }
+        window.__baMakulOnay = false;
 
         _ex = Object.assign(_ex || {}, {
             monthlyKwh: monthly, yearlyKwh: Math.round(yearly), contractPower: power,
-            tariffGroup, unit, totalAmount: monthlyBill,
+            tariffGroup, unit, totalAmount: monthlyBill, city, cityYield: verim,
             roofM2: roof, roofType, batteryOn, batteryKwh, docs
         });
 
         const notes = [];
 
         // Kurulu güç = ihtiyaç, çatı ve sözleşme gücü kısıtlarının en küçüğü
-        const kwpNeed = yearly / s.solarYield;
+        const pKwp = panelKwp();
+        const kwpNeed = yearly / verim;
         let kwp = kwpNeed, limited = null;
-        if (roof != null && roof > 0) { const kwpRoof = roof / M2_PER_KWP; if (kwpRoof < kwp) { kwp = kwpRoof; limited = 'roof'; } }
+        if (roof != null && roof > 0) { const kwpRoof = roof / m2PerKwp(); if (kwpRoof < kwp) { kwp = kwpRoof; limited = 'roof'; } }
         if (power != null && power > 0) { if (power < kwp) { kwp = power; limited = limited ? 'both' : 'power'; } }
-        kwp = Math.max(PANEL_KWP, kwp);
+        kwp = Math.max(pKwp, kwp);
 
-        const panels = Math.max(1, Math.round(kwp / PANEL_KWP));  // 500 Wp panel bazlı adet
-        const kwpReal = panels * PANEL_KWP;                       // panel adedine göre gerçek güç
-        const requiredRoof = panels * PANEL_M2;                   // ~2,5 m²/panel
-        const production = kwpReal * s.solarYield;                // yıllık üretim (kWh)
+        const panels = Math.max(1, Math.round(kwp / pKwp));
+        const kwpReal = panels * pKwp;
+        const requiredRoof = kwpReal * m2PerKwp();                // yerleşim payı dahil
+        const production = kwpReal * verim;                       // yıllık üretim (kWh)
         const offset = Math.min(production, yearly);
         const coverage = Math.round(production / yearly * 100);
+
+        // İnverter: DC/AC oranı 1,15 (panel dizisi inverterden büyük seçilir;
+        // yıl içinde çok az saat kırpma olur, karşılığında inverter ucuzlar).
+        const DC_AC = 1.15;
+        const inverterKw = Math.round((kwpReal / DC_AC) * 10) / 10;
 
         // Maliyet (USD, ortalama fiyat) → geri ödeme için TL'ye çevrilir
         const rate = usdTry();
@@ -537,8 +605,21 @@
         const batteryUsd = (batteryOn && batteryKwh) ? batteryKwh * usdBatKwh : 0;
         const totalUsd = panelInverterUsd + batteryUsd;
         const totalTl = totalUsd * rate;
-        const annualSaving = offset * unit;                      // ₺/yıl
-        const payback = annualSaving > 0 ? totalTl / annualSaving : 0;
+        const annualSaving = offset * unit;                       // ₺/yıl (1. yıl)
+        const monthlySaving = annualSaving / 12;
+        const co2 = production * S().co2PerKwh;                   // kg/yıl
+
+        // GERİ ÖDEME — artık core.js'teki ortak modelle: elektrik zammı ve panel
+        // yıpranması yıl yıl işleniyor. Düz bölme (yatırım ÷ yıllık tasarruf)
+        // aynı girdide 11,2 yıl derken bu model 6,1 yıl diyordu; Amortisman
+        // Hesaplayıcı zaten ikincisini kullanıyordu, ikisi çelişiyordu.
+        const pbSistem = window.epcPayback({ yatirim: panelInverterUsd * rate, yillikUretim: production, birimFiyat: unit });
+        const pbToplam = batteryUsd > 0
+            ? window.epcPayback({ yatirim: totalTl, yillikUretim: production, birimFiyat: unit })
+            : pbSistem;
+        const payback = pbToplam.yil;
+        const paybackSistem = pbSistem.yil;
+        const duzPayback = annualSaving > 0 ? totalTl / annualSaving : null;   // karşılaştırma için
 
         // --- Dikkat edilmesi gerekenler (detaylı + satışa yönlendirici) ---
         if (limited === 'roof') notes.push('Girdiğiniz çatı alanı, yıllık ihtiyacınızın tamamını karşılayacak sistemden küçük görünüyor. Sistem çatınıza sığacak şekilde küçültüldü; kalan tüketimi şebekeden karşılarsınız. Keşifte kullanılabilir alan netleşince kapasite güncellenebilir.');
@@ -546,14 +627,20 @@
         if (limited === 'both') notes.push('Hem çatı alanı hem sözleşme gücü sınırlayıcı oldu; sistem ikisinin izin verdiği en küçük değere göre önerildi. Keşifte ikisi de yeniden değerlendirilir.');
         if (coverage >= 98 && limited == null) notes.push('Önerilen sistem yıllık tüketiminizin neredeyse tamamını karşılıyor. Mahsuplaşma (net-metering) mantığı gereği ihtiyacın çok üstünde panel önermiyoruz; fazla üretim düşük bedelle değerlenir.');
         if (coverage < 70) notes.push('Bu sistem tüketiminizin bir kısmını karşılıyor. Faturanızı büyük ölçüde sıfırlamak için çatı/güç kısıtlarının aşılması gerekir; danışmanımız alternatif senaryoları (güç artırımı, ek alan, arazi) sizinle netleştirebilir.');
-        if (docs.iskan === 'no') notes.push('İskân (yapı kullanma izni) belgeniz yok görünüyor. Bu belge çoğu GES başvurusunda zorunludur ve kurulumdan önce temini gerekir. Firma/danışman bu süreçte size yol gösterir.');
-        if (docs.iskan === 'unsure') notes.push('İskân belgesi durumundan emin değilsiniz — başvuru öncesi netleştirilmesi gereken ilk konudur. Danışmanımız gerekli evrak listesini çıkarıp eksikleri tamamlamanıza yardımcı olur.');
-        if (batteryOn && batteryKwh) notes.push('Batarya (' + batteryKwh + ' kWh) fiyata dahil edildi. Bataryalı sistem gece kullanımı ve kesinti yedeği sağlar; ancak geri ödeme süresini uzatır. Gerçek fayda kullanım profilinize bağlıdır, danışman size özel hesaplar.');
+        if (docs.soruldu && docs.iskan === 'no') notes.push('İskân (yapı kullanma izni) belgeniz yok görünüyor. Bu belge çoğu GES başvurusunda zorunludur ve kurulumdan önce temini gerekir. Firma/danışman bu süreçte size yol gösterir.');
+        if (docs.soruldu && docs.iskan === 'unsure') notes.push('İskân belgesi durumundan emin değilsiniz — başvuru öncesi netleştirilmesi gereken ilk konudur. Danışmanımız gerekli evrak listesini çıkarıp eksikleri tamamlamanıza yardımcı olur.');
+        if (batteryOn && batteryKwh) notes.push('Batarya (' + batteryKwh + ' kWh) maliyete dahil edildi; geri ödeme hesabında ise BİR GETİRİSİ SAYILMADI. Sebebi: mahsuplaşmada fazla üretim zaten faturanızdan düşülüyor, dolayısıyla bataryanın parasal katkısı sınırlı kalıyor. Bataryanın asıl değeri kesintide devrede kalmak ve şebekeden bağımsızlık. Yukarıda hem bataryasız hem bataryalı geri ödemeyi ayrı gösteriyoruz ki farkı görün.');
+        if (cy.kaynak === 'ulusal') notes.push('Üretim hesabı Türkiye ortalaması (' + fmt(verim) + ' kWh/kWp/yıl) ile yapıldı' + (city ? ' — seçtiğiniz şehir için ölçülmüş verim henüz sisteme girilmemiş' : '; şehrinizi seçerseniz varsa yerel değer kullanılır') + '. Gerçek üretim bölgeye göre %20-25 oynayabilir.');
+        notes.push('Geri ödeme; elektrik zammı yıllık %' + Math.round(window.epcEnflasyon() * 100) + ' ve panel yıpranması yıllık %' + (window.epcYipranma() * 100).toFixed(1) + ' varsayımıyla, 25 yıllık birikimli tasarruf üzerinden hesaplandı. Zam oranı gerçekleşmezse süre uzar.');
         notes.push('Kesin sistem büyüklüğü; çatının yönü (güney ideal), eğimi ve gölgelenme durumuna göre değişir. Bunlar ancak saha keşfiyle netleşir.');
         notes.push('Fiyatlar ortalama/gösterge niteliğindedir; marka-model seçimi, güncel ekipman fiyatları ve döviz kuruna göre farklılaşır. Size özel net fiyat, keşif sonrası verilir.');
         notes.push('Devlet teşvikleri, vergi avantajları ve mahsuplaşma başvuru süreçleri bölgeye ve mevzuata göre değişir; güncel durumu firma/danışman aktarır.');
 
-        _design = { kwp: kwpReal, panels, requiredRoof, production, offset, coverage, unit, monthlyBill, rate, usdKwp, usdBatKwh, panelInverterUsd, batteryUsd, totalUsd, totalTl, annualSaving, payback, batteryOn, batteryKwh, tariffGroup, limited, notes };
+        _design = { kwp: kwpReal, panels, requiredRoof, production, offset, coverage, unit, monthlyBill,
+                    rate, usdKwp, usdBatKwh, panelInverterUsd, batteryUsd, totalUsd, totalTl,
+                    annualSaving, monthlySaving, payback, paybackSistem, duzPayback, co2,
+                    inverterKw, verim, cityKaynak: cy.kaynak, city,
+                    batteryOn, batteryKwh, tariffGroup, limited, notes };
         renderReport();
     };
 
@@ -590,7 +677,7 @@
                 ${stat('Yıllık Üretim', fmt(d.production), 'kWh', 'text-slate-800')}
                 ${stat('İhtiyacı Karşılama', Math.min(d.coverage, 100), '%', 'text-emerald-600')}
             </div>
-            <p class="text-[11px] text-slate-400 mt-3">Panel sayısı <b class="text-slate-300">500 Wp (0,5 kWp)</b> ve panel başına <b class="text-slate-300">~2,5 m²</b> baz alınarak hesaplanmıştır.</p>
+                <p class="text-[11px] text-slate-400 mt-3"><b class="text-slate-300">${(panelKwp()*1000).toFixed(0)} Wp</b> panel · inverter <b class="text-slate-300">≈${d.inverterKw} kW</b> (DC/AC ≈1,15) · yerleşim <b class="text-slate-300">${m2PerKwp()} m²/kWp</b> · verim <b class="text-slate-300">${fmt(d.verim)} kWh/kWp/yıl</b>${d.cityKaynak === 'sehir' ? ' (şehrinize özel)' : ' (Türkiye ort.)'}</p>
         </div>
 
         <div class="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
@@ -601,15 +688,24 @@
                 <p class="text-xs text-slate-500 mt-1">Panel + inverter: <b>$${fmt(d.panelInverterUsd)}</b> (${d.kwp.toFixed(1)} kWp × ${fmt(d.usdKwp)} $/kWp)${d.batteryUsd ? ` &nbsp;·&nbsp; Batarya: <b>$${fmt(d.batteryUsd)}</b> (${d.batteryKwh} kWh × ${fmt(d.usdBatKwh)} $/kWh)` : ''}</p>
                 <p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 mt-2 inline-block">⚠️ Bu bir <b>ortalama / gösterge</b> fiyattır. Net fiyat; marka, ekipman ve güncel döviz kuruna göre değişir.</p>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                ${stat('Gerekli Çatı Alanı', '≈' + fmt(d.requiredRoof), 'm²')}
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                ${stat('Aylık Tasarruf', '₺' + fmt(d.monthlySaving), '', 'text-emerald-600')}
                 ${stat('Yıllık Tasarruf', '₺' + fmt(d.annualSaving), '', 'text-emerald-600')}
-                ${stat('Geri Ödeme', d.payback ? d.payback.toFixed(1) : '—', 'yıl')}
-                ${stat('Sözleşme Gücü', e.contractPower != null ? e.contractPower : '—', 'kW')}
+                ${stat('Geri Ödeme', d.payback ? d.payback.toFixed(1) : '25+', 'yıl', 'text-emerald-600')}
+                ${stat('Gerekli Çatı Alanı', '≈' + fmt(d.requiredRoof), 'm²')}
+                ${stat('İnverter', d.inverterKw, 'kW')}
+                ${stat('Yıllık CO₂ Tasarrufu', fmt(d.co2), 'kg')}
             </div>
+            ${d.batteryUsd > 0 && d.paybackSistem ? `
+            <div class="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm">
+                <p class="font-bold text-slate-700 mb-1">Bataryanın geri ödemeye etkisi</p>
+                <p class="text-slate-600">Bataryasız: <b class="text-emerald-700">${d.paybackSistem.toFixed(1)} yıl</b> ·
+                   Bataryalı: <b class="text-slate-800">${d.payback ? d.payback.toFixed(1) + ' yıl' : '25 yılda dönmüyor'}</b>.
+                   Batarya maliyete giriyor, mahsuplaşma nedeniyle parasal getirisi sayılmıyor.</p>
+            </div>` : ''}
             ${notesHtml}
             <p class="text-[11px] text-slate-400 mt-4 leading-relaxed">
-                Bu rapor; Türkiye ortalama verim değeri (${s.solarYield} kWh/kWp/yıl), 500 Wp (~2,5 m²) panel ve ortalama fiyatlarla ($${fmt(d.usdKwp)}/kWp panel+inverter, batarya $${fmt(d.usdBatKwh)}/kWh, ≈${d.rate}₺ kur) hazırlanmış <b>gösterge niteliğinde</b> bir ön çalışmadır. Kesin sistem tasarımı, üretim ve net fiyat; saha keşfi, çatı yönü/eğimi ve güncel ekipman fiyatlarıyla firma tarafından belirlenir.
+                Bu rapor; ${fmt(d.verim)} kWh/kWp/yıl verim${d.cityKaynak === 'sehir' ? ' (şehrinize özel ayar)' : ' (Türkiye ortalaması)'}, ${(panelKwp()*1000).toFixed(0)} Wp panel, ${m2PerKwp()} m²/kWp yerleşim ve ortalama fiyatlarla ($${fmt(d.usdKwp)}/kWp panel+inverter, kur ${fmt(d.rate)} ₺/$) hazırlanmış bir ÖN DEĞERLENDİRMEDİR. Geri ödeme, yıllık %${Math.round(window.epcEnflasyon()*100)} elektrik zammı ve %${(window.epcYipranma()*100).toFixed(1)} panel yıpranması varsayımıyla 25 yıllık birikimli tasarruf üzerinden bulunur. Bağlayıcı teklif değildir.
             </p>
         </div>
 
@@ -683,6 +779,14 @@
                 </div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Adres / İl-İlçe *</label><input id="bqAddress" value="${esc(e.address || '')}" placeholder="Kurulum yeri" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
 
+                <div class="border-t border-slate-200 pt-3">
+                    <p class="block text-xs font-bold text-slate-600 mb-2">Bu belgelerden hangileri sizde mevcut? <span class="font-medium text-slate-400">(opsiyonel — firma evrak sürecini buna göre planlar)</span></p>
+                    <div class="space-y-2">
+                        ${docRow('baDocIskan', 'İskân / Yapı Kullanma İzni', 'GES başvurusunda çoğunlukla zorunludur', true)}
+                        ${docRow('baDocTapu', 'Tapu veya kira sözleşmesi', 'Mülk sahipliği / kullanım hakkı')}
+                        ${docRow('baDocFatura', 'Güncel elektrik aboneliği / son fatura', 'Yüklediğiniz belge bunu karşılıyor olabilir')}
+                    </div>
+                </div>
                 <p class="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-md px-2.5 py-2">📬 E-postanıza <b>tek tıklık yatırımcı paneli giriş bağlantısı</b> göndereceğiz; başvurunuzu ve gelen teklifleri oradan takip edersiniz.</p>
                 <label class="flex items-start gap-2.5 cursor-pointer pt-1">
                     <input type="checkbox" id="bqKvkk" class="mt-0.5 w-4 h-4 rounded shrink-0">
@@ -711,10 +815,11 @@
         L.push(`Abonelik tipi: ${e.tariffGroup ? (TARIFF_LABEL[e.tariffGroup] || e.tariffGroup) : '—'} · Tahmini aylık fatura: ${tl(e.totalAmount)}`);
         L.push(`Sözleşme gücü: ${e.contractPower != null ? e.contractPower + ' kW' : '—'}`);
         L.push(`Çatı alanı: ${e.roofM2 != null ? e.roofM2 + ' m²' : '—'} · Çatı tipi: ${e.roofType || '—'}`);
+        L.push(`Şehir: ${e.city ? ((window.EPC_CITIES || []).find(c => c.key === e.city) || {}).ad || e.city : '— (Türkiye ort.)'} · Kullanılan verim: ${e.cityYield ? fmt(e.cityYield) + ' kWh/kWp/yıl' : '—'}`);
         L.push(`Batarya isteği: ${e.batteryOn ? 'Evet (' + (e.batteryKwh || '?') + ' kWh)' : 'Hayır'}`);
         if (e.docs) L.push(`Belgeler → İskân: ${yn(e.docs.iskan)} · Tapu/kira: ${yn(e.docs.tapu)} · Abonelik: ${yn(e.docs.fatura)}`);
         L.push('—');
-        L.push(`Önerilen sistem: ${g.kwp ? g.kwp.toFixed(1) : '—'} kWp · ≈${g.panels || '—'} panel (500 Wp) · Yıllık üretim ${g.production != null ? fmt(g.production) + ' kWh' : '—'} · Karşılama %${g.coverage != null ? Math.min(g.coverage, 100) : '—'}`);
+        L.push(`Önerilen sistem: ${g.kwp ? g.kwp.toFixed(1) : '—'} kWp · ≈${g.panels || '—'} panel (${(panelKwp()*1000).toFixed(0)} Wp) · İnverter ≈${g.inverterKw || '—'} kW · Yıllık üretim: ${g.production != null ? fmt(g.production) + ' kWh' : '—'} · Karşılama: %${g.coverage != null ? Math.min(g.coverage,100) : '—'}`);
         L.push(`Tahmini yatırım (ortalama): $${g.totalUsd != null ? fmt(g.totalUsd) : '—'} (≈${tl(g.totalTl)})${g.batteryUsd ? ' — batarya $' + fmt(g.batteryUsd) + ' dahil' : ''}`);
         L.push(`Yıllık tasarruf: ${tl(g.annualSaving)} · Geri ödeme: ${g.payback ? g.payback.toFixed(1) + ' yıl' : '—'}`);
         return L.join('\n');
@@ -728,6 +833,13 @@
         const address = (document.getElementById('bqAddress').value || '').trim();
         const kvkk = !!document.getElementById('bqKvkk').checked;
         const marketing = !!document.getElementById('bqMarketing').checked;
+        // Belge yanıtları artık bu adımda soruluyor; lead notuna buradan giriyor.
+        _ex = Object.assign(_ex || {}, { docs: {
+            soruldu: true,
+            iskan:  document.getElementById('baDocIskan')?.value  || 'unsure',
+            tapu:   document.getElementById('baDocTapu')?.value   || 'unsure',
+            fatura: document.getElementById('baDocFatura')?.value || 'unsure'
+        }});
 
         if (!name || !phone || !address || !email) { res.innerHTML = '<p class="text-red-500 text-sm font-bold">Ad, telefon, e-posta ve adres zorunludur.</p>'; return; }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.innerHTML = '<p class="text-red-500 text-sm font-bold">Geçerli bir e-posta adresi girin.</p>'; return; }
