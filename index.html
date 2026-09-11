@@ -1986,10 +1986,10 @@
                     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b border-slate-200 mb-6">
                         <div>
                             <div class="flex items-end gap-2">
-                                <span class="text-4xl md:text-5xl font-black text-slate-900">$299</span>
+                                <span id="pricingAmount" class="text-4xl md:text-5xl font-black text-slate-900">—</span>
                                 <span class="text-lg font-bold text-slate-400 mb-1">/ ay</span>
                             </div>
-                            <p class="text-xs text-slate-500 mt-1">KDV hariç · USD'ye endeksli TL olarak tahsil edilir</p>
+                            <p class="text-xs text-slate-500 mt-1"><span id="pricingRoleName" class="font-bold text-slate-600"></span>KDV hariç · USD'ye endeksli TL olarak tahsil edilir</p>
                             <p id="pricingSubStatus" class="hidden text-xs font-bold text-emerald-600 mt-2"></p>
                         </div>
                         <div class="text-left sm:text-right">
@@ -2034,6 +2034,16 @@
       // Fiyatlandırma modalı — yalnız giriş yapmış firma & danışmana (yatırımcıya değil) gösterilir.
       window.openPricing = function () {
           var m = document.getElementById('pricingModal'); if (!m) return;
+          try {
+              // Fiyat role göre değişiyor (core.js'teki EPC_PRICING tek kaynak).
+              var tutar = document.getElementById('pricingAmount');
+              var rolAd = document.getElementById('pricingRoleName');
+              if (tutar && window.epcPrice) {
+                  var f = window.epcPrice();
+                  tutar.textContent = '$' + f.usd;
+                  if (rolAd) rolAd.textContent = f.ad + ' paketi · ';
+              }
+          } catch (e) {}
           try {
               var el = document.getElementById('pricingSubStatus');
               var s = window.__subInfo;

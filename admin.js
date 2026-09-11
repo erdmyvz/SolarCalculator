@@ -1499,7 +1499,7 @@ async function renderSubscriptions() {
     root.innerHTML = `
         <div class="bg-white border border-slate-200 rounded-xl p-5">
             <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-                <h3 class="font-black text-lg text-slate-800">💳 Abonelikler <span class="text-sm font-normal text-slate-400">· $299/ay · KDV hariç</span></h3>
+                <h3 class="font-black text-lg text-slate-800">💳 Abonelikler <span class="text-sm font-normal text-slate-400">· ${Object.values(window.EPC_PRICING).map(f => f.ad + ' $' + f.usd).join(' · ')}/ay · KDV hariç</span></h3>
                 <div class="flex gap-2 text-[11px] font-bold flex-wrap">
                     <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-3 py-1">${active} Aktif</span>
                     <span class="bg-amber-50 text-amber-800 border border-amber-200 rounded-full px-3 py-1">${trial} Deneme</span>

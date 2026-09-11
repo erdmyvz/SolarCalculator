@@ -152,7 +152,9 @@ function showBanScreen(email, reason) {
     m.classList.remove('hidden');
 }
 
-function showRenewalScreen(email, sub) {
+// rolAnahtari: routeByInfo bu ekranı currentConsultant/currentSupplier
+// atanmadan ÖNCE çağırıyor, o yüzden rol dışarıdan geliyor.
+function showRenewalScreen(email, sub, rolAnahtari) {
     let m = document.getElementById('subRenewalScreen');
     if (!m) { m = document.createElement('div'); m.id = 'subRenewalScreen'; document.body.appendChild(m); }
     m.className = 'fixed inset-0 z-[100] bg-slate-900/95 flex items-center justify-center p-4 overflow-y-auto';
@@ -166,7 +168,7 @@ function showRenewalScreen(email, sub) {
         </div>
         <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-4">
             <div class="flex items-end justify-between mb-3">
-                <div><div class="text-3xl font-black text-slate-800">$299<span class="text-base font-bold text-slate-400">/ay</span></div><div class="text-xs text-slate-500">KDV hariç · USD'ye endeksli TL (güncel kur)</div></div>
+                <div><div class="text-3xl font-black text-slate-800">${window.epcPriceLabel(rolAnahtari)}<span class="text-base font-bold text-slate-400">/ay</span></div><div class="text-xs text-slate-500">KDV hariç · USD'ye endeksli TL (güncel kur)</div></div>
                 <span class="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full">AYLIK</span>
             </div>
             <div class="border-t border-slate-200 pt-3 space-y-1.5 text-sm">
@@ -184,7 +186,7 @@ function showRenewalScreen(email, sub) {
 function paymentInfoHtml(email) {
     const safe = String(email || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `<div class="bg-white border border-slate-200 rounded-xl p-4">
-        <div class="flex items-end justify-between mb-3"><div><div class="text-2xl font-black text-slate-800">$299<span class="text-sm font-bold text-slate-400">/ay</span></div><div class="text-[11px] text-slate-500">KDV hariç · USD'ye endeksli TL (güncel kur)</div></div><span class="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full">AYLIK</span></div>
+        <div class="flex items-end justify-between mb-3"><div><div class="text-2xl font-black text-slate-800">${window.epcPriceLabel()}<span class="text-sm font-bold text-slate-400">/ay</span></div><div class="text-[11px] text-slate-500">KDV hariç · USD'ye endeksli TL (güncel kur)</div></div><span class="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full">AYLIK</span></div>
         <div class="border-t border-slate-200 pt-3 space-y-1.5 text-sm">
             <div class="flex justify-between gap-3"><span class="text-slate-500">Alıcı</span><span class="font-bold text-slate-800 text-right">${PAYMENT_NAME}</span></div>
             <div class="flex justify-between gap-3"><span class="text-slate-500">IBAN</span><span class="font-bold text-slate-800 text-right">${PAYMENT_IBAN}</span></div>
@@ -291,7 +293,7 @@ async function routeByInfo(info, user) {
         const sub = await getSubscription(info, user);
         if (sub && sub.banned) { showBanScreen(user.email, sub.banReason); return 'banned'; }
         window.__subInfo = sub ? { endsAt: sub.endsAt, status: sub.status, email: user.email } : null;
-        if (sub && sub.endsAt && new Date(sub.endsAt).getTime() < Date.now()) { showRenewalScreen(user.email, sub); return 'expired'; }
+        if (sub && sub.endsAt && new Date(sub.endsAt).getTime() < Date.now()) { showRenewalScreen(user.email, sub, info.type); return 'expired'; }
     }
     if (info.type === 'consultant') {
         window.currentConsultant = info.consultant;

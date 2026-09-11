@@ -137,3 +137,33 @@ window.epcLoadPanel = function () {
     });
     return _epcPanelPromise;
 };
+
+
+// --- ABONELİK FİYATLARI — TEK KAYNAK ----------------------------------------
+// Fiyat dört ayrı yerde elle yazılıydı ve hepsi 299 $ diyordu; rol sayfaları
+// ise 400/200/600 diyordu. Artık hepsi buradan okuyor, tek yerden değişiyor.
+//
+// DİKKAT: /kurulumcu, /danisman ve /tedarikci statik sayfaları core.js
+// yüklemiyor; oradaki fiyatlar HTML'de sabit. Burayı değiştirirseniz o üç
+// sayfayı ve schema.org Offer bloklarını da elle güncelleyin.
+const EPC_PRICING = {
+    firma:      { usd: 400, ad: 'Kurulumcu Firma' },
+    consultant: { usd: 200, ad: 'Danışman' },
+    supplier:   { usd: 600, ad: 'Tedarikçi' }
+};
+window.EPC_PRICING = EPC_PRICING;
+
+// Rol anahtarı. Argüman verilirse o kullanılır — routeByInfo, currentConsultant/
+// currentSupplier globallerini atamadan ÖNCE yenileme ekranını çağırdığı için
+// oradan info.type geçmek şart. Argümansız çağrıda oturum globallerine bakılır.
+window.epcRoleKey = function (rol) {
+    if (rol) return (rol === 'installer' || rol === 'admin') ? 'firma' : rol;
+    if (window.currentSupplier)   return 'supplier';
+    if (window.currentConsultant) return 'consultant';
+    return 'firma';
+};
+window.epcPrice = function (rol) {
+    return EPC_PRICING[window.epcRoleKey(rol)] || EPC_PRICING.firma;
+};
+// "400$" gibi tek parça metin isteyen yerler için
+window.epcPriceLabel = function (rol) { return '$' + window.epcPrice(rol).usd; };

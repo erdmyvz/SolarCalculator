@@ -127,7 +127,7 @@ Bu şartlara Türkiye Cumhuriyeti hukuku uygulanır. Uyuşmazlıklarda [YETKİL�
 
         legal_subscription: `## 1. Taraflar
 SATICI: [ŞİRKET ÜNVANI] · Adres: [ADRES] · MERSİS: [MERSİS NO] · E-posta: [İLETİŞİM E-POSTASI]
-ALICI: Platforma kayıt olan kurulumcu firma veya bağımsız danışman.
+ALICI: Platforma kayıt olan kurulumcu firma, bağımsız danışman veya tedarikçi.
 
 ## 2. Sözleşmenin Konusu
 Bu sözleşme, ALICI'nın platform üzerinde sunulan yazılım hizmetine abone olmasına ilişkin karşılıklı hak ve yükümlülükleri düzenler.
@@ -136,7 +136,11 @@ Bu sözleşme, ALICI'nın platform üzerinde sunulan yazılım hizmetine abone o
 Abonelik; ALICI'nın rolüne göre CRM, teklif yönetimi, süreç takibi, profil yayını ve platformun ilan edilen diğer modüllerine erişim hakkı verir. Modüllerin kapsamı geliştirilebilir veya güncellenebilir.
 
 ## 4. Bedel ve Ödeme
-Abonelik bedeli aylık **299 USD + KDV**'dir. Ödeme, fatura tarihindeki kur üzerinden **Türk Lirası** olarak tahsil edilir. Ödemeler banka havalesi/EFT ile yapılır.
+Abonelik bedeli ALICI'nın rolüne göre aylık olarak belirlenir ve **KDV hariçtir**:
+
+${Object.values(window.EPC_PRICING || {}).map(f => '- ' + f.ad + ': **' + f.usd + ' USD / ay**').join('\n')}
+
+Ödeme, fatura tarihindeki kur üzerinden **Türk Lirası** olarak tahsil edilir. Ödemeler banka havalesi/EFT ile yapılır.
 
 ## 5. Deneme Süresi
 Yeni kayıtlarda **30 (otuz) gün ücretsiz deneme** süresi tanınır. Deneme süresi boyunca ücret alınmaz. Süre sonunda ödeme yapılmaması hâlinde hesap erişimi kısıtlanır.
@@ -192,7 +196,11 @@ Bu iznimi dilediğim zaman, gönderilen iletideki ayrılma (ret) hakkını kulla
             else if (t.startsWith('[') && t.endsWith(']')) out.push(`<p class="mt-6 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-3 font-bold">⚠️ ${esc(t.slice(1, -1))}</p>`);
             else out.push(`<p class="text-slate-600 leading-relaxed mb-3">${esc(t)}</p>`);
         });
-        return out.join('\n');
+        // **kalın** desteği: metinlerde beş yerde kullanılıyordu ama fmt bunu
+        // çevirmediği için ekranda yıldızlar görünüyordu. esc()'ten SONRA
+        // uygulanıyor — içerik zaten kaçırılmış olduğu için enjeksiyon riski yok
+        // (metin site_content'ten, yani admin panelinden de gelebiliyor).
+        return out.join('\n').replace(/\*\*([^*\n]+)\*\*/g, '<strong class="text-slate-800 font-bold">$1</strong>');
     }
 
     let _activeDoc = LEGAL_DOCS[0][0];
