@@ -746,17 +746,82 @@
     }
 
     window.baDownloadReport = async function () {
-        const card = document.getElementById('baReportCard')?.parentElement;
         const el = document.getElementById('baReportCard');
         if (!el) { window.print(); return; }
         // html2pdf (884 KB) tembel yükleniyor; gelmezse tarayıcı yazdırmasına düş.
         try { await window.epcLoadPdf(); } catch (e) { window.print(); return; }
-        // Rapor kartı + detay kartını birlikte al
+
+        const btn = document.querySelector('[onclick*="baDownloadReport"]');
+        const btnEski = btn ? btn.innerHTML : null;
+        if (btn) { btn.innerHTML = '⏳ PDF hazırlanıyor…'; btn.style.pointerEvents = 'none'; }
+
+        // ⚠️ SAYFA BAŞA ALINIYOR — bunu kaldırmayın.
+        // html2canvas yakalamayı pencere kaydırmasına göre ötelediği için,
+        // kullanıcı rapora kadar kaydırıp butona bastığında ilk sayfa boş
+        // çıkıyor ve içerik ortadan kesiliyordu. scrollY telafisi güvenilir
+        // çalışmadı; en sağlamı üretim boyunca sayfayı başa almak.
+        const eskiKaydirma = window.scrollY || document.documentElement.scrollTop || 0;
+        const eskiDavranis = document.documentElement.style.scrollBehavior;
+        document.documentElement.style.scrollBehavior = 'auto';
+        window.scrollTo(0, 0);
+        await new Promise(r => setTimeout(r, 120));
+
+        // Genişlik A4'ün basılabilir alanına göre seçildi. Daha genişinde
+        // tuval kâğıttan taşıyor ve sağ kenar (ör. başlıktaki tarih) kırpılıyor.
+        const SAYFA_PX = 744;
         const wrap = document.createElement('div');
-        wrap.style.cssText = 'background:#fff;padding:20px';
+        wrap.style.cssText = 'width:' + SAYFA_PX + 'px;background:#fff;padding:16px 20px;' +
+                             'box-sizing:border-box;overflow:hidden';
+
+        const e = _ex || {};
+        const baslik = document.createElement('div');
+        baslik.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-end;' +
+            'border-bottom:2px solid #0B1B2E;padding-bottom:9px;margin-bottom:14px';
+        baslik.innerHTML =
+            '<div><div style="font-size:18px;font-weight:800;color:#0B1B2E;letter-spacing:-.02em">epcmerkezim</div>' +
+            '<div style="font-size:11px;color:#64748b">GES Ön Değerlendirme Raporu</div></div>' +
+            '<div style="text-align:right;font-size:10px;color:#64748b">' +
+            new Date().toLocaleDateString('tr-TR') +
+            (e.name ? '<br><b style="color:#0B1B2E">' + esc(e.name) + '</b>' : '') + '</div>';
+        wrap.appendChild(baslik);
+
+        // Rapor kartı + detay kartı. Teklif/CTA bloğu kâğıda basılmaz.
         wrap.appendChild(el.cloneNode(true));
-        const detail = el.nextElementSibling; if (detail) wrap.appendChild(detail.cloneNode(true));
-        html2pdf().set({ margin: 8, filename: 'GES-On-Rapor.pdf', image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, backgroundColor: '#ffffff' }, jsPDF: { unit: 'mm', format: 'a4' } }).from(wrap).save();
+        const detay = el.nextElementSibling;
+        if (detay) wrap.appendChild(detay.cloneNode(true));
+
+        const dip = document.createElement('div');
+        dip.style.cssText = 'margin-top:12px;padding-top:8px;border-top:1px solid #e2e8f0;' +
+                            'font-size:9px;color:#94a3b8;line-height:1.5';
+        dip.textContent = 'Bu rapor bağlayıcı bir teklif değildir; ön değerlendirme amaçlıdır. ' +
+                          'Kesin sistem ve fiyat saha keşfi sonrası netleşir. epcmerkezim.com';
+        wrap.appendChild(dip);
+
+        // Bölünmeyi YALNIZ küçük bloklarda engelle. Büyük beyaz kart bir
+        // sayfadan uzun; ona avoid koymak koca bir boşluk bırakıyordu.
+        wrap.querySelectorAll('#baReportCard, li, .grid > div').forEach(k => {
+            k.style.breakInside = 'avoid'; k.style.pageBreakInside = 'avoid';
+        });
+
+        document.body.appendChild(wrap);
+        try {
+            await html2pdf().set({
+                margin: [8, 8, 10, 8],
+                filename: 'GES-On-Rapor-' + new Date().toISOString().slice(0, 10) + '.pdf',
+                image: { type: 'jpeg', quality: 0.92 },
+                html2canvas: { scale: 2, backgroundColor: '#ffffff', useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['css', 'legacy'] }
+            }).from(wrap).save();
+        } catch (err) {
+            alert('PDF oluşturulamadı. Tarayıcının yazdırma ekranını açıyoruz.');
+            window.print();
+        } finally {
+            wrap.remove();
+            window.scrollTo(0, eskiKaydirma);
+            document.documentElement.style.scrollBehavior = eskiDavranis;
+            if (btn) { btn.innerHTML = btnEski; btn.style.pointerEvents = ''; }
+        }
     };
 
     // ------------------------------------------------ 6) TEKLİF (onay + submit_lead)
