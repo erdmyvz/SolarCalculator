@@ -48,10 +48,13 @@ async function handleSPA_Routing() {
         if (typeof authUnlockRole === 'function') authUnlockRole();
     } else if (typeof legalOpenByHash === 'function' && legalOpenByHash(hash)) {
         // yasal metin sayfaları: #kvkk #gizlilik #cerez #kullanim-sartlari #abonelik-sozlesmesi #acik-riza
-    } else if (hash === '#hakkimda') {
-        // QR / doğrudan paylaşılan bağlantı → Hakkımda sayfası
-        if (typeof openPublicModule === 'function') openPublicModule('aboutModule');
-        if (typeof renderAbout === 'function') renderAbout();
+    } else if (EPC_HASH_MODULES[hash]) {
+        // Ziyaretçi modülleri artık kendi adreslerinde. Hem doğrudan paylaşılan
+        // bağlantı hem tarayıcı GERİ/İLERİ tuşu buradan geçiyor.
+        const _mod = EPC_HASH_MODULES[hash];
+        if (typeof openPublicModule === 'function') openPublicModule(_mod, true);
+        const _init = EPC_MODULE_INIT[_mod];
+        if (_init && typeof window[_init] === 'function') window[_init]();
     } else if (hash === '#app' && app) {
         // Eğer uygulama (panel) kısmına girmek istiyorsa, oturum (session) kontrolü yap
         if(supabaseClient) {
@@ -94,6 +97,36 @@ window.addEventListener('hashchange', handleSPA_Routing);
    Ziyaretçi (veya tarayıcı botu) bu adresi doğrudan açtığında rol seçim ekranı
    yerine vaat edilen içeriği görmeli. Bu tablo o eşlemeyi kurar.
    ---------------------------------------------------------------------------- */
+// Ziyaretçi modüllerinin kendi adresleri. Eskiden openPublicModule hash'e
+// hiç dokunmuyordu: kullanıcı #yatirimci'deyken bir araca girince adres
+// #yatirimci kalıyor, tarayıcı geçmişine kayıt düşmüyordu. Sonuç: GERİ tuşu
+// vitrine değil, bir önceki hash'e (#home) atıyordu.
+// Adlar EPC_PATH_VIEWS'taki yollarla aynı tutuldu.
+const EPC_MODULE_HASHES = {
+    billAnalyzerModule: '#fatura-analizi',
+    calculatorModule:   '#hesaplayici',
+    simulationModule:   '#simulasyon',
+    evCalcModule:       '#elektrikli-arac',
+    amortizationModule: '#amortisman',
+    educationModule:    '#akademi',
+    regulationsModule:  '#kurulum-sureci',
+    hardwareModule:     '#donanim',
+    consultantsModule:  '#danismanlar',
+    supplierDirModule:  '#tedarikci-rehberi',
+    aboutModule:        '#hakkimda'
+};
+// Ters harita: hash → modül
+const EPC_HASH_MODULES = Object.fromEntries(
+    Object.entries(EPC_MODULE_HASHES).map(([m, h]) => [h, m]));
+// Modül açılırken çalışması gereken hazırlık fonksiyonu (varsa)
+const EPC_MODULE_INIT = {
+    billAnalyzerModule: 'openBillAnalyzer',
+    consultantsModule:  'renderConsultantsList',
+    aboutModule:        'renderAbout',
+    hardwareModule:     'openHardwareCompare',
+    evCalcModule:       'calculateEVSolar'
+};
+
 const EPC_PATH_VIEWS = {
     '/fatura-analizi':      { module: 'billAnalyzerModule', init: 'openBillAnalyzer' },
     '/hesaplayici':         { module: 'calculatorModule' },
@@ -119,7 +152,7 @@ function applyPathView() {
 
     if (view.hash) { window.location.hash = view.hash; return true; }
     if (typeof openPublicModule === 'function') {
-        openPublicModule(view.module);
+        openPublicModule(view.module, true);   // temiz yol korunsun, hash eklenmesin
         if (view.init && typeof window[view.init] === 'function') window[view.init]();
         return true;
     }
@@ -144,8 +177,17 @@ window.addEventListener('load', async () => {
 });
 
 
-window.openPublicModule = function(moduleId) {
+// _adresGuncelleme: router kendi çağırdığında true geçer; o zaman hash'e
+// dokunulmaz (zaten hash yüzünden buradayız, yoksa sonsuz döngü olur).
+window.openPublicModule = function(moduleId, _adrestenGeldi) {
     window.openedFromPublic = true; // YENİ: Kullanıcının vitrinden (ziyaretçi olarak) girdiğini hafızaya aldık
+
+    // Modülün kendi adresi varsa geçmişe kaydet ki GERİ tuşu vitrine dönsün.
+    const _h = EPC_MODULE_HASHES[moduleId];
+    if (_h && !_adrestenGeldi && window.location.hash !== _h) {
+        window.__epcModulAcikHash = _h;   // hashchange bunu görünce yeniden açmaz
+        window.location.hash = _h;
+    }
 
     // Başka bir panel açık kalmasın diye önce TÜM modülleri gizle (admin paneli + ziyaretçi sayfası üst üste binmesin)
     ['supplierDirModule','crmModule','adminModule','calculatorModule','simulationModule','evCalcModule','companyManagementModule','techSupportModule','salesAssistantModule','educationModule','regulationsModule','amortizationModule','hardwareModule','consultantsModule','consultantPanelModule','supplierPanelModule','aboutModule','legalModule','messagesModule','investorModule','campaignsModule','billAnalyzerModule'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
@@ -179,10 +221,14 @@ window.closeAllAndShowMenu = function() {
     const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');
     
     if (window.openedFromPublic) {
-        // DURUM 1: Eğer ziyaretçi vitrininden girdiyse, geri dönünce tekrar VİTRİNE gitsin.
+        // DURUM 1: Ziyaretçi vitrininden girdiyse vitrine dönsün.
+        // Doğrudan DOM'u göstermek yerine adresi değiştiriyoruz; böylece
+        // sayfa içi "geri dön" ile tarayıcının GERİ tuşu aynı yere gidiyor
+        // ve adres çubuğu gerçekten görünen ekranı yansıtıyor.
+        window.openedFromPublic = false;
+        if (window.location.hash !== '#yatirimci') { window.location.hash = '#yatirimci'; return; }
         document.getElementById('appContainer').classList.add('hidden');
         document.getElementById('landingContainer').classList.remove('hidden');
-        window.openedFromPublic = false; // İşlem bitince hafızayı sıfırla
     } else {
         // DURUM 2: Eğer yönetim panelinden girdiyse, geri dönünce YÖNETİM PANELİNE gitsin.
         document.getElementById('mainMenu').classList.remove('hidden');
