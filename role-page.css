@@ -83,30 +83,38 @@ img{max-width:100%}
 .section-head p{color:var(--muted);font-size:var(--fs-base)}
 
 /* --- Kahraman alan --- */
-.hero{padding-top:clamp(var(--s6),7vw,var(--s7));padding-bottom:clamp(var(--s6),6.2vw,var(--s7));
+/* Üst dolgu 89 px'ti; taslak şeridi (34) ve üst çubukla (67) birleşince rol
+   seçicinin üstünde 190 px'lik bir boşluk oluyordu. Yarıya indirildi. */
+.hero{padding-top:clamp(var(--s4),3vw,var(--s5));padding-bottom:clamp(var(--s6),6.2vw,var(--s7));
     text-align:center}
 /* --- Rol seçici bar -------------------------------------------------------
    "← Rol seçimine dön" bağlantısının yerine geçti. Üç rol de görünür, açık
    olan vurgulu; ziyaretçi ana sayfaya dönmeden diğer role geçebiliyor.
    Etkin rengi her sayfa kendi --rol-accent'iyle veriyor (açılış ekranındaki
    kart renkleriyle aynı). Ana sayfaya dönüş üstteki logoda duruyor. */
-.roleswitch{display:inline-flex;gap:var(--s1);padding:var(--s1);margin-bottom:var(--s5);
-    background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;
-    max-width:100%;flex-wrap:wrap;justify-content:center}
-.roleswitch a{padding:var(--s2) var(--s4);border-radius:999px;white-space:nowrap;
-    font-size:var(--fs-sm);font-weight:800;color:var(--muted);
+.roleswitch{display:inline-flex;gap:var(--s2);padding:var(--s2);margin-bottom:var(--s5);
+    background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:999px;
+    max-width:100%;flex-wrap:wrap;justify-content:center;
+    box-shadow:0 10px 30px -18px rgba(0,0,0,.8)}
+.roleswitch a{padding:var(--s3) var(--s5);border-radius:999px;white-space:nowrap;
+    font-size:var(--fs-md);font-weight:800;color:var(--muted);
     transition:color .15s,background .15s}
 .roleswitch a:hover{color:#fff;background:rgba(255,255,255,.07);text-decoration:none}
 .roleswitch a[aria-current="page"]{background:var(--rol-accent,var(--amber-l));color:var(--navy);
     box-shadow:0 6px 18px -10px var(--rol-accent,var(--amber-l))}
 .roleswitch a[aria-current="page"]:hover{background:var(--rol-accent,var(--amber-l));color:var(--navy)}
+@media(max-width:640px){
+    .roleswitch{gap:var(--s1);padding:var(--s1)}
+    .roleswitch a{padding:var(--s2) var(--s4);font-size:var(--fs-sm)}
+}
 @media(max-width:420px){
     .roleswitch{gap:2px;padding:4px}
     .roleswitch a{padding:var(--s2) var(--s3)}
 }
-/* 320 px'te üçüncü rol alt satıra kayıyordu; tek satırda kalsın diye
-   yazı 12 px'e (ölçeğin tabanı) ve dolgu daraltılıyor. */
-@media(max-width:380px){
+/* Yalnız GERÇEKTEN dar ekranlarda (320 px) üçüncü rol alt satıra kayıyor.
+   Eşik 380'di; 375 px'lik yaygın telefonlar da 12 px'e düşüyordu. Ölçtüm:
+   375'te 14 px yazıyla üçü tek satıra sığıyor (298 px). Eşik 360'a çekildi. */
+@media(max-width:360px){
     .roleswitch a{font-size:var(--fs-xs);padding:var(--s2)}
 }
 .hero h1{font-size:clamp(1.9rem,4.8vw,var(--fs-2xl));color:#fff;
