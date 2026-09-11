@@ -170,6 +170,7 @@ async function fetchAdminData() {
 
     // 6) SÜREÇ ADIMLARI (yalnız admin görür)
     await renderProcessAdmin();
+    await renderMevzuatAdmin();
 
     // 7) DAĞITIM ŞİRKETLERİ (yalnız admin görür)
     await renderDiscoAdmin();
@@ -1999,3 +2000,271 @@ setTimeout(function () {
     const card = document.getElementById('adminPanelCard');
     if (card) card.addEventListener('click', function () { if (window.adminErrorsBadge) setTimeout(window.adminErrorsBadge, 400); });
 }, 0);
+
+// ============================================================================
+// MEVZUAT YÖNETİMİ — dağıtım şirketleri, belge listeleri, güncellemeler
+// Tablolar: mevzuat.sql. Ziyaretçi arayüzü: mevzuat.js
+//
+// Buradaki en önemli alan "doğrulandı" işareti. Ziyaretçi arayüzü
+// doğrulanmamış ya da 180 günden eski satırı kesin bilgi gibi basmıyor;
+// uyarı rozetiyle gösterip resmi kaynağa yönlendiriyor. Bu yüzden bir satırı
+// doğrulanmış işaretlemeden önce gerçekten resmi kaynaktan teyit edin.
+// ============================================================================
+let _mvSirketler = [], _mvGuncellemeler = [];
+
+function mvKok() {
+    if (document.getElementById('mvAdminRoot')) return document.getElementById('mvAdminRoot');
+    const admin = document.getElementById('adminPaneContent') || document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'mvAdminRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 class="text-lg font-black text-slate-800">⚖️ Mevzuat & Dağıtım Şirketleri</h3>
+            <span class="flex gap-2">
+                <button onclick="mvYeniBelge()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg">+ Belge</button>
+                <button onclick="mvYeniGuncelleme()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+ Mevzuat Güncellemesi</button>
+            </span>
+        </div>
+        <p class="text-xs text-slate-400 mb-4">Ziyaretçi, ilini seçince buradaki bilgiyi görüyor.
+           <b class="text-amber-700">Doğrulanmamış satır kesin bilgi olarak gösterilmez</b> — resmi kaynaktan
+           teyit edip "doğrulandı" işaretleyin.</p>
+        <div id="mvOzet" class="mb-4"></div>
+        <div id="mvSirketList" class="space-y-2 mb-6"></div>
+        <h4 class="font-black text-slate-700 text-sm mb-2">Son mevzuat güncellemeleri</h4>
+        <div id="mvGuncList" class="space-y-2"></div>`;
+    admin.appendChild(card);
+    return card;
+}
+
+async function renderMevzuatAdmin() {
+    if (!mvKok() || !supabaseClient) return;
+    const sl = document.getElementById('mvSirketList');
+    sl.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+    const [s, g] = await Promise.all([
+        supabaseClient.from('dagitim_sirketleri').select('*').order('sort_order'),
+        supabaseClient.from('mevzuat_guncellemeler').select('*').order('tarih', { ascending: false }).limit(15)
+    ]);
+    if (s.error) {
+        sl.innerHTML = `<p class="text-xs text-red-500">Yüklenemedi: ${s.error.message}<br>
+            <b>mevzuat.sql</b> dosyasını Supabase SQL Editor'de çalıştırdınız mı?</p>`;
+        return;
+    }
+    _mvSirketler = s.data || [];
+    _mvGuncellemeler = (g && !g.error && g.data) ? g.data : [];
+
+    const dogru = _mvSirketler.filter(x => x.dogrulandi_mi).length;
+    document.getElementById('mvOzet').innerHTML = `
+        <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <div class="text-xl font-black text-slate-800">${_mvSirketler.length}</div>
+                <div class="text-[11px] text-slate-500">dağıtım şirketi</div></div>
+            <div class="bg-${dogru ? 'emerald' : 'amber'}-50 border border-${dogru ? 'emerald' : 'amber'}-200 rounded-lg p-3">
+                <div class="text-xl font-black text-${dogru ? 'emerald' : 'amber'}-700">${dogru}</div>
+                <div class="text-[11px] text-slate-500">doğrulanmış</div></div>
+            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <div class="text-xl font-black text-slate-800">${_mvGuncellemeler.length}</div>
+                <div class="text-[11px] text-slate-500">güncelleme kaydı</div></div>
+        </div>`;
+
+    sl.innerHTML = _mvSirketler.map(x => {
+        const eksik = !x.web_site && !x.basvuru_url;
+        return `<div class="flex items-center justify-between gap-2 border ${x.dogrulandi_mi ? 'border-slate-200' : 'border-amber-200 bg-amber-50/40'} rounded-lg p-3">
+            <div class="min-w-0">
+                <strong class="text-sm text-slate-800">${admEscape(x.kisa_ad || x.ad)}</strong>
+                ${x.dogrulandi_mi
+                    ? `<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">✓ ${x.dogrulama_tarihi || ''}</span>`
+                    : '<span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">teyit edilmedi</span>'}
+                ${eksik ? '<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">bağlantı yok</span>' : ''}
+                <div class="text-[11px] text-slate-400 truncate">${(x.iller || []).map(admEscape).join(' · ')}</div>
+            </div>
+            <button onclick="mvSirketDuzenle('${x.kod}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded flex-shrink-0">Düzenle</button>
+        </div>`;
+    }).join('') || '<p class="text-xs text-slate-400 italic">Şirket yok — mevzuat.sql çalıştırılmamış olabilir.</p>';
+
+    document.getElementById('mvGuncList').innerHTML = _mvGuncellemeler.map(g2 => `
+        <div class="flex items-center justify-between gap-2 border border-slate-200 rounded-lg p-3">
+            <div class="min-w-0">
+                <strong class="text-sm text-slate-800">${admEscape(g2.baslik)}</strong>
+                ${g2.yayinda ? '' : '<span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">taslak</span>'}
+                <div class="text-[11px] text-slate-400 truncate">${g2.tarih} · ${admEscape(g2.kaynak_kurum || '')}</div>
+            </div>
+            <span class="flex gap-1 flex-shrink-0">
+                <button onclick="mvGuncDuzenle('${g2.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Düzenle</button>
+                <button onclick="mvGuncSil('${g2.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Sil</button>
+            </span>
+        </div>`).join('') || '<p class="text-xs text-slate-400 italic">Henüz güncelleme kaydı yok.</p>';
+}
+window.renderMevzuatAdmin = renderMevzuatAdmin;
+
+// --------------------------------------------------------------- şirket kartı
+window.mvSirketDuzenle = function (kod) {
+    const e = _mvSirketler.find(x => x.kod === kod); if (!e) return;
+    eduModal(`
+        <h3 class="text-lg font-black text-slate-800 mb-1">${admEscape(e.ad)}</h3>
+        <p class="text-xs text-slate-400 mb-4">${(e.iller || []).map(admEscape).join(' · ')}</p>
+        <div class="space-y-3">
+            <div><label class="text-xs font-bold text-slate-600">Resmi site (https://)</label>
+                <input id="mvSite" value="${admEscape(e.web_site || '')}" placeholder="https://..." class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+            <div><label class="text-xs font-bold text-slate-600">Lisanssız üretim başvuru sayfası</label>
+                <input id="mvBasvuru" value="${admEscape(e.basvuru_url || '')}" placeholder="https://..." class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+            <div><label class="text-xs font-bold text-slate-600">Telefon</label>
+                <input id="mvTel" value="${admEscape(e.telefon || '')}" class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+            <div><label class="text-xs font-bold text-slate-600">Not (opsiyonel)</label>
+                <textarea id="mvNot" rows="2" class="w-full p-2 border border-slate-300 rounded-lg text-sm">${admEscape(e.notlar || '')}</textarea></div>
+            <label class="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 cursor-pointer">
+                <input type="checkbox" id="mvDogru" ${e.dogrulandi_mi ? 'checked' : ''} class="mt-0.5 w-4 h-4 shrink-0">
+                <span class="text-xs text-amber-900 leading-relaxed"><b>Bu bilgileri resmi kaynaktan teyit ettim.</b>
+                İşaretlemezseniz ziyaretçiye "teyit edilmedi" uyarısıyla gösterilir — bu bilinçli bir tercih,
+                doğrulanmamış bilgiyi kesinmiş gibi sunmamak için.</span>
+            </label>
+        </div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="eduCloseModal()" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-lg text-sm">Vazgeç</button>
+            <button onclick="mvSirketKaydet('${kod}')" class="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-lg text-sm">Kaydet</button>
+        </div>`);
+};
+
+window.mvSirketKaydet = async function (kod) {
+    const dogru = document.getElementById('mvDogru').checked;
+    const veri = {
+        web_site:    document.getElementById('mvSite').value.trim() || null,
+        basvuru_url: document.getElementById('mvBasvuru').value.trim() || null,
+        telefon:     document.getElementById('mvTel').value.trim() || null,
+        notlar:      document.getElementById('mvNot').value.trim() || null,
+        dogrulandi_mi: dogru,
+        dogrulama_tarihi: dogru ? new Date().toISOString().slice(0, 10) : null,
+        dogrulayan: dogru ? (window.currentUserProfile?.email || 'admin') : null
+    };
+    const { error } = await supabaseClient.from('dagitim_sirketleri').update(veri).eq('kod', kod);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    eduCloseModal(); renderMevzuatAdmin();
+};
+
+// ------------------------------------------------------------ belge ve güncelleme
+window.mvYeniBelge = function () {
+    const opts = _mvSirketler.map(x => `<option value="${x.kod}">${admEscape(x.kisa_ad || x.ad)}</option>`).join('');
+    eduModal(`
+        <h3 class="text-lg font-black text-slate-800 mb-4">Yeni Belge Satırı</h3>
+        <div class="space-y-3">
+            <div><label class="text-xs font-bold text-slate-600">Dağıtım şirketi</label>
+                <select id="mvbSirket" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                    <option value="">Tüm Türkiye (ortak belge)</option>${opts}</select></div>
+            <div class="flex gap-3">
+                <div class="flex-1"><label class="text-xs font-bold text-slate-600">Tesis tipi</label>
+                    <select id="mvbTip" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                        <option value="mesken">Mesken</option><option value="ticari">Ticari</option>
+                        <option value="sanayi">Sanayi</option><option value="tarimsal">Tarımsal</option></select></div>
+                <div class="flex-1"><label class="text-xs font-bold text-slate-600">Aşama</label>
+                    <select id="mvbAsama" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                        <option value="basvuru">Başvuru</option><option value="proje">Proje ve onay</option>
+                        <option value="kurulum">Kurulum</option><option value="kabul">Kabul</option>
+                        <option value="isletme">İşletme</option></select></div>
+                <div class="w-16"><label class="text-xs font-bold text-slate-600">Sıra</label>
+                    <input id="mvbSira" type="number" value="0" class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+            </div>
+            <div><label class="text-xs font-bold text-slate-600">Belge adı</label>
+                <input id="mvbAd" class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+            <div><label class="text-xs font-bold text-slate-600">Açıklama</label>
+                <textarea id="mvbAciklama" rows="2" class="w-full p-2 border border-slate-300 rounded-lg text-sm"></textarea></div>
+            <div><label class="text-xs font-bold text-slate-600">Nereden alınır</label>
+                <input id="mvbNereden" class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+            <div><label class="text-xs font-bold text-slate-600">Kaynak bağlantısı (resmi sayfa)</label>
+                <input id="mvbKaynak" placeholder="https://..." class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+            <div class="flex gap-4">
+                <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" id="mvbZorunlu" checked class="w-4 h-4"> Zorunlu belge</label>
+                <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" id="mvbYayin" class="w-4 h-4"> Yayınla</label>
+            </div>
+        </div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="eduCloseModal()" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-lg text-sm">Vazgeç</button>
+            <button onclick="mvBelgeKaydet()" class="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-lg text-sm">Kaydet</button>
+        </div>`);
+};
+
+window.mvBelgeKaydet = async function () {
+    const ad = document.getElementById('mvbAd').value.trim();
+    if (!ad) { alert('Belge adı gerekli.'); return; }
+    const veri = {
+        sirket_kod: document.getElementById('mvbSirket').value || null,
+        tesis_tipi: document.getElementById('mvbTip').value,
+        asama:      document.getElementById('mvbAsama').value,
+        sira:       parseInt(document.getElementById('mvbSira').value, 10) || 0,
+        belge_adi:  ad,
+        aciklama:   document.getElementById('mvbAciklama').value.trim() || null,
+        nereden_alinir: document.getElementById('mvbNereden').value.trim() || null,
+        kaynak_url: document.getElementById('mvbKaynak').value.trim() || null,
+        zorunlu_mu: document.getElementById('mvbZorunlu').checked,
+        yayinda:    document.getElementById('mvbYayin').checked,
+        dogrulama_tarihi: new Date().toISOString().slice(0, 10)
+    };
+    const { error } = await supabaseClient.from('mevzuat_belgeleri').insert([veri]);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    eduCloseModal(); renderMevzuatAdmin();
+};
+
+window.mvYeniGuncelleme = () => mvGuncModal(null);
+window.mvGuncDuzenle = (id) => mvGuncModal(_mvGuncellemeler.find(g => g.id === id));
+function mvGuncModal(g) {
+    const e = g || {};
+    eduModal(`
+        <h3 class="text-lg font-black text-slate-800 mb-4">${g ? 'Güncellemeyi Düzenle' : 'Yeni Mevzuat Güncellemesi'}</h3>
+        <div class="space-y-3">
+            <div class="flex gap-3">
+                <div class="flex-1"><label class="text-xs font-bold text-slate-600">Duyuru tarihi</label>
+                    <input id="mvgTarih" type="date" value="${e.tarih || new Date().toISOString().slice(0,10)}" class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+                <div class="flex-1"><label class="text-xs font-bold text-slate-600">Yürürlük tarihi</label>
+                    <input id="mvgYururluk" type="date" value="${e.yururluk_tarihi || ''}" class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+            </div>
+            <div><label class="text-xs font-bold text-slate-600">Başlık</label>
+                <input id="mvgBaslik" value="${admEscape(e.baslik || '')}" class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+            <div><label class="text-xs font-bold text-slate-600">Özet</label>
+                <textarea id="mvgOzet" rows="3" class="w-full p-2 border border-slate-300 rounded-lg text-sm">${admEscape(e.ozet || '')}</textarea></div>
+            <div class="flex gap-3">
+                <div class="flex-1"><label class="text-xs font-bold text-slate-600">Kaynak kurum</label>
+                    <input id="mvgKurum" value="${admEscape(e.kaynak_kurum || '')}" placeholder="EPDK / TEDAŞ / Resmî Gazete" class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+                <div class="w-32"><label class="text-xs font-bold text-slate-600">Önem</label>
+                    <select id="mvgOnem" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                        <option value="kritik" ${e.onem === 'kritik' ? 'selected' : ''}>Kritik</option>
+                        <option value="normal" ${!e.onem || e.onem === 'normal' ? 'selected' : ''}>Normal</option>
+                        <option value="bilgi" ${e.onem === 'bilgi' ? 'selected' : ''}>Bilgi</option></select></div>
+            </div>
+            <div><label class="text-xs font-bold text-slate-600">Kaynak bağlantısı <span class="text-red-500">*</span></label>
+                <input id="mvgKaynak" value="${admEscape(e.kaynak_url || '')}" placeholder="https://..." class="w-full p-2 border border-slate-300 rounded-lg text-sm">
+                <p class="text-[11px] text-slate-400 mt-1">Zorunlu. Kaynaksız mevzuat kaydı, okuyanın doğrulayamayacağı bir iddiadır.</p></div>
+            <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" id="mvgYayin" ${e.yayinda ? 'checked' : ''} class="w-4 h-4"> Yayınla</label>
+        </div>
+        <div class="flex gap-2 mt-5">
+            <button onclick="eduCloseModal()" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-lg text-sm">Vazgeç</button>
+            <button onclick="mvGuncKaydet(${g ? `'${g.id}'` : 'null'})" class="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-lg text-sm">Kaydet</button>
+        </div>`);
+}
+
+window.mvGuncKaydet = async function (id) {
+    const baslik = document.getElementById('mvgBaslik').value.trim();
+    const kaynak = document.getElementById('mvgKaynak').value.trim();
+    if (!baslik) { alert('Başlık gerekli.'); return; }
+    if (!/^https?:\/\//i.test(kaynak)) { alert('Geçerli bir kaynak bağlantısı gerekli (https:// ile başlamalı).'); return; }
+    const veri = {
+        tarih: document.getElementById('mvgTarih').value || new Date().toISOString().slice(0, 10),
+        yururluk_tarihi: document.getElementById('mvgYururluk').value || null,
+        baslik, ozet: document.getElementById('mvgOzet').value.trim() || null,
+        kaynak_url: kaynak,
+        kaynak_kurum: document.getElementById('mvgKurum').value.trim() || null,
+        onem: document.getElementById('mvgOnem').value,
+        yayinda: document.getElementById('mvgYayin').checked
+    };
+    const { error } = id
+        ? await supabaseClient.from('mevzuat_guncellemeler').update(veri).eq('id', id)
+        : await supabaseClient.from('mevzuat_guncellemeler').insert([veri]);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    eduCloseModal(); renderMevzuatAdmin();
+};
+
+window.mvGuncSil = async function (id) {
+    if (!confirm('Bu güncelleme kaydı silinsin mi?')) return;
+    const { error } = await supabaseClient.from('mevzuat_guncellemeler').delete().eq('id', id);
+    if (error) { alert('Silinemedi: ' + error.message); return; }
+    renderMevzuatAdmin();
+};

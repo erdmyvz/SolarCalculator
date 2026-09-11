@@ -121,6 +121,7 @@ const EPC_HASH_MODULES = Object.fromEntries(
 // Modül açılırken çalışması gereken hazırlık fonksiyonu (varsa)
 const EPC_MODULE_INIT = {
     billAnalyzerModule: 'openBillAnalyzer',
+    regulationsModule:  'renderMevzuat',
     consultantsModule:  'renderConsultantsList',
     aboutModule:        'renderAbout',
     hardwareModule:     'openHardwareCompare',
