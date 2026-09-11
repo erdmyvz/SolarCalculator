@@ -32,7 +32,7 @@ create table if not exists public.suppliers (
     status         text not null default 'draft',   -- draft | pending | approved | rejected
     reject_reason  text,
 
-    -- abonelik (kurulumcu 400$, danışman 200$, tedarikçi 600$/yıl)
+    -- abonelik (kurulumcu 400$, danışman 200$, tedarikçi 600$/ay)
     sub_status     text default 'trial',
     sub_ends_at    timestamptz default (now() + interval '30 days'),
     banned         boolean not null default false,
