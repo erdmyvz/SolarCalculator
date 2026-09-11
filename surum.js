@@ -4,10 +4,10 @@
    Son üretim: 11.09.2026 10:57
    ============================================================================ */
 window.EPC_SURUM = {
-    surum:  'v0.212',
-    commit: '3d5f692',
-    tarih:  '2026-09-11T10:57:36+03:00',
-    kirli:  true,        // true = commit'lenmemiş değişiklikle üretildi
+    surum:  'v0.213',
+    commit: '4f05d60',
+    tarih:  '2026-09-11T10:57:55+03:00',
+    kirli:  false,        // true = commit'lenmemiş değişiklikle üretildi
     taslak: true           // 1.0'a geçince false yapın, şerit kalkar
 };
 
