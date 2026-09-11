@@ -35,6 +35,9 @@ window.EPC_SETTINGS = {
             if (!isNaN(v)) window.EPC_SETTINGS[r.key] = v;
         });
     } catch (e) { /* DB yoksa/erişilemezse varsayılanlar kullanılır */ }
+    // Ayarlar sayfa açıldıktan SONRA geliyor; koddaki varsayılanlarla kurulmuş
+    // arayüzler (ör. hesaplayıcının tarife listesi) bu olayla kendini tazeler.
+    try { window.dispatchEvent(new Event('epc-settings-loaded')); } catch (e) {}
 })();
 
 

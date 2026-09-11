@@ -227,6 +227,18 @@ window.epcPayback = function (o) {
     return { yil: sonuc, satirlar, birikim, ilkYilTasarruf: satirlar[0] ? satirlar[0].tasarruf : 0 };
 };
 
+// kWp başına kurulum bedeli (TL) — ÜÇ hesaplayıcının ortak kaynağı.
+// Eskiden Tüketim Hesaplayıcı ve Amortisman 'pricePerKwp' (30.000 TL/kWp),
+// Fatura Analizi ise usdPerKwp × usdTry (1.000 × 42 = 42.000) okuyordu. Aynı ev
+// için biri ₺76.800 diğeri ₺115.500 diyordu. Kur bazlı olan doğru kabul edildi:
+// ekipman fiyatları dövize endeksli, sabit TL değer hızla bayatlıyor.
+window.epcTlPerKwp = function () {
+    const s = window.EPC_SETTINGS || {};
+    const usd = Number(s.usdPerKwp) > 0 ? Number(s.usdPerKwp) : 1000;
+    const kur = Number(s.usdTry) > 0 ? Number(s.usdTry) : 42;
+    return usd * kur;
+};
+
 // Zam ve yıpranma varsayılanları da ayarlardan gelsin ki iki araç aynı
 // varsayımı kullansın (amortization.js'in form varsayılanları: %25 / %0,7).
 window.epcEnflasyon = function () {

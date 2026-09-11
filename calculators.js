@@ -13,8 +13,34 @@
 const SOLAR_YIELD_KWH_PER_KWP = 1500;   // yıllık üretim (Türkiye ortalaması, kWh/kWp)
 const ROOF_M2_PER_KWP = 5.5;            // kWp başına yaklaşık çatı alanı (m²)
 const KWP_PER_PANEL = 0.55;             // 550 W panel
-const REF_PRICE_PER_KWP_TL = 30000;     // REFERANS anahtar-teslim kurulum bedeli (TL/kWp) — gerçek rakamla değiştirin
 const CO2_KG_PER_KWH = 0.45;            // şebeke ortalaması (kg CO₂/kWh)
+
+// FİYAT: Fatura Analizi ile AYNI kaynaktan. Eskiden burası pricePerKwp (30.000
+// TL/kWp) okuyordu, Fatura Analizi ise usdPerKwp × usdTry (1.000 × 42 = 42.000).
+// Aynı ev için biri ₺76.800 diğeri ₺115.500 diyordu — %40 fark. Tek kaynağa alındı.
+function tlPerKwp() { return window.epcTlPerKwp ? window.epcTlPerKwp() : 42000; }
+
+// TARİFE: açılır liste artık ayarlardan doluyor. Eskiden değerler HTML'e
+// gömülüydü ve ayarlarla çelişiyordu (ticarethane 4,00 yazıyordu ama ayar 3,50;
+// sanayi 3,50 yazıyordu ama ayar 3,00; tarımsal hiç yoktu).
+const TARIFE_GRUPLARI = [
+    { key: 'tariffMesken',      ad: '🏠 Mesken / Ev',        vars: 2.5 },
+    { key: 'tariffTicarethane', ad: '🏢 Ticarethane',        vars: 3.5 },
+    { key: 'tariffSanayi',      ad: '🏭 Sanayi',             vars: 3.0 },
+    { key: 'tariffTarimsal',    ad: '🌾 Tarımsal sulama',    vars: 2.2 }
+];
+function tarifeListesiniDoldur() {
+    const sel = document.getElementById('tariffSelect');
+    if (!sel) return;
+    const s = window.EPC_SETTINGS || {};
+    const secili = sel.value;
+    sel.innerHTML = TARIFE_GRUPLARI.map(function (g) {
+        const v = Number(s[g.key]) > 0 ? Number(s[g.key]) : g.vars;
+        return '<option value="' + v + '">' + g.ad + ' (' +
+               v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL/kWh)</option>';
+    }).join('');
+    if (secili) sel.value = secili;
+}
 
 const appliancesWrapper = document.getElementById('appliancesWrapper');
 
@@ -59,20 +85,28 @@ if (monthsGridContainer) {
         const wrap = document.createElement('div');
         wrap.innerHTML = `
             <label class="block text-[11px] font-bold text-slate-500 mb-1">${monthName}</label>
-            <input type="number" class="month-input w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500" placeholder="kWh" value="350">
+            <input type="number" min="0" class="month-input w-full p-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-blue-500" placeholder="kWh">
         `;
         monthsGridContainer.appendChild(wrap);
     });
 }
 
 // Radyo butonları (Aylık Fatura / Yıllık / Eşya Bazlı) geçişlerini dinle
+function girisSekmesiTazele() {
+    document.querySelectorAll('input[name="inputType"]').forEach(r => {
+        const et = r.closest('.calc-secenek');
+        if (et) et.classList.toggle('secili', r.checked);
+    });
+}
 document.querySelectorAll('input[name="inputType"]')?.forEach(radio => {
     radio.addEventListener('change', (e) => {
         document.querySelectorAll('.input-section').forEach(sec => sec.classList.add('hidden'));
         const targetEl = document.getElementById(e.target.value + 'InputSection');
         if (targetEl) targetEl.classList.remove('hidden');
+        girisSekmesiTazele();
     });
 });
+girisSekmesiTazele();
 
 // Gelecekte eklenecek yükler (EV, Isı Pompası) için geçiş butonları
 document.getElementById('hasFutureLoads')?.addEventListener('change', e => document.getElementById('futureLoadsContainer').classList.toggle('hidden', !e.target.checked));
@@ -87,8 +121,10 @@ document.getElementById('btnAddCustomLoad')?.addEventListener('click', () => {
 });
 
 // Ana Hesaplama Motoru
-document.getElementById('btnCalculate')?.addEventListener('click', () => {
-    let base = 0; 
+// hesapla(sessiz): sessiz=true ise kullanıcı yazarken canlı çalışır — hata
+// mesajı basmaz, sonucu da kendiliğinden kaydırmaz.
+function hesapla(sessiz) {
+    let base = 0;
     const type = document.querySelector('input[name="inputType"]:checked').value;
     
     // Tüketim bazını hesapla
@@ -111,45 +147,81 @@ document.getElementById('btnCalculate')?.addEventListener('click', () => {
     }
 
     // Toplam değerler
-    let sonAylik = base + extra; 
-    let sonYillik = sonAylik * 12; 
-    let trf = parseFloat(document.getElementById('tariffSelect').value); 
+    let sonAylik = base + extra;
+    let trf = parseFloat(document.getElementById('tariffSelect').value);
+
+    // DOĞRULAMA — eskiden yoktu: -50 kWh girilince "-₺125 fatura" ve 0 kWp'lik
+    // bir sonuç paneli çıkıyordu; boş bırakılınca da 0'larla dolu bir rapor.
+    const uyari = document.getElementById('calcUyari');
+    if (!(sonAylik > 0)) {
+        if (!sessiz && uyari) {
+            uyari.innerHTML = '<div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900 font-bold">' +
+                (sonAylik < 0 ? 'Tüketim negatif olamaz.' : 'Hesap için tüketiminizi girin.') + '</div>';
+            uyari.classList.remove('hidden');
+        }
+        document.getElementById('resultsModule').classList.add('hidden');
+        return false;
+    }
+    if (uyari) { uyari.innerHTML = ''; uyari.classList.add('hidden'); }
+
+    let sonYillik = sonAylik * 12;
     let sonFatura = sonAylik * trf;
 
     // Sonuçları ekrana bas
-    document.getElementById('finalMonthlyLoad').textContent = Math.round(sonAylik).toLocaleString('tr-TR');
-    document.getElementById('finalYearlyLoad').textContent = Math.round(sonYillik).toLocaleString('tr-TR');
-    document.getElementById('finalMonthlyBill').textContent = sonFatura.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (window.epcSay) {
+        window.epcSay(document.getElementById('finalMonthlyLoad'), sonAylik, 0);
+        window.epcSay(document.getElementById('finalYearlyLoad'), sonYillik, 0);
+        window.epcSay(document.getElementById('finalMonthlyBill'), sonFatura, 2);
+    } else {
+        document.getElementById('finalMonthlyLoad').textContent = Math.round(sonAylik).toLocaleString('tr-TR');
+        document.getElementById('finalYearlyLoad').textContent = Math.round(sonYillik).toLocaleString('tr-TR');
+        document.getElementById('finalMonthlyBill').textContent = sonFatura.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
 
     // --- GÜNEŞ ÇÖZÜMÜ (referans hesap; değerler admin Ayarlar'dan gelir, yoksa varsayılan) ---
     const _S = window.EPC_SETTINGS || {};
-    const _YIELD = _S.solarYield   || SOLAR_YIELD_KWH_PER_KWP;
-    const _ROOF  = _S.roofM2PerKwp  || ROOF_M2_PER_KWP;
-    const _PANEL = _S.kwpPerPanel   || KWP_PER_PANEL;
-    const _PRICE = _S.pricePerKwp   || REF_PRICE_PER_KWP_TL;
-    const _CO2   = _S.co2PerKwh      || CO2_KG_PER_KWH;
+    const _YIELD = Number(_S.solarYield)   > 0 ? Number(_S.solarYield)   : SOLAR_YIELD_KWH_PER_KWP;
+    const _ROOF  = Number(_S.roofM2PerKwp) > 0 ? Number(_S.roofM2PerKwp) : ROOF_M2_PER_KWP;
+    const _PANEL = Number(_S.kwpPerPanel)  > 0 ? Number(_S.kwpPerPanel)  : KWP_PER_PANEL;
+    const _CO2   = Number(_S.co2PerKwh)    > 0 ? Number(_S.co2PerKwh)    : CO2_KG_PER_KWH;
 
-    const kwp        = sonYillik > 0 ? sonYillik / _YIELD : 0;
+    // Panel adedine yuvarlanıp gerçek güç ondan türetiliyor (Fatura Analizi ile aynı).
+    const hamKwp     = sonYillik / _YIELD;
+    const panels     = Math.max(1, Math.round(hamKwp / _PANEL));
+    const kwp        = panels * _PANEL;
     const roofArea   = kwp * _ROOF;
-    const panels     = kwp > 0 ? Math.max(1, Math.ceil(kwp / _PANEL)) : 0;
-    const investment = kwp * _PRICE;
-    const annualSaving = sonFatura * 12;
-    const payback    = annualSaving > 0 ? investment / annualSaving : 0;
+    const investment = kwp * tlPerKwp();
+    const uretim     = kwp * _YIELD;
+    const annualSaving = Math.min(uretim, sonYillik) * trf;   // fazla üretim değerlenmez
+
+    // GERİ ÖDEME — core.js'teki ortak model. Eskiden düz bölme yapıyordu
+    // (yatırım ÷ yıllık tasarruf) ve aynı girdide Fatura Analizi 6,1 yıl derken
+    // burası 8,0 yıl diyordu. Artık ikisi de aynı fonksiyonu çağırıyor.
+    const _pb = (window.epcPayback
+        ? window.epcPayback({ yatirim: investment, yillikUretim: uretim, birimFiyat: trf })
+        : { yil: annualSaving > 0 ? investment / annualSaving : 0, birikim: annualSaving * 25 });
+    const payback    = _pb.yil;
+    // 25 yıllık toplam BUGÜNKÜ fiyatlarla. epcPayback'in birikimi %25 zamla
+    // şişip ₺9,4 milyon gibi nominal bir rakam veriyordu; okuyan bunu bugünkü
+    // parayla karıştırır. Aynı gerekçeyle Fatura Analizi'nden de çıkarılmıştı.
     const saving25   = annualSaving * 25;
-    const co2Annual  = sonYillik * _CO2;
+    const co2Annual  = uretim * _CO2;
 
     // Raporu (indir/e-posta) ile birlikte kaydedilecek özet
     window.lastCalc = {
         monthly_kwh: Math.round(sonAylik), yearly_kwh: Math.round(sonYillik),
         monthly_bill: Math.round(sonFatura), recommended_kwp: +kwp.toFixed(2),
         est_investment: Math.round(investment), est_annual_saving: Math.round(annualSaving),
-        payback_years: +payback.toFixed(1), tariff: trf
+        payback_years: payback != null ? +payback.toFixed(1) : null, tariff: trf
     };
     renderSolarSolution({ kwp, roofArea, panels, investment, annualSaving, payback, saving25, co2Annual });
 
-    document.getElementById('resultsModule').classList.remove('hidden'); 
-    document.getElementById('resultsModule').scrollIntoView({ behavior: 'smooth' });
-});
+    document.getElementById('resultsModule').classList.remove('hidden');
+    if (!sessiz) document.getElementById('resultsModule').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return true;
+}
+
+document.getElementById('btnCalculate')?.addEventListener('click', () => hesapla(false));
 
 // ============================================================================
 // GÜNEŞ ÇÖZÜMÜ RAPORU + POTANSİYEL MÜŞTERİ YAKALAMA
@@ -180,10 +252,10 @@ function renderSolarSolution(v) {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div class="bg-white border border-slate-200 p-4 rounded-xl"><p class="text-[11px] text-slate-500 font-bold mb-1">Tahmini Yatırım (referans)</p><p class="text-2xl font-black text-slate-800">₺${fmt(v.investment)}</p></div>
             <div class="bg-white border border-slate-200 p-4 rounded-xl"><p class="text-[11px] text-slate-500 font-bold mb-1">Yıllık Tasarruf</p><p class="text-2xl font-black text-emerald-600">₺${fmt(v.annualSaving)}</p></div>
-            <div class="bg-slate-900 text-white p-4 rounded-xl"><p class="text-[11px] text-slate-300 font-bold mb-1">Kendini Amorti (yaklaşık)</p><p class="text-2xl font-black text-yellow-400">${v.payback>0?v.payback.toFixed(1):'-'}<span class="text-sm text-slate-300"> yıl</span></p></div>
+            <div class="bg-slate-900 text-white p-4 rounded-xl"><p class="text-[11px] text-slate-300 font-bold mb-1">Kendini Amorti (yaklaşık)</p><p class="text-2xl font-black text-yellow-400">${v.payback>0?v.payback.toFixed(1):'25+'}<span class="text-sm text-slate-300"> yıl</span></p></div>
         </div>
         <div class="mt-4 bg-emerald-600 text-white p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-3">
-            <div><p class="font-black">25 yılda tahmini toplam tasarruf: ₺${fmt(v.saving25)}</p><p class="text-emerald-100 text-xs">Güneş her gün bedava; beklemek fatura ödemeye devam etmek demektir.</p></div>
+            <div><p class="font-black">25 yılda tahmini toplam tasarruf: ₺${fmt(v.saving25)} <span class="font-medium text-emerald-100">(bugünkü fiyatlarla)</span></p><p class="text-emerald-100 text-xs">Güneş her gün bedava; beklemek fatura ödemeye devam etmek demektir.</p></div>
             <button onclick="openLeadModal('kurulum')" class="bg-white text-emerald-700 font-black px-5 py-3 rounded-lg whitespace-nowrap hover:bg-emerald-50">Ücretsiz Çatı Keşfi ›</button>
         </div>`;
 }
@@ -309,7 +381,9 @@ document.querySelectorAll('.ev-tab-btn').forEach(btn => {
 document.querySelectorAll('.ev-reactive-input').forEach(input => input.addEventListener('input', () => calculateEVSolar()));
 
 window.calculateEVSolar = function() {
-    const tariff = parseFloat(document.getElementById('evCalcTariff')?.value) || 2.50;
+    // Tarife varsayılanı da ayarlardan (tariffMesken); sabit 2,50 ayarla çelişiyordu.
+    const _vt = Number((window.EPC_SETTINGS || {}).tariffMesken) > 0 ? Number(window.EPC_SETTINGS.tariffMesken) : 2.50;
+    const tariff = parseFloat(document.getElementById('evCalcTariff')?.value) || _vt;
     const evRange = parseFloat(document.getElementById('evCalcRange')?.value) || 1;
     const evBattery = parseFloat(document.getElementById('evCalcBattery')?.value) || 1;
     const evConsumption = parseFloat(document.getElementById('evCalcConsumption')?.value) || 1;
@@ -384,3 +458,88 @@ window.calculateEVSolar = function() {
 // İlk yüklemede "Akıllı öneri sistemi yükleniyor..." placeholder'ı yerine
 // varsayılan değerlerle gerçek öneri/sonuçları göster (tüm erişimler korumalı).
 try { calculateEVSolar(); } catch (e) { /* modül DOM'da yoksa sessiz geç */ }
+
+// ============================================================================
+// CANLI HESAPLAMA VE SAYI ANİMASYONU
+// Eskiden kullanıcı her şeyi doldurup "Hesapla"ya basmadan hiçbir şey
+// görmüyordu — bir girdiyi değiştirip etkisini merak ettiğinde yine butona
+// basması gerekiyordu. Artık yazdıkça sonuç güncelleniyor; buton, sonucu
+// görünür kılmak ve oraya kaydırmak için duruyor.
+// ============================================================================
+(function () {
+    'use strict';
+    var kalem = null;
+
+    function canli() {
+        clearTimeout(kalem);
+        kalem = setTimeout(function () {
+            // Sonuç daha hiç açılmadıysa canlı güncelleme yapma: kullanıcı
+            // ilk sonucu kendi iradesiyle (butonla) görsün.
+            var res = document.getElementById('resultsModule');
+            if (!res || res.classList.contains('hidden')) return;
+            hesapla(true);
+        }, 260);
+    }
+
+    function bagla() {
+        var kap = document.getElementById('calculatorModule');
+        if (!kap || kap.dataset.canliBagli === '1') return;
+        kap.dataset.canliBagli = '1';
+        kap.addEventListener('input', function (e) {
+            if (e.target.matches('input,select')) canli();
+        });
+        kap.addEventListener('change', function (e) {
+            if (e.target.matches('input,select')) canli();
+        });
+    }
+
+    // --- Sayıların hedefe doğru sayması ---------------------------------
+    // Sonuç kutuları bir anda değişince göz fark etmiyor; kısa bir sayma
+    // animasyonu neyin değiştiğini görünür kılıyor.
+    function say(el, hedef, ondalik, sure) {
+        if (!el) return;
+        var bas = parseFloat(String(el.dataset.sayiSon || '0')) || 0;
+        if (bas === hedef) return;
+        el.dataset.sayiSon = String(hedef);
+
+        // Animasyonu ATLAMA durumları: hareket azaltma tercihi ya da sekme
+        // arka planda. Arka planda requestAnimationFrame çalışmaz; animasyona
+        // güvenirsek ekranda ESKİ değer kalır — yanlış sayı göstermektense
+        // animasyonsuz doğru sayı göstermek yeğdir.
+        if (document.visibilityState === 'hidden' ||
+            (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+            el.textContent = bicim(hedef, ondalik); return;
+        }
+
+        var t0 = performance.now(), sr = sure || 420;
+        var bitti = false;
+        function adim(t) {
+            if (bitti) return;
+            var o = Math.min(1, (t - t0) / sr);
+            var e = 1 - Math.pow(1 - o, 3);                 // yumuşak yavaşlama
+            el.textContent = bicim(bas + (hedef - bas) * e, ondalik);
+            if (o < 1) requestAnimationFrame(adim); else bitti = true;
+        }
+        requestAnimationFrame(adim);
+        // GÜVENLİK AĞI: rAF hiç çalışmazsa (sekme gizlenirse, tarayıcı
+        // kısarsa) doğru değer yine de yazılsın.
+        clearTimeout(el._sayiSon);
+        el._sayiSon = setTimeout(function () {
+            if (bitti) return;
+            bitti = true;
+            el.textContent = bicim(hedef, ondalik);
+        }, sr + 80);
+    }
+    function bicim(n, ondalik) {
+        return ondalik
+            ? n.toLocaleString('tr-TR', { minimumFractionDigits: ondalik, maximumFractionDigits: ondalik })
+            : Math.round(n).toLocaleString('tr-TR');
+    }
+    window.epcSay = say;
+
+    function baslat() { bagla(); tarifeListesiniDoldur(); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', baslat);
+    else baslat();
+    // Ayarlar Supabase'ten sonradan gelirse tarife listesini tazele.
+    window.addEventListener('epc-settings-loaded', tarifeListesiniDoldur);
+})();

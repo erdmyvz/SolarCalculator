@@ -95,7 +95,9 @@
         const S = window.EPC_SETTINGS || {};
         const yieldKwh = Number(S.solarYield)  || 1500;   // kWh/kWp/yıl
         const defPrice = Number(S.tariff)       || 2.5;    // TL/kWh
-        const defSys   = Number(S.pricePerKwp)  || 30000;  // TL/kWp
+        // Fatura Analizi ve Tüketim Hesaplayıcı ile AYNI kaynak (core.js).
+        // Eskiden pricePerKwp (30.000) okuyordu, diğerleri 42.000 diyordu.
+        const defSys   = window.epcTlPerKwp ? window.epcTlPerKwp() : (Number(S.pricePerKwp) || 30000);
 
         // Girdileri oku (birim fiyat & bedel boşsa ayarlardan doldur)
         const priceEl = document.getElementById('amortPrice');
