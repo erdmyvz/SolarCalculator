@@ -18,8 +18,10 @@ SAYI=$(git rev-list --count HEAD)
 SHA=$(git rev-parse --short HEAD)
 # Commit'in yazılma tarihi, yerel saat dilimiyle (ISO 8601)
 TARIH=$(git log -1 --format=%cI)
-# Çalışma ağacında commit'lenmemiş değişiklik var mı?
-if [ -n "$(git status --porcelain -- . ':!surum.js')" ]; then KIRLI=true; else KIRLI=false; fi
+# İZLENEN dosyalarda commit'lenmemiş değişiklik var mı?
+# Yalnız izlenenlere bakıyoruz: .claude/ gibi yerel, deploy'a girmeyen
+# izlenmeyen klasörler "kirli" saydırıyordu — yanlış pozitifti.
+if git diff --quiet HEAD -- . ':!surum.js' 2>/dev/null; then KIRLI=false; else KIRLI=true; fi
 
 cat > surum.js <<EOF
 /* ============================================================================
