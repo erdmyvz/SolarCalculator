@@ -520,6 +520,101 @@
         body .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #D9820A; }
         body ::selection { background: rgba(245,158,11,0.25); }
         
+
+        /* ====================================================================
+           KURULUMCU PANELİ — ANA EKRAN
+           Eskiden üst sırada ÜÇ doygun gradyan kart yan yanaydı (lacivert /
+           turuncu / mor). Üçü de aynı şiddette bağırınca hiçbiri öne çıkmıyor,
+           ekran kalabalık duruyordu. Artık tek vurgu var: günlük işin geçtiği
+           CRM kartı. Geri kalan kartlar tek bir beyaz dile indirildi; renk
+           yalnız ikon rozetinde ve CANLI SAYILARDA kaldı — yani rengin olduğu
+           yer, bilginin olduğu yer.
+           Sayılar panel.js'ten gelir ve yalnız sorgu başarılıysa basılır;
+           veri gelmezse rozet hiç çıkmaz (uydurma sayı gösterilmez).
+           ==================================================================== */
+        body .panel-hello   { margin-bottom: var(--s4); }
+        body .panel-eyebrow { font-size: var(--fs-xs); font-weight: 800; color: #94a3b8;
+                              text-transform: uppercase; letter-spacing: .14em; margin-bottom: 6px; }
+        /* Rol etiketi sayfanın kimliği; tarih onun yanında sönük durur. */
+        body .panel-eyebrow-role { color: #d97706; }
+        body #panelDate:not(:empty)::before { content: " · "; color: #cbd5e1; }
+        body .panel-title   { font-size: clamp(1.75rem, 3.4vw, var(--fs-xl)); font-weight: 800;
+                              color: #0f172a; letter-spacing: -.025em; line-height: 1.15; margin: 0 0 4px; }
+        body .panel-sub     { font-size: var(--fs-base); color: #64748b; font-weight: 500;
+                              max-width: var(--measure); margin: 0; }
+        body .panel-sub b   { color: #0f172a; font-weight: 800; }
+
+        /* --- "Bugün" şeridi: dört sayı, dördü de tıklanabilir kısayol ------- */
+        body .panel-stats { display: grid; grid-template-columns: repeat(2, minmax(0,1fr));
+                            gap: var(--s2); margin: var(--s4) 0 var(--s5); }
+        @media (min-width: 768px) { body .panel-stats { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+        body .panel-stat  { text-align: left; background: #fff; border: 1px solid #e2e8f0;
+                            border-radius: var(--r-md); padding: var(--s3) var(--s3);
+                            display: flex; flex-direction: column; gap: 2px;
+                            transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+        body .panel-stat:hover { border-color: var(--accent, #cbd5e1); transform: translateY(-2px);
+                                 box-shadow: 0 10px 22px -14px rgba(15,23,42,.35); }
+        body .panel-stat-num { font-size: var(--fs-lg); font-weight: 800; color: #0f172a; line-height: 1.1;
+                               font-variant-numeric: tabular-nums; }
+        body .panel-stat-num[data-bos="1"] { color: #cbd5e1; }
+        body .panel-stat-lbl { font-size: var(--fs-xs); font-weight: 700; color: #94a3b8; letter-spacing: .02em; }
+
+        /* --- Bölüm etiketi -------------------------------------------------- */
+        body .panel-legend { font-size: var(--fs-xs); font-weight: 800; color: #94a3b8;
+                             text-transform: uppercase; letter-spacing: .12em; margin: 0 0 var(--s3); }
+
+        /* --- Kart ızgaraları ------------------------------------------------ */
+        body .panel-grid-main { display: grid; grid-template-columns: 1fr; gap: var(--s3); margin-bottom: var(--s5); }
+        body .panel-grid-sub  { display: grid; grid-template-columns: 1fr; gap: var(--s3); }
+        @media (min-width: 640px) { body .panel-grid-sub  { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+        @media (min-width: 900px) { body .panel-grid-main { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+        @media (min-width: 1024px){ body .panel-grid-sub  { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+
+        /* --- Kart ------------------------------------------------------------ */
+        body .panel-card { position: relative; display: flex; flex-direction: column;
+                           align-items: flex-start; gap: var(--s2); text-align: left;
+                           background: #fff; border: 1px solid #e2e8f0; border-radius: var(--r-lg);
+                           padding: var(--s4); box-shadow: 0 1px 2px rgba(15,23,42,.04);
+                           transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+        body .panel-card:hover { transform: translateY(-3px); border-color: var(--accent, #cbd5e1);
+                                 box-shadow: 0 16px 32px -18px rgba(15,23,42,.45); }
+        body .panel-card:focus-visible,
+        body .panel-stat:focus-visible { outline: 2px solid #059669; outline-offset: 3px; }
+        body .panel-card-sm { padding: var(--s3) var(--s4) var(--s4); }
+
+        body .panel-ico { width: 46px; height: 46px; border-radius: var(--r-md); display: grid;
+                          place-items: center; font-size: 1.35rem; background: var(--accent-bg, #f1f5f9);
+                          transition: transform .18s ease; }
+        body .panel-card:hover .panel-ico { transform: scale(1.08); }
+        body .panel-card-sm .panel-ico { width: 40px; height: 40px; font-size: 1.15rem; }
+
+        body .panel-card-title { font-size: var(--fs-md); font-weight: 800; color: #0f172a;
+                                 letter-spacing: -.015em; line-height: 1.25; }
+        body .panel-card-sm .panel-card-title { font-size: var(--fs-base); }
+        body .panel-card-desc  { font-size: var(--fs-sm); color: #64748b; line-height: 1.5;
+                                 max-width: var(--measure-narrow); }
+
+        /* Rozet: sayı yoksa DOM'da boş kalır, hiç görünmez. */
+        body .panel-badge { position: absolute; top: var(--s3); right: var(--s3);
+                            font-size: var(--fs-xs); font-weight: 800; line-height: 1;
+                            padding: 6px 11px; border-radius: 999px;
+                            background: var(--accent-bg, #f1f5f9); color: var(--accent, #475569); }
+        body .panel-badge:empty { display: none; }
+        body .panel-badge[data-bos="1"] { background: #f1f5f9; color: #94a3b8; }
+
+        /* --- Tek vurgu kartı: günlük işin geçtiği yer ------------------------ */
+        body .panel-card-hero { background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+                                border-color: transparent; color: #fff;
+                                box-shadow: 0 10px 26px -14px rgba(4,120,87,.7); }
+        body .panel-card-hero:hover { border-color: transparent;
+                                      box-shadow: 0 20px 38px -18px rgba(4,120,87,.75); }
+        body .panel-card-hero .panel-card-title { color: #fff; }
+        body .panel-card-hero .panel-card-desc  { color: rgba(255,255,255,.78); }
+        body .panel-card-hero .panel-ico   { background: rgba(255,255,255,.15); }
+        body .panel-card-hero .panel-badge { background: rgba(255,255,255,.18); color: #fff; }
+        body .panel-card-hero .panel-badge[data-bos="1"] { background: rgba(255,255,255,.12); color: rgba(255,255,255,.65); }
+        body .panel-card-hero:focus-visible { outline-color: #34d399; }
+
         /* Hareket hassasiyeti olan kullanıcılara saygı */
         @media (prefers-reduced-motion: reduce) {
             body * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
@@ -1077,72 +1172,76 @@
         </div></div>
 
         <div id="mainMenu" class="w-full max-w-7xl mx-auto animate-fade-in">
-            <div class="mb-8">
-                <p class="text-[11px] uppercase tracking-[0.18em] font-black text-amber-600 mb-2">Kurulumcu Paneli</p>
-                <h1 class="text-3xl md:text-4xl font-black text-slate-800 mb-1">Solar EPC Yönetim Paneli</h1>
-                <p class="text-slate-500 font-medium">Tüm analizlerinizi tek merkezden yönetin.</p>
+
+            <!-- Karşılama. Eskiden burada sabit bir slogan vardı ("Tüm
+                 analizlerinizi tek merkezden yönetin") — her gün aynı şeyi
+                 söylüyordu. Artık alt satır panel.js tarafından GÜNÜN GERÇEK
+                 DURUMUYLA doldurulur; veri gelmezse sabit metne düşer. -->
+            <div class="panel-hello">
+                <p class="panel-eyebrow"><span class="panel-eyebrow-role">Kurulumcu Paneli</span><span id="panelDate"></span></p>
+                <h1 id="panelGreeting" class="panel-title">Yönetim Paneli</h1>
+                <p id="panelSummary" class="panel-sub">Tüm işlerinizi tek merkezden yönetin.</p>
             </div>
 
-            <div id="adminPanelCard" class="hidden cursor-pointer bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-2xl hover:-translate-y-1 transition mb-6 ring-1 ring-emerald-400/30">
-                <div class="flex items-center justify-between mb-2"><h2 class="text-2xl font-black text-emerald-400">👑 Süper Admin Paneli</h2><span class="bg-red-600 text-xs px-3 py-1 rounded-full font-bold">Tam Yetki</span></div><p class="text-slate-300 text-sm">Firmaları ve genel yatırımcı başvurularını denetleyin.</p>
+            <!-- Bugün şeridi — panel.js canlı veriyle doldurur, yoksa gizli kalır -->
+            <div id="panelStats" class="panel-stats" hidden></div>
+
+            <div id="adminPanelCard" role="button" tabindex="0" class="hidden cursor-pointer bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-2xl hover:-translate-y-1 transition mb-6 ring-1 ring-emerald-400/30">
+                <div class="flex items-center justify-between mb-2"><h2 class="text-2xl font-black text-emerald-400">👑 Süper Admin Paneli</h2><span class="bg-red-600 text-xs px-3 py-1 rounded-full font-bold whitespace-nowrap shrink-0 ml-3">Tam Yetki</span></div><p class="text-slate-300 text-sm">Firmaları ve genel yatırımcı başvurularını denetleyin.</p>
             </div>
 
-            <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-3">Günlük İşler</p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+            <p class="panel-legend">Günlük İşler</p>
+            <div class="panel-grid-main">
 
-                <button id="btnGoDashboard" class="group bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-lg hover:-translate-y-1 hover:shadow-2xl transition text-left">
-                    <div class="flex items-start justify-between mb-3">
-                        <span class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-2xl group-hover:scale-110 transition">📊</span>
-                    </div>
-                    <h2 class="text-xl font-black mb-1">Yönetim Panosu</h2>
-                    <p class="text-slate-300 text-sm">Lead hattı, teklif dönüşümü, kazanılan iş ve servis özeti — tek bakışta.</p>
+                <button id="btnGoCRM" class="panel-card panel-card-hero" style="--accent:#047857;--accent-bg:#ecfdf5">
+                    <span class="panel-badge" data-rozet="lead"></span>
+                    <span class="panel-ico" aria-hidden="true">💼</span>
+                    <span class="panel-card-title">Satış CRM &amp; Proje Takip</span>
+                    <span class="panel-card-desc">Başvurudan devreye almaya kadar tüm müşteri hattı.</span>
                 </button>
 
-                <button id="btnGoCRM" class="group bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-2xl p-6 shadow-lg hover:-translate-y-1 hover:shadow-2xl transition text-left">
-                    <div class="flex items-start justify-between mb-3">
-                        <span class="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center text-2xl group-hover:scale-110 transition">💼</span>
-                        <span class="bg-white/20 text-[10px] font-black px-2.5 py-1 rounded-full tracking-wide">AKTİF</span>
-                    </div>
-                    <h2 class="text-xl font-black mb-1">Satış CRM & Proje Takip</h2>
-                    <p class="text-emerald-50/85 text-sm">Lead'leri toplayın ve TEDAŞ aşamalarını takip edin.</p>
+                <button id="btnGoQuotes" class="panel-card" style="--accent:#4f46e5;--accent-bg:#eef2ff">
+                    <span class="panel-badge" data-rozet="teklif"></span>
+                    <span class="panel-ico" aria-hidden="true">📄</span>
+                    <span class="panel-card-title">Teklifler</span>
+                    <span class="panel-card-desc">Markalı teklif hazırlayın, fiyatı tek ekrandan yönetin.</span>
                 </button>
 
-                <button id="btnGoQuotes" class="group bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-2xl p-6 shadow-lg hover:-translate-y-1 hover:shadow-2xl transition text-left">
-                    <div class="flex items-start justify-between mb-3">
-                        <span class="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center text-2xl group-hover:scale-110 transition">📄</span>
-                        <span class="bg-white/20 text-[10px] font-black px-2.5 py-1 rounded-full tracking-wide">TEKLİF MOTORU</span>
-                    </div>
-                    <h2 class="text-xl font-black mb-1">Teklifler</h2>
-                    <p class="text-indigo-50/85 text-sm">Müşteriye markalı teklif oluşturun; fiyat ve parametreleri tek ekrandan yönetin.</p>
+                <button id="btnGoDashboard" class="panel-card" style="--accent:#0f172a;--accent-bg:#f1f5f9">
+                    <span class="panel-ico" aria-hidden="true">📊</span>
+                    <span class="panel-card-title">Yönetim Panosu</span>
+                    <span class="panel-card-desc">Lead hattı, dönüşüm oranı ve kazanılan iş — tek bakışta.</span>
                 </button>
 
             </div>
 
-            <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-3">Operasyon & Destek</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <p class="panel-legend">Operasyon &amp; Destek</p>
+            <div class="panel-grid-sub">
 
-                <button id="btnGoMessages" class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition text-left">
-                    <span class="inline-flex w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 items-center justify-center text-xl mb-3 group-hover:scale-110 transition">🤝</span>
-                    <h2 class="text-base font-black text-slate-800 mb-1">Danışman Kanalı</h2>
-                    <p class="text-slate-500 text-xs leading-relaxed">Mesajlar ve size yönlendirilen danışanların kurulum durumu.</p>
+                <button id="btnGoMessages" class="panel-card panel-card-sm" style="--accent:#4f46e5;--accent-bg:#eef2ff">
+                    <span class="panel-ico" aria-hidden="true">🤝</span>
+                    <span class="panel-card-title">Danışman Kanalı</span>
+                    <span class="panel-card-desc">Size yönlendirilen danışanlar ve mesajlar.</span>
                 </button>
 
-                <button id="btnGoProjects" class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-amber-300 transition text-left">
-                    <span class="inline-flex w-11 h-11 rounded-xl bg-amber-50 text-amber-600 items-center justify-center text-xl mb-3 group-hover:scale-110 transition">☀️</span>
-                    <h2 class="text-base font-black text-slate-800 mb-1">Tesislerim</h2>
-                    <p class="text-slate-500 text-xs leading-relaxed">Kurulumu tamamlanan tesisleri ve GES kodlarını görün.</p>
+                <button id="btnGoProjects" class="panel-card panel-card-sm" style="--accent:#b45309;--accent-bg:#fffbeb">
+                    <span class="panel-badge" data-rozet="tesis"></span>
+                    <span class="panel-ico" aria-hidden="true">☀️</span>
+                    <span class="panel-card-title">Tesislerim</span>
+                    <span class="panel-card-desc">Devreye alınan tesisler ve GES kodları.</span>
                 </button>
 
-                <button id="btnGoServices" class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-red-300 transition text-left">
-                    <span class="inline-flex w-11 h-11 rounded-xl bg-red-50 text-red-600 items-center justify-center text-xl mb-3 group-hover:scale-110 transition">🔧</span>
-                    <h2 class="text-base font-black text-slate-800 mb-1">Bana Atanan Servisler</h2>
-                    <p class="text-slate-500 text-xs leading-relaxed">Firmanıza atanan bakım/temizlik/arıza taleplerini yönetin.</p>
+                <button id="btnGoServices" class="panel-card panel-card-sm" style="--accent:#dc2626;--accent-bg:#fef2f2">
+                    <span class="panel-badge" data-rozet="servis"></span>
+                    <span class="panel-ico" aria-hidden="true">🔧</span>
+                    <span class="panel-card-title">Bana Atanan Servisler</span>
+                    <span class="panel-card-desc">Bakım, temizlik ve arıza talepleri.</span>
                 </button>
 
-                <button id="btnGoSuppliers" class="group bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-sky-300 transition text-left">
-                    <span class="inline-flex w-11 h-11 rounded-xl bg-sky-50 text-sky-600 items-center justify-center text-xl mb-3 group-hover:scale-110 transition">📦</span>
-                    <h2 class="text-base font-black text-slate-800 mb-1">Tedarikçiler</h2>
-                    <p class="text-slate-500 text-xs leading-relaxed">Onaylı tedarikçileri görün, fiyat ve stok talebi gönderin, bayi ilanlarına başvurun.</p>
+                <button id="btnGoSuppliers" class="panel-card panel-card-sm" style="--accent:#0284c7;--accent-bg:#f0f9ff">
+                    <span class="panel-ico" aria-hidden="true">📦</span>
+                    <span class="panel-card-title">Tedarikçiler</span>
+                    <span class="panel-card-desc">Fiyat ve stok talebi gönderin, bayiliğe başvurun.</span>
                 </button>
 
             </div>

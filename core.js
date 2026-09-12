@@ -107,7 +107,7 @@ window.epcLoadPdf = function () {
 };
 
 // --- PANEL PAKETİ ------------------------------------------------------------
-// Aşağıdaki 13 dosya YALNIZCA giriş yapmış kullanıcının panelinde çalışıyor:
+// Aşağıdaki 14 dosya YALNIZCA giriş yapmış kullanıcının panelinde çalışıyor:
 // CRM, teklif motoru, admin, tedarikçi/yatırımcı panelleri, mesajlaşma… Toplamı
 // ~370 KB ve ziyaretçilerin hiçbiri kullanmıyordu. Artık rol tespitinden hemen
 // sonra (auth.js → routeByInfo) tek seferde yükleniyor.
@@ -120,7 +120,7 @@ window.epcLoadPdf = function () {
 // admin.js paketten ayrı yüklenemez; ayırmak isterseniz önce o fonksiyonu
 // paylaşılan bir dosyaya taşıyın.
 const EPC_PANEL_SCRIPTS = [
-    'crm.js', 'admin.js', 'sales.js', 'projects.js', 'maintenance.js',
+    'panel.js', 'crm.js', 'admin.js', 'sales.js', 'projects.js', 'maintenance.js',
     'services.js', 'quote.js', 'dashboard.js', 'suppliers.js', 'messaging.js',
     'investor.js', 'documents.js', 'campaigns.js'
 ];

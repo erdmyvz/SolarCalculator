@@ -553,6 +553,11 @@ async function fetchUserProfile(userId, displayEmail) {
         if(document.getElementById('iframeCompanyId')) {
             document.getElementById('iframeCompanyId').textContent = data.id;
         }
+
+        // Ana ekranın karşılaması ve canlı sayıları profil belli olduktan sonra
+        // basılır (isim ve rol buradan geliyor). Buraya yalnız firma/admin
+        // hesapları ulaşır; diğer roller routeByInfo'da daha önce dönüyor.
+        if (typeof window.epcPanelHomeTazele === 'function') window.epcPanelHomeTazele(true);
     }
 }
 

@@ -18,25 +18,25 @@
         document.getElementById('dashboardModule')?.classList.add('hidden');
         closeAllAndShowMenu();
     });
-    document.getElementById('btnRefreshDashboard')?.addEventListener('click', () => loadDashboard());
+    document.getElementById('btnRefreshDashboard')?.addEventListener('click', () => loadDashboard(true));
 
     const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('tr-TR');
 
-    async function loadDashboard() {
+    async function loadDashboard(_zorla) {
         if (!supabaseClient) { root.innerHTML = '<p class="text-slate-500 text-sm">Veritabanı bağlantısı yok.</p>'; return; }
         root.innerHTML = '<p class="text-slate-400 text-sm">Veriler toplanıyor...</p>';
 
-        const [lr, qr, pr, sr] = await Promise.all([
-            supabaseClient.from('leads').select('status'),
-            supabaseClient.from('quotes').select('status, total_amount'),
-            supabaseClient.from('projects').select('id'),
-            supabaseClient.from('service_requests').select('status')
-        ]);
+        // Sorgular panel.js'teki epcPanelVeri()'de. Pano ile ana ekranın "Bugün"
+        // şeridi aynı sayıları göstermek zorunda; iki ayrı yerden çekilseydi
+        // önbellek ve zamanlama farkı yüzünden aynı oturumda farklı rakam
+        // görünebilirdi. "Yenile" düğmesi zorla tazeler (tazele = true).
+        const v = (typeof window.epcPanelVeri === 'function') ? await window.epcPanelVeri(_zorla) : null;
+        if (!v) { root.innerHTML = '<p class="text-slate-500 text-sm">Veriler alınamadı. Sayfayı yenileyip tekrar deneyin.</p>'; return; }
 
-        const leads = lr.data || [];
-        const quotes = qr.data || [];
-        const projects = pr.data || [];
-        const services = sr.data || [];
+        const leads = v.leads || [];
+        const quotes = v.quotes || [];
+        const projects = v.projects || [];
+        const services = v.services || [];
 
         // Lead hattı
         const leadByStatus = {};
@@ -57,7 +57,16 @@
         const svcDone = services.filter(s => s.status === 'tamamlandi').length;
         const svcActive = svcTotal - svcDone;
 
+        // Bir tablo düşerse o bölümün sayısı 0 görünür — "veri yok" ile "iş yok"
+        // aynı şey değil. Hangi kaynağın gelmediğini açıkça yazıyoruz.
+        const eksik = [];
+        if (!v.leads) eksik.push('müşteri kayıtları');
+        if (!v.quotes) eksik.push('teklifler');
+        if (!v.projects) eksik.push('tesisler');
+        if (!v.services) eksik.push('servis talepleri');
+
         render({
+            eksik,
             leadTotal: leads.length, leadByStatus,
             q, conversion,
             projects: projects.length,
@@ -90,7 +99,14 @@
         const qRow = (label, val, cls = 'text-slate-800') =>
             `<div class="flex justify-between py-1.5 border-b border-slate-50"><span class="text-slate-500">${label}</span><strong class="${cls}">${val}</strong></div>`;
 
+        const uyari = (a.eksik && a.eksik.length) ? `
+            <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 mb-6 text-sm">
+                <b>Eksik veri:</b> ${a.eksik.join(', ')} okunamadı. Aşağıdaki sayılar bu kaynakları
+                <b>içermiyor</b>; eksik bölümleri sıfır olarak yorumlamayın.
+            </div>` : '';
+
         root.innerHTML = `
+            ${uyari}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 ${kpi('Toplam Müşteri', a.leadTotal, 'border-l-blue-500')}
                 ${kpi('Kazanılan İş', '₺' + fmt(a.q.wonAmount), 'border-l-emerald-500')}
