@@ -1217,7 +1217,11 @@ window.dcSave = async (id) => {
     eduCloseModal(); renderDiscoAdmin();
 };
 window.dcDelete = async (id) => {
-    if (!confirm('Bu dağıtım şirketi kaydı silinecek. Emin misiniz?')) return;
+    // Bu kayıt CRM'deki "Dağıtım Şirketi Bul" ekranını ve mevzuat belgelerini
+    // besliyor; belge tablosu sirket_id üzerinden CASCADE bağlı. Silmenin
+    // nereye dokunduğu yazılmadan onay istenmesi yanıltıcıydı.
+    const _dc = (typeof _discoAdmin !== 'undefined' ? _discoAdmin : []).find(x => String(x.id) === String(id));
+    if (!confirm(`"${(_dc && _dc.name) || 'Bu dağıtım şirketi'}" kaydı silinecek.\n\n· Kurulumcuların "Dağıtım Şirketi Bul" ekranından kalkar\n· Bu şirkete bağlı mevzuat belgeleri de silinir\n· Geri alınamaz\n\nDevam edilsin mi?`)) return;
     const { error } = await supabaseClient.from('distribution_companies').delete().eq('id', id);
     if (error) { alert('Silinemedi: ' + error.message); return; }
     renderDiscoAdmin();
@@ -1394,15 +1398,81 @@ window.saveStages = async function () {
 // SEKMELİ PANEL YÖNETİMİ + GENEL BAKIŞ ÖZET KPI'LARI
 // (index.html'deki .admin-tab-btn ve .admin-pane öğeleriyle çalışır.)
 // ============================================================================
+// --- SEKME GRUPLARI ---------------------------------------------------------
+// 10 sekme tek sırada yan yanaydı: dar ekranda yatay kayıyor, geniş ekranda
+// bile hangi işin nerede olduğu anlaşılmıyordu. Üç gruba ayrıldı; grup
+// rozetleri alt sekmelerin bekleyen iş sayısını toplar, böylece kapalı
+// gruptaki iş görünmez olmuyor.
+const ADMIN_GRUPLAR = [
+    { id: 'gunluk', ad: 'Günlük İş', ikon: '⚡', sekmeler: [
+        { id: 'overview',    ad: '📊 Genel Bakış' },
+        { id: 'ops',         ad: '📥 Operasyon' },
+        { id: 'search',      ad: '🔍 Ara', init: 'adminSearchInit' }
+    ] },
+    { id: 'uyeler', ad: 'Üyeler', ikon: '👥', sekmeler: [
+        { id: 'companies',   ad: '🏢 Firmalar' },
+        { id: 'consultants', ad: '🎯 Danışmanlar' },
+        { id: 'suppliers',   ad: '📦 Tedarikçiler' },
+        { id: 'subs',        ad: '💳 Abonelikler' }
+    ] },
+    { id: 'sistem', ad: 'Sistem', ikon: '⚙️', sekmeler: [
+        { id: 'content',     ad: '📚 İçerik & Süreç' },
+        { id: 'settings',    ad: '⚙️ Ayarlar' },
+        { id: 'errors',      ad: '🐛 Hatalar', init: 'adminErrorsInit' }
+    ] }
+];
+const ADMIN_SEKME_GRUBU = {};
+ADMIN_GRUPLAR.forEach(g => g.sekmeler.forEach(t => { ADMIN_SEKME_GRUBU[t.id] = g.id; }));
+
+let _admAktifSekme = 'overview';
+const _admRozet = {};                 // sekme -> bekleyen iş sayısı
+
+function admTabBarCiz() {
+    const kutu = document.getElementById('adminTabBar');
+    if (!kutu) return;
+    const aktifGrup = ADMIN_SEKME_GRUBU[_admAktifSekme] || 'gunluk';
+
+    const grupRozet = (g) => g.sekmeler.reduce((a, t) => a + (_admRozet[t.id] || 0), 0);
+    const rozetHtml = (n, koyu) => n
+        ? `<span class="ml-1.5 inline-block min-w-[18px] text-center px-1.5 py-0.5 rounded-full text-[10px] font-black ${koyu ? 'bg-white/25 text-white' : 'bg-red-100 text-red-700'}">${n}</span>` : '';
+
+    const gruplar = ADMIN_GRUPLAR.map(g => {
+        const on = g.id === aktifGrup;
+        const n = grupRozet(g);
+        return `<button type="button" onclick="adminShowGroup('${g.id}')" role="tab" aria-selected="${on}"
+            class="adm-grup ${on ? 'adm-grup-on' : ''}">${g.ikon} ${g.ad}${rozetHtml(n, on)}</button>`;
+    }).join('');
+
+    const grup = ADMIN_GRUPLAR.find(g => g.id === aktifGrup) || ADMIN_GRUPLAR[0];
+    const sekmeler = grup.sekmeler.map(t => {
+        const on = t.id === _admAktifSekme;
+        return `<button type="button" onclick="adminShowTab('${t.id}')" role="tab" aria-selected="${on}"
+            data-tab="${t.id}" class="admin-tab-btn ${on ? 'admin-tab-on' : ''}">${t.ad}${rozetHtml(_admRozet[t.id] || 0, on)}</button>`;
+    }).join('');
+
+    kutu.innerHTML = `
+        <div class="adm-grup-cubugu" role="tablist">${gruplar}</div>
+        <div class="adm-sekme-cubugu" role="tablist">${sekmeler}</div>`;
+}
+
+// Gruba tıklanınca o grubun İLK sekmesi açılır.
+window.adminShowGroup = function (gid) {
+    const g = ADMIN_GRUPLAR.find(x => x.id === gid);
+    if (g && g.sekmeler.length) window.adminShowTab(g.sekmeler[0].id);
+};
+
 window.adminShowTab = function (key) {
+    _admAktifSekme = key;
     document.querySelectorAll('.admin-pane').forEach(p => p.classList.add('hidden'));
     const pane = document.getElementById('adminPane' + key.charAt(0).toUpperCase() + key.slice(1));
     if (pane) pane.classList.remove('hidden');
-    document.querySelectorAll('.admin-tab-btn').forEach(b => {
-        const on = b.getAttribute('data-tab') === key;
-        b.className = 'admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition ' +
-            (on ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100');
-    });
+    admTabBarCiz();
+
+    // Sekmenin ilk açılışta çalıştırması gereken kurulum varsa çağır.
+    // Eskiden bu, sekme düğmesinin onclick'ine elle yazılıydı; yeni bir sekme
+    // eklerken unutmak kolaydı.
+    const t = ADMIN_GRUPLAR.flatMap(g => g.sekmeler).find(x => x.id === key);
+    if (t && t.init && typeof window[t.init] === 'function') window[t.init]();
 };
 
 // Panel her açıldığında "Genel Bakış" sekmesiyle başlasın
@@ -1620,12 +1690,16 @@ async function renderActionQueue() {
 
     const rows = [];      // [ikon, başlık, sayı, sekme, renk]
     let hot = [];
+    // Kontroller tek tek try/catch içinde. Hepsi sessizce yutulunca sorgular
+    // patlasa bile ekranda "Bekleyen aksiyon yok ✅" yazıyordu: admin her
+    // şeyin temiz olduğunu sanıyordu. Artık başarısız kontroller sayılıyor.
+    const basarisiz = [];
 
     // 1) Onay bekleyen danışmanlar
     try {
         const { data } = await supabaseClient.from('consultants').select('id').eq('status', 'pending');
         if (data && data.length) rows.push(['📝', 'Danışman onay bekliyor', data.length, 'consultants', 'bg-amber-100 text-amber-800']);
-    } catch (e) {}
+    } catch (e) { basarisiz.push('danışman onayları'); }
 
     // 2) Abonelik durumu (renderSubscriptions'ın yüklediği veriden)
     try {
@@ -1640,13 +1714,13 @@ async function renderActionQueue() {
             if (expired) rows.push(['⛔', 'Aboneliği dolmuş hesap', expired, 'subs', 'bg-red-100 text-red-700']);
             if (soon)    rows.push(['⏳', '7 gün içinde bitecek abonelik', soon, 'subs', 'bg-amber-100 text-amber-800']);
         }
-    } catch (e) {}
+    } catch (e) { basarisiz.push('abonelikler'); }
 
     // 3) Firmaya atanmamış başvurular
     try {
         const { data } = await supabaseClient.from('leads').select('id').is('company_id', null);
         if (data && data.length) rows.push(['📥', 'Firmaya atanmamış başvuru', data.length, 'ops', 'bg-blue-100 text-blue-700']);
-    } catch (e) {}
+    } catch (e) { basarisiz.push('atanmamış başvurular'); }
 
     // 4) Sıcak potansiyel müşteriler (mevcut puanlama ile)
     try {
@@ -1655,16 +1729,24 @@ async function renderActionQueue() {
             hot = data.map(p => Object.assign({}, p, { _s: prospectScore(p).total })).filter(p => p._s >= 70).sort((a, b) => b._s - a._s);
             if (hot.length) rows.push(['🔥', 'Sıcak potansiyel müşteri', hot.length, 'ops', 'bg-red-100 text-red-700']);
         }
-    } catch (e) {}
+    } catch (e) { basarisiz.push('potansiyel müşteriler'); }
 
     // sekme rozetleri — aynı sayılardan beslenir, ek sorgu yok
     const byTab = {};
     rows.forEach(r => { byTab[r[3]] = (byTab[r[3]] || 0) + r[2]; });
     ['consultants', 'subs', 'ops', 'companies', 'content', 'settings'].forEach(t => setTabBadge(t, byTab[t] || 0));
 
+    const uyariHtml = basarisiz.length ? `
+        <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 mb-3 text-xs">
+            <b>Kontrol edilemedi:</b> ${admEscape(basarisiz.join(', '))}. Bu kuyruklar
+            <b>okunamadı</b> — aşağıdaki liste eksik olabilir, "temiz" diye yorumlamayın.
+        </div>` : '';
+
     const total = rows.reduce((s, r) => s + r[2], 0);
     if (!total) {
-        box.innerHTML = '<div class="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center"><div class="text-2xl mb-1">✅</div><p class="font-black text-emerald-800">Bekleyen aksiyon yok</p><p class="text-xs text-emerald-700/70 mt-0.5">Onay, abonelik ve atama kuyrukları temiz.</p></div>';
+        box.innerHTML = uyariHtml + (basarisiz.length
+            ? '<div class="bg-white border border-slate-200 rounded-xl p-5 text-center text-sm text-slate-500">Okunabilen kuyruklarda bekleyen iş yok.</div>'
+            : '<div class="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center"><div class="text-2xl mb-1">✅</div><p class="font-black text-emerald-800">Bekleyen aksiyon yok</p><p class="text-xs text-emerald-700/70 mt-0.5">Onay, abonelik ve atama kuyrukları temiz.</p></div>');
         return;
     }
 
@@ -1681,7 +1763,7 @@ async function renderActionQueue() {
                 </div>`).join('')}
         </div>` : '';
 
-    box.innerHTML = `
+    box.innerHTML = uyariHtml + `
         <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
             <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <h3 class="font-black text-slate-800">⚡ Aksiyon Kuyruğu <span class="text-slate-400">(${total})</span></h3>
@@ -1707,13 +1789,12 @@ window.renderActionQueue = renderActionQueue;
 
 
 // Sekme üzerindeki bekleyen-iş rozeti (adminShowTab yalnız className yazar, innerHTML'e dokunmaz)
+// Rozet artık doğrudan DOM'a yazılmıyor: sayıyı sözlüğe koyup çubuğu yeniden
+// çiziyoruz. Böylece kapalı gruptaki sekmenin rozeti de GRUP başlığında
+// toplanıp görünüyor — eskiden başka gruptaki bekleyen iş fark edilmiyordu.
 function setTabBadge(tab, n) {
-    const btn = document.querySelector('.admin-tab-btn[data-tab="' + tab + '"]');
-    if (!btn) return;
-    let b = btn.querySelector('.tab-badge');
-    if (!n) { if (b) b.remove(); return; }
-    if (!b) { b = document.createElement('span'); b.className = 'tab-badge'; btn.appendChild(b); }
-    b.textContent = n > 99 ? '99+' : String(n);
+    _admRozet[tab] = Number(n) || 0;
+    admTabBarCiz();
 }
 window.setTabBadge = setTabBadge;
 
@@ -2003,8 +2084,9 @@ window.adminUnban = async function (table, id) {
         try {
             const { data } = await supabaseClient.rpc('count_unseen_errors');
             const n = Number(data) || 0;
-            const b = document.getElementById('admErrBadge');
-            if (b) { b.textContent = n; b.classList.toggle('hidden', n === 0); }
+            // #admErrBadge sabit düğümüne yazılıyordu; sekme çubuğu artık
+            // JS'te üretildiği için ortak rozet yoluna bağlandı.
+            if (typeof setTabBadge === 'function') setTabBadge('errors', n);
         } catch (e) { /* sessiz */ }
     };
 })();

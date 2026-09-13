@@ -465,18 +465,8 @@
             border-radius: 9999px; vertical-align: middle; line-height: 1;
         }
 
-        /* Admin sekmeleri — JS className'i yeniden yazsa da bu stiller korunur */
-        body .admin-tabs { scrollbar-width: none; }
-        body .admin-tabs::-webkit-scrollbar { height: 0; }
-        body .admin-tab-btn {
-            white-space: nowrap;
-            flex: 0 0 auto;
-            padding: 0.55rem 1.05rem;
-            border-radius: 0.65rem;
-            letter-spacing: -0.01em;
-        }
-        body .admin-tab-btn.bg-slate-900 { box-shadow: 0 8px 18px -10px rgba(15,23,42,0.85); }
-        body .admin-tab-btn:not(.bg-slate-900):hover { background: #F1F5F9; }
+        /* Admin sekme biçimleri aşağıdaki "Admin sekme grupları" bloğunda —
+           eski düz sıra kaldırıldığı için buradaki kurallar da kalktı. */
 
         /* SSS akordiyonu */
         body .faq-item summary::-webkit-details-marker { display: none; }
@@ -706,6 +696,31 @@
         body .yardim[open] > summary::after { content: "▴"; }
         body .yardim > summary:focus-visible { outline: 2px solid #059669; outline-offset: -2px; border-radius: var(--r-md); }
         body .yardim-govde  { padding: 0 var(--s4) var(--s4); }
+
+        /* --- Admin sekme grupları ---------------------------------------------
+           10 sekme tek sırada yan yanaydı. Üst sırada grup, alt sırada o
+           grubun sekmeleri; kapalı gruptaki bekleyen iş grup rozetinde
+           toplanıyor ki gözden kaçmasın. */
+        body .adm-grup-cubugu { display: flex; gap: var(--s2); flex-wrap: wrap;
+                                background: #fff; border: 1px solid #e2e8f0;
+                                border-radius: var(--r-md) var(--r-md) 0 0;
+                                border-bottom: none; padding: var(--s2); }
+        body .adm-grup { font-size: var(--fs-sm); font-weight: 800; padding: 8px 16px;
+                         border-radius: var(--r-sm); color: #475569;
+                         transition: background-color .15s ease, color .15s ease; }
+        body .adm-grup:hover { background: #f1f5f9; }
+        body .adm-grup-on { background: #0f172a; color: #fff; }
+        body .adm-grup:focus-visible, body .admin-tab-btn:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
+
+        body .adm-sekme-cubugu { display: flex; gap: var(--s2); flex-wrap: wrap;
+                                 background: #f8fafc; border: 1px solid #e2e8f0;
+                                 border-radius: 0 0 var(--r-md) var(--r-md);
+                                 padding: var(--s2) var(--s2); }
+        body .admin-tab-btn { font-size: var(--fs-sm); font-weight: 700; padding: 7px 14px;
+                              border-radius: var(--r-sm); color: #475569; background: transparent;
+                              white-space: nowrap; transition: background-color .15s ease, color .15s ease; }
+        body .admin-tab-btn:hover { background: #e2e8f0; }
+        body .admin-tab-on { background: #fff; color: #0f172a; box-shadow: 0 1px 3px rgba(15,23,42,.12); }
 
         /* --- Teklif modülü sekmeleri ------------------------------------------ */
         body .q-tab { font-size: var(--fs-sm); font-weight: 700; padding: 8px 16px;
@@ -1656,19 +1671,11 @@
                 <button id="btnRefreshAdmin" class="bg-white border border-slate-200 hover:bg-slate-100 hover:border-slate-300 text-slate-700 text-sm font-bold px-4 py-2.5 rounded-xl transition shadow-sm">↻ Verileri Yenile</button>
             </div>
 
-            <!-- Sekme çubuğu -->
-            <div class="admin-tabs flex gap-1.5 mb-5 bg-white border border-slate-200 rounded-xl p-1.5 overflow-x-auto">
-                <button onclick="adminShowTab('overview')" data-tab="overview" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition bg-slate-900 text-white">📊 Genel Bakış</button>
-                <button onclick="adminShowTab('search'); if(window.adminSearchInit) adminSearchInit()" data-tab="search" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">🔍 Ara</button>
-                <button onclick="adminShowTab('ops')" data-tab="ops" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">📥 Operasyon</button>
-                <button onclick="adminShowTab('companies')" data-tab="companies" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">🏢 Firmalar</button>
-                <button onclick="adminShowTab('content')" data-tab="content" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">📚 İçerik & Süreç</button>
-                <button onclick="adminShowTab('settings')" data-tab="settings" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">⚙️ Ayarlar</button>
-                <button onclick="adminShowTab('consultants')" data-tab="consultants" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">🎯 Danışmanlar</button>
-                <button onclick="adminShowTab('suppliers')" data-tab="suppliers" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">📦 Tedarikçiler</button>
-                <button onclick="adminShowTab('subs')" data-tab="subs" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">💳 Abonelikler</button>
-                <button onclick="adminShowTab('errors'); if(window.adminErrorsInit) adminErrorsInit()" data-tab="errors" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-slate-100">🐛 Hatalar <span id="admErrBadge" class="tab-badge hidden">0</span></button>
-            </div>
+            <!-- Sekme çubuğu — admin.js tarafından GRUPLU olarak üretilir.
+                 Eskiden 10 sekme tek sırada yan yanaydı; dar ekranda yatay
+                 kayıyor, geniş ekranda bile hangi işin nerede olduğu
+                 anlaşılmıyordu. Artık üç grup var: Günlük İş / Üyeler / Sistem. -->
+            <div id="adminTabBar" class="mb-5"></div>
 
             <!-- SEKME: GENEL BAKIŞ -->
             <div id="adminPaneOverview" class="admin-pane space-y-4">
