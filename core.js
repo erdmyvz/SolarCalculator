@@ -139,6 +139,18 @@ window.epcLoadPanel = function () {
 };
 
 
+// --- GÜVENLİ DIŞ BAĞLANTI ----------------------------------------------------
+// Kullanıcı/tedarikçi tarafından girilen adresler doğrudan href'e basılıyordu.
+// Kaçış yapmak yetmez: "javascript:..." şeması kaçıştan geçer ama tıklanınca
+// kod çalıştırır. Yalnız http(s) geçiyor, gerisi boş dönüyor (bağlantı hiç
+// basılmıyor). crm.js ve mevzuat.js'te ayrı kopyaları vardı, tek yere alındı.
+window.epcGuvenliUrl = function (u) {
+    try {
+        const x = new URL(String(u == null ? '' : u).trim());
+        return (x.protocol === 'http:' || x.protocol === 'https:') ? x.href : '';
+    } catch (e) { return ''; }
+};
+
 // --- ÖZNİTELİK İÇİNE GÜVENLİ JS DİZGİSİ --------------------------------------
 // ⚠️ admEscape() BU İŞ İÇİN YETMEZ.
 // admEscape tek tırnağı &#39; yapıyor; ama tarayıcı bir onclick özniteliğini

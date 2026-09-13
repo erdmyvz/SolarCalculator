@@ -22,9 +22,15 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+    // Adres alanları tedarikçi tarafından giriliyor ve doğrudan href'e
+    // basılıyordu. Kaçış yetmez: "javascript:..." kaçıştan geçer ama tıklanınca
+    // kod çalıştırır. Yalnız http(s) basılıyor.
+    const url = (u) => (window.epcGuvenliUrl ? window.epcGuvenliUrl(u) : '');
+
     let _sups = [], _prods = [], _ads = [], _reqs = [];
     let _tab = 'dizin';
-    let _fKat = '', _fIl = '';
+    let _fKat = '', _fIl = '', _ara = '';
+    let _uyarilar = [];
 
     const companyId = () => (window.currentUserProfile && window.currentUserProfile.company_id) || null;
 
@@ -63,19 +69,28 @@
                 <p class="text-xs text-slate-400 mt-1">tedarikci.sql çalıştırıldı mı?</p></div>`;
             return;
         }
+        // Yan sorguların hatası YUTULUYORDU: ürün kataloğu okunamazsa kart
+        // "Bu tedarikçi henüz ürün yayınlamamış" diyordu, ilanlar okunamazsa
+        // "Yayında bayi ilanı yok". İkisi de yanlış bilgi.
+        _uyarilar = [];
+        if (prod.error) _uyarilar.push('ürün katalogları');
+        if (ads.error)  _uyarilar.push('bayi ilanları');
+        if (reqs.error) _uyarilar.push('talepleriniz');
+
         _sups = sup.data || []; _prods = prod.data || []; _ads = ads.data || []; _reqs = reqs.data || [];
         render();
     }
 
     // -------------------------------------------------------------- görünüm
     function sekmeler() {
-        const t = (k, ad, n) => `<button onclick="supDirTab('${k}')" class="px-4 py-2 rounded-lg text-sm font-bold transition ${
-            _tab === k ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
-        }">${esc(ad)}${n ? ` <span class="opacity-70">(${n})</span>` : ''}</button>`;
-        return `<div class="flex flex-wrap gap-2 mb-5">
+        const t = (k, ad, n, vurgu) => `<button onclick="supDirTab('${k}')" role="tab" aria-selected="${_tab === k}" class="q-tab ${_tab === k ? 'q-tab-on' : ''}">${esc(ad)}${n ? ` <span class="opacity-70">(${n})</span>` : ''}${vurgu ? ` <span class="ml-1 inline-block px-1.5 rounded-full bg-emerald-500 text-white text-[10px]">${vurgu}</span>` : ''}</button>`;
+        // Yanıtlanan talep sayısı sekmede işaretleniyor: firma tedarikçinin
+        // cevap verdiğini ancak sekmeyi açıp tek tek bakarak görebiliyordu.
+        const yanitli = _reqs.filter(r => r.status === 'answered').length;
+        return `<div class="modul-eylem mb-4" role="tablist">
             ${t('dizin', 'Tedarikçiler', _sups.length)}
             ${t('ilan', 'Bayi İlanları', _ads.length)}
-            ${t('talep', 'Taleplerim', _reqs.length)}
+            ${t('talep', 'Taleplerim', _reqs.length, yanitli)}
         </div>`;
     }
 
@@ -85,40 +100,52 @@
         const kats = [...new Set(_sups.flatMap(s => s.categories || []))].sort();
         const iller = [...new Set(_sups.map(s => s.city).filter(Boolean))].sort();
         const opt = (v, sel) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(v)}</option>`;
-        return `<div class="flex flex-wrap gap-2 mb-4">
+        return `<div class="kart mb-4" style="padding:var(--s3) var(--s4)">
+          <div class="flex flex-wrap gap-2 items-center">
+            <label class="arama"><input id="sdAra" type="search" autocomplete="off" value="${esc(_ara)}"
+                placeholder="Firma, marka veya ürün ara"></label>
             <select onchange="supDirFilter('kat', this.value)" class="p-2 border border-slate-300 rounded-lg text-sm bg-white">
                 <option value="">Tüm kategoriler</option>${kats.map(k => opt(k, _fKat)).join('')}
             </select>
             <select onchange="supDirFilter('il', this.value)" class="p-2 border border-slate-300 rounded-lg text-sm bg-white">
                 <option value="">Tüm iller</option>${iller.map(i => opt(i, _fIl)).join('')}
             </select>
-            ${(_fKat || _fIl) ? '<button onclick="supDirFilter(\'sifirla\')" class="text-xs font-bold text-slate-500 hover:text-slate-800 px-2">Süzgeci temizle</button>' : ''}
+            ${(_fKat || _fIl || _ara) ? '<button onclick="supDirFilter(\'sifirla\')" class="text-xs font-bold text-slate-500 hover:text-slate-800 px-2">Süzgeci temizle</button>' : ''}
+            <span class="text-xs font-bold text-slate-400 ml-auto">${suzulmus().length} tedarikçi</span>
+          </div>
         </div>`;
     }
 
     window.supDirFilter = function (tip, v) {
         if (tip === 'kat') _fKat = v;
         else if (tip === 'il') _fIl = v;
-        else { _fKat = ''; _fIl = ''; }
+        else { _fKat = ''; _fIl = ''; _ara = ''; }
         render();
     };
 
     function suzulmus() {
-        return _sups.filter(s =>
-            (!_fKat || (s.categories || []).includes(_fKat)) &&
-            (!_fIl || s.city === _fIl));
+        const q = _ara.trim().toLocaleLowerCase('tr-TR');
+        return _sups.filter(s => {
+            if (_fKat && !(s.categories || []).includes(_fKat)) return false;
+            if (_fIl && s.city !== _fIl) return false;
+            if (!q) return true;
+            // Ürün adı da aransın: kurulumcu "615W panel kimde var" diye bakar.
+            const urun = _prods.filter(p => p.supplier_id === s.id).map(p => p.name).join(' ');
+            return [s.company_name, s.city, s.about, (s.brands || []).join(' '), (s.categories || []).join(' '), urun]
+                .some(v => String(v || '').toLocaleLowerCase('tr-TR').includes(q));
+        });
     }
 
     function tedarikciKarti(s) {
         const urunler = _prods.filter(p => p.supplier_id === s.id);
         return `
-        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <div class="kart p-5">
             <div class="flex items-start justify-between gap-3 flex-wrap mb-2">
                 <div class="min-w-0">
                     <h3 class="font-black text-slate-800">${esc(s.company_name)}</h3>
-                    <p class="text-xs text-slate-400">${esc(s.city) || 'Şehir belirtilmemiş'}${s.website ? ` · <a href="${esc(s.website)}" target="_blank" rel="noopener nofollow" class="text-sky-700 font-bold">Web sitesi ↗</a>` : ''}</p>
+                    <p class="text-xs text-slate-400">${esc(s.city) || 'Şehir belirtilmemiş'}${url(s.website) ? ` · <a href="${esc(url(s.website))}" target="_blank" rel="noopener noreferrer nofollow" class="text-sky-700 font-bold">Web sitesi ↗</a>` : ''}</p>
                 </div>
-                <button onclick="supDirAskPrice('${s.id}')" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex-shrink-0">Fiyat / Stok Sor</button>
+                <button type="button" class="sd-basvur bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex-shrink-0" data-sid="${esc(s.id)}">Fiyat / Stok Sor</button>
             </div>
             ${(s.categories || []).length ? `<div class="flex flex-wrap gap-1 mb-2">${(s.categories || []).map(k =>
                 `<span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">${esc(k)}</span>`).join('')}</div>` : ''}
@@ -130,7 +157,7 @@
                      <div class="mt-2 space-y-1">
                         ${urunler.map(p => `<div class="text-[11px] text-slate-600 border-l-2 border-slate-200 pl-2">
                             <strong class="text-slate-800">${esc(p.name)}</strong>
-                            ${p.source_url ? `<a href="${esc(p.source_url)}" target="_blank" rel="noopener nofollow" class="text-emerald-700 font-bold ml-1">Katalog ↗</a>` : ''}
+                            ${url(p.source_url) ? `<a href="${esc(url(p.source_url))}" target="_blank" rel="noopener noreferrer nofollow" class="text-emerald-700 font-bold ml-1">Katalog ↗</a>` : ''}
                             <div class="text-slate-400">${esc((p.cells || []).slice(1).filter(Boolean).join(' · '))}</div>
                         </div>`).join('')}
                      </div>
@@ -142,11 +169,12 @@
     function ilanKarti(a) {
         const s = _sups.find(x => x.id === a.supplier_id);
         return `
-        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <div class="kart p-5">
             <h3 class="font-black text-slate-800 mb-1">${esc(a.title)}</h3>
             <p class="text-xs text-slate-400 mb-2">${esc(s ? s.company_name : 'Tedarikçi')}${(a.cities || []).length ? ' · ' + esc((a.cities || []).join(', ')) : ''}</p>
             ${a.body ? `<p class="text-xs text-slate-600 leading-relaxed mb-3">${esc(a.body)}</p>` : ''}
-            ${s ? `<button onclick="supDirAskPrice('${s.id}', 'Bayilik başvurusu: ${esc(a.title)}')" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-2 rounded-lg">Bu ilana başvur</button>` : ''}
+            ${s ? `<button type="button" class="sd-basvur bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-2 rounded-lg"
+                        data-sid="${esc(s.id)}" data-konu="Bayilik başvurusu: ${esc(a.title)}">Bu ilana başvur</button>` : ''}
         </div>`;
     }
 
@@ -158,7 +186,7 @@
             ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Kapalı</span>'
             : '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Yanıt bekliyor</span>';
         return `
-        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+        <div class="kart p-5">
             <div class="flex items-start justify-between gap-2 flex-wrap mb-1">
                 <strong class="text-sm text-slate-800">${esc(r.subject)}</strong> ${rozet}
             </div>
@@ -173,12 +201,9 @@
         </div>`;
     }
 
-    function bosDurum(baslik, metin) {
-        return `<div class="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center">
-            <div class="text-3xl mb-2">📦</div>
-            <p class="text-sm font-bold text-slate-700">${esc(baslik)}</p>
-            <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">${esc(metin)}</p>
-        </div>`;
+    function bosDurum(baslik, metin, ikon) {
+        return `<div class="kart bos-durum"><span class="bos-durum-ico">${ikon || '📦'}</span>
+            <h4>${esc(baslik)}</h4><p>${esc(metin)}</p></div>`;
     }
 
     function render() {
@@ -206,8 +231,33 @@
             }
         }
 
-        el.innerHTML = sekmeler() + govde;
+        const uyari = _uyarilar.length ? `
+            <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 mb-4 text-xs">
+                <b>Eksik veri:</b> ${esc(_uyarilar.join(', '))} okunamadı. Bu bölümler boş görünebilir;
+                "henüz yok" diye yorumlamayın.
+            </div>` : '';
+
+        el.innerHTML = sekmeler() + uyari + govde;
+
+        const ara = document.getElementById('sdAra');
+        if (ara) {
+            let z = null;
+            const tazele = () => { _ara = ara.value; render(); };
+            ara.addEventListener('input', () => { clearTimeout(z); z = setTimeout(tazele, 200); });
+            ara.addEventListener('search', tazele);
+            if (_ara) { ara.focus(); ara.setSelectionRange(ara.value.length, ara.value.length); }
+        }
     }
+
+    // Tek dinleyici: veri düğmelere data-* ile taşınıyor, onclick'e gömülmüyor.
+    // Eskiden ilan başlığı doğrudan onclick dizgisine yazılıyordu; başlık
+    // tedarikçi tarafından girildiği için tırnak içeren bir başlık kodu bozuyor,
+    // kurgulanmış bir başlık ise çalıştırabiliyordu.
+    document.addEventListener('click', function (e) {
+        const b = e.target.closest && e.target.closest('.sd-basvur');
+        if (!b || !document.getElementById('supplierDirRoot')?.contains(b)) return;
+        supDirAskPrice(b.dataset.sid, b.dataset.konu || '');
+    });
 
     // ------------------------------------------------------------ talep açma
     function modal(inner) {
@@ -240,27 +290,34 @@
             </div>
             <div class="flex gap-2 mt-5">
                 <button onclick="supDirCloseModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-lg">İptal</button>
-                <button onclick="supDirSendRequest('${supplierId}')" class="flex-1 bg-sky-600 text-white font-bold py-2 rounded-lg">Gönder</button>
+                <button onclick="supDirSendRequest('${esc(supplierId)}', this)" class="flex-1 bg-sky-600 text-white font-bold py-2 rounded-lg">Gönder</button>
             </div>`);
     };
 
-    window.supDirSendRequest = async function (supplierId) {
+    window.supDirSendRequest = async function (supplierId, btn) {
         const subject = (document.getElementById('sdSubject').value || '').trim();
         if (!subject) { alert('Konu gerekli.'); return; }
+        if (subject.length > 200) { alert('Konu çok uzun (en fazla 200 karakter).'); return; }
+        const govde = (document.getElementById('sdBody').value || '').trim();
+        if (govde.length > 4000) { alert('Detay çok uzun (en fazla 4000 karakter).'); return; }
+        if (btn) { btn.disabled = true; btn.textContent = 'Gönderiliyor...'; }   // çift gönderim olmasın
+
         const { data: { session } } = await supabaseClient.auth.getSession();
-        if (!session) { alert('Oturum bulunamadı.'); return; }
+        if (!session) { if (btn) { btn.disabled = false; btn.textContent = 'Gönder'; } alert('Oturum bulunamadı.'); return; }
 
         const { error } = await supabaseClient.from('supplier_requests').insert([{
             supplier_id: supplierId,
             company_id: companyId(),
             created_by: session.user.id,
             subject,
-            body: (document.getElementById('sdBody').value || '').trim() || null,
+            body: govde || null,
             status: 'open'
         }]);
+        if (btn) { btn.disabled = false; btn.textContent = 'Gönder'; }
         if (error) { alert('Gönderilemedi: ' + error.message); return; }
         supDirCloseModal();
-        alert('✅ Talebiniz iletildi. Yanıt geldiğinde "Taleplerim" sekmesinde görünecek.');
+        if (typeof window.epcBildir === 'function') window.epcBildir('Talebiniz iletildi — yanıt "Taleplerim" sekmesinde görünecek.');
+        else alert('Talebiniz iletildi.');
         _tab = 'talep';
         load();
     };

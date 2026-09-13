@@ -2090,10 +2090,14 @@
         </div>
 
         <!-- TEDARİKÇİ DİZİNİ — kurulumcu firma görünümü (supplier_directory.js) -->
-        <div id="supplierDirModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in">
-            <div class="mb-6 border-b pb-4 flex items-center justify-between gap-3 flex-wrap">
-                <button id="btnBackFromSuppliers" class="text-slate-500 hover:text-sky-600 font-bold flex items-center transition">← Panele Dön</button>
-                <h2 class="text-lg font-black text-slate-800">📦 Tedarikçiler</h2>
+        <div id="supplierDirModule" class="hidden w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+            <div class="modul-ust">
+                <button id="btnBackFromSuppliers" class="modul-geri">← Menüye Dön</button>
+                <div class="modul-eylem"><button onclick="showSupplierDirectory()" class="btn-ikincil">↻ Yenile</button></div>
+            </div>
+            <div class="modul-basligi">
+                <h2>Tedarikçiler</h2>
+                <p>Onaylı tedarikçileri görün, fiyat ve stok talebi gönderin, bayi ilanlarına başvurun.</p>
             </div>
             <div id="supplierDirRoot"></div>
         </div>

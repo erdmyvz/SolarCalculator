@@ -844,12 +844,8 @@ function renderDiscoList() {
         !q || (d.provinces || '').toLowerCase().includes(q)
            || (d.name || '').toLowerCase().includes(q)
            || (d.abbr || '').toLowerCase().includes(q));
-    // Yalnız http(s) adresleri basılır; kayıttaki bozuk/zararlı bir değer
-    // bağlantıya dönüşmesin.
-    const guvenliUrl = (u) => {
-        try { const x = new URL(String(u)); return (x.protocol === 'http:' || x.protocol === 'https:') ? x.href : ''; }
-        catch (e) { return ''; }
-    };
+    // Yalnız http(s) adresleri basılır (core.js'teki ortak yardımcı).
+    const guvenliUrl = (u) => (window.epcGuvenliUrl ? window.epcGuvenliUrl(u) : '');
 
     box.innerHTML = items.length ? items.map(d => {
         const site = guvenliUrl(d.website);
