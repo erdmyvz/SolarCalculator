@@ -1419,13 +1419,17 @@
             </div>
         </div>
 
-        <div id="dashboardModule" class="hidden bg-slate-50 p-6 md:p-8 rounded-xl shadow-lg w-full max-w-7xl mx-auto mt-4 animate-fade-in border border-slate-200">
-            <div class="mb-6 flex justify-between items-center">
-                <button id="btnBackToMenuFromDashboard" class="text-slate-500 font-bold">← Menüye Dön</button>
-                <button id="btnRefreshDashboard" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded">Yenile</button>
+        <div id="dashboardModule" class="hidden w-full max-w-7xl mx-auto mt-4 animate-fade-in">
+            <div class="modul-ust">
+                <button id="btnBackToMenuFromDashboard" class="modul-geri">← Menüye Dön</button>
+                <div class="modul-eylem">
+                    <button id="btnRefreshDashboard" class="btn-ikincil">↻ Yenile</button>
+                </div>
             </div>
-            <h2 class="text-2xl font-black text-slate-800 mb-1">📊 Yönetim Panosu</h2>
-            <p class="text-slate-500 text-sm mb-6 font-medium">İşinizin genel durumu — tamamı canlı verilerden.</p>
+            <div class="modul-basligi">
+                <h2>Yönetim Panosu</h2>
+                <p>İşinizin genel durumu — tamamı canlı verilerden, CRM ve Teklifler ile aynı kaynaktan.</p>
+            </div>
             <div id="dashboardRoot"></div>
         </div>
 

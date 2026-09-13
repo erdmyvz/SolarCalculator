@@ -25,22 +25,48 @@
     let _kayit = null, _zaman = 0;
     const OMUR_MS = 60000;
 
+    // firm_quotes durumları → panel sözlüğü. crm.js aynı eşlemeyi kendi içinde
+    // tutuyordu; tek yere alındı ki üç ekran (ana ekran, pano, CRM) aynı şeyi
+    // saysın.
+    const TEKLIF_DURUM = { draft: 'taslak', sent: 'gonderildi', revised: 'gonderildi', accepted: 'kabul', rejected: 'ret' };
+
+    // Teklif satırını panelin beklediği düz biçime çevirir.
+    // ⚠️ TUTAR: firm_quotes'ta tutar totals JSON'unun içinde. KDV DAHİL değeri
+    // esas alıyoruz; teklif çıktısında müşteriye "KDV dahil" rakam gösteriliyor,
+    // pano başka bir rakam söylerse firma iki farklı ciroya bakar.
+    window.epcTeklifNormalle = function (row) {
+        const t = row.totals || {};
+        return {
+            id: row.id,
+            lead_id: row.lead_id || null,
+            status: TEKLIF_DURUM[row.status] || 'taslak',
+            ham_durum: row.status,
+            total_amount: Number(t.total_try_vat) || Number(t.total_try) || 0,
+            created_at: row.created_at
+        };
+    };
+
     window.epcPanelVeri = async function (tazele) {
         if (!window.supabaseClient) return null;
         if (!tazele && _kayit && Date.now() - _zaman < OMUR_MS) return _kayit;
 
+        // ⚠️ TEKLİF TABLOSU: 'quotes' DEĞİL 'firm_quotes'.
+        // Pano ve ana ekran 'quotes' tablosunu okuyordu; teklif motoru ise
+        // (quote.js) firm_quotes'a yazıyor. 'quotes' tablosuna kod tabanında
+        // yazan HİÇBİR yer yok — yani "Kazanılan İş", "Dönüşüm Oranı" ve tüm
+        // teklif özeti firma kaç teklif verirse versin ₺0 / %0 gösteriyordu.
         const [lr, qr, pr, sr] = await Promise.all([
-            supabaseClient.from('leads').select('status'),
-            supabaseClient.from('quotes').select('status, total_amount'),
-            supabaseClient.from('projects').select('id'),
-            supabaseClient.from('service_requests').select('status')
+            supabaseClient.from('leads').select('status, created_at, updated_at, completed_steps'),
+            supabaseClient.from('firm_quotes').select('id, lead_id, status, totals, created_at'),
+            supabaseClient.from('projects').select('id, created_at'),
+            supabaseClient.from('service_requests').select('status, created_at')
         ]);
 
         // Hata alan tablo null kalır — 0 DEĞİL. "Bilinmiyor" ile "yok" aynı şey
         // değil; biri boş kutu gösterir, diğeri firmanın işi yok sanmasına yol açar.
         _kayit = {
             leads:    lr.error ? null : (lr.data || []),
-            quotes:   qr.error ? null : (qr.data || []),
+            quotes:   qr.error ? null : (qr.data || []).map(window.epcTeklifNormalle),
             projects: pr.error ? null : (pr.data || []),
             services: sr.error ? null : (sr.data || [])
         };

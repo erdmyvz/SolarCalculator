@@ -46,17 +46,17 @@ async function crmLoadLeads(tazele) {
     if (QUOTES_ENABLED) {
         try {
             const { data: qs } = await supabaseClient
-                .from('firm_quotes').select('lead_id, status, totals, created_at').order('created_at', { ascending: false });
-            // firm_quotes durumları → CRM rozet anahtarları
-            const _SMAP = { draft: 'taslak', sent: 'gonderildi', revised: 'gonderildi', accepted: 'kabul', rejected: 'ret' };
+                .from('firm_quotes').select('id, lead_id, status, totals, created_at').order('created_at', { ascending: false });
+            // Durum eşlemesi ve tutar okuması panel.js'teki epcTeklifNormalle'de —
+            // aynı eşleme burada, panoda ve ana ekranda ayrı ayrı yazılıydı.
+            const _norm = window.epcTeklifNormalle || (r => ({
+                lead_id: r.lead_id, status: r.status,
+                total_amount: (r.totals && (r.totals.total_try_vat || r.totals.total_try)) || 0,
+                created_at: r.created_at
+            }));
             (qs || []).forEach(row => {
                 if (!row.lead_id) return;                    // elle açılmış teklifler CRM'e bağlı değil
-                const q = {
-                    lead_id: row.lead_id,
-                    status: _SMAP[row.status] || 'taslak',
-                    total_amount: (row.totals && (row.totals.total_try_vat || row.totals.total_try)) || 0,
-                    created_at: row.created_at
-                };
+                const q = _norm(row);
                 if (!_quotesByLead[q.lead_id]) _quotesByLead[q.lead_id] = q; // en güncel teklif
                 _quoteStats.count++;
                 if (_quoteStats[q.status] !== undefined) _quoteStats[q.status]++;
