@@ -55,11 +55,12 @@
         // (quote.js) firm_quotes'a yazıyor. 'quotes' tablosuna kod tabanında
         // yazan HİÇBİR yer yok — yani "Kazanılan İş", "Dönüşüm Oranı" ve tüm
         // teklif özeti firma kaç teklif verirse versin ₺0 / %0 gösteriyordu.
-        const [lr, qr, pr, sr] = await Promise.all([
+        const [lr, qr, pr, sr, cr] = await Promise.all([
             supabaseClient.from('leads').select('status, created_at, updated_at, completed_steps'),
             supabaseClient.from('firm_quotes').select('id, lead_id, status, totals, created_at'),
             supabaseClient.from('projects').select('id, created_at'),
-            supabaseClient.from('service_requests').select('status, created_at')
+            supabaseClient.from('service_requests').select('status, created_at'),
+            supabaseClient.from('conversations').select('id, last_message_at, company_read_at')
         ]);
 
         // Hata alan tablo null kalır — 0 DEĞİL. "Bilinmiyor" ile "yok" aynı şey
@@ -68,7 +69,10 @@
             leads:    lr.error ? null : (lr.data || []),
             quotes:   qr.error ? null : (qr.data || []).map(window.epcTeklifNormalle),
             projects: pr.error ? null : (pr.data || []),
-            services: sr.error ? null : (sr.data || [])
+            services: sr.error ? null : (sr.data || []),
+            // Danışman mesajları. Okunmamış = son mesaj, firmanın okuma
+            // damgasından yeni. messaging.js'teki unread() ile aynı kural.
+            konusmalar: cr.error ? null : (cr.data || [])
         };
         _zaman = Date.now();
         return _kayit;
@@ -80,6 +84,8 @@
     const yeniLead   = (v) => v.filter(l => l.status === 'yeni_basvuru').length;
     const bekleyenTk = (v) => v.filter(q => q.status === 'gonderildi').length;
     const acikServis = (v) => v.filter(s => s.status !== 'tamamlandi').length;
+    const okunmamisMesaj = (v) => v.filter(c => c.last_message_at &&
+        (!c.company_read_at || new Date(c.last_message_at) > new Date(c.company_read_at))).length;
 
     // ------------------------------------------------------------ KARŞILAMA
     function selamla() {
@@ -153,6 +159,7 @@
         rozetYaz('teklif', v.quotes   ? bekleyenTk(v.quotes)   : null, 'teklif yanıt bekliyor');
         rozetYaz('servis', v.services ? acikServis(v.services) : null, 'açık servis talebi');
         rozetYaz('tesis',  v.projects ? v.projects.length      : null, 'kurulu tesis');
+        rozetYaz('mesaj',  v.konusmalar ? okunmamisMesaj(v.konusmalar) : null, 'okunmamış danışman mesajı');
     }
 
     // ---------------------------------------------------------- ÖZET CÜMLESİ
@@ -164,11 +171,12 @@
         if (v.leads    && yeniLead(v.leads) > 0)      parcalar.push(`<b>${yeniLead(v.leads)}</b> yeni başvuru`);
         if (v.quotes   && bekleyenTk(v.quotes) > 0)   parcalar.push(`<b>${bekleyenTk(v.quotes)}</b> teklif yanıt bekliyor`);
         if (v.services && acikServis(v.services) > 0) parcalar.push(`<b>${acikServis(v.services)}</b> servis talebi açık`);
+        if (v.konusmalar && okunmamisMesaj(v.konusmalar) > 0) parcalar.push(`<b>${okunmamisMesaj(v.konusmalar)}</b> okunmamış mesaj`);
 
         if (parcalar.length) { el.innerHTML = parcalar.join(' · '); return; }
         // Hiç iş yoksa bunu söylemek de bilgidir — ama yalnız veri gerçekten
         // geldiyse. Sorgular düştüyse sabit metin yerinde kalır.
-        if (v.leads && v.quotes && v.services) el.textContent = 'Bekleyen işiniz yok; her şey güncel.';
+        if (v.leads && v.quotes && v.services && v.konusmalar) el.textContent = 'Bekleyen işiniz yok; her şey güncel.';
     }
 
     // ------------------------------------------------------------ TAZELEME

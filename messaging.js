@@ -42,23 +42,30 @@
     }
 
     // ---------------------------------------------------------------- veri
+    // Yükleme hataları SESSİZCE BOŞ LİSTEYE dönüşüyordu: sorgu patlayınca
+    // ekranda "Henüz mesaj yok" yazıyordu. Kullanıcı mesajının silindiğini ya
+    // da karşı tarafın hiç yazmadığını sanıyordu. Artık hata ayrı tutuluyor.
+    let _convHata = null, _msgHata = null, _refHata = null;
+
     async function loadConvs() {
-        if (!window.supabaseClient) return;
+        if (!window.supabaseClient) { _convHata = 'Bağlantı yok'; return; }
         try {
             const { data, error } = await supabaseClient.from('conversations')
                 .select('*').order('last_message_at', { ascending: false }).limit(60);
             if (error) throw error;
-            _convs = data || [];
-        } catch (e) { _convs = []; }
+            _convs = data || []; _convHata = null;
+        } catch (e) { _convHata = e.message || String(e); }   // eldeki listeyi SİLMİYORUZ
     }
     async function loadMsgs(convId) {
         try {
             const { data, error } = await supabaseClient.from('messages')
                 .select('*').eq('conversation_id', convId).order('created_at');
             if (error) throw error;
-            _msgs = data || [];
-        } catch (e) { _msgs = []; }
+            _msgs = data || []; _msgHata = null;
+        } catch (e) { _msgHata = e.message || String(e); }
     }
+
+    const hataKutusu = (m) => m ? `<div class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-3 mb-3 text-xs"><b>Yüklenemedi:</b> ${esc(m)} — bu liste eksik olabilir. "Yenile" ile tekrar deneyin.</div>` : '';
     async function markRead(conv) {
         const u = me(); if (!u || !conv) return;
         const field = u.role === 'consultant' ? 'consultant_read_at' : 'company_read_at';
@@ -75,18 +82,47 @@
         const u = me();
         if (!u) { host.innerHTML = '<p class="text-sm text-slate-400">Mesajlaşma için giriş yapmanız gerekir.</p>'; return; }
         host.innerHTML = '<p class="text-sm text-slate-400 py-6">Mesajlar yükleniyor...</p>';
-        await loadConvs();
-        drawList(u);
+        // ESKİDEN her açılışta drawList çağrılıyordu ama _tab değeri korunuyordu:
+        // "Yönlendirilen Danışanlar" sekmesindeyken çıkıp dönünce sekme seçili
+        // görünüyor, altında mesaj listesi duruyordu. Artık seçili sekme basılır.
+        if (u.role === 'company' && _tab === 'refs') { await loadRefs(); drawRefs(u); }
+        else { _tab = 'msgs'; await loadConvs(); drawList(u); }
         startPoll();
+    };
+
+    // Ortak başlık: modül kabuğu CRM / Teklifler ile aynı dilde.
+    function ustBar(u, aktifSekme) {
+        const geri = u.role === 'consultant'
+            ? `<button onclick="msgStop();consultantBackToMenu()" class="modul-geri">← Panele Dön</button>`
+            : `<button onclick="msgStop();closeAllAndShowMenu()" class="modul-geri">← Menüye Dön</button>`;
+        const eylem = u.role === 'consultant'
+            ? `<button onclick="msgYenile()" class="btn-ikincil">↻ Yenile</button><button onclick="msgNew()" class="btn-birincil">+ Yeni Mesaj</button>`
+            : `<button onclick="msgYenile()" class="btn-ikincil">↻ Yenile</button>`;
+        const sekme = (id, ad) => `<button onclick="msgSetTab('${id}')" role="tab" aria-selected="${aktifSekme === id}" class="q-tab ${aktifSekme === id ? 'q-tab-on' : ''}">${ad}</button>`;
+        const sekmeler = u.role === 'company'
+            ? `<div class="modul-eylem mb-4" role="tablist">${sekme('msgs', 'Mesajlar')}${sekme('refs', 'Yönlendirilen Danışanlar')}</div>` : '';
+        return `
+            <div class="modul-ust">${geri}<div class="modul-eylem">${eylem}</div></div>
+            <div class="modul-basligi">
+                <h2>${u.role === 'company' ? 'Danışman Kanalı' : 'Mesajlaşma'}</h2>
+                <p>${u.role === 'company'
+                    ? 'Bağımsız danışmanlardan gelen mesajlar ve size yönlendirilen danışanların kurulum durumu.'
+                    : 'Danışanınızı atadığınız kurulumcu firmayla doğrudan iletişim.'}</p>
+            </div>
+            ${sekmeler}`;
+    }
+
+    window.msgYenile = async function () {
+        const u = me(); if (!u) return;
+        if (_active) { await loadMsgs(_active.id); drawThread(u, true); }
+        else if (_tab === 'refs') { await loadRefs(); drawRefs(u); }
+        else { await loadConvs(); drawList(u); }
     };
 
     function drawList(u) {
         const host = document.getElementById(_hostId); if (!host) return;
-        const backBtn = u.role === 'consultant'
-            ? `<button onclick="msgStop();consultantBackToMenu()" class="text-slate-500 hover:text-indigo-600 font-bold">← Panele Dön</button>`
-            : `<button onclick="msgStop();closeAllAndShowMenu()" class="text-slate-500 hover:text-indigo-600 font-bold">← Menüye Dön</button>`;
-        const newBtn = u.role === 'consultant'
-            ? `<button onclick="msgNew()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-sm">+ Yeni Mesaj</button>` : '';
+
+        const okunmamis = _convs.filter(c => unread(c, u)).length;
 
         const rows = _convs.length ? _convs.map(c => {
             const un = unread(c, u);
@@ -97,31 +133,22 @@
                     <span class="flex items-center gap-2 mb-0.5">
                         <span class="font-black text-slate-800 text-sm truncate">${esc(who)}</span>
                         <span class="text-[11px] text-slate-400 truncate">· ${esc(c.subject || 'Genel')}</span>
-                        ${un ? '<span class="w-2 h-2 bg-indigo-500 rounded-full shrink-0"></span>' : ''}
+                        ${un ? '<span class="w-2 h-2 bg-indigo-500 rounded-full shrink-0" title="Okunmamış"></span>' : ''}
                         <span class="ml-auto text-[10px] text-slate-400 shrink-0">${timeAgo(c.last_message_at)}</span>
                     </span>
                     ${c.client_name ? `<span class="block text-[11px] text-amber-700 font-bold">👤 ${esc(c.client_name)}</span>` : ''}
                     <span class="block text-xs text-slate-500 truncate">${esc(c.last_message_body || '—')}</span>
                 </span>
             </button>`;
-        }).join('') : `<div class="p-10 text-center"><div class="text-4xl mb-2">💬</div>
-            <p class="font-black text-slate-700">Henüz mesaj yok</p>
-            <p class="text-sm text-slate-500 mt-1">${u.role === 'consultant' ? 'Danışanınızı atadığınız firmayla buradan iletişim kurabilirsiniz.' : 'Danışmanlar size buradan mesaj gönderebilir.'}</p></div>`;
-
-        const tabs = u.role === 'company' ? `
-            <div class="flex gap-1 bg-slate-100 p-1 rounded-xl mb-4">
-                <button onclick="msgSetTab('msgs')" class="px-4 py-2 rounded-lg text-sm font-bold transition ${_tab === 'msgs' ? 'bg-indigo-600 text-white shadow' : 'text-slate-600 hover:bg-white'}">Mesajlar</button>
-                <button onclick="msgSetTab('refs')" class="px-4 py-2 rounded-lg text-sm font-bold transition ${_tab === 'refs' ? 'bg-indigo-600 text-white shadow' : 'text-slate-600 hover:bg-white'}">Yönlendirilen Danışanlar</button>
-            </div>` : '';
+        }).join('') : `<div class="bos-durum"><span class="bos-durum-ico">💬</span>
+            <h4>Henüz mesaj yok</h4>
+            <p>${u.role === 'consultant' ? 'Danışanınızı atadığınız firmayla buradan iletişim kurabilirsiniz.' : 'Danışmanlar size buradan mesaj gönderebilir; yeni mesaj geldiğinde burada görünür.'}</p></div>`;
 
         host.innerHTML = `
-            <div class="flex items-center gap-3 mb-5 flex-wrap">
-                ${backBtn}<span class="text-slate-300">/</span>
-                <h2 class="text-lg md:text-xl font-black text-slate-800">${u.role === 'company' ? '🤝 Danışman Kanalı' : '💬 Mesajlaşma'}</h2>
-                <div class="ml-auto">${newBtn}</div>
-            </div>
-            ${tabs}
-            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">${rows}</div>`;
+            ${ustBar(u, 'msgs')}
+            ${hataKutusu(_convHata)}
+            ${okunmamis ? `<p class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2 mb-3">${okunmamis} okunmamış konuşma</p>` : ''}
+            <div class="kart overflow-hidden">${rows}</div>`;
     }
 
     const INST = [['atandi','Atandı'],['iletisim','İletişime Geçildi'],['kesif','Keşif Yapıldı'],['teklif','Teklif Verildi'],['sozlesme','Sözleşme'],['kurulum','Kurulum Aşamasında'],['tamamlandi','Tamamlandı']];
@@ -134,8 +161,8 @@
     };
 
     async function loadRefs() {
-        try { const { data, error } = await supabaseClient.rpc('list_assigned_clients'); if (error) throw error; _refs = data || []; }
-        catch (e) { _refs = []; }
+        try { const { data, error } = await supabaseClient.rpc('list_assigned_clients'); if (error) throw error; _refs = data || []; _refHata = null; }
+        catch (e) { _refHata = e.message || String(e); }
     }
 
     function drawRefs(u) {
@@ -155,22 +182,15 @@
                     <select onchange="msgSetInstall('${r.id}', this.value)" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white shrink-0">${opts(r.install_status)}</select>
                 </div>
             </div>`).join('')
-            : `<div class="p-10 text-center"><div class="text-4xl mb-2">🤝</div>
-                <p class="font-black text-slate-700">Henüz yönlendirme yok</p>
-                <p class="text-sm text-slate-500 mt-1">Danışmanlar size danışan yönlendirdiğinde burada görünür.</p></div>`;
+            : `<div class="bos-durum"><span class="bos-durum-ico">🤝</span>
+                <h4>Henüz yönlendirme yok</h4>
+                <p>Danışmanlar size danışan yönlendirdiğinde burada görünür.</p></div>`;
 
         host.innerHTML = `
-            <div class="flex items-center gap-3 mb-5 flex-wrap">
-                <button onclick="msgStop();closeAllAndShowMenu()" class="text-slate-500 hover:text-indigo-600 font-bold">← Menüye Dön</button>
-                <span class="text-slate-300">/</span>
-                <h2 class="text-lg md:text-xl font-black text-slate-800">🤝 Danışman Kanalı</h2>
-            </div>
-            <div class="flex gap-1 bg-slate-100 p-1 rounded-xl mb-4">
-                <button onclick="msgSetTab('msgs')" class="px-4 py-2 rounded-lg text-sm font-bold transition text-slate-600 hover:bg-white">Mesajlar</button>
-                <button onclick="msgSetTab('refs')" class="px-4 py-2 rounded-lg text-sm font-bold transition bg-indigo-600 text-white shadow">Yönlendirilen Danışanlar</button>
-            </div>
+            ${ustBar(u, 'refs')}
+            ${hataKutusu(_refHata)}
             <p class="text-[11px] text-slate-400 mb-2">Durumu güncellediğinizde yönlendiren danışman bildirim alır — süreç şeffaf kalır.</p>
-            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">${body}</div>`;
+            <div class="kart overflow-hidden">${body}</div>`;
     }
 
     window.msgSetInstall = async function (clientId, status) {
@@ -191,8 +211,19 @@
         drawThread(u);
     };
 
-    function drawThread(u) {
+    function drawThread(u, koru) {
         const host = document.getElementById(_hostId); if (!host || !_active) return;
+        // YOKLAMA TASLAĞI SİLİYORDU: yeni mesaj geldiğinde tüm kutu yeniden
+        // çiziliyor, kullanıcının yazmakta olduğu metin uçuyordu. Aynı şekilde
+        // geçmişi okumak için yukarı kaydırmışsa aşağı fırlatılıyordu.
+        const eskiInput = koru ? document.getElementById('msgInput') : null;
+        const taslak = eskiInput ? eskiInput.value : '';
+        const odakVar = eskiInput ? (document.activeElement === eskiInput) : false;
+        const secBas = eskiInput ? eskiInput.selectionStart : 0;
+        const eskiThread = koru ? document.getElementById('msgThread') : null;
+        // Kullanıcı en altta mıydı? (20 px tolerans) Altındaysa yeni mesaja kaydır.
+        const alttaydi = eskiThread ? (eskiThread.scrollHeight - eskiThread.scrollTop - eskiThread.clientHeight < 20) : true;
+        const eskiScroll = eskiThread ? eskiThread.scrollTop : 0;
         const bubbles = _msgs.length ? _msgs.map(m => {
             const mine = String(m.sender_id) === String(u.id);
             return `<div class="flex ${mine ? 'justify-end' : 'justify-start'} mb-2.5">
@@ -205,39 +236,58 @@
         }).join('') : '<p class="text-center text-sm text-slate-400 py-8">İlk mesajı siz yazın.</p>';
 
         host.innerHTML = `
-            <div class="flex items-center gap-3 mb-4 flex-wrap">
-                <button onclick="msgBack()" class="text-slate-500 hover:text-indigo-600 font-bold">← Mesajlar</button>
-                <span class="text-slate-300">/</span>
-                <div class="min-w-0">
-                    <h2 class="text-base md:text-lg font-black text-slate-800 truncate">${esc(_active.subject || 'Genel')}</h2>
-                    ${_active.client_name ? `<p class="text-[11px] text-amber-700 font-bold">👤 ${esc(_active.client_name)}</p>` : ''}
-                </div>
+            <div class="modul-ust">
+                <button onclick="msgBack()" class="modul-geri">← Mesajlar</button>
+                <div class="modul-eylem"><button onclick="msgYenile()" class="btn-ikincil">↻ Yenile</button></div>
             </div>
-            <div class="bg-white border border-slate-200 rounded-xl p-4">
+            <div class="modul-basligi">
+                <h2 class="truncate">${esc(_active.subject || 'Genel')}</h2>
+                <p>${_active.client_name ? `👤 <b class="text-amber-700">${esc(_active.client_name)}</b> · ` : ''}${esc(u.role === 'consultant' ? (_active.company_name || 'Kurulumcu Firma') : 'Danışman')}</p>
+            </div>
+            ${hataKutusu(_msgHata)}
+            <div class="kart p-4">
                 <div id="msgThread" class="max-h-[46vh] overflow-y-auto mb-3 pr-1">${bubbles}</div>
                 <div class="flex gap-2 border-t border-slate-100 pt-3">
                     <textarea id="msgInput" rows="2" placeholder="Mesajınızı yazın..." class="flex-1 border border-slate-300 p-2.5 rounded-lg text-sm resize-none"></textarea>
                     <button onclick="msgSend()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-5 rounded-lg shrink-0">Gönder</button>
                 </div>
             </div>`;
-        const t = document.getElementById('msgThread'); if (t) t.scrollTop = t.scrollHeight;
+        const t = document.getElementById('msgThread');
+        if (t) t.scrollTop = (koru && !alttaydi) ? eskiScroll : t.scrollHeight;
+        const yeniInput = document.getElementById('msgInput');
+        if (yeniInput && taslak) {
+            yeniInput.value = taslak;
+            if (odakVar) { yeniInput.focus(); try { yeniInput.setSelectionRange(secBas, secBas); } catch (e) {} }
+        }
     }
 
     window.msgBack = async function () { _active = null; await loadConvs(); drawList(me()); };
 
+    const MESAJ_SINIR = 4000;
     window.msgSend = async function () {
         const u = me(); const el = document.getElementById('msgInput');
         if (!u || !el || !_active) return;
         const body = (el.value || '').trim(); if (!body) return;
-        el.value = '';
+        if (body.length > MESAJ_SINIR) {
+            alert(`Mesaj çok uzun (${body.length} karakter). En fazla ${MESAJ_SINIR} karakter gönderebilirsiniz.`);
+            return;
+        }
+        // Metni HENÜZ silmiyoruz. Eskiden gönderimden ÖNCE temizleniyordu:
+        // insert başarısız olursa uyarı çıkıyor ama yazılan mesaj gitmiş
+        // oluyordu, kullanıcı baştan yazmak zorunda kalıyordu.
+        el.disabled = true;
         try {
             const { error } = await supabaseClient.from('messages').insert({
                 conversation_id: _active.id, sender_id: u.id, sender_name: u.name, sender_role: u.role, body
             });
             if (error) throw error;
+            el.value = '';                       // ancak başarıdan SONRA
             await loadMsgs(_active.id);
             drawThread(u);
-        } catch (e) { alert('Mesaj gönderilemedi: ' + (e.message || e)); }
+        } catch (e) {
+            el.disabled = false;
+            alert('Mesaj gönderilemedi: ' + (e.message || e) + '\n\nYazdığınız metin kutuda duruyor, tekrar deneyebilirsiniz.');
+        }
     };
 
     // ------------------------------------------------- yeni konuşma (danışman)
@@ -262,14 +312,14 @@
             </div>
             <div class="space-y-3">
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Kurulumcu Firma *</label>
-                    <select id="msgNewCompany" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">
+                    <select id="msgNewCompany" onchange="msgNewFiltre()" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">
                         ${_companies.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('') || '<option value="">Kayıtlı firma yok</option>'}
                     </select></div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">İlgili Danışan (opsiyonel)</label>
                     <select id="msgNewClient" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">
                         <option value="">— Genel —</option>
-                        ${clients.map(c => `<option value="${c.id}" data-name="${esc(c.name)}">${esc(c.name)}</option>`).join('')}
-                    </select></div>
+                    </select>
+                    <p class="text-[11px] text-slate-400 mt-1">Yalnızca seçili firmaya atadığınız danışanlar listelenir.</p></div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Konu</label>
                     <input id="msgNewSubject" placeholder="örn. Keşif planlaması" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Mesaj *</label>
@@ -279,6 +329,22 @@
             </div>
         </div>`;
         m.classList.remove('hidden');
+        _msgNewClients = clients;
+        window.msgNewFiltre();
+    };
+
+    // Danışan listesi firmaya göre SÜZÜLMÜYORDU: danışman, A firmasına atadığı
+    // danışanı B firmasıyla açtığı konuşmaya iliştirebiliyordu — danışanın adı
+    // ilgisiz bir firmaya gidiyordu. Artık yalnız seçili firmaya ait olanlar.
+    let _msgNewClients = [];
+    window.msgNewFiltre = function () {
+        const sel = document.getElementById('msgNewClient');
+        const firma = document.getElementById('msgNewCompany');
+        if (!sel || !firma) return;
+        const fid = String(firma.value || '');
+        const uygun = _msgNewClients.filter(c => String(c.assigned_company_id || '') === fid);
+        sel.innerHTML = '<option value="">— Genel —</option>' +
+            uygun.map(c => `<option value="${c.id}" data-name="${esc(c.name)}">${esc(c.name)}</option>`).join('');
     };
 
     window.msgCreate = async function () {
@@ -314,12 +380,35 @@
     function startPoll() {
         msgStop();
         _poll = setInterval(async () => {
+            // Sekme arkadaysa sorgu atmıyoruz: kullanıcı bakmadığı ekran için
+            // her 20 saniyede bir veritabanını yoklamanın kimseye faydası yok.
+            if (document.visibilityState === 'hidden') return;
+            // Modül kapandıysa yoklamayı kendimiz durduruyoruz. Eskiden yalnız
+            // "← Menüye Dön" düğmesi durduruyordu; tarayıcı geri tuşuyla veya
+            // başka bir modüle geçilince zamanlayıcı sonsuza kadar çalışıyordu.
+            const host = document.getElementById(_hostId);
+            if (!host || !host.offsetParent) { msgStop(); return; }
+
             const u = me(); if (!u) return;
-            if (_active) { const before = _msgs.length; await loadMsgs(_active.id); if (_msgs.length !== before) drawThread(u); }
-            else if (_tab === 'msgs') { await loadConvs(); drawList(u); }
+            if (_active) {
+                const once = _msgs.length;
+                await loadMsgs(_active.id);
+                if (_msgs.length !== once) drawThread(u, true);   // true = taslağı koru
+            } else if (_tab === 'msgs') { await loadConvs(); drawList(u); }
+            else if (_tab === 'refs') { await loadRefs(); drawRefs(u); }
         }, 20000);
     }
     window.msgStop = function () { if (_poll) { clearInterval(_poll); _poll = null; } };
+
+    // Sekme yeniden öne gelince bir kez hemen tazele (20 sn beklemesin).
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState !== 'visible' || !_poll) return;
+        const u = me(); if (!u) return;
+        const host = document.getElementById(_hostId);
+        if (!host || !host.offsetParent) return;
+        if (_active) loadMsgs(_active.id).then(() => drawThread(u, true));
+        else if (_tab === 'msgs') loadConvs().then(() => drawList(u));
+    });
 
     // ---------------------------------------------------------------- girişler
     window.consultantOpenMessages = function () { _active = null; msgRender('consultantPanelRoot'); };
