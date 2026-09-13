@@ -9,19 +9,52 @@
     const qCompanyId = () => (typeof currentUserProfile !== 'undefined' && currentUserProfile && currentUserProfile.company_id) || null;
     let _qSettings = null, _qCatalog = null;
 
+    // Kriptografik rastgele dizi. Math.random() TAHMİN EDİLEBİLİR bir üreteçtir;
+    // paylaşım bağlantısındaki jeton, teklifi (müşteri adı, telefon, e-posta,
+    // adres, fiyat) girişsiz açan TEK korumaydı. Tahmin edilebilir jeton, bu
+    // bilgilerin denenerek bulunabilmesi demek.
+    function qRastgele(n) {
+        const alfabe = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let out = '';
+        if (window.crypto && window.crypto.getRandomValues) {
+            const b = new Uint32Array(n);
+            window.crypto.getRandomValues(b);
+            for (let i = 0; i < n; i++) out += alfabe[b[i] % alfabe.length];
+        } else {
+            for (let i = 0; i < n; i++) out += alfabe[Math.floor(Math.random() * alfabe.length)];
+        }
+        return out;
+    }
+
+    // Teklif numarası. Eskiden 4 haneli Math.random (9.000 olasılık): aynı gün
+    // içinde iki teklifin aynı numarayı alması sürpriz değildi ve numara
+    // müşteriyle konuşurken kullanılan referans.
+    function qTeklifNo() {
+        return 'TKF-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + qRastgele(6).toUpperCase();
+    }
+
     const QSECTIONS = [['cover','Kapak'],['system','Sistem Özeti'],['production','Üretim-Tüketim'],['feasibility','Fizibilite / Geri Ödeme'],['price','Fiyat & Ödeme'],['bom','Malzeme Listesi'],['scope','Kapsam (Dahil/Hariç)'],['warranty','Garanti Tablosu'],['terms','Ticari Şartlar'],['references','Referans Projeler'],['signature','İmza']];
     const QCAT = { panel:'Panel', inverter:'İnverter', battery:'Batarya', construction:'Konstrüksiyon', cable:'Kablo/Tava', panel_board:'Pano', meter:'Sayaç', labor:'İşçilik', engineering:'Mühendislik', logistics:'Nakliye', grounding:'Topraklama', safety:'Güvenlik', monitoring:'İzleme', insurance:'Sigorta', other:'Diğer' };
     const UNITS = ['adet','kwp','set','metre','percent'];
 
     function defaults(cid) {
+        // Kur ve tarife SABİT yazılıydı (40 TL ve 3,5 TL/kWh) — platform ayarı
+        // 42 ve 2,50 derken teklif motoru kendi sayısıyla açılıyordu. Firma
+        // ayarı değiştirmezse ilk teklifi siteyle çelişik çıkıyordu. Artık
+        // başlangıç değeri platformdan geliyor; firma yine üstüne yazabilir.
+        const ps = window.EPC_SETTINGS || {};
+        const kur = Number(ps.usdTry) > 0 ? Number(ps.usdTry) : 42;
+        const tarife = Number(ps.tariffMesken) > 0 ? Number(ps.tariffMesken) : 2.5;
+        // Ayar anahtarı tariffInflationPct (epcEnflasyon ile aynı kaynak).
+        const zam = Number(ps.tariffInflationPct) > 0 ? Number(ps.tariffInflationPct) : 25;
         return {
             company_id: cid, logo_data: null, brand_color: '4F46E5',
             address: '', phone: '', email: '', website: '', certificates: '',
-            signatures: [], general_margin_pct: 25, usd_rate: 40, vat_pct: 20,
+            signatures: [], general_margin_pct: 25, usd_rate: kur, vat_pct: 20,
             payment_plan: [{label:'Sözleşme',pct:30},{label:'Malzeme Sevki',pct:50},{label:'Montaj',pct:15},{label:'Devreye Alma',pct:5}],
             validity_days: 7, scope_included: '', scope_excluded: '',
             warranty: [{component:'Güneş Paneli',product:'12 yıl',performance:'30 yıl / %87',life:'30+ yıl'},{component:'İnverter',product:'5 yıl',performance:'—',life:'10-15 yıl'},{component:'Batarya',product:'10 yıl',performance:'6.000 döngü',life:'12-15 yıl'}],
-            terms_text: '', tariff_tl: 3.5, yield_increase_pct: 20,
+            terms_text: '', tariff_tl: tarife, yield_increase_pct: zam,
             sections: { cover:true, system:true, production:true, feasibility:true, price:true, bom:false, scope:true, warranty:true, terms:true, references:false, signature:true }
         };
     }
@@ -39,12 +72,17 @@
     function renderShell(active) {
         const root = document.getElementById('quoteRoot');
         if (!root) return;
-        const tab = (id, label) => `<button onclick="quoteView('${id}')" class="px-4 py-2 rounded-lg text-sm font-bold transition ${active===id?'bg-indigo-600 text-white shadow':'text-slate-600 hover:bg-white'}">${label}</button>`;
+        // Sekme düğmeleri artık gerçek sekme gibi davranıyor (aria-selected):
+        // ekran okuyucu hangisinin açık olduğunu söyleyebiliyor.
+        const tab = (id, label) => `<button onclick="quoteView('${id}')" role="tab" aria-selected="${active===id}" class="q-tab ${active===id?'q-tab-on':''}">${label}</button>`;
         root.innerHTML = `
-            <div class="flex items-center gap-3 mb-5 flex-wrap">
-                <button onclick="closeAllAndShowMenu()" class="text-slate-500 hover:text-indigo-600 font-bold">← Menüye Dön</button>
-                <h2 class="text-2xl font-black text-slate-800">📄 Teklifler</h2>
-                <div class="flex gap-1 ml-auto bg-slate-100 p-1 rounded-xl">${tab('new','＋ Yeni Teklif')}${tab('list','Tekliflerim')}${tab('settings','⚙️ Ayarlar')}</div>
+            <div class="modul-ust">
+                <button onclick="closeAllAndShowMenu()" class="modul-geri">← Menüye Dön</button>
+                <div class="modul-eylem" role="tablist">${tab('new','＋ Yeni Teklif')}${tab('list','Tekliflerim')}${tab('settings','⚙️ Ayarlar')}</div>
+            </div>
+            <div class="modul-basligi">
+                <h2>Teklifler</h2>
+                <p>Müşteriye markalı teklif hazırlayın, fiyat ve parametreleri tek ekrandan yönetin.</p>
             </div>
             <div id="quoteView"></div>`;
     }
@@ -203,6 +241,17 @@
         capture();
         const cid = qCompanyId();
         if (!cid || !supabaseClient) { alert('Firma bulunamadı. Kurulumcu firma hesabıyla giriş yapın.'); return; }
+
+        // Ödeme dilimleri toplamı %100 değilse teklifte basılan tutarlar toplam
+        // bedeli tutmuyor — müşteri dilimleri toplayınca açık görüyor. Kontrol
+        // yoktu; artık uyarıyoruz (engellemiyoruz, bilerek farklı olabilir).
+        const toplamPct = (_qSettings.payment_plan || []).reduce((a, p) => a + (Number(p.pct) || 0), 0);
+        if (_qSettings.payment_plan && _qSettings.payment_plan.length && Math.abs(toplamPct - 100) > 0.01) {
+            if (!confirm(`Ödeme dilimlerinin toplamı %${Math.round(toplamPct * 100) / 100} — %100 değil.\n\nTeklifte yazılan dilim tutarları toplam bedeli tutmayacak. Yine de kaydedilsin mi?`)) return;
+        }
+        // Kur veya tarife sıfırsa fiyat/fizibilite anlamsız çıkar.
+        if (!(Number(_qSettings.usd_rate) > 0)) { alert('Kur (USD→TL) sıfır olamaz; teklifteki TL karşılıkları hesaplanamaz.'); return; }
+        if (!(Number(_qSettings.tariff_tl) > 0)) { alert('Tarife (TL/kWh) sıfır olamaz; geri ödeme süresi hesaplanamaz.'); return; }
         const s = Object.assign({}, _qSettings); s.company_id = cid; s.updated_at = new Date().toISOString();
         try {
             const { error } = await supabaseClient.from('firm_quote_settings').upsert(s, { onConflict: 'company_id' });
@@ -216,22 +265,34 @@
                 if (it._fcId && String(it._fcId).indexOf('new_') !== 0) { const { error: e2 } = await supabaseClient.from('firm_catalog').update(row).eq('id', it._fcId); if (e2) throw e2; }
                 else { const { data, error: e3 } = await supabaseClient.from('firm_catalog').insert(row).select('id').single(); if (e3) throw e3; if (data) it._fcId = data.id; }
             }
-            alert('Ayarlar kaydedildi ✅');
+            if (typeof window.epcBildir === 'function') window.epcBildir('Teklif ayarları kaydedildi.'); else alert('Ayarlar kaydedildi.');
         } catch (e) { alert('Kaydedilemedi: ' + (e.message || e)); }
     };
 
     // ============================ FAZ 3: TEKLİF SİHİRBAZI ============================
-    const CITY_YIELD = {"Adana":1650,"Adıyaman":1620,"Afyonkarahisar":1560,"Ağrı":1520,"Aksaray":1600,"Amasya":1450,"Ankara":1560,"Antalya":1680,"Ardahan":1480,"Artvin":1350,"Aydın":1620,"Balıkesir":1500,"Bartın":1300,"Batman":1640,"Bayburt":1450,"Bilecik":1480,"Bingöl":1520,"Bitlis":1540,"Bolu":1350,"Burdur":1600,"Bursa":1480,"Çanakkale":1500,"Çankırı":1480,"Çorum":1460,"Denizli":1600,"Diyarbakır":1650,"Düzce":1320,"Edirne":1480,"Elazığ":1560,"Erzincan":1520,"Erzurum":1520,"Eskişehir":1540,"Gaziantep":1640,"Giresun":1300,"Gümüşhane":1420,"Hakkari":1560,"Hatay":1620,"Iğdır":1560,"Isparta":1600,"İstanbul":1450,"İzmir":1600,"Kahramanmaraş":1620,"Karabük":1350,"Karaman":1620,"Kars":1500,"Kastamonu":1330,"Kayseri":1580,"Kırıkkale":1540,"Kırklareli":1460,"Kırşehir":1560,"Kilis":1650,"Kocaeli":1420,"Konya":1620,"Kütahya":1520,"Malatya":1560,"Manisa":1580,"Mardin":1680,"Mersin":1660,"Muğla":1620,"Muş":1520,"Nevşehir":1580,"Niğde":1600,"Ordu":1300,"Osmaniye":1630,"Rize":1250,"Sakarya":1400,"Samsun":1350,"Siirt":1640,"Sinop":1320,"Sivas":1520,"Şanlıurfa":1700,"Şırnak":1660,"Tekirdağ":1470,"Tokat":1440,"Trabzon":1300,"Tunceli":1520,"Uşak":1560,"Van":1560,"Yalova":1440,"Yozgat":1520,"Zonguldak":1300};
+    // CITY_YIELD KALDIRILDI — 81 il core.js'teki EPC_IL_VERIM'e taşındı.
+    // Burada sabit kodluyken hesaplayıcılarla çelişiyordu: İstanbul için teklif
+    // 1450, site 1500 diyordu. Aynı müşteri iki farklı üretim rakamı görüyordu.
+    // Artık tek kaynak: admin ayarı > bölgesel tahmin > ulusal ortalama.
     let _wz = null, _wzLeads = null;
 
-    function wzYield(c) { return CITY_YIELD[c] || 1500; }
+    // Değerin nereden geldiğini de taşıyoruz: 'ayar' (admin girdi, kesin),
+    // 'tahmin' (bölgesel tablo), 'ulusal' (ortalama). Arayüz ve teklif çıktısı
+    // tahminî değeri kesin bilgi gibi göstermiyor.
+    function wzVerimBilgi(il) {
+        return (typeof window.epcIlVerim === 'function')
+            ? window.epcIlVerim(il)
+            : { verim: 1500, kaynak: 'ulusal' };
+    }
+    function wzYield(c) { return wzVerimBilgi(c).verim; }
+    const VERIM_ETIKET = { ayar: '', tahmin: ' (bölgesel tahmin)', ulusal: ' (ulusal ortalama)' };
     function wzCat(cat) { return (_qCatalog || []).filter(x => x.category === cat && !x.hidden); }
     function wzById(id) { return (_qCatalog || []).find(x => String(x.id) === String(id)); }
     function wzBestInv(kwp) { const a = wzCat('inverter'); if (!a.length) return null; let b = a[0], bd = 1e9; a.forEach(x => { const k = (x.specs && x.specs.kwe) || 10; const d = Math.abs(k - kwp); if (k >= kwp * 0.8 && d < bd) { bd = d; b = x; } }); return b; }
     function wzBestBat(kwh) { const a = wzCat('battery'); if (!a.length) return null; let b = a[0], bd = 1e9; a.forEach(x => { const k = (x.specs && x.specs.kwh) || 5; const d = Math.abs(k - kwh); if (d < bd) { bd = d; b = x; } }); return b; }
 
     function wzInit(lead) {
-        const tariff = Number(_qSettings.tariff_tl) || 3.5;
+        const tariff = Number(_qSettings.tariff_tl) || 2.5;
         let cons = 0;
         if (lead) { const mc = Number(lead.monthly_consumption) || 0, mb = Number(lead.monthly_bill || lead.bill_amount) || 0; cons = mc > 0 ? Math.round(mc * 12) : (mb > 0 ? Math.round(mb / tariff * 12) : 0); }
         _wz = { step: 1, lead_id: lead ? lead.id : null, name: lead ? (lead.full_name || lead.name || '') : '', phone: lead ? (lead.phone || '') : '', email: lead ? (lead.email || '') : '', city: (lead && (lead.city || lead.il)) || 'İstanbul', location: '', annualCons: cons, kwp: 0, panelId: null, inverterId: null, batteryKwh: 0, batteryId: null, discount: 0, bom: [] };
@@ -263,7 +324,8 @@
         const w = _wz;
         const leadOpts = (_wzLeads || []).map(l => `<option value="${l.id}" ${w.lead_id===l.id?'selected':''}>${esc(l.full_name || l.name || '(isimsiz)')}${l.phone?' · '+esc(l.phone):''}</option>`).join('');
         const inp = (id, v, ph, t) => `<input id="${id}" type="${t||'text'}" value="${esc(v==null?'':v)}" placeholder="${ph||''}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">`;
-        const cities = Object.keys(CITY_YIELD).map(c => `<option value="${c}" ${w.city===c?'selected':''}>${c}</option>`).join('');
+        const cities = Object.keys(window.EPC_IL_VERIM || {}).sort((a, b) => a.localeCompare(b, 'tr'))
+            .map(c => `<option value="${c}" ${w.city===c?'selected':''}>${c}</option>`).join('');
         return `
             <h3 class="font-black text-slate-800 mb-3">Müşteri Bilgileri</h3>
             ${(_wzLeads && _wzLeads.length) ? `<div class="mb-4"><label class="block text-xs font-bold text-slate-600 mb-1">CRM müşterisinden doldur (opsiyonel)</label><select onchange="wzPickLead(this.value)" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white"><option value="">— Elle gir —</option>${leadOpts}</select></div>` : ''}
@@ -282,7 +344,7 @@
         wzCaptureStep1();
         const l = (_wzLeads || []).find(x => String(x.id) === String(id));
         if (!l) { _wz.lead_id = null; renderWizard(); return; }
-        const tariff = Number(_qSettings.tariff_tl) || 3.5;
+        const tariff = Number(_qSettings.tariff_tl) || 2.5;
         const mc = Number(l.monthly_consumption) || 0, mb = Number(l.monthly_bill || l.bill_amount) || 0;
         _wz.lead_id = l.id; _wz.name = l.full_name || l.name || ''; _wz.phone = l.phone || ''; _wz.email = l.email || '';
         if (l.city || l.il) _wz.city = l.city || l.il;
@@ -297,13 +359,14 @@
 
     // -------- ADIM 2: SİSTEM
     function wzStep2() {
-        const w = _wz, y = wzYield(w.city);
+        const w = _wz, vb = wzVerimBilgi(w.city), y = vb.verim;
         const panelOpts = wzCat('panel').map(p => `<option value="${p.id}" ${w.panelId===p.id?'selected':''}>${esc(p.name)}${p.specs&&p.specs.watt?' ('+p.specs.watt+'W)':''}</option>`).join('');
         const invOpts = ['<option value="">— Otomatik —</option>'].concat(wzCat('inverter').map(i => `<option value="${i.id}" ${w.inverterId===i.id?'selected':''}>${esc(i.name)}${i.specs&&i.specs.kwe?' ('+i.specs.kwe+'kW)':''}</option>`)).join('');
         const batOpts = ['<option value="">— Otomatik —</option>'].concat(wzCat('battery').map(b => `<option value="${b.id}" ${w.batteryId===b.id?'selected':''}>${esc(b.name)}${b.specs&&b.specs.kwh?' ('+b.specs.kwh+'kWh)':''}</option>`)).join('');
         return `
             <h3 class="font-black text-slate-800 mb-1">Sistem Boyutlandırma</h3>
-            <p class="text-xs text-slate-500 mb-4">${esc(w.city)} özgül üretim: <b>${y} kWh/kWp/yıl</b> · Yıllık tüketim: <b>${w.annualCons || 0} kWh</b></p>
+            <p class="text-xs text-slate-500 mb-4">${esc(w.city)} özgül üretim: <b>${y} kWh/kWp/yıl</b><span class="text-slate-400">${VERIM_ETIKET[vb.kaynak] || ''}</span> · Yıllık tüketim: <b>${w.annualCons || 0} kWh</b></p>
+            ${vb.kaynak !== 'ayar' ? '<p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg p-2 mb-3">Bu özgül üretim değeri <b>bölgesel tahmindir</b>, ölçüm değildir. Kesin değer için çatı yönü/eğimi ve gölgelenmeyi içeren bir üretim raporu (PVsyst/PVGIS) gerekir. Yönetici panelinden il için gerçek değer girildiğinde bu uyarı kalkar.</p>' : ''}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Sistem Gücü (kWp)</label><input id="wzKwp" type="number" step="0.1" value="${w.kwp}" oninput="wzKwpLive()" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Panel</label><select id="wzPanel" onchange="wzCaptureStep2();renderWizard()" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${panelOpts}</select></div>
@@ -314,12 +377,21 @@
             <div class="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-600 flex flex-wrap gap-x-6 gap-y-1">
                 <span>Panel adedi: <b id="wzPanelCnt" class="text-slate-800">${wzPanels()}</b> × ${wzPanelWatt()}W</span>
                 <span>Önerilen inverter: <b class="text-slate-800">${(wzBestInv(Number(w.kwp)||0)||{}).name ? esc(wzBestInv(Number(w.kwp)||0).name) : '—'}</b></span>
-                <span>Tahmini yıllık üretim: <b class="text-slate-800">${Math.round((Number(w.kwp)||0)*y)} kWh</b></span>
+                <span>Tahmini yıllık üretim: <b id="wzProd" class="text-slate-800">${Math.round((Number(w.kwp)||0)*y)} kWh</b></span>
             </div>
             <div class="flex justify-between mt-5"><button onclick="wzBack()" class="text-slate-500 font-bold px-4">← Geri</button><button onclick="wzNext()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-lg">Malzeme & Fiyat →</button></div>`;
     }
     window.wzKpwLive = null;
-    window.wzKwpLive = function () { const v = parseFloat(document.getElementById('wzKwp').value) || 0; _wz.kwp = v; const c = document.getElementById('wzPanelCnt'); if (c) c.textContent = wzPanels(); };
+    window.wzKwpLive = function () {
+        const v = parseFloat(document.getElementById('wzKwp').value) || 0;
+        _wz.kwp = v;
+        const c = document.getElementById('wzPanelCnt'); if (c) c.textContent = wzPanels();
+        // Üretim rakamı ESKİDEN güncellenmiyordu: kWp'yi değiştirince panel adedi
+        // oynuyor ama hemen yanındaki "tahmini yıllık üretim" eski değerde
+        // kalıyordu — kullanıcı iki çelişen sayıya bakıyordu.
+        const pr = document.getElementById('wzProd');
+        if (pr) pr.textContent = Math.round(v * wzYield(_wz.city)).toLocaleString('tr-TR') + ' kWh';
+    };
     function wzCaptureStep2() {
         const g = id => document.getElementById(id); if (!g('wzKwp')) return;
         _wz.kwp = parseFloat(g('wzKwp').value) || 0; _wz.panelId = g('wzPanel').value || _wz.panelId;
@@ -398,11 +470,16 @@
         const t = wzTotals(), w = _wz, y = wzYield(w.city);
         const row = {
             company_id: cid, lead_id: w.lead_id || null,
-            quote_no: w.revise_no ? nextRev(w.revise_no) : ('TKF-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(Math.random() * 9000 + 1000)),
+            quote_no: w.revise_no ? nextRev(w.revise_no) : qTeklifNo(),
             customer_name: w.name, customer_phone: w.phone, customer_email: w.email, city: w.city, location: w.location,
             system: { kwp: Number(w.kwp) || 0, kwe: wzKwe(), battery_kwh: Number(w.batteryKwh) || 0, panels: wzPanels(), annual_cons: Number(w.annualCons) || 0, annual_prod: Math.round((Number(w.kwp) || 0) * y) },
             items: t.lines.map(l => ({ name: l.name, brand: l.brand, category: l.category, unit: l.unit, qty: l.qty, cost: l.cost, margin: (l.margin == null ? null : l.margin), sale: Math.round(l.sale * 100) / 100 })),
-            totals: { subtotal_usd: Math.round(t.subtotal * 100) / 100, discount: t.discount, total_usd: Math.round(t.totalUsd * 100) / 100, usd_rate: t.rate, vat_pct: t.vat, total_try: Math.round(t.totalTry), total_try_vat: Math.round(t.totalTryVat) },
+            totals: { subtotal_usd: Math.round(t.subtotal * 100) / 100, discount: t.discount, total_usd: Math.round(t.totalUsd * 100) / 100, usd_rate: t.rate, vat_pct: t.vat, total_try: Math.round(t.totalTry), total_try_vat: Math.round(t.totalTryVat),
+                      // Fizibilite bu iki değerle hesaplandı; teklif sonradan
+                      // açıldığında güncel ayarla yeniden hesaplanıp müşteriye
+                      // gönderilenden farklı çıkmasın diye sabitleniyor.
+                      tariff_tl: Number(_qSettings.tariff_tl) || 0, escalation_pct: Number(_qSettings.yield_increase_pct) || 0,
+                      yield_kwh_kwp: y, yield_source: wzVerimBilgi(w.city).kaynak },
             sections: _qSettings.sections || {}, status: 'draft', updated_at: new Date().toISOString()
         };
         const reviseId = w.reviseFromId || null;
@@ -421,27 +498,110 @@
     // ============================ FAZ 4: MARKALI ÇIKTI + FAZ 5 (liste) ============================
     let _qList = null;
 
+    const QST = { draft: ['Taslak', 'bg-slate-100 text-slate-600'], sent: ['Gönderildi', 'bg-blue-100 text-blue-700'], accepted: ['Kabul', 'bg-emerald-100 text-emerald-700'], rejected: ['Ret', 'bg-red-100 text-red-700'], revised: ['Revize', 'bg-amber-100 text-amber-800'] };
+
     async function renderQuoteList() {
         const box = document.getElementById('quoteView'); if (!box) return;
         box.innerHTML = '<p class="text-slate-400 text-sm py-6">Yükleniyor...</p>';
-        try { const { data } = await supabaseClient.from('firm_quotes').select('*').eq('company_id', qCompanyId()).order('created_at', { ascending: false }); _qList = data || []; }
+        try { const { data, error } = await supabaseClient.from('firm_quotes').select('*').eq('company_id', qCompanyId()).order('created_at', { ascending: false }); if (error) throw error; _qList = data || []; }
         catch (e) { box.innerHTML = `<p class="text-red-500 text-sm">Yüklenemedi: ${esc(e.message || e)}</p>`; return; }
-        if (!_qList.length) { box.innerHTML = '<div class="bg-slate-50 border border-slate-200 rounded-xl p-10 text-center"><div class="text-4xl mb-2">🗂️</div><p class="font-black text-slate-700">Henüz teklif yok</p><p class="text-sm text-slate-500 mt-1">＋ Yeni Teklif ile ilk teklifinizi oluşturun.</p></div>'; return; }
-        const ST = { draft: ['Taslak', 'bg-slate-100 text-slate-600'], sent: ['Gönderildi', 'bg-blue-100 text-blue-700'], accepted: ['Kabul', 'bg-emerald-100 text-emerald-700'], rejected: ['Ret', 'bg-red-100 text-red-700'], revised: ['Revize', 'bg-amber-100 text-amber-800'] };
-        box.innerHTML = _qList.map(q => { const b = ST[q.status] || ST.draft, sys = q.system || {}, tot = q.totals || {}; return `
-            <div class="bg-white border border-slate-200 rounded-xl p-4 mb-2 flex items-center justify-between gap-3 flex-wrap">
+        if (!_qList.length) { box.innerHTML = '<div class="kart bos-durum"><span class="bos-durum-ico">🗂️</span><h4>Henüz teklif yok</h4><p>"＋ Yeni Teklif" ile ilk teklifinizi oluşturun; CRM\'deki bir müşteriden de başlayabilirsiniz.</p><button onclick="quoteView(\'new\')" class="btn-birincil">＋ Yeni Teklif</button></div>'; return; }
+
+        // ÖZET: firma "kaç teklif verdim, ne kadarı kabul oldu" sorusunu
+        // listeyi sayarak cevaplıyordu.
+        const say = { toplam: _qList.length, sent: 0, accepted: 0, draft: 0, kabulTutar: 0, gonderilenTutar: 0 };
+        _qList.forEach(q => {
+            if (say[q.status] !== undefined) say[q.status]++;
+            const tl = Number((q.totals || {}).total_try_vat) || 0;
+            if (q.status === 'accepted') say.kabulTutar += tl;
+            if (q.status === 'sent' || q.status === 'accepted' || q.status === 'rejected') say.gonderilenTutar += tl;
+        });
+        const sonuclanan = say.accepted + _qList.filter(q => q.status === 'rejected').length;
+        const donusum = sonuclanan > 0 ? Math.round(say.accepted / sonuclanan * 100) : null;
+
+        box.innerHTML = `
+            <div class="kart flex items-center gap-4 flex-wrap text-xs mb-4" style="padding:var(--s3) var(--s4)">
+                <span class="font-black text-slate-700">📄 Özet</span>
+                <span class="text-slate-500">Toplam: <strong class="text-slate-800">${say.toplam}</strong></span>
+                <span class="text-slate-500">Taslak: <strong class="text-slate-600">${say.draft}</strong></span>
+                <span class="text-slate-500">Gönderildi: <strong class="text-blue-700">${say.sent}</strong></span>
+                <span class="text-slate-500">Kabul: <strong class="text-emerald-700">${say.accepted}</strong></span>
+                ${donusum !== null ? `<span class="text-slate-500">Dönüşüm: <strong class="text-emerald-700">%${donusum}</strong></span>` : ''}
+                ${say.kabulTutar ? `<span class="ml-auto text-slate-500">Kazanılan iş: <strong class="text-emerald-700">₺${Math.round(say.kabulTutar).toLocaleString('tr-TR')}</strong></span>` : ''}
+            </div>
+            <div class="kart mb-4" style="padding:var(--s3) var(--s4)">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <label class="arama"><input id="qAra" type="search" autocomplete="off" placeholder="Müşteri, teklif no veya il"></label>
+                    <select id="qDurum" class="p-2 rounded-lg text-xs border border-slate-300 bg-white">
+                        <option value="all">Tüm durumlar</option>
+                        ${Object.entries(QST).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join('')}
+                    </select>
+                    <span id="qSayac" class="text-xs font-bold text-slate-400 ml-auto"></span>
+                </div>
+            </div>
+            <div id="qListe"></div>`;
+
+        const ara = document.getElementById('qAra'), durum = document.getElementById('qDurum');
+        let z = null;
+        const tazele = () => qListeBas();
+        if (ara) { ara.addEventListener('input', () => { clearTimeout(z); z = setTimeout(tazele, 180); }); ara.addEventListener('search', tazele); }
+        if (durum) durum.addEventListener('change', tazele);
+        qListeBas();
+    }
+
+    function qListeBas() {
+        const box = document.getElementById('qListe'); if (!box) return;
+        const q = (document.getElementById('qAra')?.value || '').trim().toLocaleLowerCase('tr-TR');
+        const durum = document.getElementById('qDurum')?.value || 'all';
+        const liste = (_qList || []).filter(x => {
+            if (durum !== 'all' && x.status !== durum) return false;
+            if (!q) return true;
+            return [x.customer_name, x.quote_no, x.city, x.customer_phone, x.customer_email]
+                .some(v => String(v || '').toLocaleLowerCase('tr-TR').includes(q));
+        });
+        const sayac = document.getElementById('qSayac');
+        if (sayac) sayac.textContent = liste.length === (_qList || []).length ? `${liste.length} teklif` : `${liste.length} / ${(_qList || []).length}`;
+
+        if (!liste.length) {
+            box.innerHTML = '<div class="kart bos-durum"><span class="bos-durum-ico">🔍</span><h4>Eşleşen teklif yok</h4><p>Arama veya durum filtresine uyan kayıt bulunamadı.</p></div>';
+            return;
+        }
+        box.innerHTML = liste.map(x => { const b = QST[x.status] || QST.draft, sys = x.system || {}, tot = x.totals || {}; return `
+            <div class="kart p-4 mb-2 flex items-center justify-between gap-3 flex-wrap">
                 <div class="min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap"><span class="font-black text-slate-800">${esc(q.customer_name || '—')}</span><span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">${esc(q.quote_no || '')}</span><span class="text-[10px] font-black px-2 py-0.5 rounded-full ${b[1]}">${b[0]}</span></div>
-                    <div class="text-[11px] text-slate-400 mt-0.5">${esc(q.city || '')} · ${sys.kwp || 0} kWp${sys.battery_kwh ? ' + ' + sys.battery_kwh + ' kWh' : ''} · ₺${(tot.total_try_vat || 0).toLocaleString('tr-TR')} KDV dahil · ${new Date(q.created_at).toLocaleDateString('tr-TR')}</div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-black text-slate-800">${esc(x.customer_name || '—')}</span>
+                        <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-mono">${esc(x.quote_no || '')}</span>
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${b[1]}">${b[0]}</span>
+                        ${x.share_token ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800" title="Bu teklifin herkese açık bağlantısı var">🔗 paylaşımda</span>' : ''}
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">${esc(x.city || '')} · ${sys.kwp || 0} kWp${sys.battery_kwh ? ' + ' + sys.battery_kwh + ' kWh' : ''} · ₺${(tot.total_try_vat || 0).toLocaleString('tr-TR')} KDV dahil · ${new Date(x.created_at).toLocaleDateString('tr-TR')}</div>
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
-                    <select onchange="quoteSetStatus('${q.id}', this.value)" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">${Object.entries(ST).map(([k, v]) => `<option value="${k}" ${q.status === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
-                    <button onclick="quoteOpenById('${q.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-sm">Aç / Yazdır</button>
+                    <select onchange="quoteSetStatus('${x.id}', this.value)" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">${Object.entries(QST).map(([k, v]) => `<option value="${k}" ${x.status === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
+                    <button onclick="quoteOpenById('${x.id}')" class="btn-birincil" style="background:#4f46e5">Aç / Yazdır</button>
                 </div>
             </div>`; }).join('');
     }
+
     window.quoteOpenById = function (id) { const q = (_qList || []).find(x => String(x.id) === String(id)); if (q) quoteOpenPreview(q); };
-    window.quoteSetStatus = async function (id, status) { try { await supabaseClient.from('firm_quotes').update({ status, updated_at: new Date().toISOString() }).eq('id', id); const q = (_qList || []).find(x => String(x.id) === String(id)); if (q) q.status = status; } catch (e) { alert('Güncellenemedi: ' + (e.message || e)); } };
+    window.quoteSetStatus = async function (id, status) {
+        const q = (_qList || []).find(x => String(x.id) === String(id));
+        const onceki = q ? q.status : null;
+        if (q) q.status = status;
+        try {
+            const { error } = await supabaseClient.from('firm_quotes').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
+            if (error) throw error;
+            // Özet kutusu ESKİDEN güncellenmiyordu: durumu "Kabul" yapıyorsunuz,
+            // üstteki dönüşüm oranı ve kazanılan iş eski değerde kalıyordu.
+            renderQuoteList();
+            if (typeof window.epcBildir === 'function') window.epcBildir('Teklif durumu güncellendi.');
+        } catch (e) {
+            if (q) q.status = onceki;     // geri al
+            qListeBas();
+            alert('Güncellenemedi: ' + (e.message || e));
+        }
+    };
 
     window.quoteOpenPreview = function (q) {
         _qPreview = q;
@@ -451,7 +611,7 @@
         box.innerHTML = `
             <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <button onclick="quoteView('list')" class="text-slate-500 hover:text-indigo-600 font-bold">← Tekliflere Dön</button>
-                <div class="flex gap-2 flex-wrap items-center"><span class="text-xs text-slate-400 self-center">${esc(q.quote_no || '')}</span><button onclick="quoteRevise(_qPreview)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-4 py-2 rounded-lg text-sm">✎ Revize</button><button onclick="quoteShare(_qPreview)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-lg text-sm">🔗 Paylaş</button><button onclick="quotePrint()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-lg text-sm">🖨️ Yazdır / PDF</button></div>
+                <div class="flex gap-2 flex-wrap items-center"><span class="text-xs text-slate-400 self-center">${esc(q.quote_no || '')}</span><button onclick="quoteRevise(_qPreview)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-4 py-2 rounded-lg text-sm">✎ Revize</button><button onclick="quoteShare(_qPreview)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-lg text-sm">🔗 Paylaş</button>${q.share_token ? `<button onclick="quoteShareKapat(_qPreview)" class="bg-red-50 hover:bg-red-100 text-red-700 font-bold px-4 py-2 rounded-lg text-sm" title="Herkese açık bağlantıyı geçersiz kıl">🔒 Paylaşımı Kapat</button>` : ''}<button onclick="quotePrint()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-lg text-sm">🖨️ Yazdır / PDF</button></div>
             </div>
             <iframe id="quoteFrame" class="w-full bg-white border border-slate-200 rounded-lg shadow" style="height:78vh"></iframe>`;
         const f = document.getElementById('quoteFrame'); if (f) f.srcdoc = html;
@@ -467,12 +627,39 @@
         const e2 = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const lines = t => e2(t).split(/\r?\n/).filter(x => x.trim());
         const today = new Date().toLocaleDateString('tr-TR'), valid = s.validity_days || 7;
-        const curve = [0.045, 0.055, 0.075, 0.095, 0.11, 0.115, 0.12, 0.11, 0.095, 0.075, 0.05, 0.04];
+        // AYLIK DAĞILIM. Ham değerlerin toplamı 0,985 idi: tabloya basılan 12 ayın
+        // toplamı, hemen altında yazan yıllık üretimin %98,5'i çıkıyordu. Müşteri
+        // ayları toplayınca tutmuyordu. Artık 1,0'a normalize ediliyor.
+        // NOT: bu eğri Türkiye için TİPİK bir mevsim profilidir, ile göre
+        // değişmez; çıktıda da böyle etiketleniyor.
+        const _ham = [0.045, 0.055, 0.075, 0.095, 0.11, 0.115, 0.12, 0.11, 0.095, 0.075, 0.05, 0.04];
+        const _hamTop = _ham.reduce((a, b) => a + b, 0);
+        const curve = _ham.map(x => x / _hamTop);
         const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
         const annualProd = Number(sys.annual_prod) || 0, annualCons = Number(sys.annual_cons) || 0;
-        const tariff = Number(s.tariff_tl) || 3.5, annualSaving = Math.round(annualProd * tariff);
-        const totalTryVat = Number(tot.total_try_vat) || 0, paybackY = annualSaving > 0 ? totalTryVat / annualSaving : 0;
-        const paybackTxt = annualSaving > 0 ? Math.floor(paybackY) + ' yıl ' + Math.round((paybackY % 1) * 12) + ' ay' : '—';
+        // Teklif KAYDEDİLDİĞİ ANDAKİ tarife ve zam oranı satırda saklanıyor.
+        // Saklanmasaydı eski bir teklif bugün açıldığında güncel ayarlarla
+        // yeniden hesaplanır, müşteriye gönderilen rakamdan farklı çıkardı.
+        const tariff = Number(tot.tariff_tl) || Number(s.tariff_tl) || 3.5;
+        const zamPct = (tot.escalation_pct != null ? Number(tot.escalation_pct) : Number(s.yield_increase_pct));
+        const annualSaving = Math.round(annualProd * tariff);
+        const totalTryVat = Number(tot.total_try_vat) || 0;
+
+        // GERİ ÖDEME: eskiden düz bölme yapılıyordu (bedel ÷ yıllık tasarruf) —
+        // yani enflasyon da panel yıpranması da yok sayılıyordu. Sitenin
+        // hesaplayıcıları epcPayback() ile ikisini de modelliyor; aynı sistem
+        // için teklif ile site farklı süre söylüyordu. Artık ikisi aynı motor.
+        let paybackTxt = '—';
+        if (annualSaving > 0 && totalTryVat > 0) {
+            let py = null;
+            if (typeof window.epcPayback === 'function') {
+                const r = window.epcPayback({ yatirim: totalTryVat, yillikUretim: annualProd,
+                    birimFiyat: tariff, zamOrani: (isFinite(zamPct) ? zamPct / 100 : undefined), yil: 25 });
+                py = r && r.yil;
+            }
+            if (py == null) py = totalTryVat / annualSaving;      // motor yoksa düz oran
+            paybackTxt = Math.floor(py) + ' yıl ' + Math.round((py % 1) * 12) + ' ay';
+        }
         const pay = (s.payment_plan || []).map(p => `<tr><td>${e2(p.label)}</td><td class="r">%${p.pct}</td><td class="r">₺${fmt(totalTryVat * (Number(p.pct) || 0) / 100)}</td></tr>`).join('');
         const war = (s.warranty || []).map(w => `<tr><td>${e2(w.component)}</td><td>${e2(w.product)}</td><td>${e2(w.performance)}</td><td>${e2(w.life)}</td></tr>`).join('');
         const sig = (s.signatures || []).map(x => `<div style="text-align:center;min-width:170px"><div style="border-top:1px solid #94a3b8;width:150px;margin:36px auto 6px"></div><div style="font-weight:bold">${e2(x.name)}</div><div style="font-size:10px;color:#64748b">${e2(x.title)}</div></div>`).join('');
@@ -490,8 +677,8 @@
         </style></head><body>
         ${on('cover') ? `<div class="band"><div><div style="font-size:11px;letter-spacing:1px;opacity:.85;font-weight:bold">ANAHTAR TESLİM GÜNEŞ ENERJİSİ SİSTEMİ TEKLİFİ</div><h1>${e2(q.customer_name || '')}</h1><div style="opacity:.92">${e2(q.city || '')}${q.location ? ' · ' + e2(q.location) : ''} · ${sys.kwp || 0} kWp${sys.battery_kwh ? ' + ' + sys.battery_kwh + ' kWh Batarya' : ''}</div></div><div style="text-align:right">${s.logo_data ? `<img class="logo" src="${s.logo_data}"><br>` : ''}<div style="font-size:11px;margin-top:8px;opacity:.92">Teklif No: ${e2(q.quote_no || '')}<br>Tarih: ${today}<br>Geçerlilik: ${valid} gün</div></div></div>` : ''}
         ${on('system') ? `<div class="section"><h2>Sistem Özeti</h2><table><tr><th>Kurulu Güç (DC)</th><td>${sys.kwp || 0} kWp</td><th>İnverter (AC)</th><td>${sys.kwe || 0} kW</td></tr><tr><th>Panel Adedi</th><td>${sys.panels || 0}</td><th>Batarya</th><td>${sys.battery_kwh ? sys.battery_kwh + ' kWh' : '—'}</td></tr><tr><th>Konum</th><td>${e2(q.city || '')}</td><th>Yıllık Üretim (öngörü)</th><td>${fmt(annualProd)} kWh</td></tr></table></div>` : ''}
-        ${on('production') ? `<div class="section"><h2>Aylık Üretim Öngörüsü</h2><table><tr><th>Ay</th>${months.map(m => `<th class="r">${m}</th>`).join('')}</tr><tr><td>Üretim (kWh)</td>${curve.map(c => `<td class="r">${fmt(annualProd * c)}</td>`).join('')}</tr></table><div class="muted" style="font-size:10px">Toplam yıllık öngörü: ${fmt(annualProd)} kWh · Yıllık tüketim: ${fmt(annualCons)} kWh</div></div>` : ''}
-        ${on('feasibility') ? `<div class="section"><h2>Fizibilite & Geri Ödeme</h2><div class="grid2"><div class="pricebox"><div style="font-size:19px;font-weight:bold">₺${fmt(annualSaving)}</div><div style="font-size:11px;opacity:.9">İlk yıl tahmini tasarruf</div></div><div class="pricebox"><div style="font-size:19px;font-weight:bold">${paybackTxt}</div><div style="font-size:11px;opacity:.9">Tahmini geri ödeme süresi</div></div></div><div class="muted" style="font-size:10px">Elektrik birim fiyatı ${tariff} TL/kWh baz alınmıştır; yıllık ~%${s.yield_increase_pct || 20} zam ile süre kısalır. Göstergedir.</div></div>` : ''}
+        ${on('production') ? `<div class="section"><h2>Aylık Üretim Öngörüsü</h2><table><tr><th>Ay</th>${months.map(m => `<th class="r">${m}</th>`).join('')}</tr><tr><td>Üretim (kWh)</td>${curve.map(c => `<td class="r">${fmt(annualProd * c)}</td>`).join('')}</tr></table><div class="muted" style="font-size:10px">Toplam yıllık öngörü: ${fmt(annualProd)} kWh · Yıllık tüketim: ${fmt(annualCons)} kWh<br>Aylık dağılım Türkiye için tipik mevsim profiline göredir; ile ve çatı yönüne göre değişir.</div></div>` : ''}
+        ${on('feasibility') ? `<div class="section"><h2>Fizibilite & Geri Ödeme</h2><div class="grid2"><div class="pricebox"><div style="font-size:19px;font-weight:bold">₺${fmt(annualSaving)}</div><div style="font-size:11px;opacity:.9">İlk yıl tahmini tasarruf</div></div><div class="pricebox"><div style="font-size:19px;font-weight:bold">${paybackTxt}</div><div style="font-size:11px;opacity:.9">Tahmini geri ödeme süresi</div></div></div><div class="muted" style="font-size:10px">Varsayımlar: elektrik birim fiyatı <b>${tariff} TL/kWh</b>, yıllık <b>%${isFinite(zamPct) ? zamPct : 20}</b> zam, panel yıpranması dahil, 25 yıllık nakit akışı. Üretimin tamamının şebekeden çekilen elektriği ikame ettiği kabul edilmiştir; fazla üretimin şebekeye satışı farklı fiyatlanır. Bu bir öngörüdür, taahhüt değildir.</div></div>` : ''}
         ${on('price') ? `<div class="section"><h2>Yatırım Bedeli & Ödeme</h2><div class="pricebox"><div style="font-size:12px;opacity:.85">Anahtar Teslim Bedel (KDV hariç)</div><div style="font-size:25px;font-weight:bold">$${fmt(tot.total_usd)} <span style="font-size:15px;opacity:.85">≈ ₺${fmt(tot.total_try)}</span></div><div style="font-size:11px;opacity:.9;margin-top:4px">KDV Dahil: ₺${fmt(tot.total_try_vat)} · Kur: ${tot.usd_rate}</div></div>${pay ? `<table><tr><th>Ödeme Dilimi</th><th class="r">Oran</th><th class="r">Tutar (KDV dahil)</th></tr>${pay}</table>` : ''}</div>` : ''}
         ${on('bom') ? `<div class="section"><h2>Malzeme Listesi</h2><table><tr><th>Kalem</th><th>Marka</th><th class="r">Miktar</th></tr>${items.filter(it => it.unit !== 'percent').map(it => `<tr><td>${e2(it.name)}</td><td>${e2(it.brand || '')}</td><td class="r">${it.qty} ${it.unit === 'adet' ? 'adet' : it.unit}</td></tr>`).join('')}</table></div>` : ''}
         ${on('scope') ? `<div class="section"><h2>Kapsam</h2><div class="grid2"><div><b style="color:#059669">✓ Dahil</b><ul>${lines(s.scope_included).map(x => `<li>${x}</li>`).join('') || '<li class="muted">—</li>'}</ul></div><div><b style="color:#dc2626">✕ Hariç</b><ul>${lines(s.scope_excluded).map(x => `<li>${x}</li>`).join('') || '<li class="muted">—</li>'}</ul></div></div></div>` : ''}
@@ -506,7 +693,7 @@
     // ============================ FAZ 5: REVİZYON + PAYLAŞIM ============================
     let _qPreview = null;
 
-    function nextRev(no) { if (!no) return 'TKF-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(Math.random() * 9000 + 1000); const m = no.match(/-R(\d+)$/); return m ? no.replace(/-R\d+$/, '-R' + (parseInt(m[1]) + 1)) : (no + '-R2'); }
+    function nextRev(no) { if (!no) return qTeklifNo(); const m = no.match(/-R(\d+)$/); return m ? no.replace(/-R\d+$/, '-R' + (parseInt(m[1]) + 1)) : (no + '-R2'); }
 
     window.quoteRevise = function (q) {
         if (!q) return;
@@ -526,12 +713,27 @@
         if (!q || !supabaseClient) return;
         let token = q.share_token;
         if (!token) {
-            token = 't' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2, 8);
+            token = 't' + qRastgele(24);        // ~62^24 — denenerek bulunamaz
             try { const { error } = await supabaseClient.from('firm_quotes').update({ share_token: token, updated_at: new Date().toISOString() }).eq('id', q.id); if (error) throw error; q.share_token = token; } catch (e) { alert('Paylaşım linki oluşturulamadı: ' + (e.message || e)); return; }
         }
         const url = location.origin + location.pathname + '#q=' + token;
         try { await navigator.clipboard.writeText(url); } catch (e) {}
-        window.prompt('Paylaşılabilir teklif linki (panoya kopyalandı). Müşteri giriş yapmadan görüntüler:', url);
+        window.prompt('Paylaşılabilir teklif bağlantısı (panoya kopyalandı).\n\nBu bağlantıyı bilen HERKES teklifi giriş yapmadan görür: müşteri adı, telefon, e-posta ve fiyat dahil. İşi bitince "🔗 Paylaşımı Kapat" ile iptal edin.', url);
+        if (typeof renderQuoteList === 'function' && document.getElementById('qListe')) renderQuoteList();
+    };
+
+    // Paylaşımı geri alma YOKTU: bir kez paylaşılan teklif sonsuza kadar
+    // herkese açık kalıyordu. Jetonu silmek bağlantıyı anında geçersiz kılar.
+    window.quoteShareKapat = async function (q) {
+        if (!q || !q.share_token) return;
+        if (!confirm('Paylaşım bağlantısı iptal edilsin mi?\n\nDaha önce gönderdiğiniz bağlantı çalışmayı durdurur. Gerekirse yeniden paylaşabilirsiniz.')) return;
+        try {
+            const { error } = await supabaseClient.from('firm_quotes').update({ share_token: null, updated_at: new Date().toISOString() }).eq('id', q.id);
+            if (error) throw error;
+            q.share_token = null;
+            if (typeof window.epcBildir === 'function') window.epcBildir('Paylaşım bağlantısı iptal edildi.');
+            quoteOpenPreview(q);
+        } catch (e) { alert('İptal edilemedi: ' + (e.message || e)); }
     };
 
     // -------- PUBLIC SALT-OKUNUR TEKLİF

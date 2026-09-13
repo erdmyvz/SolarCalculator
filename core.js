@@ -208,6 +208,64 @@ window.epcPriceLabel = function (rol) { return '$' + window.epcPrice(rol).usd; }
 // ~%25'lik fark bulutluluktan geliyor ve enlemden türetilemiyor. Uydurma sayı
 // yerine yapı kuruldu: admin panelinden GEPA/PVGIS'ten okunan gerçek değer
 // girilene kadar her şehir ulusal ortalamaya (solarYield) düşer.
+// --- İL BAZLI ÖZGÜL ÜRETİM — TEK KAYNAK -------------------------------------
+// ⚠️ BU TABLO BÖLGESEL TAHMİNDİR, ÖLÇÜM DEĞİLDİR.
+// Değerler quote.js içinde sabit kodlanmış hâlde duruyordu; kaynağı belli
+// değil ve hesaplayıcıların kullandığı değerle çelişiyordu (İstanbul: teklifte
+// 1450, sitede 1500 — aynı müşteriye iki farklı üretim rakamı). Tek yere
+// taşındı ki en azından TEK bir cevap olsun.
+//
+// SIRALAMA: admin ayarı (app_settings.solarYield_<il>) > bu tablo > ulusal
+// ortalama. Admin bir il için gerçek değeri (GEPA / PVGIS / ölçüm) girdiğinde
+// tahmin devre dışı kalır ve arayüz bunu "ayar" olarak etiketler.
+//
+// YAPILACAK: bu 81 değer resmi bir kaynakla (GEPA, PVGIS) değiştirilmeli.
+// O zamana kadar arayüz bunları "tahmin" diye işaretliyor; kesin bilgi gibi
+// gösterilmiyor.
+const EPC_IL_VERIM = {
+    'Adana':1650, 'Adıyaman':1620, 'Afyonkarahisar':1560, 'Aksaray':1600,
+    'Amasya':1450, 'Ankara':1560, 'Antalya':1680, 'Ardahan':1480,
+    'Artvin':1350, 'Aydın':1620, 'Ağrı':1520, 'Balıkesir':1500,
+    'Bartın':1300, 'Batman':1640, 'Bayburt':1450, 'Bilecik':1480,
+    'Bingöl':1520, 'Bitlis':1540, 'Bolu':1350, 'Burdur':1600,
+    'Bursa':1480, 'Denizli':1600, 'Diyarbakır':1650, 'Düzce':1320,
+    'Edirne':1480, 'Elazığ':1560, 'Erzincan':1520, 'Erzurum':1520,
+    'Eskişehir':1540, 'Gaziantep':1640, 'Giresun':1300, 'Gümüşhane':1420,
+    'Hakkari':1560, 'Hatay':1620, 'Isparta':1600, 'Iğdır':1560,
+    'İstanbul':1450, 'İzmir':1600, 'Kahramanmaraş':1620, 'Karabük':1350,
+    'Karaman':1620, 'Kars':1500, 'Kastamonu':1330, 'Kayseri':1580,
+    'Kilis':1650, 'Kocaeli':1420, 'Konya':1620, 'Kütahya':1520,
+    'Kırklareli':1460, 'Kırıkkale':1540, 'Kırşehir':1560, 'Malatya':1560,
+    'Manisa':1580, 'Mardin':1680, 'Mersin':1660, 'Muğla':1620,
+    'Muş':1520, 'Nevşehir':1580, 'Niğde':1600, 'Ordu':1300,
+    'Osmaniye':1630, 'Rize':1250, 'Sakarya':1400, 'Samsun':1350,
+    'Siirt':1640, 'Sinop':1320, 'Sivas':1520, 'Tekirdağ':1470,
+    'Tokat':1440, 'Trabzon':1300, 'Tunceli':1520, 'Uşak':1560,
+    'Van':1560, 'Yalova':1440, 'Yozgat':1520, 'Zonguldak':1300,
+    'Çanakkale':1500, 'Çankırı':1480, 'Çorum':1460, 'Şanlıurfa':1700,
+    'Şırnak':1660
+};
+window.EPC_IL_VERIM = EPC_IL_VERIM;
+
+// İl adını ayar anahtarına çevirir. Türkçe küçültme şart: 'İstanbul' →
+// toLowerCase() ile 'i̇stanbul' (noktalı i) olur, ayar anahtarı tutmaz.
+window.epcIlAnahtar = function (ilAdi) {
+    return String(ilAdi || '').toLocaleLowerCase('tr-TR').replace(/\s+/g, '');
+};
+
+// Bir ilin özgül üretimi + değerin NEREDEN geldiği.
+// kaynak: 'ayar' (admin girdi) | 'tahmin' (bölgesel tablo) | 'ulusal' (ortalama)
+window.epcIlVerim = function (ilAdi) {
+    const s = window.EPC_SETTINGS || {};
+    const anahtar = window.epcIlAnahtar(ilAdi);
+    const ayar = Number(s['solarYield_' + anahtar]);
+    if (ayar > 0) return { verim: ayar, kaynak: 'ayar' };
+    const tahmin = Number(EPC_IL_VERIM[ilAdi]);
+    if (tahmin > 0) return { verim: tahmin, kaynak: 'tahmin' };
+    const ulusal = Number(s.solarYield) > 0 ? Number(s.solarYield) : 1500;
+    return { verim: ulusal, kaynak: 'ulusal' };
+};
+
 const EPC_CITIES = [
     { ad: 'Antalya',  key: 'antalya'  }, { ad: 'Adana',    key: 'adana'    },
     { ad: 'İzmir',    key: 'izmir'    }, { ad: 'Konya',    key: 'konya'    },
@@ -217,13 +275,18 @@ const EPC_CITIES = [
 ];
 window.EPC_CITIES = EPC_CITIES;
 
-// Şehrin yıllık özgül üretimi. Ayar yoksa ulusal ortalama.
+// Şehrin yıllık özgül üretimi — EPC_CITIES anahtarıyla (örn. 'istanbul').
+// epcIlVerim ile AYNI kaynağa bakar: eskiden hesaplayıcı ayar yoksa doğrudan
+// ulusal ortalamaya düşüyor, teklif motoru ise kendi tablosunu kullanıyordu;
+// aynı şehir için iki farklı sayı çıkıyordu.
 window.epcCityYield = function (sehirKey) {
     const s = window.EPC_SETTINGS || {};
-    const ulusal = Number(s.solarYield) > 0 ? Number(s.solarYield) : 1500;
-    if (!sehirKey) return { verim: ulusal, kaynak: 'ulusal' };
-    const v = Number(s['solarYield_' + sehirKey]);
-    return v > 0 ? { verim: v, kaynak: 'sehir' } : { verim: ulusal, kaynak: 'ulusal' };
+    if (!sehirKey) {
+        const ulusal = Number(s.solarYield) > 0 ? Number(s.solarYield) : 1500;
+        return { verim: ulusal, kaynak: 'ulusal' };
+    }
+    const il = (window.EPC_CITIES || []).find(c => c.key === sehirKey);
+    return window.epcIlVerim(il ? il.ad : sehirKey);
 };
 
 // Zam ve panel yıpranmasını modelleyen geri ödeme. amortization.js'teki
