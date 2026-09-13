@@ -1342,10 +1342,12 @@ const SETTINGS_SCHEMA = [
     { key: 'usdTry',            label: 'USD/TRY kuru (₺)',                cat: 'Fatura Analizi', step: '0.5', def: 42 },
     { key: 'usdPerKwp',         label: 'Panel + inverter ($/kWp)',        cat: 'Fatura Analizi', step: '50',  def: 1000 },
     { key: 'batteryUsdPerKwh',  label: 'Batarya ($/kWh)',                 cat: 'Fatura Analizi', step: '25',  def: 300 },
-    { key: 'tariffMesken',      label: 'Mesken tarifesi (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 2.5 },
-    { key: 'tariffTicarethane', label: 'Ticarethane tarifesi (TL/kWh)',   cat: 'Fatura Analizi', step: '0.1', def: 3.5 },
-    { key: 'tariffSanayi',      label: 'Sanayi tarifesi (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 3.0 },
-    { key: 'tariffTarimsal',    label: 'Tarımsal tarife (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 2.2 },
+    { key: 'tariffMesken',      label: 'Mesken tarifesi (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 3.21 },
+    { key: 'tariffTicarethane', label: 'Ticarethane tarifesi (TL/kWh)',   cat: 'Fatura Analizi', step: '0.1', def: 6.42 },
+    { key: 'tariffSanayi',      label: 'Sanayi tarifesi (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 5.26 },
+    { key: 'tariffTarimsal',    label: 'Tarımsal tarife (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 2.40 },
+    // Tarifeler doğrulanana kadar 0 kalır; 1 yapıldığında uyarı kalkar.
+    { key: 'tariffDogrulandi',  label: 'Tarifeleri faturadan teyit ettim (1 = evet)', cat: 'Fatura Analizi', step: '1', def: 0 },
     { key: 'maint_clean_months',   label: 'Panel temizliği periyodu (ay)',  cat: 'Bakım Hatırlatma', step: '1', def: 6 },
     { key: 'maint_service_months', label: 'Yıllık bakım periyodu (ay)',      cat: 'Bakım Hatırlatma', step: '1', def: 12 }
 ];
@@ -1379,8 +1381,30 @@ async function renderSettingsAdmin() {
     _settingsVals = {};
     (data || []).forEach(r => { _settingsVals[r.key] = Number(r.value); });
 
+    // TARİFE UYARISI — "şimdilik herhangi bir değer olsun, sonra düzeltirim"
+    // denen değerler sessizce yayına gitmesin diye. tariffDogrulandi 1
+    // yapılana kadar bu şerit duruyor.
+    const _tarifeTeyit = Number(_settingsVals.tariffDogrulandi) === 1;
+    const tarifeUyari = _tarifeTeyit ? '' : `
+        <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 mb-5">
+            <p class="font-black text-amber-900 text-sm mb-1">⚠️ Elektrik tarifeleri henüz doğrulanmadı</p>
+            <p class="text-xs text-amber-800 leading-relaxed">
+                Aşağıdaki tarife değerleri <b>geçici</b>: Nisan 2026 EPDK tarifesi olarak bildirilen
+                rakamlar, ancak ulaşılabilen kaynaklar birbiriyle çelişiyordu ve teyit edilemedi.
+                Bu değerler <b>faturadan kWh türetiyor ve tasarrufu paraya çeviriyor</b> — yani
+                hesaplayıcıların, fatura analizinin ve teklif fizibilitesinin altında duruyorlar.
+            </p>
+            <p class="text-xs text-amber-800 leading-relaxed mt-2">
+                <b>Girilecek rakam:</b> müşterinin kWh başına <b>fiilen ödediği</b> tutar —
+                dağıtım bedeli, BTV, enerji fonu ve KDV <b>dahil</b>. Kendi elektrik faturanızdan
+                <i>toplam tutar ÷ tüketilen kWh</i> ile bulabilirsiniz.
+                Düzelttikten sonra <b>"Tarifeleri faturadan teyit ettim"</b> alanına <b>1</b> yazıp
+                kaydedin; bu uyarı kalkar.
+            </p>
+        </div>`;
+
     const cats = [...new Set(SETTINGS_SCHEMA.map(s => s.cat))];
-    box.innerHTML = cats.map(cat => `
+    box.innerHTML = tarifeUyari + cats.map(cat => `
         <div class="mb-4">
             <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">${cat}</div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1811,6 +1835,15 @@ async function renderActionQueue() {
             if (hot.length) rows.push(['🔥', 'Sıcak potansiyel müşteri', hot.length, 'ops', 'bg-red-100 text-red-700']);
         }
     } catch (e) { basarisiz.push('potansiyel müşteriler'); }
+
+    // 5) Doğrulanmamış tarife — kuyruğa düşsün ki admin panele girer girmez görsün.
+    //    "Sonra düzeltirim" denen ayar, düzeltilene kadar burada durur.
+    try {
+        const s = window.EPC_SETTINGS || {};
+        if (Number(s.tariffDogrulandi) !== 1) {
+            rows.push(['⚡', 'Elektrik tarifeleri doğrulanmadı (tüm hesapları etkiler)', 1, 'settings', 'bg-amber-100 text-amber-800']);
+        }
+    } catch (e) {}
 
     // sekme rozetleri — aynı sayılardan beslenir, ek sorgu yok
     const byTab = {};

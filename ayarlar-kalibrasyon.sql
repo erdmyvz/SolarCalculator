@@ -29,29 +29,44 @@ where not exists (select 1 from public.app_settings where key = 'usdTry');
 --  (Nüfus ağırlıklı değil, düz ortalama — yedek değer olduğu için yeterli.)
 update public.app_settings set value = '1406' where key = 'solarYield';
 
+-- ------------------------------------------------------- 3) TARİFELER (GEÇİCİ)
+--  ⚠️ BU DÖRT DEĞER DOĞRULANMADI.
+--  Ulaşabildiğim kaynaklar birbiriyle çelişiyordu: aynı tarih için mesken
+--  kademesini bir site 2,92/4,32 TL, bir diğeri 2,59/3,92 diyordu; ticarethane
+--  için 6,42 ve 4,78 gibi iki ayrı rakam çıktı. EPDK kendi tablolarını
+--  etkileşimli bir bileşenin arkasında tutuyor ve son tarife değişikliğini
+--  4 Nisan 2026 olarak gösteriyor.
+--
+--  Aşağıdakiler, EPDK'nın "son değişiklik 4 Nisan 2026" bilgisiyle örtüşen
+--  kaynaktan alınan rakamlar. "Şimdilik bir değer olsun" talebiniz üzerine
+--  giriliyor — KESİN DEĞİL.
+--
+--  tariffDogrulandi = 0 olduğu sürece:
+--    · Yönetici panelindeki Ayarlar sekmesinde kalın sarı bir uyarı durur
+--    · Genel Bakış'taki Aksiyon Kuyruğu'na "tarifeler doğrulanmadı" satırı düşer
+--  Böylece düzeltmeyi unutmak zor. Faturadan teyit edip alanı 1 yapınca ikisi
+--  de kalkar.
+--
+--  GİRİLECEK RAKAM: müşterinin kWh başına FİİLEN ÖDEDİĞİ tutar — dağıtım
+--  bedeli, BTV, enerji fonu ve KDV DAHİL. Kendi faturanızdan
+--  "toplam tutar ÷ tüketilen kWh" ile bulabilirsiniz. Vergiler hariç enerji
+--  bedeli girilirse hem fatura→kWh çevrimi hem tasarruf hesabı yanlış çıkar.
+update public.app_settings set value = '3.21' where key = 'tariffMesken';
+update public.app_settings set value = '6.42' where key = 'tariffTicarethane';
+update public.app_settings set value = '5.26' where key = 'tariffSanayi';
+update public.app_settings set value = '2.40' where key = 'tariffTarimsal';
+
+insert into public.app_settings (key, value, label, category)
+select 'tariffDogrulandi', '0', 'Tarifeleri faturadan teyit ettim (1 = evet)', 'Fatura Analizi'
+where not exists (select 1 from public.app_settings where key = 'tariffDogrulandi');
+
 -- ---------------------------------------------------------------------------
 --  ⚠️ BİLEREK DEĞİŞTİRİLMEYENLER
 --
---  tariffMesken / tariffTicarethane / tariffSanayi / tariffTarimsal
---    Ulaşabildiğim kaynaklar BİRBİRİYLE ÇELİŞİYOR. Aynı tarih için bir site
---    mesken kademe 2,92/4,32 TL derken bir diğeri 2,59/3,92 diyor; ticarethane
---    için 6,42 ve 4,78 gibi iki ayrı rakam çıkıyor. EPDK'nın kendi sayfası
---    tabloları etkileşimli bir bileşenin arkasında tutuyor ve son tarife
---    değişikliğini 4 Nisan 2026 olarak gösteriyor.
---    Çelişen blog rakamlarından birini seçip platformun TEK KAYNAĞINA yazmak,
---    tam da kaçındığımız şey olurdu. Bu değerler faturadan kWh türetiyor ve
---    tasarrufu paraya çeviriyor — yani her hesabın altında duruyorlar.
---    Doğru rakamı bilen sizsiniz; yönetici panelinden girin.
---
---    DİKKAT — HANGİ RAKAM: platformun istediği, müşterinin kWh başına FİİLEN
---    ÖDEDİĞİ tutar (dağıtım bedeli, BTV, enerji fonu ve KDV DAHİL). Çünkü
---    · fatura ÷ bu değer = tüketilen kWh
---    · üretim × bu değer = kazanılan para
---    "Vergiler hariç enerji bedeli" girilirse iki hesap da yanlış çıkar.
---
 --  usdPerKwp (panel + inverter $/kWp) ve batteryUsdPerKwh
 --    Piyasa fiyatı. Sizin tedarikçi tekliflerinizden geliyor; dışarıdan
---    doğrulayamam.
+--    doğrulayamam. Kurulum bedelinin TL karşılığı usdPerKwp × usdTry ile
+--    hesaplandığı için bu rakam geri ödeme süresini doğrudan belirliyor.
 --
 --  pricePerKwp (30.000 TL/kWp)
 --    ARTIK KULLANILMIYOR. Tek okuyucusu ziyaretçi ana sayfasındaki hızlı
@@ -62,4 +77,10 @@ update public.app_settings set value = '1406' where key = 'solarYield';
 
 -- KONTROL
 --   select key, value from public.app_settings
---    where key in ('usdTry','solarYield','tariffMesken','usdPerKwp') order by key;
+--    where key in ('usdTry','solarYield','tariffMesken','tariffTicarethane',
+--                  'tariffSanayi','tariffTarimsal','tariffDogrulandi','usdPerKwp')
+--    order by key;
+--
+--   Beklenen: usdTry 48.43 · solarYield 1406 · tariffDogrulandi 0
+--             tariffMesken 3.21 · tariffTicarethane 6.42
+--             tariffSanayi 5.26 · tariffTarimsal 2.40

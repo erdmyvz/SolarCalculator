@@ -20,10 +20,14 @@ window.EPC_SETTINGS = {
     usdTry: 48.43,         // TCMB 11.09.2026 — ayar okunamazsa diye; asıl değer app_settings'te
     usdPerKwp: 1000,
     batteryUsdPerKwh: 300,
-    tariffMesken: 2.5,
-    tariffTicarethane: 3.5,
-    tariffSanayi: 3.0,
-    tariffTarimsal: 2.2
+    // ⚠️ TARİFELER GEÇİCİ. Nisan 2026 EPDK tarifesi olarak bildirilen değerler;
+    // ulaşılabilen kaynaklar çelişiyordu, bu yüzden DOĞRULANMIŞ SAYILMIYOR.
+    // tariffDogrulandi = 0 olduğu sürece yönetici panelinde uyarı çıkar.
+    tariffMesken: 3.21,
+    tariffTicarethane: 6.42,
+    tariffSanayi: 5.26,
+    tariffTarimsal: 2.40,
+    tariffDogrulandi: 0
 };
 
 (async function loadSettings() {
