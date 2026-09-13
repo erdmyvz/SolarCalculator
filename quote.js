@@ -91,6 +91,26 @@
         renderShell(v);
         const box = document.getElementById('quoteView');
         if (!box) return;
+
+        // ⚠️ FİRMASIZ HESAP (örn. süper admin) — bu modülün TAMAMI firmaya bağlı.
+        // Eskiden kontrol yoktu: sorgu .eq('company_id', null) ile gidiyor,
+        // PostgREST null'ı "null" metnine çeviriyor ve Postgres bunu UUID
+        // sanıp patlıyordu:  invalid input syntax for type uuid: "null"
+        // Kullanıcının gördüğü şey, sebebi anlaşılmayan bir veritabanı hatasıydı.
+        if (!qCompanyId()) {
+            box.innerHTML = `
+                <div class="kart bos-durum">
+                    <span class="bos-durum-ico">🏢</span>
+                    <h4>Bu ekran kurulumcu firma hesapları içindir</h4>
+                    <p>Teklif motoru firmaya bağlı çalışır: ayarlar, katalog ve teklifler
+                       firmanın kendi kaydında tutulur. Hesabınız bir firmaya bağlı görünmüyor
+                       (yönetici hesapları firmaya bağlı değildir).</p>
+                    <p class="mt-2">Firmaların tekliflerini incelemek için
+                       <b>Süper Admin Paneli → Firmalar</b> bölümünü kullanın.</p>
+                </div>`;
+            return;
+        }
+
         if (v === 'settings') {
             box.innerHTML = '<p class="text-slate-400 text-sm py-6">Yükleniyor...</p>';
             if (!_qSettings) await loadQuoteData();
@@ -307,7 +327,13 @@
     async function renderWizard() {
         const box = document.getElementById('quoteView'); if (!box) return;
         if (!_wz) wzInit(null);
-        if (_wzLeads === null && supabaseClient) { try { const { data } = await supabaseClient.from('leads').select('*').eq('company_id', qCompanyId()).order('created_at', { ascending: false }); _wzLeads = data || []; } catch (e) { _wzLeads = []; } }
+        // cid yoksa sorguyu HİÇ atmıyoruz: .eq('company_id', null) veritabanı
+        // hatası üretiyor. (Modül girişinde de kontrol var; bu ikinci kat.)
+        if (_wzLeads === null) {
+            const _cid = qCompanyId();
+            if (!_cid || !supabaseClient) { _wzLeads = []; }
+            else { try { const { data } = await supabaseClient.from('leads').select('*').eq('company_id', _cid).order('created_at', { ascending: false }); _wzLeads = data || []; } catch (e) { _wzLeads = []; } }
+        }
         const step = _wz.step;
         const dot = (n, l) => `<div class="flex items-center gap-2 ${step===n?'text-indigo-600':'text-slate-400'}"><span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${step>=n?'bg-indigo-600 text-white':'bg-slate-200'}">${n}</span><span class="text-xs font-bold hidden sm:inline">${l}</span></div>`;
         let body = '';
@@ -507,7 +533,9 @@
     async function renderQuoteList() {
         const box = document.getElementById('quoteView'); if (!box) return;
         box.innerHTML = '<p class="text-slate-400 text-sm py-6">Yükleniyor...</p>';
-        try { const { data, error } = await supabaseClient.from('firm_quotes').select('*').eq('company_id', qCompanyId()).order('created_at', { ascending: false }); if (error) throw error; _qList = data || []; }
+        const cid = qCompanyId();
+        if (!cid) { box.innerHTML = '<div class="kart bos-durum"><span class="bos-durum-ico">🏢</span><h4>Firma kaydı yok</h4><p>Teklifler firmaya bağlı tutulur; hesabınız bir firmaya bağlı değil.</p></div>'; return; }
+        try { const { data, error } = await supabaseClient.from('firm_quotes').select('*').eq('company_id', cid).order('created_at', { ascending: false }); if (error) throw error; _qList = data || []; }
         catch (e) { box.innerHTML = `<p class="text-red-500 text-sm">Yüklenemedi: ${esc(e.message || e)}</p>`; return; }
         if (!_qList.length) { box.innerHTML = '<div class="kart bos-durum"><span class="bos-durum-ico">🗂️</span><h4>Henüz teklif yok</h4><p>"＋ Yeni Teklif" ile ilk teklifinizi oluşturun; CRM\'deki bir müşteriden de başlayabilirsiniz.</p><button onclick="quoteView(\'new\')" class="btn-birincil">＋ Yeni Teklif</button></div>'; return; }
 
