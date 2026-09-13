@@ -96,7 +96,7 @@
                 </div>
                 <div class="flex gap-2 mt-3 flex-wrap">
                     <button onclick="maintComplete('${r.reminder_id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">✓ Tamamlandı</button>
-                    <button onclick="maintServiceLink('${esc(r.facility_code)}','${esc(r.customer_name)}','${esc(r.address)}','${r.kind}')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg">🔧 Servis Aç</button>
+                    <button onclick="maintServiceLink('${window.epcAttrJs(r.facility_code)}','${esc(r.customer_name)}','${esc(r.address)}','${r.kind}')" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg">🔧 Servis Aç</button>
                     <button onclick="maintSnooze('${r.reminder_id}')" class="bg-white border border-slate-300 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-slate-50">Ertele</button>
                 </div>
             </div>`;

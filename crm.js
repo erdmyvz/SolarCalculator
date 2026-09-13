@@ -393,7 +393,7 @@ async function renderFacilityZone(lead) {
                         <div class="font-mono text-lg font-black text-emerald-700">${admEscape(proj.facility_code)}</div>
                         <p class="text-[11px] text-slate-500 mt-1">Yatırımcı bu kod ile bakım / temizlik / servis talebi açabilir.</p>
                     </div>
-                    <button onclick="crmCopyText('${admEscape(proj.facility_code)}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold">Kodu Kopyala</button>
+                    <button onclick="crmCopyText('${window.epcAttrJs(proj.facility_code)}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-bold">Kodu Kopyala</button>
                 </div>`;
         } else if (lead.status === 'tamamlandi') {
             zone.innerHTML = `

@@ -139,6 +139,28 @@ window.epcLoadPanel = function () {
 };
 
 
+// --- ÖZNİTELİK İÇİNE GÜVENLİ JS DİZGİSİ --------------------------------------
+// ⚠️ admEscape() BU İŞ İÇİN YETMEZ.
+// admEscape tek tırnağı &#39; yapıyor; ama tarayıcı bir onclick özniteliğini
+// ÖNCE HTML olarak çözüyor, SONRA JS olarak ayrıştırıyor. Yani &#39; yeniden
+// ' oluyor ve dizgiyi kapatıyor:
+//     onclick="f('&#39;);alert(1);//')"   →   f('');alert(1);//')
+// Müşteri adı gibi kullanıcı metinleri bu yolla kod çalıştırabiliyordu.
+// Burada önce JS kaçışı, sonra HTML kaçışı yapılıyor — sıra önemli.
+//
+// EN İYİSİ: veriyi hiç onclick'e gömmemek; data-* özniteliği + olay devri
+// kullanmak. Bu yardımcı, gömmenin kaçınılmaz olduğu yerler için.
+window.epcAttrJs = function (deger) {
+    return String(deger == null ? '' : deger)
+        .replace(/\\/g, '\\\\')       // önce ters bölü
+        .replace(/'/g, "\\'")
+        .replace(/\r?\n/g, '\\n')
+        .replace(/&/g, '&amp;')          // sonra HTML
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+};
+
 // --- KISA BİLDİRİM (TOAST) ---------------------------------------------------
 // Başarılı işlemler için alert() kullanılıyordu: kullanıcıyı durduruyor,
 // tıklama bekliyor ve "kaydedildi" demek için ekranı kilitliyordu. Bu yardımcı

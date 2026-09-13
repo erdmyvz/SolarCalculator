@@ -51,7 +51,7 @@
         }
 
         const imgBtn = (path, label) => path
-            ? `<button onclick="openStorageImage('${path}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-[10px] font-bold">${label}</button>`
+            ? `<button onclick="openStorageImage('${window.epcAttrJs(path)}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-[10px] font-bold">${label}</button>`
             : '';
 
         root.innerHTML = data.map(t => {
