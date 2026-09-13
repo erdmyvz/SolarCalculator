@@ -615,6 +615,110 @@
         body .panel-card-hero .panel-badge[data-bos="1"] { background: rgba(255,255,255,.12); color: rgba(255,255,255,.65); }
         body .panel-card-hero:focus-visible { outline-color: #34d399; }
 
+
+        /* ====================================================================
+           MODÜL KABUĞU — panel modüllerinin ortak dili
+           Her modül kendi başlık/buton/tablo biçimini elle yazıyordu: kimi
+           gri kart, kimi beyaz; "Menüye Dön" kimi yerde link, kimi yerde
+           buton. Bu blok ortak parçaları tanımlıyor, modüller yalnız
+           içeriğini yazıyor. Ana ekranla aynı ölçek (--s*, --fs-*, --r-*).
+           ==================================================================== */
+        body .modul-ust    { display: flex; justify-content: space-between; align-items: center;
+                             gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s4); }
+        body .modul-eylem  { display: flex; gap: var(--s2); flex-wrap: wrap; }
+        body .modul-geri   { font-size: var(--fs-sm); font-weight: 700; color: #64748b;
+                             padding: 6px 2px; transition: color .15s ease; }
+        body .modul-geri:hover { color: #0f172a; }
+
+        body .modul-basligi     { margin-bottom: var(--s4); }
+        body .modul-basligi h2  { font-size: clamp(1.5rem, 2.8vw, var(--fs-lg)); font-weight: 800;
+                                  color: #0f172a; letter-spacing: -.02em; line-height: 1.2; margin: 0 0 4px; }
+        body .modul-basligi p   { font-size: var(--fs-sm); color: #64748b; max-width: var(--measure); margin: 0; }
+
+        /* --- Düğmeler -------------------------------------------------------- */
+        body .btn-birincil, body .btn-ikincil, body .btn-tehlike {
+            font-size: var(--fs-sm); font-weight: 700; border-radius: var(--r-sm);
+            padding: 9px 16px; white-space: nowrap; line-height: 1.2;
+            transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+        body .btn-birincil { background: #059669; color: #fff; }
+        body .btn-birincil:hover { background: #047857; }
+        body .btn-ikincil  { background: #fff; color: #334155; border: 1px solid #cbd5e1; }
+        body .btn-ikincil:hover { background: #f8fafc; border-color: #94a3b8; }
+        body .btn-tehlike  { background: #fff; color: #b91c1c; border: 1px solid #fecaca; }
+        body .btn-tehlike:hover { background: #fef2f2; border-color: #f87171; }
+        body .btn-birincil:focus-visible, body .btn-ikincil:focus-visible,
+        body .btn-tehlike:focus-visible, body .modul-geri:focus-visible {
+            outline: 2px solid #059669; outline-offset: 2px; }
+
+        /* --- Kart ve tablo --------------------------------------------------- */
+        body .kart      { background: #fff; border: 1px solid #e2e8f0; border-radius: var(--r-lg);
+                          box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+        body .kart-ust  { display: flex; justify-content: space-between; align-items: center;
+                          gap: var(--s3); flex-wrap: wrap;
+                          padding: var(--s3) var(--s4); border-bottom: 1px solid #e2e8f0; }
+        body .kart-ust h3 { font-size: var(--fs-sm); font-weight: 800; color: #0f172a; margin: 0; }
+
+        /* Tablo kendi kutusunda yatay kayar; sayfa gövdesi ASLA yana kaymaz. */
+        body .tablo-sar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        body .tablo-sar > table { width: 100%; min-width: 640px; border-collapse: collapse; }
+        body .tablo-sar thead th { font-size: var(--fs-xs); font-weight: 800; color: #64748b;
+                                   text-transform: uppercase; letter-spacing: .06em;
+                                   text-align: left; padding: 10px 16px;
+                                   background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+                                   position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+        body .tablo-sar thead th:first-child { padding-left: 24px; }
+        body .tablo-sar thead th:last-child  { padding-right: 24px; }
+
+        /* --- Adım sayaçları --------------------------------------------------
+           Başlıklar 9px idi ve tek satıra kırpılıyordu: "3. Teklif Gönd…" gibi
+           okunmaz etiketler çıkıyordu. Artık 12px ve iki satıra sığıyor. */
+        body .adim-sayac { text-align: left; background: #fff; border: 1px solid #e2e8f0;
+                           border-left-width: 4px; border-radius: var(--r-sm);
+                           padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;
+                           transition: box-shadow .15s ease, transform .15s ease; }
+        body .adim-sayac:hover { box-shadow: 0 8px 18px -12px rgba(15,23,42,.4); transform: translateY(-1px); }
+        body .adim-sayac:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
+        body .adim-sayac[aria-pressed="true"] { box-shadow: 0 0 0 2px #0f172a; }
+        body .adim-sayac-ad  { font-size: var(--fs-xs); font-weight: 700; color: #64748b;
+                               line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2;
+                               -webkit-box-orient: vertical; overflow: hidden; }
+        body .adim-sayac-no  { font-size: var(--fs-md); font-weight: 800; color: #0f172a;
+                               line-height: 1.1; font-variant-numeric: tabular-nums; }
+        body .tablo-sar thead th.sag { text-align: right; }
+
+        /* --- Boş durum ------------------------------------------------------- */
+        body .bos-durum      { text-align: center; padding: var(--s6) var(--s4); }
+        body .bos-durum-ico  { font-size: 2rem; display: block; margin-bottom: var(--s2); opacity: .5; }
+        body .bos-durum h4   { font-size: var(--fs-base); font-weight: 800; color: #334155; margin: 0 0 4px; }
+        body .bos-durum p    { font-size: var(--fs-sm); color: #94a3b8; margin: 0 auto var(--s3);
+                               max-width: var(--measure-narrow); }
+
+        /* --- Katlanabilir yardım kutusu -------------------------------------- */
+        /* Açıklama metni her ziyarette ekranın üçte birini yiyordu. Artık
+           kapanıyor ve tercih hatırlanıyor; ilk kez giren yine görüyor. */
+        body .yardim        { border: 1px solid #e2e8f0; border-radius: var(--r-md); background: #fff;
+                              margin-bottom: var(--s4); }
+        body .yardim > summary { list-style: none; cursor: pointer; padding: var(--s3) var(--s4);
+                              font-size: var(--fs-sm); font-weight: 700; color: #334155;
+                              display: flex; align-items: center; gap: var(--s2); }
+        body .yardim > summary::-webkit-details-marker { display: none; }
+        body .yardim > summary::after { content: "▾"; margin-left: auto; color: #94a3b8; font-size: .8em; }
+        body .yardim[open] > summary::after { content: "▴"; }
+        body .yardim > summary:focus-visible { outline: 2px solid #059669; outline-offset: -2px; border-radius: var(--r-md); }
+        body .yardim-govde  { padding: 0 var(--s4) var(--s4); }
+
+        /* --- Arama kutusu ---------------------------------------------------- */
+        body .arama { position: relative; flex: 1 1 220px; min-width: 0; max-width: 340px; }
+        body .arama input { width: 100%; font-size: var(--fs-sm); padding: 8px 30px 8px 32px;
+                            border: 1px solid #cbd5e1; border-radius: var(--r-sm); background: #fff;
+                            outline: none; transition: border-color .15s ease; }
+        body .arama input:focus { border-color: #059669; }
+        body .arama::before { content: "🔎"; position: absolute; left: 9px; top: 50%;
+                              transform: translateY(-50%); font-size: .8rem; pointer-events: none; }
+        body .arama-temizle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+                              color: #94a3b8; font-size: 1.1rem; line-height: 1; padding: 0 4px; }
+        body .arama-temizle:hover { color: #334155; }
+
         /* Hareket hassasiyeti olan kullanıcılara saygı */
         @media (prefers-reduced-motion: reduce) {
             body * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
@@ -1316,31 +1420,63 @@
             <div id="batteryRoot"></div>
         </div>
 
-        <div id="crmModule" class="hidden bg-slate-50 p-6 rounded-xl shadow-lg max-w-7xl mx-auto mt-4">
-            <div class="mb-6 flex justify-between"><button id="btnBackToMenuFromCRM" class="text-slate-500 font-bold">← Menüye Dön</button>
-                <div class="flex gap-2"><button onclick="crmOpenNewLeadModal()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm">➕ Müşteri Ekle</button></div>
-            </div>
-           
-            <div class="mb-6 bg-white border border-slate-200 rounded-xl p-6">
-                <h3 class="text-lg font-black text-slate-800 mb-2">📋 Satış CRM nasıl çalışır?</h3>
-                <p class="text-sm text-slate-600 leading-relaxed mb-4">Burası firmanızın satış hattıdır: size atanan tüm başvurular, ilk temastan devreye almaya kadar tek yerde. Veriler güvenle saklanır ve <strong>yalnızca firmanız kendi müşterilerini görür</strong>.</p>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div class="bg-slate-50 rounded-lg p-4 border border-slate-100"><div class="text-xs font-black text-emerald-700 mb-1">1. Kartı açın</div><p class="text-xs text-slate-600">Listeden bir müşteriye tıklayın; iletişim, tüketim ve not alanlarını görün.</p></div>
-                    <div class="bg-slate-50 rounded-lg p-4 border border-slate-100"><div class="text-xs font-black text-emerald-700 mb-1">2. Aşamayı ilerletin</div><p class="text-xs text-slate-600">Durumu güncelleyin (Yeni → Teklif → Sözleşme → Kurulum → Devreye Alındı) ve notlarınızı kaydedin.</p></div>
-                    <div class="bg-slate-50 rounded-lg p-4 border border-slate-100"><div class="text-xs font-black text-emerald-700 mb-1">3. Tesise dönüştürün</div><p class="text-xs text-slate-600">"Devreye Alındı" olunca kartın altından tesisi oluşturup yatırımcıya GES kodunu verin.</p></div>
+        <div id="crmModule" class="hidden w-full max-w-7xl mx-auto mt-4 animate-fade-in">
+
+            <div class="modul-ust">
+                <button id="btnBackToMenuFromCRM" class="modul-geri">← Menüye Dön</button>
+                <div class="modul-eylem">
+                    <!-- Dağıtım şirketi arama: 21 şirketlik kayıt buradan görünür.
+                         Fonksiyon (crmOpenDisco) vardı ama HİÇBİR yerden çağrılmıyordu. -->
+                    <button onclick="crmOpenDisco()" class="btn-ikincil">🔌 Dağıtım Şirketi Bul</button>
+                    <button onclick="crmLoadLeads()" class="btn-ikincil">↻ Yenile</button>
+                    <button onclick="crmOpenNewLeadModal()" class="btn-birincil">➕ Müşteri Ekle</button>
                 </div>
-                <p class="text-xs text-slate-500 mt-4">💡 Üstteki sayaçlar hangi aşamada kaç müşteriniz olduğunu özetler; sağdaki "➕ Müşteri Ekle" ile elle kayıt açabilirsiniz.</p>
             </div>
 
+            <div class="modul-basligi">
+                <h2>Satış CRM &amp; Proje Takip</h2>
+                <p>Size atanan tüm başvurular ilk temastan devreye almaya kadar tek yerde. Yalnızca firmanız kendi müşterilerini görür.</p>
+            </div>
 
-
-            <div id="crmStepCounters" class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2 mb-6"></div>
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
-                <div class="p-4 bg-slate-100 border-b flex justify-between">
-                    <h3 class="font-bold text-sm">📋 Müşteri Listesi</h3>
-                    <select id="crmFilterStatus" onchange="crmRenderLeads()" class="p-1.5 rounded-lg text-xs border border-slate-300 bg-white max-w-[240px]"><option value="all">Tümü</option></select>
+            <details id="crmYardim" class="yardim">
+                <summary>📋 Satış CRM nasıl çalışır?</summary>
+                <div class="yardim-govde">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div class="bg-slate-50 rounded-lg p-4 border border-slate-100"><div class="text-xs font-black text-emerald-700 mb-1">1. Kartı açın</div><p class="text-xs text-slate-600">Listeden bir müşteriye tıklayın; iletişim, tüketim ve not alanlarını görün.</p></div>
+                        <div class="bg-slate-50 rounded-lg p-4 border border-slate-100"><div class="text-xs font-black text-emerald-700 mb-1">2. Adımları işaretleyin</div><p class="text-xs text-slate-600">Süreç adımlarını işaretledikçe müşterinin aşaması ve üstteki sayaçlar kendiliğinden ilerler.</p></div>
+                        <div class="bg-slate-50 rounded-lg p-4 border border-slate-100"><div class="text-xs font-black text-emerald-700 mb-1">3. Tesise dönüştürün</div><p class="text-xs text-slate-600">Son adım tamamlanınca kartın altından tesisi oluşturup yatırımcıya GES kodunu verin.</p></div>
+                    </div>
                 </div>
-                <table class="w-full text-left text-xs"><tbody id="crmLeadsTableBody" class="divide-y divide-slate-100"></tbody></table>
+            </details>
+
+            <div id="crmStepCounters" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-2 mb-4"></div>
+            <div id="crmQuoteSummary"></div>
+
+            <div class="kart overflow-hidden">
+                <div class="kart-ust">
+                    <h3>📋 Müşteri Listesi <span id="crmSayac" class="font-bold text-slate-400"></span></h3>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <label class="arama">
+                            <span class="sr-only">Müşteri ara</span>
+                            <input id="crmArama" type="search" autocomplete="off" placeholder="Ad, telefon veya takip kodu">
+                        </label>
+                        <select id="crmFilterStatus" class="p-2 rounded-lg text-xs border border-slate-300 bg-white max-w-[240px]"><option value="all">Tüm aşamalar</option></select>
+                    </div>
+                </div>
+                <div class="tablo-sar">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Müşteri</th>
+                                <th>Aşama</th>
+                                <th>Sistem</th>
+                                <th class="sag">İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="crmLeadsTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 

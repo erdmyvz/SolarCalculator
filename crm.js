@@ -71,46 +71,29 @@ async function crmLoadLeads() {
     crmRenderLeads();
 }
 
-// Kokpit altına teklif özet çubuğunu enjekte eder
+// Teklif özet çubuğu.
+// ESKİDEN HİÇ GÖRÜNMÜYORDU: çubuğu, artık var olmayan bir kokpit kartının
+// (#crmStatNew) yanına enjekte etmeye çalışıyordu; o kart kaldırılınca
+// fonksiyon daha ilk satırda sessizce geri dönüyordu. Artık hedef kutu
+// index.html'de duruyor (#crmQuoteSummary) ve doğrudan dolduruluyor.
 function renderQuoteSummary() {
-    const bar = document.getElementById('crmQuoteSummary');
-    if (!QUOTES_ENABLED) { if (bar) bar.innerHTML = ''; return; }
-    const grid = document.getElementById('crmStatNew')?.closest('.grid');
-    if (!grid) return;
-    let b = bar;
-    if (!b) {
-        b = document.createElement('div');
-        b.id = 'crmQuoteSummary';
-        b.className = 'mb-6';
-        grid.insertAdjacentElement('afterend', b);
-    }
+    const b = document.getElementById('crmQuoteSummary');
+    if (!b) return;
     const s = _quoteStats;
+    // Hiç teklif yoksa çubuğu basmıyoruz — dört tane sıfır, boş ekrandan kötü.
+    if (!QUOTES_ENABLED || !s.count) { b.innerHTML = ''; return; }
+    const kutu = (etiket, deger, renk) =>
+        `<span class="text-slate-500">${etiket}: <strong class="${renk}">${deger}</strong></span>`;
     b.innerHTML = `
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 flex-wrap text-xs">
+        <div class="kart flex items-center gap-4 flex-wrap text-xs mb-4" style="padding:var(--s3) var(--s4)">
             <span class="font-black text-slate-700">📄 Teklifler</span>
-            <span class="text-slate-500">Toplam: <strong class="text-slate-800">${s.count}</strong></span>
-            <span class="text-slate-500">Gönderildi: <strong class="text-blue-700">${s.gonderildi}</strong></span>
-            <span class="text-slate-500">Kabul: <strong class="text-emerald-700">${s.kabul}</strong></span>
+            ${kutu('Toplam', s.count, 'text-slate-800')}
+            ${kutu('Taslak', s.taslak, 'text-slate-600')}
+            ${kutu('Gönderildi', s.gonderildi, 'text-blue-700')}
+            ${kutu('Kabul', s.kabul, 'text-emerald-700')}
+            ${kutu('Ret', s.ret, 'text-red-600')}
             ${s.kabulTotal ? `<span class="ml-auto text-slate-500">Kazanılan iş: <strong class="text-emerald-700">₺${Math.round(s.kabulTotal).toLocaleString('tr-TR')}</strong></span>` : ''}
         </div>`;
-}
-
-/**
- * CRM Paneli üst kısmındaki 4 adet renkli özet kokpit kartının sayılarını hesaplar.
- */
-function crmCalculateStats() {
-    if(document.getElementById('crmStatNew')) {
-        document.getElementById('crmStatNew').textContent = crmLeads.filter(l => l.status === 'yeni_basvuru').length;
-    }
-    if(document.getElementById('crmStatFollowUp')) {
-        document.getElementById('crmStatFollowUp').textContent = crmLeads.filter(l => l.status === 'arandi_gorusuldu' || l.status === 'teklif_gonderildi').length;
-    }
-    if(document.getElementById('crmStatActive')) {
-        document.getElementById('crmStatActive').textContent = crmLeads.filter(l => l.status === 'kurulum_basladi' || l.status === 'sozlesme_imzalandi').length;
-    }
-    if(document.getElementById('crmStatOfficial')) {
-        document.getElementById('crmStatOfficial').textContent = crmLeads.filter(l => l.status === 'resmi_surec').length;
-    }
 }
 
 /**
@@ -160,9 +143,12 @@ function crmRenderStepCounters() {
     if (box) {
         box.innerHTML = steps.length ? steps.map((s, i) => {
             const on = activeFilter === s.slug;
-            return `<button onclick="crmFilterByStep('${s.slug}')" title="${admEscape(s.title)}" class="text-left bg-white rounded-xl shadow-sm border-l-4 ${palette[i % palette.length]} px-3 py-2.5 hover:shadow-md transition ${on ? 'ring-2 ring-slate-800' : ''}">
-                <div class="text-[9px] text-slate-400 font-bold leading-tight truncate">${s.step_no || (i + 1)}. ${admEscape(s.title)}</div>
-                <div class="text-xl font-black text-slate-800">${counts[s.slug] || 0}</div>
+            const ad = `${s.step_no || (i + 1)}. ${admEscape(s.title)}`;
+            // aria-pressed: filtrenin açık olduğunu ekran okuyucu da duysun.
+            return `<button type="button" onclick="crmFilterByStep('${admEscape(s.slug)}')" title="${admEscape(s.title)} — tıklayınca bu adıma göre filtreler"
+                        aria-pressed="${on ? 'true' : 'false'}" class="adim-sayac ${palette[i % palette.length]}">
+                <span class="adim-sayac-ad">${ad}</span>
+                <span class="adim-sayac-no">${counts[s.slug] || 0}</span>
             </button>`;
         }).join('') : '<p class="text-xs text-slate-400 p-3 col-span-full">Süreç adımı tanımlı değil. Admin panelinden ekleyin.</p>';
     }
@@ -184,22 +170,55 @@ window.crmFilterByStep = function (slug) {
     crmRenderStepCounters();
 };
 
+// Serbest arama: ad, telefon, e-posta, takip kodu ve adres.
+// CRM'in en büyük eksiğiydi — 200 kayıtta müşteriyi bulmanın tek yolu
+// listeyi gözle taramaktı. Telefonda boşluk/parantez farkını yutsun diye
+// rakam dışı karakterler atılarak da karşılaştırıyoruz.
+function crmAramaEslesti(lead, q) {
+    if (!q) return true;
+    const alanlar = [lead.full_name, lead.phone, lead.email, lead.tracking_code, lead.address];
+    if (alanlar.some(v => String(v || '').toLocaleLowerCase('tr-TR').includes(q))) return true;
+    const rakam = q.replace(/\D/g, '');
+    return rakam.length >= 3 && String(lead.phone || '').replace(/\D/g, '').includes(rakam);
+}
+
 function crmRenderLeads() {
     const tableBody = document.getElementById('crmLeadsTableBody');
     const filterValue = document.getElementById('crmFilterStatus')?.value || 'all';
+    const q = (document.getElementById('crmArama')?.value || '').trim().toLocaleLowerCase('tr-TR');
 
     if(!tableBody) return;
     tableBody.innerHTML = '';
 
     const _steps = _processSteps || [];
     const filteredLeads = crmLeads.filter(lead => {
+        if (!crmAramaEslesti(lead, q)) return false;
         if (filterValue === 'all') return true;
         const cur = crmCurrentStep(lead, _steps);
         return cur && cur.slug === filterValue;
     });
 
+    // Sayaç: kaçını gösterdiğimizi söylemek, listenin filtreli olduğunu da söyler.
+    const sayacEl = document.getElementById('crmSayac');
+    if (sayacEl) {
+        sayacEl.textContent = (filteredLeads.length === crmLeads.length)
+            ? `· ${crmLeads.length}`
+            : `· ${filteredLeads.length} / ${crmLeads.length}`;
+    }
+
     if(filteredLeads.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium bg-white">Bu aşamada bekleyen müşteri kaydı bulunmuyor.</td></tr>`;
+        // "Hiç müşteri yok" ile "bu filtrede yok" aynı cümleyle anlatılıyordu;
+        // yeni kullanıcı sistemin bozuk olduğunu sanabiliyordu.
+        const bos = (crmLeads.length === 0)
+            ? `<span class="bos-durum-ico">📭</span>
+               <h4>Henüz müşteri kaydınız yok</h4>
+               <p>Size başvuru yönlendirildiğinde burada görünür. Dilerseniz "➕ Müşteri Ekle" ile elle kayıt açabilirsiniz.</p>
+               <button onclick="crmOpenNewLeadModal()" class="btn-birincil">➕ Müşteri Ekle</button>`
+            : `<span class="bos-durum-ico">🔍</span>
+               <h4>Eşleşen kayıt yok</h4>
+               <p>${admEscape(crmLeads.length)} müşteriniz var ama arama veya aşama filtresine uyan yok.</p>
+               <button onclick="crmFiltreleriTemizle()" class="btn-ikincil">Filtreleri temizle</button>`;
+        tableBody.innerHTML = `<tr><td colspan="5"><div class="bos-durum">${bos}</div></td></tr>`;
         return;
     }
 
@@ -341,7 +360,12 @@ async function renderFacilityZone(lead) {
                     <button onclick="crmCreateFacility('${lead.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold whitespace-nowrap">☀️ Tesis Oluştur</button>
                 </div>`;
         } else {
-            zone.innerHTML = `<p class="text-xs text-slate-400">Tesis kodu, müşteri <strong>"7. Bitti"</strong> aşamasına gelince oluşturulabilir.</p>`;
+            // ESKİDEN sabit `"7. Bitti"` yazıyordu. Adımlar admin tarafından
+            // tanımlanıyor; o isimde bir adım olmayabilir (şu an 9 adım var ve
+            // sonuncusu "Devreye Alındı"). Artık gerçek son adımın adı basılıyor.
+            const steps = await ensureProcessSteps();
+            const sonAdim = steps.length ? `${steps[steps.length - 1].step_no || steps.length}. ${admEscape(steps[steps.length - 1].title)}` : 'son';
+            zone.innerHTML = `<p class="text-xs text-slate-400">Tesis kodu, müşteri <strong>${sonAdim}</strong> adımına gelince oluşturulabilir.</p>`;
         }
     } catch (err) {
         zone.innerHTML = `<p class="text-xs text-red-500">Tesis bilgisi alınamadı: ${err.message}</p>`;
@@ -471,7 +495,17 @@ window.crmSaveLeadDetails = async function() {
 };
 
 window.crmCloseModal = function() { document.getElementById('crmDetailModal').classList.add('hidden'); };
-window.crmOpenIntegrationModal = function() { document.getElementById('crmIntegrationModal').classList.remove('hidden'); };
+
+// Müşteri kartı Esc ile de kapansın (kapatmanın tek yolu çarpıydı).
+// Not: kart açıkken kaydedilmemiş değişiklik olabilir, o yüzden arka plana
+// tıklamak kapatMIYOR — yanlışlıkla kapanıp veri kaybolmasın.
+document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    const m = document.getElementById('crmDetailModal');
+    if (m && !m.classList.contains('hidden')) window.crmCloseModal();
+});
+// crmOpenIntegrationModal KALDIRILDI: açmaya çalıştığı #crmIntegrationModal
+// HTML'de yoktu; çağrılsa null üzerinde patlardı. Çağıran da yoktu.
 
 
 // ============================================================================
@@ -499,15 +533,6 @@ function crmEnsureStepsZone() {
     }
     return z;
 }
-
-let _stepsOpen = false;
-window.crmToggleSteps = function () {
-    _stepsOpen = !_stepsOpen;
-    const d = document.getElementById('crmDetailSteps');
-    if (d) d.classList.toggle('hidden', !_stepsOpen);
-    const a = document.getElementById('crmStepsArrow');
-    if (a) a.textContent = _stepsOpen ? '▲' : '▼';
-};
 
 // Genel aşama (leads.status) artık 9 adımdan TÜRETİLİR. Böylece KPI sayaçları,
 // ziyaretçi takibi ve pano özeti eski 7'li aşama kovasında çalışmaya devam eder.
@@ -572,17 +597,9 @@ async function crmRenderStepsPreview() {
         <p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg p-2 mt-2">Müşteriyi kaydettikten sonra adımları işaretleyebilir, aşamayı ilerletebilirsiniz.</p>`;
 }
 
-// Genel aşamayı değiştir (birleşik blok içinden) — anında kaydeder.
-window.crmSetStage = async function(leadId, value) {
-    const lead = crmLeads.find(l => l.id === leadId);
-    if (!lead) return;
-    lead.status = value;
-    const { error } = await supabaseClient
-        .from('leads').update({ status: value, updated_at: new Date().toISOString() }).eq('id', leadId);
-    if (error) { alert('Aşama kaydedilemedi: ' + error.message); return; }
-    renderFacilityZone(lead);   // "7. Bitti" olunca Tesis Oluştur çıksın
-    renderLeadSteps(lead);
-};
+// crmSetStage KALDIRILDI: aşama artık süreç adımlarından TÜRETİLİYOR
+// (crmStatusFromSteps). Elle aşama seçici arayüzden çıkalı beri bu fonksiyonu
+// çağıran kimse yoktu; durup dururken adımlarla çelişen bir yazma yolu açıyordu.
 
 window.crmToggleStep = async function(leadId, slug) {
     const lead = crmLeads.find(l => l.id === leadId);
@@ -639,6 +656,12 @@ window.crmOpenDisco = async function () {
             </div>`;
         document.body.appendChild(m);
         m.querySelector('#discoSearch').addEventListener('input', renderDiscoList);
+        // Kapatmanın tek yolu sağ üstteki çarpıydı. Arka plana tıklamak ve Esc
+        // de kapatsın — kullanıcının beklediği davranış.
+        m.addEventListener('mousedown', (e) => { if (e.target === m) m.classList.add('hidden'); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !m.classList.contains('hidden')) m.classList.add('hidden');
+        });
     }
     m.classList.remove('hidden');
     m.querySelector('#discoSearch').value = '';
@@ -654,17 +677,36 @@ function renderDiscoList() {
         !q || (d.provinces || '').toLowerCase().includes(q)
            || (d.name || '').toLowerCase().includes(q)
            || (d.abbr || '').toLowerCase().includes(q));
-    box.innerHTML = items.length ? items.map(d => `
+    // Yalnız http(s) adresleri basılır; kayıttaki bozuk/zararlı bir değer
+    // bağlantıya dönüşmesin.
+    const guvenliUrl = (u) => {
+        try { const x = new URL(String(u)); return (x.protocol === 'http:' || x.protocol === 'https:') ? x.href : ''; }
+        catch (e) { return ''; }
+    };
+
+    box.innerHTML = items.length ? items.map(d => {
+        const site = guvenliUrl(d.website);
+        const basvuru = guvenliUrl(d.basvuru_url);
+        // Teyit edilmemiş satır kesin bilgi gibi gösterilmez; kurulumcu neye
+        // baktığını bilsin diye açıkça yazıyoruz.
+        const teyit = d.dogrulandi_mi
+            ? `<span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">✓ Teyitli${d.dogrulama_tarihi ? ' · ' + admEscape(d.dogrulama_tarihi) : ''}</span>`
+            : `<span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full" title="Bu kayıt resmi kaynaktan teyit edilmedi; başvurudan önce şirketin sitesinden doğrulayın.">Teyit edilmedi</span>`;
+        return `
         <div class="border border-slate-200 rounded-xl p-4">
-            <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-start justify-between gap-2 flex-wrap mb-1">
                 <strong class="text-sm text-slate-800">${admEscape(d.name)}${d.abbr ? ` <span class="text-slate-400 font-mono text-[11px]">${admEscape(d.abbr)}</span>` : ''}</strong>
-                <span class="flex gap-2">
-                    ${d.phone ? `<a href="tel:${admEscape(d.phone)}" class="text-[11px] bg-emerald-50 text-emerald-700 font-bold px-2 py-1 rounded no-underline">📞 ${admEscape(d.phone)}</a>` : ''}
-                    ${d.website ? `<a href="${admEscape(d.website)}" target="_blank" rel="noopener" class="text-[11px] bg-blue-50 text-blue-700 font-bold px-2 py-1 rounded no-underline">🌐 Web sitesi</a>` : ''}
-                </span>
+                ${teyit}
             </div>
-            <p class="text-[11px] text-slate-500 mt-1">${admEscape(d.provinces)}</p>
-        </div>`).join('') : '<p class="text-slate-400 text-sm p-2">Eşleşen dağıtım şirketi bulunamadı.</p>';
+            <p class="text-[11px] text-slate-500 mb-2">${admEscape(d.provinces)}</p>
+            <div class="flex gap-2 flex-wrap">
+                ${d.phone ? `<a href="tel:${admEscape(d.phone)}" class="text-[11px] bg-emerald-50 text-emerald-700 font-bold px-2 py-1 rounded no-underline">📞 ${admEscape(d.phone)}</a>` : ''}
+                ${basvuru ? `<a href="${admEscape(basvuru)}" target="_blank" rel="noopener noreferrer" class="text-[11px] bg-amber-50 text-amber-800 font-bold px-2 py-1 rounded no-underline">📄 Lisanssız üretim başvurusu</a>` : ''}
+                ${site ? `<a href="${admEscape(site)}" target="_blank" rel="noopener noreferrer" class="text-[11px] bg-blue-50 text-blue-700 font-bold px-2 py-1 rounded no-underline">🌐 Web sitesi</a>` : ''}
+            </div>
+            ${d.notes ? `<p class="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-100">ℹ️ ${admEscape(d.notes)}</p>` : ''}
+        </div>`;
+    }).join('') : '<p class="text-slate-400 text-sm p-2">Eşleşen dağıtım şirketi bulunamadı.</p>';
 }
 
 
@@ -702,6 +744,47 @@ window.crmSyncConsumptionUI = function () {
     toggle('crmEvDetails', val('fieldEV') === 'Var');
     toggle('crmHpDetails', val('fieldHeatPump') === 'Var');
 };
+
+// ============================================================================
+// LİSTE KONTROLLERİ — arama, aşama filtresi, yardım kutusu
+// ============================================================================
+window.crmFiltreleriTemizle = function () {
+    const a = document.getElementById('crmArama');   if (a) a.value = '';
+    const f = document.getElementById('crmFilterStatus'); if (f) f.value = 'all';
+    crmRenderLeads();
+    crmRenderStepCounters();
+};
+
+(function crmListeKontrolleri() {
+    // Arama: her tuşta sorgu yok, 180 ms bekleyip tek sefer basıyoruz.
+    const arama = document.getElementById('crmArama');
+    if (arama) {
+        let t = null;
+        arama.addEventListener('input', () => {
+            clearTimeout(t);
+            t = setTimeout(() => { crmRenderLeads(); }, 180);
+        });
+        // <input type="search"> temizleme çarpısı 'search' olayı üretir.
+        arama.addEventListener('search', () => crmRenderLeads());
+    }
+
+    // Aşama filtresi ESKİDEN yalnız listeyi tazeliyordu (onchange="crmRenderLeads()"),
+    // üstteki sayaç kartlarının seçili halkası olduğu yerde kalıyordu: liste
+    // filtreliyken sayaçlar "Tümü" gibi görünüyordu. Artık ikisi birlikte.
+    const filtre = document.getElementById('crmFilterStatus');
+    if (filtre) filtre.addEventListener('change', () => { crmRenderLeads(); crmRenderStepCounters(); });
+
+    // Yardım kutusu: ilk açılışta açık, kapatılınca kapalı kalır.
+    const yardim = document.getElementById('crmYardim');
+    if (yardim) {
+        try {
+            yardim.open = localStorage.getItem('crmYardimKapali') !== '1';
+            yardim.addEventListener('toggle', () => {
+                localStorage.setItem('crmYardimKapali', yardim.open ? '0' : '1');
+            });
+        } catch (e) { yardim.open = true; }   // depo kapalıysa varsayılan açık
+    }
+})();
 
 // Modal alanlarını bir kez dinle (statik HTML; crm.js modal'dan sonra yüklenir)
 (function crmWireConsumptionForm() {
