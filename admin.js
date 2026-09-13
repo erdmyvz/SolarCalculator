@@ -1135,7 +1135,8 @@ function ensureDiscoSection() {
             <h3 class="text-lg font-black text-slate-800">🔌 Dağıtım Şirketleri</h3>
             <button onclick="dcNew()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+ Yeni Şirket</button>
         </div>
-        <p class="text-xs text-slate-400 mb-4">Firmalar proje yönetiminde ilini arayıp buradan başvuru şirketini bulur. Verileri güncel tutun.</p>
+        <p class="text-xs text-slate-400 mb-3">Hem kurulumcu paneli hem ziyaretçinin "TEDAŞ Mevzuatı" sayfası buradan besleniyor. Verileri güncel tutun.</p>
+        <div id="dcOzet"></div>
         <div id="dcList" class="space-y-2"></div>`;
     admin.appendChild(card);
     return card;
@@ -1177,6 +1178,13 @@ function openDiscoModal(d) {
                 <div class="w-24"><label class="text-xs font-bold text-slate-600">Sıra</label><input id="dcOrder" type="number" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${e.sort_order ?? 0}"></div>
             </div>
             <div><label class="text-xs font-bold text-slate-600">Web sitesi</label><input id="dcWeb" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="${admEscape(e.website)}"></div>
+            <div><label class="text-xs font-bold text-slate-600">Lisanssız üretim başvuru sayfası</label><input id="dcBasvuru" value="${admEscape(e.basvuru_url || '')}" placeholder="https://..." class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
+            <label class="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 cursor-pointer">
+                <input type="checkbox" id="dcDogru" ${e.dogrulandi_mi ? 'checked' : ''} class="mt-0.5 w-4 h-4 shrink-0">
+                <span class="text-xs text-amber-900 leading-relaxed"><b>Bu bilgileri şirketin resmi sitesinden teyit ettim.</b>
+                İşaretlemezseniz ziyaretçiye "teyit edilmedi" uyarısıyla çıkar. 180 gün sonra kendiliğinden
+                "tazelenmeli" durumuna döner — mevzuat ve şirket siteleri değişiyor.</span>
+            </label>
             <label class="flex items-center gap-2 text-sm text-slate-600"><input id="dcPub" type="checkbox" ${(e.is_published !== false) ? 'checked' : ''}> Yayında</label>
         </div>
         <div class="flex gap-2 mt-5">
@@ -1193,9 +1201,15 @@ window.dcSave = async (id) => {
         provinces: document.getElementById('dcProv').value.trim() || null,
         phone: document.getElementById('dcPhone').value.trim() || null,
         website: document.getElementById('dcWeb').value.trim() || null,
+        basvuru_url: document.getElementById('dcBasvuru').value.trim() || null,
         sort_order: parseInt(document.getElementById('dcOrder').value) || 0,
         is_published: document.getElementById('dcPub').checked
     };
+    // Teyit işareti: tarih ve kimin verdiği otomatik yazılır, elle girilmez.
+    const _dogru = document.getElementById('dcDogru').checked;
+    obj.dogrulandi_mi = _dogru;
+    obj.dogrulama_tarihi = _dogru ? new Date().toISOString().slice(0, 10) : null;
+    obj.dogrulayan = _dogru ? (window.currentUserProfile?.email || 'admin') : null;
     const { error } = id
         ? await supabaseClient.from('distribution_companies').update(obj).eq('id', id)
         : await supabaseClient.from('distribution_companies').insert([obj]);
@@ -2027,11 +2041,9 @@ function mvKok() {
                 <button onclick="mvYeniGuncelleme()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">+ Mevzuat Güncellemesi</button>
             </span>
         </div>
-        <p class="text-xs text-slate-400 mb-4">Ziyaretçi, ilini seçince buradaki bilgiyi görüyor.
-           <b class="text-amber-700">Doğrulanmamış satır kesin bilgi olarak gösterilmez</b> — resmi kaynaktan
-           teyit edip "doğrulandı" işaretleyin.</p>
-        <div id="mvOzet" class="mb-4"></div>
-        <div id="mvSirketList" class="space-y-2 mb-6"></div>
+        <p class="text-xs text-slate-400 mb-4">Belge listeleri ve mevzuat değişiklikleri.
+           Dağıtım şirketlerinin kendi bilgileri (adres, telefon, teyit) <b>Firmalar</b> sekmesindeki
+           "🔌 Dağıtım Şirketleri" bölümünde — tek kayıt, iki yerde tutulmuyor.</p>
         <h4 class="font-black text-slate-700 text-sm mb-2">Son mevzuat güncellemeleri</h4>
         <div id="mvGuncList" class="space-y-2"></div>`;
     admin.appendChild(card);
@@ -2040,48 +2052,14 @@ function mvKok() {
 
 async function renderMevzuatAdmin() {
     if (!mvKok() || !supabaseClient) return;
-    const sl = document.getElementById('mvSirketList');
-    sl.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+    // Şirket listesi artık burada DEĞİL — distribution_companies tek kayıt,
+    // onu 🔌 Dağıtım Şirketleri bölümü yönetiyor. Burada yalnız güncellemeler var.
     const [s, g] = await Promise.all([
-        supabaseClient.from('dagitim_sirketleri').select('*').order('sort_order'),
+        supabaseClient.from('distribution_companies').select('id,name,abbr').order('sort_order'),
         supabaseClient.from('mevzuat_guncellemeler').select('*').order('tarih', { ascending: false }).limit(15)
     ]);
-    if (s.error) {
-        sl.innerHTML = `<p class="text-xs text-red-500">Yüklenemedi: ${s.error.message}<br>
-            <b>mevzuat.sql</b> dosyasını Supabase SQL Editor'de çalıştırdınız mı?</p>`;
-        return;
-    }
-    _mvSirketler = s.data || [];
+    _mvSirketler = (s && !s.error && s.data) ? s.data.map(x => ({ kod: x.id, ad: x.name, kisa_ad: x.abbr })) : [];
     _mvGuncellemeler = (g && !g.error && g.data) ? g.data : [];
-
-    const dogru = _mvSirketler.filter(x => x.dogrulandi_mi).length;
-    document.getElementById('mvOzet').innerHTML = `
-        <div class="grid grid-cols-3 gap-2 text-center">
-            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                <div class="text-xl font-black text-slate-800">${_mvSirketler.length}</div>
-                <div class="text-[11px] text-slate-500">dağıtım şirketi</div></div>
-            <div class="bg-${dogru ? 'emerald' : 'amber'}-50 border border-${dogru ? 'emerald' : 'amber'}-200 rounded-lg p-3">
-                <div class="text-xl font-black text-${dogru ? 'emerald' : 'amber'}-700">${dogru}</div>
-                <div class="text-[11px] text-slate-500">doğrulanmış</div></div>
-            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                <div class="text-xl font-black text-slate-800">${_mvGuncellemeler.length}</div>
-                <div class="text-[11px] text-slate-500">güncelleme kaydı</div></div>
-        </div>`;
-
-    sl.innerHTML = _mvSirketler.map(x => {
-        const eksik = !x.web_site && !x.basvuru_url;
-        return `<div class="flex items-center justify-between gap-2 border ${x.dogrulandi_mi ? 'border-slate-200' : 'border-amber-200 bg-amber-50/40'} rounded-lg p-3">
-            <div class="min-w-0">
-                <strong class="text-sm text-slate-800">${admEscape(x.kisa_ad || x.ad)}</strong>
-                ${x.dogrulandi_mi
-                    ? `<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">✓ ${x.dogrulama_tarihi || ''}</span>`
-                    : '<span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">teyit edilmedi</span>'}
-                ${eksik ? '<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">bağlantı yok</span>' : ''}
-                <div class="text-[11px] text-slate-400 truncate">${(x.iller || []).map(admEscape).join(' · ')}</div>
-            </div>
-            <button onclick="mvSirketDuzenle('${x.kod}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded flex-shrink-0">Düzenle</button>
-        </div>`;
-    }).join('') || '<p class="text-xs text-slate-400 italic">Şirket yok — mevzuat.sql çalıştırılmamış olabilir.</p>';
 
     document.getElementById('mvGuncList').innerHTML = _mvGuncellemeler.map(g2 => `
         <div class="flex items-center justify-between gap-2 border border-slate-200 rounded-lg p-3">
@@ -2097,50 +2075,6 @@ async function renderMevzuatAdmin() {
         </div>`).join('') || '<p class="text-xs text-slate-400 italic">Henüz güncelleme kaydı yok.</p>';
 }
 window.renderMevzuatAdmin = renderMevzuatAdmin;
-
-// --------------------------------------------------------------- şirket kartı
-window.mvSirketDuzenle = function (kod) {
-    const e = _mvSirketler.find(x => x.kod === kod); if (!e) return;
-    eduModal(`
-        <h3 class="text-lg font-black text-slate-800 mb-1">${admEscape(e.ad)}</h3>
-        <p class="text-xs text-slate-400 mb-4">${(e.iller || []).map(admEscape).join(' · ')}</p>
-        <div class="space-y-3">
-            <div><label class="text-xs font-bold text-slate-600">Resmi site (https://)</label>
-                <input id="mvSite" value="${admEscape(e.web_site || '')}" placeholder="https://..." class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
-            <div><label class="text-xs font-bold text-slate-600">Lisanssız üretim başvuru sayfası</label>
-                <input id="mvBasvuru" value="${admEscape(e.basvuru_url || '')}" placeholder="https://..." class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
-            <div><label class="text-xs font-bold text-slate-600">Telefon</label>
-                <input id="mvTel" value="${admEscape(e.telefon || '')}" class="w-full p-2 border border-slate-300 rounded-lg text-sm"></div>
-            <div><label class="text-xs font-bold text-slate-600">Not (opsiyonel)</label>
-                <textarea id="mvNot" rows="2" class="w-full p-2 border border-slate-300 rounded-lg text-sm">${admEscape(e.notlar || '')}</textarea></div>
-            <label class="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 cursor-pointer">
-                <input type="checkbox" id="mvDogru" ${e.dogrulandi_mi ? 'checked' : ''} class="mt-0.5 w-4 h-4 shrink-0">
-                <span class="text-xs text-amber-900 leading-relaxed"><b>Bu bilgileri resmi kaynaktan teyit ettim.</b>
-                İşaretlemezseniz ziyaretçiye "teyit edilmedi" uyarısıyla gösterilir — bu bilinçli bir tercih,
-                doğrulanmamış bilgiyi kesinmiş gibi sunmamak için.</span>
-            </label>
-        </div>
-        <div class="flex gap-2 mt-5">
-            <button onclick="eduCloseModal()" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-lg text-sm">Vazgeç</button>
-            <button onclick="mvSirketKaydet('${kod}')" class="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-lg text-sm">Kaydet</button>
-        </div>`);
-};
-
-window.mvSirketKaydet = async function (kod) {
-    const dogru = document.getElementById('mvDogru').checked;
-    const veri = {
-        web_site:    document.getElementById('mvSite').value.trim() || null,
-        basvuru_url: document.getElementById('mvBasvuru').value.trim() || null,
-        telefon:     document.getElementById('mvTel').value.trim() || null,
-        notlar:      document.getElementById('mvNot').value.trim() || null,
-        dogrulandi_mi: dogru,
-        dogrulama_tarihi: dogru ? new Date().toISOString().slice(0, 10) : null,
-        dogrulayan: dogru ? (window.currentUserProfile?.email || 'admin') : null
-    };
-    const { error } = await supabaseClient.from('dagitim_sirketleri').update(veri).eq('kod', kod);
-    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
-    eduCloseModal(); renderMevzuatAdmin();
-};
 
 // ------------------------------------------------------------ belge ve güncelleme
 window.mvYeniBelge = function () {

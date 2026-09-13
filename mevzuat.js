@@ -27,6 +27,14 @@
         return Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
     }
 
+    // ⚠️ distribution_companies — TEK dağıtım şirketi kaydı.
+    // Bu modül önce kendi 'dagitim_sirketleri' tablosunu kullanıyordu; oysa
+    // uygulamada zaten bu tablo vardı ve kurulumcu paneli (crm.js) onu
+    // kullanıyordu. İki paralel kayıt tutmak, bu oturumda üç hesaplayıcıda
+    // düzelttiğimiz hatanın aynısıydı. Tek kayda indirildi.
+    // provinces burada virgülle ayrılmış METİN (dizi değil).
+    const illeriAyir = (p) => String(p || '').split(',').map(x => x.trim()).filter(Boolean);
+
     let _sirketler = [], _guncellemeler = [], _secili = null;
 
     function root() { return document.getElementById('mevzuatRoot'); }
@@ -37,11 +45,16 @@
         r.innerHTML = '<p class="text-slate-400 text-sm">Dağıtım şirketi bilgileri yükleniyor…</p>';
         try {
             const [s, g] = await Promise.all([
-                supabaseClient.from('dagitim_sirketleri').select('*').order('sort_order'),
+                supabaseClient.from('distribution_companies').select('*').eq('is_published', true).order('sort_order'),
                 supabaseClient.from('mevzuat_guncellemeler').select('*').order('tarih', { ascending: false }).limit(20)
             ]);
             if (s.error) throw s.error;
-            _sirketler = s.data || [];
+            // Kolon adlarını bu modülün beklediği şekle çeviriyoruz.
+            _sirketler = (s.data || []).map(x => ({
+                kod: x.id, ad: x.name, kisa_ad: x.abbr, iller: illeriAyir(x.provinces),
+                web_site: x.website, basvuru_url: x.basvuru_url, telefon: x.phone, notlar: x.notes,
+                dogrulandi_mi: !!x.dogrulandi_mi, dogrulama_tarihi: x.dogrulama_tarihi
+            }));
             _guncellemeler = (g && !g.error && g.data) ? g.data : [];
         } catch (e) {
             // Tablo henüz kurulmadıysa bölümü hiç gösterme — yarım arayüz çıkmasın.
