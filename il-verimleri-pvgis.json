@@ -1,0 +1,662 @@
+{
+ "sonuc": {
+  "Adana": {
+   "verim": 1523,
+   "lat": 37.1438,
+   "lon": 35.4984,
+   "egim": 33,
+   "azimut": 5,
+   "eski": 1650
+  },
+  "Adıyaman": {
+   "verim": 1569,
+   "lat": 37.7894,
+   "lon": 38.3141,
+   "egim": 32,
+   "azimut": -2,
+   "eski": 1620
+  },
+  "Afyonkarahisar": {
+   "verim": 1480,
+   "lat": 38.6853,
+   "lon": 30.6427,
+   "egim": 32,
+   "azimut": -6,
+   "eski": 1560
+  },
+  "Aksaray": {
+   "verim": 1563,
+   "lat": 38.4326,
+   "lon": 33.8977,
+   "egim": 32,
+   "azimut": -1,
+   "eski": 1600
+  },
+  "Amasya": {
+   "verim": 1219,
+   "lat": 40.6569,
+   "lon": 35.7727,
+   "egim": 26,
+   "azimut": -13,
+   "eski": 1450
+  },
+  "Ankara": {
+   "verim": 1485,
+   "lat": 39.716,
+   "lon": 32.706,
+   "egim": 32,
+   "azimut": -4,
+   "eski": 1560
+  },
+  "Antalya": {
+   "verim": 1618,
+   "lat": 36.928,
+   "lon": 30.7277,
+   "egim": 33,
+   "azimut": 0,
+   "eski": 1680
+  },
+  "Ardahan": {
+   "verim": 1241,
+   "lat": 41.0373,
+   "lon": 42.7462,
+   "egim": 31,
+   "azimut": -7,
+   "eski": 1480
+  },
+  "Artvin": {
+   "verim": 1011,
+   "lat": 41.1605,
+   "lon": 41.8399,
+   "egim": 22,
+   "azimut": 0,
+   "eski": 1350
+  },
+  "Aydın": {
+   "verim": 1541,
+   "lat": 37.7406,
+   "lon": 28.0676,
+   "egim": 31,
+   "azimut": -3,
+   "eski": 1620
+  },
+  "Ağrı": {
+   "verim": 1239,
+   "lat": 39.5292,
+   "lon": 43.3836,
+   "egim": 29,
+   "azimut": -11,
+   "eski": 1520
+  },
+  "Balıkesir": {
+   "verim": 1427,
+   "lat": 39.5401,
+   "lon": 28.0229,
+   "egim": 33,
+   "azimut": 0,
+   "eski": 1500
+  },
+  "Bartın": {
+   "verim": 1285,
+   "lat": 41.4948,
+   "lon": 32.4354,
+   "egim": 33,
+   "azimut": -2,
+   "eski": 1300
+  },
+  "Batman": {
+   "verim": 1452,
+   "lat": 37.7874,
+   "lon": 41.2574,
+   "egim": 32,
+   "azimut": 21,
+   "eski": 1640
+  },
+  "Bayburt": {
+   "verim": 1370,
+   "lat": 40.2023,
+   "lon": 40.2122,
+   "egim": 31,
+   "azimut": -4,
+   "eski": 1450
+  },
+  "Bilecik": {
+   "verim": 1374,
+   "lat": 40.1543,
+   "lon": 30.148,
+   "egim": 32,
+   "azimut": 5,
+   "eski": 1480
+  },
+  "Bingöl": {
+   "verim": 1446,
+   "lat": 39.0738,
+   "lon": 40.7296,
+   "egim": 31,
+   "azimut": -10,
+   "eski": 1520
+  },
+  "Bitlis": {
+   "verim": 1388,
+   "lat": 38.4951,
+   "lon": 42.1678,
+   "egim": 28,
+   "azimut": -6,
+   "eski": 1540
+  },
+  "Bolu": {
+   "verim": 1343,
+   "lat": 40.6212,
+   "lon": 31.646,
+   "egim": 32,
+   "azimut": -6,
+   "eski": 1350
+  },
+  "Burdur": {
+   "verim": 1591,
+   "lat": 37.5183,
+   "lon": 30.1691,
+   "egim": 33,
+   "azimut": -8,
+   "eski": 1600
+  },
+  "Bursa": {
+   "verim": 1392,
+   "lat": 39.9896,
+   "lon": 28.8945,
+   "egim": 32,
+   "azimut": 0,
+   "eski": 1480
+  },
+  "Denizli": {
+   "verim": 1538,
+   "lat": 37.8276,
+   "lon": 29.239,
+   "egim": 33,
+   "azimut": -5,
+   "eski": 1600
+  },
+  "Diyarbakır": {
+   "verim": 1493,
+   "lat": 38.0815,
+   "lon": 40.4298,
+   "egim": 32,
+   "azimut": 0,
+   "eski": 1650
+  },
+  "Düzce": {
+   "verim": 1254,
+   "lat": 40.8775,
+   "lon": 31.201,
+   "egim": 32,
+   "azimut": 1,
+   "eski": 1320
+  },
+  "Edirne": {
+   "verim": 1401,
+   "lat": 41.1804,
+   "lon": 26.6222,
+   "egim": 33,
+   "azimut": 0,
+   "eski": 1480
+  },
+  "Elazığ": {
+   "verim": 1483,
+   "lat": 38.5825,
+   "lon": 39.3962,
+   "egim": 31,
+   "azimut": 0,
+   "eski": 1560
+  },
+  "Erzincan": {
+   "verim": 1374,
+   "lat": 39.6073,
+   "lon": 39.2013,
+   "egim": 30,
+   "azimut": 1,
+   "eski": 1520
+  },
+  "Erzurum": {
+   "verim": 1274,
+   "lat": 39.7582,
+   "lon": 41.4032,
+   "egim": 29,
+   "azimut": -10,
+   "eski": 1520
+  },
+  "Eskişehir": {
+   "verim": 1473,
+   "lat": 39.6821,
+   "lon": 31.0723,
+   "egim": 33,
+   "azimut": -4,
+   "eski": 1540
+  },
+  "Gaziantep": {
+   "verim": 1572,
+   "lat": 36.9666,
+   "lon": 37.4074,
+   "egim": 31,
+   "azimut": 0,
+   "eski": 1640
+  },
+  "Giresun": {
+   "verim": 1064,
+   "lat": 40.6532,
+   "lon": 38.5172,
+   "egim": 34,
+   "azimut": -12,
+   "eski": 1300
+  },
+  "Gümüşhane": {
+   "verim": 1382,
+   "lat": 40.2533,
+   "lon": 39.385,
+   "egim": 32,
+   "azimut": -2,
+   "eski": 1420
+  },
+  "Hakkari": {
+   "verim": 1428,
+   "lat": 37.4954,
+   "lon": 44.1055,
+   "egim": 30,
+   "azimut": -18,
+   "eski": 1560
+  },
+  "Hatay": {
+   "verim": 1528,
+   "lat": 36.3451,
+   "lon": 36.0748,
+   "egim": 30,
+   "azimut": 25,
+   "eski": 1620
+  },
+  "Isparta": {
+   "verim": 1550,
+   "lat": 37.9465,
+   "lon": 30.9602,
+   "egim": 32,
+   "azimut": -8,
+   "eski": 1600
+  },
+  "Iğdır": {
+   "verim": 1312,
+   "lat": 39.8945,
+   "lon": 43.9427,
+   "egim": 32,
+   "azimut": -7,
+   "eski": 1560
+  },
+  "İstanbul": {
+   "verim": 1354,
+   "lat": 41.0707,
+   "lon": 29.0509,
+   "egim": 32,
+   "azimut": 9,
+   "eski": 1450
+  },
+  "İzmir": {
+   "verim": 1595,
+   "lat": 38.2317,
+   "lon": 27.03,
+   "egim": 33,
+   "azimut": 0,
+   "eski": 1600
+  },
+  "Kahramanmaraş": {
+   "verim": 1511,
+   "lat": 37.783,
+   "lon": 36.8307,
+   "egim": 31,
+   "azimut": 7,
+   "eski": 1620
+  },
+  "Karabük": {
+   "verim": 1327,
+   "lat": 41.111,
+   "lon": 32.6194,
+   "egim": 33,
+   "azimut": -2,
+   "eski": 1350
+  },
+  "Karaman": {
+   "verim": 1579,
+   "lat": 37.1797,
+   "lon": 33.3384,
+   "egim": 30,
+   "azimut": -1,
+   "eski": 1620
+  },
+  "Kars": {
+   "verim": 1284,
+   "lat": 40.4558,
+   "lon": 42.998,
+   "egim": 31,
+   "azimut": -9,
+   "eski": 1500
+  },
+  "Kastamonu": {
+   "verim": 1307,
+   "lat": 41.368,
+   "lon": 33.7619,
+   "egim": 33,
+   "azimut": -9,
+   "eski": 1330
+  },
+  "Kayseri": {
+   "verim": 1380,
+   "lat": 38.6582,
+   "lon": 35.5546,
+   "egim": 30,
+   "azimut": -10,
+   "eski": 1580
+  },
+  "Kilis": {
+   "verim": 1574,
+   "lat": 36.7797,
+   "lon": 37.1417,
+   "egim": 31,
+   "azimut": 0,
+   "eski": 1650
+  },
+  "Kocaeli": {
+   "verim": 1246,
+   "lat": 40.8217,
+   "lon": 29.9507,
+   "egim": 31,
+   "azimut": -8,
+   "eski": 1420
+  },
+  "Konya": {
+   "verim": 1572,
+   "lat": 38.0212,
+   "lon": 32.5225,
+   "egim": 32,
+   "azimut": -5,
+   "eski": 1620
+  },
+  "Kütahya": {
+   "verim": 1424,
+   "lat": 39.2523,
+   "lon": 29.4938,
+   "egim": 32,
+   "azimut": -9,
+   "eski": 1520
+  },
+  "Kırklareli": {
+   "verim": 1380,
+   "lat": 41.7078,
+   "lon": 27.6051,
+   "egim": 33,
+   "azimut": -1,
+   "eski": 1460
+  },
+  "Kırıkkale": {
+   "verim": 1457,
+   "lat": 39.886,
+   "lon": 33.8279,
+   "egim": 32,
+   "azimut": -1,
+   "eski": 1540
+  },
+  "Kırşehir": {
+   "verim": 1483,
+   "lat": 39.3303,
+   "lon": 34.1266,
+   "egim": 32,
+   "azimut": -3,
+   "eski": 1560
+  },
+  "Malatya": {
+   "verim": 1515,
+   "lat": 38.482,
+   "lon": 38.1035,
+   "egim": 32,
+   "azimut": -3,
+   "eski": 1560
+  },
+  "Manisa": {
+   "verim": 1556,
+   "lat": 38.8574,
+   "lon": 28.0566,
+   "egim": 34,
+   "azimut": -4,
+   "eski": 1580
+  },
+  "Mardin": {
+   "verim": 1547,
+   "lat": 37.3611,
+   "lon": 40.8959,
+   "egim": 32,
+   "azimut": 0,
+   "eski": 1680
+  },
+  "Mersin": {
+   "verim": 1595,
+   "lat": 36.8328,
+   "lon": 33.9686,
+   "egim": 32,
+   "azimut": -8,
+   "eski": 1660
+  },
+  "Muğla": {
+   "verim": 1568,
+   "lat": 37.1642,
+   "lon": 28.2624,
+   "egim": 32,
+   "azimut": -5,
+   "eski": 1620
+  },
+  "Muş": {
+   "verim": 1383,
+   "lat": 38.9741,
+   "lon": 41.959,
+   "egim": 30,
+   "azimut": 0,
+   "eski": 1520
+  },
+  "Nevşehir": {
+   "verim": 1511,
+   "lat": 38.7235,
+   "lon": 34.7194,
+   "egim": 32,
+   "azimut": -3,
+   "eski": 1580
+  },
+  "Niğde": {
+   "verim": 1579,
+   "lat": 38.0665,
+   "lon": 34.7051,
+   "egim": 32,
+   "azimut": -6,
+   "eski": 1600
+  },
+  "Ordu": {
+   "verim": 1086,
+   "lat": 40.8293,
+   "lon": 37.4083,
+   "egim": 32,
+   "azimut": 4,
+   "eski": 1300
+  },
+  "Osmaniye": {
+   "verim": 1486,
+   "lat": 37.2518,
+   "lon": 36.2994,
+   "egim": 33,
+   "azimut": 7,
+   "eski": 1630
+  },
+  "Rize": {
+   "verim": 971,
+   "lat": 40.957,
+   "lon": 40.8844,
+   "egim": 34,
+   "azimut": -6,
+   "eski": 1250
+  },
+  "Sakarya": {
+   "verim": 1259,
+   "lat": 40.7732,
+   "lon": 30.4816,
+   "egim": 33,
+   "azimut": 3,
+   "eski": 1400
+  },
+  "Samsun": {
+   "verim": 1247,
+   "lat": 41.2304,
+   "lon": 35.9683,
+   "egim": 33,
+   "azimut": -3,
+   "eski": 1350
+  },
+  "Siirt": {
+   "verim": 1486,
+   "lat": 37.8647,
+   "lon": 42.051,
+   "egim": 31,
+   "azimut": -2,
+   "eski": 1640
+  },
+  "Sinop": {
+   "verim": 1311,
+   "lat": 41.6476,
+   "lon": 34.956,
+   "egim": 31,
+   "azimut": 4,
+   "eski": 1320
+  },
+  "Sivas": {
+   "verim": 1385,
+   "lat": 39.4192,
+   "lon": 37.1012,
+   "egim": 29,
+   "azimut": 14,
+   "eski": 1520
+  },
+  "Tekirdağ": {
+   "verim": 1373,
+   "lat": 41.0731,
+   "lon": 27.4102,
+   "egim": 33,
+   "azimut": 2,
+   "eski": 1470
+  },
+  "Tokat": {
+   "verim": 1367,
+   "lat": 40.3892,
+   "lon": 36.6315,
+   "egim": 32,
+   "azimut": 1,
+   "eski": 1440
+  },
+  "Trabzon": {
+   "verim": 889,
+   "lat": 40.8526,
+   "lon": 39.7849,
+   "egim": 30,
+   "azimut": 0,
+   "eski": 1300
+  },
+  "Tunceli": {
+   "verim": 1389,
+   "lat": 39.2198,
+   "lon": 39.414,
+   "egim": 30,
+   "azimut": 5,
+   "eski": 1520
+  },
+  "Uşak": {
+   "verim": 1580,
+   "lat": 38.5769,
+   "lon": 29.373,
+   "egim": 34,
+   "azimut": -6,
+   "eski": 1560
+  },
+  "Van": {
+   "verim": 1421,
+   "lat": 38.325,
+   "lon": 43.659,
+   "egim": 30,
+   "azimut": -11,
+   "eski": 1560
+  },
+  "Yalova": {
+   "verim": 1323,
+   "lat": 40.5795,
+   "lon": 29.1687,
+   "egim": 30,
+   "azimut": 12,
+   "eski": 1440
+  },
+  "Yozgat": {
+   "verim": 1474,
+   "lat": 39.7152,
+   "lon": 35.171,
+   "egim": 32,
+   "azimut": -1,
+   "eski": 1520
+  },
+  "Zonguldak": {
+   "verim": 1242,
+   "lat": 41.2503,
+   "lon": 31.839,
+   "egim": 32,
+   "azimut": -5,
+   "eski": 1300
+  },
+  "Çanakkale": {
+   "verim": 1381,
+   "lat": 40.055,
+   "lon": 26.9278,
+   "egim": 31,
+   "azimut": 8,
+   "eski": 1500
+  },
+  "Çankırı": {
+   "verim": 1410,
+   "lat": 40.6668,
+   "lon": 33.4526,
+   "egim": 33,
+   "azimut": -6,
+   "eski": 1480
+  },
+  "Çorum": {
+   "verim": 1376,
+   "lat": 40.5698,
+   "lon": 34.7269,
+   "egim": 32,
+   "azimut": -1,
+   "eski": 1460
+  },
+  "Şanlıurfa": {
+   "verim": 1579,
+   "lat": 37.2595,
+   "lon": 39.0408,
+   "egim": 32,
+   "azimut": 0,
+   "eski": 1700
+  },
+  "Şırnak": {
+   "verim": 1444,
+   "lat": 37.4553,
+   "lon": 42.5212,
+   "egim": 29,
+   "azimut": -5,
+   "eski": 1660
+  }
+ },
+ "hata": [],
+ "kaynak": {
+  "servis": "PVGIS v5.2 — Avrupa Komisyonu Ortak Araştırma Merkezi (JRC)",
+  "radyasyon": "PVGIS-SARAH2 (uydu), 2005-2020 ortalaması",
+  "meteoroloji": "ERA5",
+  "sistem": "kristal silisyum, optimal eğim ve azimut, %14 sistem kaybı, 1 kWp",
+  "konum": "ilin OpenStreetMap sınır merkezi",
+  "sorgu": "https://re.jrc.ec.europa.eu/api/v5_2/PVcalc?lat=..&lon=..&peakpower=1&loss=14&optimalangles=1&outputformat=json",
+  "cekim_tarihi": "2026-09-13"
+ }
+}

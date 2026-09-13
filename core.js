@@ -243,41 +243,47 @@ window.epcPriceLabel = function (rol) { return '$' + window.epcPrice(rol).usd; }
 // yerine yapı kuruldu: admin panelinden GEPA/PVGIS'ten okunan gerçek değer
 // girilene kadar her şehir ulusal ortalamaya (solarYield) düşer.
 // --- İL BAZLI ÖZGÜL ÜRETİM — TEK KAYNAK -------------------------------------
-// ⚠️ BU TABLO BÖLGESEL TAHMİNDİR, ÖLÇÜM DEĞİLDİR.
-// Değerler quote.js içinde sabit kodlanmış hâlde duruyordu; kaynağı belli
-// değil ve hesaplayıcıların kullandığı değerle çelişiyordu (İstanbul: teklifte
-// 1450, sitede 1500 — aynı müşteriye iki farklı üretim rakamı). Tek yere
-// taşındı ki en azından TEK bir cevap olsun.
+// KAYNAK: PVGIS v5.2 — Avrupa Komisyonu Ortak Araştırma Merkezi (JRC).
+//   · Radyasyon  : PVGIS-SARAH2 uydu verisi, 2005–2020 ortalaması
+//   · Meteoroloji: ERA5 · Ufuk gölgelemesi: sayısal yükseklik modelinden
+//   · Sistem     : kristal silisyum, optimal eğim ve azimut, %14 sistem kaybı
+//   · Konum      : ilin OpenStreetMap sınır merkezi
+//   Sorgu: re.jrc.ec.europa.eu/api/v5_2/PVcalc?peakpower=1&loss=14&optimalangles=1
+//   Çekim tarihi: 13.09.2026
+//
+// ⚠️ ÖNCEKİ DEĞERLER UYDURMAYDI. Bu tablo quote.js içinde kaynaksız sabit
+// sayılarla duruyordu ve SİSTEMATİK OLARAK YÜKSEKTİ — 81 ilin ortalamasında
+// %7 fazla, en uçta Trabzon'de %32. Teklif verilen müşteriye olmayan bir
+// üretim vaat ediliyordu.
 //
 // SIRALAMA: admin ayarı (app_settings.solarYield_<il>) > bu tablo > ulusal
-// ortalama. Admin bir il için gerçek değeri (GEPA / PVGIS / ölçüm) girdiğinde
-// tahmin devre dışı kalır ve arayüz bunu "ayar" olarak etiketler.
+// ortalama. Yönetici bir il için yerinde ölçüm/PVsyst değeri girerse o kazanır.
 //
-// YAPILACAK: bu 81 değer resmi bir kaynakla (GEPA, PVGIS) değiştirilmeli.
-// O zamana kadar arayüz bunları "tahmin" diye işaretliyor; kesin bilgi gibi
-// gösterilmiyor.
+// NOT: Bunlar OPTİMAL eğimli, gölgesiz bir sistemin değerleridir. Gerçek çatı
+// yönü, eğimi ve gölgelenme üretimi düşürür; arayüz bu değeri "bölgesel tahmin"
+// olarak etiketler ve kesin bilgi gibi göstermez.
 const EPC_IL_VERIM = {
-    'Adana':1650, 'Adıyaman':1620, 'Afyonkarahisar':1560, 'Aksaray':1600,
-    'Amasya':1450, 'Ankara':1560, 'Antalya':1680, 'Ardahan':1480,
-    'Artvin':1350, 'Aydın':1620, 'Ağrı':1520, 'Balıkesir':1500,
-    'Bartın':1300, 'Batman':1640, 'Bayburt':1450, 'Bilecik':1480,
-    'Bingöl':1520, 'Bitlis':1540, 'Bolu':1350, 'Burdur':1600,
-    'Bursa':1480, 'Denizli':1600, 'Diyarbakır':1650, 'Düzce':1320,
-    'Edirne':1480, 'Elazığ':1560, 'Erzincan':1520, 'Erzurum':1520,
-    'Eskişehir':1540, 'Gaziantep':1640, 'Giresun':1300, 'Gümüşhane':1420,
-    'Hakkari':1560, 'Hatay':1620, 'Isparta':1600, 'Iğdır':1560,
-    'İstanbul':1450, 'İzmir':1600, 'Kahramanmaraş':1620, 'Karabük':1350,
-    'Karaman':1620, 'Kars':1500, 'Kastamonu':1330, 'Kayseri':1580,
-    'Kilis':1650, 'Kocaeli':1420, 'Konya':1620, 'Kütahya':1520,
-    'Kırklareli':1460, 'Kırıkkale':1540, 'Kırşehir':1560, 'Malatya':1560,
-    'Manisa':1580, 'Mardin':1680, 'Mersin':1660, 'Muğla':1620,
-    'Muş':1520, 'Nevşehir':1580, 'Niğde':1600, 'Ordu':1300,
-    'Osmaniye':1630, 'Rize':1250, 'Sakarya':1400, 'Samsun':1350,
-    'Siirt':1640, 'Sinop':1320, 'Sivas':1520, 'Tekirdağ':1470,
-    'Tokat':1440, 'Trabzon':1300, 'Tunceli':1520, 'Uşak':1560,
-    'Van':1560, 'Yalova':1440, 'Yozgat':1520, 'Zonguldak':1300,
-    'Çanakkale':1500, 'Çankırı':1480, 'Çorum':1460, 'Şanlıurfa':1700,
-    'Şırnak':1660
+    'Adana':1523, 'Adıyaman':1569, 'Afyonkarahisar':1480, 'Aksaray':1563,
+    'Amasya':1219, 'Ankara':1485, 'Antalya':1618, 'Ardahan':1241,
+    'Artvin':1011, 'Aydın':1541, 'Ağrı':1239, 'Balıkesir':1427,
+    'Bartın':1285, 'Batman':1452, 'Bayburt':1370, 'Bilecik':1374,
+    'Bingöl':1446, 'Bitlis':1388, 'Bolu':1343, 'Burdur':1591,
+    'Bursa':1392, 'Denizli':1538, 'Diyarbakır':1493, 'Düzce':1254,
+    'Edirne':1401, 'Elazığ':1483, 'Erzincan':1374, 'Erzurum':1274,
+    'Eskişehir':1473, 'Gaziantep':1572, 'Giresun':1064, 'Gümüşhane':1382,
+    'Hakkari':1428, 'Hatay':1528, 'Isparta':1550, 'Iğdır':1312,
+    'İstanbul':1354, 'İzmir':1595, 'Kahramanmaraş':1511, 'Karabük':1327,
+    'Karaman':1579, 'Kars':1284, 'Kastamonu':1307, 'Kayseri':1380,
+    'Kilis':1574, 'Kocaeli':1246, 'Konya':1572, 'Kütahya':1424,
+    'Kırklareli':1380, 'Kırıkkale':1457, 'Kırşehir':1483, 'Malatya':1515,
+    'Manisa':1556, 'Mardin':1547, 'Mersin':1595, 'Muğla':1568,
+    'Muş':1383, 'Nevşehir':1511, 'Niğde':1579, 'Ordu':1086,
+    'Osmaniye':1486, 'Rize':971, 'Sakarya':1259, 'Samsun':1247,
+    'Siirt':1486, 'Sinop':1311, 'Sivas':1385, 'Tekirdağ':1373,
+    'Tokat':1367, 'Trabzon':889, 'Tunceli':1389, 'Uşak':1580,
+    'Van':1421, 'Yalova':1323, 'Yozgat':1474, 'Zonguldak':1242,
+    'Çanakkale':1381, 'Çankırı':1410, 'Çorum':1376, 'Şanlıurfa':1579,
+    'Şırnak':1444
 };
 window.EPC_IL_VERIM = EPC_IL_VERIM;
 
@@ -288,14 +294,16 @@ window.epcIlAnahtar = function (ilAdi) {
 };
 
 // Bir ilin özgül üretimi + değerin NEREDEN geldiği.
-// kaynak: 'ayar' (admin girdi) | 'tahmin' (bölgesel tablo) | 'ulusal' (ortalama)
+// kaynak: 'ayar'   → yönetici girdi (yerinde ölçüm / PVsyst), en güvenilir
+//         'pvgis'  → yukarıdaki tablo (JRC PVGIS, optimal eğim, gölgesiz)
+//         'ulusal' → il tanınmadı, ortalamaya düşüldü
 window.epcIlVerim = function (ilAdi) {
     const s = window.EPC_SETTINGS || {};
     const anahtar = window.epcIlAnahtar(ilAdi);
     const ayar = Number(s['solarYield_' + anahtar]);
     if (ayar > 0) return { verim: ayar, kaynak: 'ayar' };
-    const tahmin = Number(EPC_IL_VERIM[ilAdi]);
-    if (tahmin > 0) return { verim: tahmin, kaynak: 'tahmin' };
+    const pv = Number(EPC_IL_VERIM[ilAdi]);
+    if (pv > 0) return { verim: pv, kaynak: 'pvgis' };
     const ulusal = Number(s.solarYield) > 0 ? Number(s.solarYield) : 1500;
     return { verim: ulusal, kaynak: 'ulusal' };
 };

@@ -6,7 +6,7 @@
    index.html'de core.js'ten HEMEN SONRA yüklenmelidir.
    ============================================================================ */
 window.EPC_SETTINGS = {
-    solarYield: 1500,
+    solarYield: 1406,      // 81 ilin PVGIS ortalaması; yalnız il tanınmadığında yedek
     roofM2PerKwp: 5.5,
     kwpPerPanel: 0.55,
     pricePerKwp: 30000,
@@ -17,7 +17,7 @@ window.EPC_SETTINGS = {
     batteryModule: 5,
     inverterSurge: 1.3,
     // Fatura Analizi modülü (admin panelinden düzenlenir)
-    usdTry: 42,
+    usdTry: 48.43,         // TCMB 11.09.2026 — ayar okunamazsa diye; asıl değer app_settings'te
     usdPerKwp: 1000,
     batteryUsdPerKwh: 300,
     tariffMesken: 2.5,

@@ -276,16 +276,16 @@
     // Artık tek kaynak: admin ayarı > bölgesel tahmin > ulusal ortalama.
     let _wz = null, _wzLeads = null;
 
-    // Değerin nereden geldiğini de taşıyoruz: 'ayar' (admin girdi, kesin),
-    // 'tahmin' (bölgesel tablo), 'ulusal' (ortalama). Arayüz ve teklif çıktısı
-    // tahminî değeri kesin bilgi gibi göstermiyor.
+    // Değerin nereden geldiğini de taşıyoruz: 'ayar' (yerinde ölçüm/rapor),
+    // 'pvgis' (JRC uydu verisi, optimal eğim), 'ulusal' (ortalama). Arayüz ve
+    // teklif çıktısı modelden gelen değeri taahhüt gibi göstermiyor.
     function wzVerimBilgi(il) {
         return (typeof window.epcIlVerim === 'function')
             ? window.epcIlVerim(il)
             : { verim: 1500, kaynak: 'ulusal' };
     }
     function wzYield(c) { return wzVerimBilgi(c).verim; }
-    const VERIM_ETIKET = { ayar: '', tahmin: ' (bölgesel tahmin)', ulusal: ' (ulusal ortalama)' };
+    const VERIM_ETIKET = { ayar: ' (ölçüm/rapor)', pvgis: ' (PVGIS)', ulusal: ' (ulusal ortalama)' };
     function wzCat(cat) { return (_qCatalog || []).filter(x => x.category === cat && !x.hidden); }
     function wzById(id) { return (_qCatalog || []).find(x => String(x.id) === String(id)); }
     function wzBestInv(kwp) { const a = wzCat('inverter'); if (!a.length) return null; let b = a[0], bd = 1e9; a.forEach(x => { const k = (x.specs && x.specs.kwe) || 10; const d = Math.abs(k - kwp); if (k >= kwp * 0.8 && d < bd) { bd = d; b = x; } }); return b; }
@@ -366,7 +366,11 @@
         return `
             <h3 class="font-black text-slate-800 mb-1">Sistem Boyutlandırma</h3>
             <p class="text-xs text-slate-500 mb-4">${esc(w.city)} özgül üretim: <b>${y} kWh/kWp/yıl</b><span class="text-slate-400">${VERIM_ETIKET[vb.kaynak] || ''}</span> · Yıllık tüketim: <b>${w.annualCons || 0} kWh</b></p>
-            ${vb.kaynak !== 'ayar' ? '<p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg p-2 mb-3">Bu özgül üretim değeri <b>bölgesel tahmindir</b>, ölçüm değildir. Kesin değer için çatı yönü/eğimi ve gölgelenmeyi içeren bir üretim raporu (PVsyst/PVGIS) gerekir. Yönetici panelinden il için gerçek değer girildiğinde bu uyarı kalkar.</p>' : ''}
+            ${vb.kaynak !== 'ayar' ? `<p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg p-2 mb-3">
+                Bu değer <b>${vb.kaynak === 'pvgis' ? 'PVGIS (AB Ortak Araştırma Merkezi) uydu verisinden' : 'ulusal ortalamadan'}</b> geliyor:
+                <b>optimal eğimli, gölgesiz</b> bir sistemin il merkezi için beklenen üretimi.
+                Gerçek çatının yönü, eğimi ve gölgelenmesi bu değeri <b>düşürür</b> — müşteriye taahhüt olarak sunmayın.
+                Yerinde ölçüm veya PVsyst raporunuz varsa yönetici panelinden il için girin, bu uyarı kalkar.</p>` : ''}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Sistem Gücü (kWp)</label><input id="wzKwp" type="number" step="0.1" value="${w.kwp}" oninput="wzKwpLive()" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Panel</label><select id="wzPanel" onchange="wzCaptureStep2();renderWizard()" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${panelOpts}</select></div>

@@ -295,7 +295,12 @@ window.heroQuickCalc = function () {
 
     const S = window.EPC_SETTINGS || {};
     const YIELD = S.solarYield  || (typeof SOLAR_YIELD_KWH_PER_KWP !== 'undefined' ? SOLAR_YIELD_KWH_PER_KWP : 1500);
-    const PRICE = S.pricePerKwp || (typeof REF_PRICE_PER_KWP_TL    !== 'undefined' ? REF_PRICE_PER_KWP_TL    : 30000);
+    // ⚠️ EskiDEN pricePerKwp (30.000 TL/kWp) okuyordu; hesaplayıcılar ve fatura
+    // analizi ise epcTlPerKwp() (usdPerKwp × usdTry) kullanıyor. Ziyaretçi ana
+    // sayfada bir yatırım tutarı, hesaplayıcıda %40 farklı bir tutar görüyordu.
+    // Tek kaynak: core.js.
+    const PRICE = window.epcTlPerKwp ? window.epcTlPerKwp()
+                : (S.pricePerKwp || (typeof REF_PRICE_PER_KWP_TL !== 'undefined' ? REF_PRICE_PER_KWP_TL : 30000));
     const PANEL = S.kwpPerPanel || (typeof KWP_PER_PANEL           !== 'undefined' ? KWP_PER_PANEL           : 0.55);
 
     const monthlyKwh = bill / tariff, yearlyKwh = monthlyKwh * 12;
