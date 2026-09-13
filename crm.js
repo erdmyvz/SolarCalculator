@@ -25,7 +25,7 @@ const QUOTES_ENABLED = true;
 let _quotesByLead = {};
 let _quoteStats = { count: 0, taslak: 0, gonderildi: 0, kabul: 0, ret: 0, kabulTotal: 0 };
 
-async function crmLoadLeads() {
+async function crmLoadLeads(tazele) {
     if (!supabaseClient) return;
     const tableBody = document.getElementById('crmLeadsTableBody');
     if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Yükleniyor...</td></tr>`;
@@ -65,7 +65,8 @@ async function crmLoadLeads() {
         } catch (e) { /* firm_quotes tablosu yoksa sessiz geç */ }
     }
 
-    await ensureProcessSteps();   // sayaclar/filtre/rozetler 9 adima gore calissin
+    await ensureProcessSteps(tazele);   // sayaclar/filtre/rozetler adimlara gore calissin
+    if (tazele) _disco = null;          // dagitim sirketi listesi de tazelensin
     crmRenderStepCounters();
     renderQuoteSummary();
     crmRenderLeads();
@@ -182,6 +183,28 @@ function crmAramaEslesti(lead, q) {
     return rakam.length >= 3 && String(lead.phone || '').replace(/\D/g, '').includes(rakam);
 }
 
+// Kaç gündür hareket yok? updated_at yoksa created_at'e düşer.
+const CRM_SOGUK_GUN = 14;
+function crmBeklemeGunu(lead) {
+    const t = lead.updated_at || lead.created_at;
+    if (!t) return null;
+    const ms = Date.now() - new Date(t).getTime();
+    if (!isFinite(ms) || ms < 0) return null;
+    return Math.floor(ms / 86400000);
+}
+
+// Sıralama. Varsayılan "en yeni"; "en uzun bekleyen" soğuyan işi öne çeker.
+function crmSirala(liste) {
+    const mod = document.getElementById('crmSirala')?.value || 'yeni';
+    const kopya = [...liste];
+    const zaman = (l, alan) => new Date(l[alan] || l.created_at || 0).getTime() || 0;
+    if (mod === 'eski')    kopya.sort((a, b) => zaman(a, 'created_at') - zaman(b, 'created_at'));
+    else if (mod === 'ad') kopya.sort((a, b) => String(a.full_name || '').localeCompare(String(b.full_name || ''), 'tr'));
+    else if (mod === 'bekleyen') kopya.sort((a, b) => zaman(a, 'updated_at') - zaman(b, 'updated_at'));
+    else kopya.sort((a, b) => zaman(b, 'created_at') - zaman(a, 'created_at'));
+    return kopya;
+}
+
 function crmRenderLeads() {
     const tableBody = document.getElementById('crmLeadsTableBody');
     const filterValue = document.getElementById('crmFilterStatus')?.value || 'all';
@@ -197,6 +220,8 @@ function crmRenderLeads() {
         const cur = crmCurrentStep(lead, _steps);
         return cur && cur.slug === filterValue;
     });
+
+    const siraliLeads = crmSirala(filteredLeads);
 
     // Sayaç: kaçını gösterdiğimizi söylemek, listenin filtreli olduğunu da söyler.
     const sayacEl = document.getElementById('crmSayac');
@@ -222,7 +247,7 @@ function crmRenderLeads() {
         return;
     }
 
-    filteredLeads.forEach(lead => {
+    siraliLeads.forEach(lead => {
         const _curStep = crmCurrentStep(lead, _steps);
         const _total = _steps.length;
         const _doneCount = _steps.filter(s => (lead.completed_steps || []).includes(s.slug)).length;
@@ -252,21 +277,40 @@ function crmRenderLeads() {
             ? `<span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${qMap[q.status][1]}">${qMap[q.status][0]}</span>`
             : '';
 
+        // SOĞUYAN KAYIT UYARISI — bir satış hattının en değerli sinyali.
+        // Kaç gündür hiç hareket olmadığını gösterir; tamamlanmış işler sayılmaz.
+        const bek = crmBeklemeGunu(lead);
+        const soguk = (!_allDone && bek !== null && bek >= CRM_SOGUK_GUN)
+            ? `<span class="inline-block mt-1 ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${bek >= CRM_SOGUK_GUN * 2 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}" title="Bu kayıtta ${bek} gündür hiçbir güncelleme yok">⏳ ${bek} gün</span>`
+            : '';
+
+        // Hızlı iletişim: satışçının işi telefon etmek. Kartı açmadan arayabilsin.
+        const telHam = String(lead.phone || '').replace(/[^\d+]/g, '');
+        const telUluslararasi = telHam.startsWith('+') ? telHam.slice(1)
+                              : (telHam.startsWith('0') ? '90' + telHam.slice(1) : telHam);
+        const iletisim = [
+            telHam ? `<a href="tel:${admEscape(telHam)}" onclick="event.stopPropagation()" title="Ara" class="crm-ikon">📞</a>` : '',
+            telUluslararasi.length >= 11 ? `<a href="https://wa.me/${admEscape(telUluslararasi)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="WhatsApp" class="crm-ikon">💬</a>` : '',
+            lead.email ? `<a href="mailto:${admEscape(lead.email)}" onclick="event.stopPropagation()" title="E-posta gönder" class="crm-ikon">✉️</a>` : ''
+        ].filter(Boolean).join('');
+
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50 border-b border-slate-100 transition cursor-pointer";
-        tr.onclick = (e) => { if(e.target.tagName !== 'BUTTON') crmOpenLeadDetails(lead.id); };
+        // Satır tıklaması kartı açar; içindeki bağlantı/düğmeler kendi işini yapar.
+        tr.onclick = (e) => { if (!e.target.closest('a,button')) crmOpenLeadDetails(lead.id); };
 
         tr.innerHTML = `
-            <td class="p-4 pl-6 font-mono text-slate-400 text-[11px]">${dateStr}</td>
+            <td class="p-4 pl-6 font-mono text-slate-400 text-[11px] whitespace-nowrap">${dateStr}</td>
             <td class="p-4">
                 <div class="font-black text-slate-900 text-sm mb-0.5">${admEscape(lead.full_name)}</div>
-                <div class="text-[10px] text-slate-400 font-mono tracking-wider">Takip ID: ${admEscape(lead.tracking_code)} | Tel: ${admEscape(lead.phone) || '-'}</div>
-                ${qBadge}
+                <div class="text-[10px] text-slate-400 font-mono tracking-wider">${admEscape(lead.tracking_code)}${lead.phone ? ' · ' + admEscape(lead.phone) : ''}</div>
+                ${qBadge}${soguk}
             </td>
             <td class="p-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.css}">${admEscape(badge.text)}</span></td>
             <td class="p-4 text-slate-600 font-bold text-[11px]">${techSummary}</td>
-            <td class="p-4 text-right pr-6">
-                <button onclick="event.stopPropagation(); crmCreateQuoteForLead('${lead.id}')" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition text-xs">📄 Teklif Oluştur</button>
+            <td class="p-4 text-right pr-6 whitespace-nowrap">
+                <span class="inline-flex items-center gap-1 mr-2 align-middle">${iletisim}</span>
+                <button onclick="event.stopPropagation(); crmCreateQuoteForLead('${lead.id}')" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm transition text-xs align-middle">📄 Teklif</button>
             </td>
         `;
         tableBody.appendChild(tr);
@@ -322,6 +366,7 @@ window.crmOpenLeadDetails = async function(id) {
     if (typeof crmRecalcKwh === 'function') crmRecalcKwh();
     if (typeof crmSyncConsumptionUI === 'function') crmSyncConsumptionUI();
 
+    _kartKirli = false;                 // yeni kart açıldı, temiz başla
     document.getElementById('crmDetailModal').classList.remove('hidden');
 
     // Birleşik ilerleme: tesis + (aşama + süreç adımları)
@@ -401,22 +446,24 @@ window.crmDeleteLead = async function () {
     try {
         const { error } = await supabaseClient.rpc('delete_lead_cascade', { p_lead_id: id });
         if (error) throw error;
-        if (typeof crmCloseModal === 'function') crmCloseModal();
+        if (typeof crmCloseModal === 'function') crmCloseModal(true);   // silindi: kirli uyarısı sorma
         await crmLoadLeads();
-        alert('✅ Müşteri ve ilgili tüm kayıtlar silindi.');
+        crmBildir('Müşteri ve ilgili tüm kayıtlar silindi.');
     } catch (err) {
         alert('Silinemedi: ' + (err.message || err));
     }
 };
 
 window.crmCopyText = function(text) {
-    if (navigator.clipboard) {
+    // Panoya yazamazsak (izin yok / güvensiz bağlam) kodu yine de gösteriyoruz;
+    // kullanıcı elle seçip kopyalayabilsin.
+    if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(
-            () => alert("Kopyalandı: " + text),
-            () => alert("Tesis Kodu: " + text)
+            () => crmBildir('Kopyalandı: ' + text),
+            () => prompt('Kopyalanamadı — kodu elle kopyalayın:', text)
         );
     } else {
-        alert("Tesis Kodu: " + text);
+        prompt('Tesis kodu (kopyalayabilirsiniz):', text);
     }
 };
 
@@ -440,7 +487,8 @@ window.crmOpenNewLeadModal = function() {
     const nm = document.getElementById('modalLeadName'); if (nm) nm.textContent = 'Yeni Müşteri';
     const idd = document.getElementById('modalLeadIdDisplay'); if (idd) idd.textContent = '';
     const dt = document.getElementById('modalLeadDate'); if (dt) dt.textContent = 'Bilgileri girip Kaydet’e basın';
-    crmRenderStepsPreview(); // yeni kayıt: 9 adım en üstte önizleme olarak gösterilir
+    _kartKirli = false;      // boş kart temiz başlar
+    crmRenderStepsPreview(); // yeni kayıt: adımlar en üstte önizleme olarak gösterilir
     const ex = document.getElementById('crmCardExtras'); if (ex) ex.innerHTML = '';   // kayıt oluşmadan tesis yok
 
     document.getElementById('crmDetailModal').classList.remove('hidden');
@@ -453,6 +501,31 @@ window.crmSaveLeadDetails = async function() {
     const id = document.getElementById('modalLeadId').value;
     const name = (document.getElementById('fieldName').value || '').trim();
     if (!name) { alert('Lütfen müşteri adı / proje başlığı girin.'); return; }
+
+    const ePosta = (document.getElementById('fieldEmail').value || '').trim();
+    const telefon = (document.getElementById('fieldPhone').value || '').trim();
+
+    // E-POSTA NEDEN ÖNEMLİ: tesis oluşturulurken (create_project_from_lead)
+    // kayıt, müşterinin e-postasıyla yatırımcının hesabına bağlanıyor. Yanlış
+    // yazılmış bir adres hiçbir hata vermez, tesis sessizce kimseye bağlanmaz.
+    if (ePosta && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(ePosta)) {
+        alert('E-posta adresi geçerli görünmüyor: ' + ePosta + '\n\nTesis kaydı bu adresle yatırımcının hesabına bağlanır; yanlış adres bağlantıyı sessizce koparır.');
+        return;
+    }
+    // Telefon: rakamları sayıyoruz (0555 123 45 67 → 11 hane). Biçim
+    // dayatmıyoruz, yalnız açıkça eksik olanı soruyoruz.
+    const telRakam = telefon.replace(/\D/g, '');
+    if (telefon && (telRakam.length < 10 || telRakam.length > 13)) {
+        if (!confirm('Telefon numarası eksik görünüyor: ' + telefon + '\n\nYine de kaydedilsin mi?')) return;
+    }
+
+    // Aynı kişi ikinci kez açılmasın — elle kayıtta en sık yapılan hata.
+    if (!id) {
+        const ayni = crmLeads.find(l =>
+            (telRakam.length >= 10 && String(l.phone || '').replace(/\D/g, '') === telRakam) ||
+            (ePosta && String(l.email || '').toLocaleLowerCase('tr-TR') === ePosta.toLocaleLowerCase('tr-TR')));
+        if (ayni && !confirm(`Bu iletişim bilgisiyle zaten bir kayıt var:\n\n${ayni.full_name} · ${ayni.tracking_code}\n\nYeni bir kayıt daha açılsın mı?`)) return;
+    }
 
     const numOrNull = (id) => { const v = document.getElementById(id) ? document.getElementById(id).value : ''; return (v === '' || v == null) ? null : Number(v); };
     const billVal = document.getElementById('fieldBill').value;
@@ -479,26 +552,95 @@ window.crmSaveLeadDetails = async function() {
     };
 
     if (!id) {
-        data.tracking_code = 'EPC-MANUAL-' + Date.now().toString().slice(-6);
-        data.company_id = (currentUserProfile && currentUserProfile.company_id) ? currentUserProfile.company_id : null;
+        // ⚠️ company_id YOKSA KAYDETME.
+        // Eskiden null yazılıyordu. leads.company_id = null "henüz bir firmaya
+        // atanmamış başvuru" demek (admin.js bu kayıtları havuzda listeliyor):
+        // firma müşteriyi kaydediyor, kayıt admin havuzuna düşüyor ve RLS
+        // yüzünden firmanın kendi listesinde GÖRÜNMÜYORDU. Kullanıcı için
+        // "kaydettim, kayboldu" demekti.
+        const firmaId = currentUserProfile && currentUserProfile.company_id;
+        if (!firmaId) {
+            alert('Hesabınız bir firmaya bağlı görünmüyor, bu yüzden müşteri kaydı açılamaz.\n\nKayıt oluşturulsaydı sizin listenizde görünmez, yönetici havuzuna düşerdi. Lütfen yöneticiyle iletişime geçin.');
+            return;
+        }
+        data.tracking_code = crmTakipKodu();
+        data.company_id = firmaId;
         data.source = 'manual';
         data.status = 'yeni_basvuru';
-        const { error } = await supabaseClient.from('leads').insert([data]);
-        if (error) { alert('Müşteri eklenemedi: ' + error.message); return; }
+
+        // Takip kodu benzersiz olmalı: aynı kod iki müşteriye düşerse ziyaretçi
+        // takip ekranında BAŞKASININ kaydını görebilir. Veritabanında benzersizlik
+        // kısıtı varsa çakışmada (23505) yeni kod üretip tekrar deniyoruz.
+        let hata = null;
+        for (let deneme = 0; deneme < 4; deneme++) {
+            const { error } = await supabaseClient.from('leads').insert([data]);
+            if (!error) { hata = null; break; }
+            hata = error;
+            if (String(error.code) !== '23505') break;
+            data.tracking_code = crmTakipKodu();
+        }
+        if (hata) { alert('Müşteri eklenemedi: ' + hata.message); return; }
     } else {
         const { error } = await supabaseClient.from('leads').update(data).eq('id', id);
         if (error) { alert('Kaydedilemedi: ' + error.message); return; }
     }
 
-    crmCloseModal();
+    _kartKirli = false;
+    crmCloseModal(true);
     await crmLoadLeads();
+    crmBildir(id ? 'Müşteri kartı kaydedildi.' : 'Yeni müşteri eklendi.');
 };
 
-window.crmCloseModal = function() { document.getElementById('crmDetailModal').classList.add('hidden'); };
+// Takip kodu üreteci.
+// ESKİSİ: 'EPC-MANUAL-' + Date.now().toString().slice(-6)
+// Son 6 hane, milisaniyenin 1.000.000'e göre kalanıdır — yani kod her
+// ~16 dakika 40 saniyede bir BAŞA DÖNER. Ziyaretçi takip ekranı kodu
+// track_application() ile çözüyor; aynı kod iki kayda düşerse müşteri
+// başkasının adını ve süreç durumunu görür. Artık kod rastgele ve uzay
+// 36^8 ≈ 2,8 trilyon.
+function crmTakipKodu() {
+    const alfabe = '0123456789ABCDEFGHIJKLMNPQRSTUVWXYZ';   // O ve harf/rakam karışıklığı için I, O yok
+    let kod = '';
+    const n = 8;
+    if (window.crypto && window.crypto.getRandomValues) {
+        const b = new Uint32Array(n);
+        window.crypto.getRandomValues(b);
+        for (let i = 0; i < n; i++) kod += alfabe[b[i] % alfabe.length];
+    } else {
+        for (let i = 0; i < n; i++) kod += alfabe[Math.floor(Math.random() * alfabe.length)];
+    }
+    return 'EPC-' + kod;   // ziyaretçi ekranı "EPC- ile başlayan kod" diyor, önek korunuyor
+}
+
+// Kısa bildirim (core.js). Yoksa sessiz geç — modül yine çalışsın.
+function crmBildir(mesaj, tur) {
+    if (typeof window.epcBildir === 'function') window.epcBildir(mesaj, tur);
+}
+
+// --- KAYDEDİLMEMİŞ DEĞİŞİKLİK KORUMASI -------------------------------------
+// Kart, kaydedilmemiş yazıyı hiç sormadan atıyordu. Esc ile kapanma eklenince
+// bu iyice kolaylaştı: yarım kalmış bir not tek tuşla kaybolabiliyordu.
+// Artık alanlara dokunulduysa kapatmadan önce soruluyor.
+let _kartKirli = false;
+const CRM_ALANLAR = ['fieldName','fieldPhone','fieldEmail','fieldAddress','fieldTariff','fieldBill',
+                     'fieldHeatPump','fieldHeatPumpPower','fieldHpKwh','fieldEV','fieldEvBattery',
+                     'fieldEvCharge','fieldBlackout','fieldStorageIntent','fieldNotes'];
+CRM_ALANLAR.forEach(function (id) {
+    const e = document.getElementById(id);
+    if (!e) return;
+    e.addEventListener('input',  () => { _kartKirli = true; });
+    e.addEventListener('change', () => { _kartKirli = true; });
+});
+
+window.crmCloseModal = function(zorla) {
+    if (!zorla && _kartKirli &&
+        !confirm('Kaydedilmemiş değişiklikleriniz var.\n\nKaydetmeden kapatılsın mı?')) return;
+    _kartKirli = false;
+    document.getElementById('crmDetailModal').classList.add('hidden');
+};
 
 // Müşteri kartı Esc ile de kapansın (kapatmanın tek yolu çarpıydı).
-// Not: kart açıkken kaydedilmemiş değişiklik olabilir, o yüzden arka plana
-// tıklamak kapatMIYOR — yanlışlıkla kapanıp veri kaybolmasın.
+// Arka plana tıklamak bilerek kapatMIYOR — yanlışlıkla kapanma riski.
 document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     const m = document.getElementById('crmDetailModal');
@@ -513,10 +655,14 @@ document.addEventListener('keydown', function (e) {
 // ============================================================================
 let _processSteps = null;
 
-async function ensureProcessSteps() {
-    if (_processSteps) return _processSteps;
-    if (!supabaseClient) return [];
-    const { data } = await supabaseClient.from('process_steps').select('*').order('sort_order');
+async function ensureProcessSteps(tazele) {
+    // Önbellek sayfa ömrü boyunca kalıcıydı: admin yeni bir süreç adımı
+    // eklediğinde firma tam sayfa yenileyene kadar göremiyordu. "↻ Yenile"
+    // artık adımları da tazeliyor.
+    if (_processSteps && !tazele) return _processSteps;
+    if (!supabaseClient) return _processSteps || [];
+    const { data, error } = await supabaseClient.from('process_steps').select('*').order('sort_order');
+    if (error) return _processSteps || [];     // hata varsa eldekini koru, boşaltma
     _processSteps = data || [];
     return _processSteps;
 }
@@ -604,7 +750,15 @@ async function crmRenderStepsPreview() {
 window.crmToggleStep = async function(leadId, slug) {
     const lead = crmLeads.find(l => l.id === leadId);
     if (!lead) return;
-    let done = Array.isArray(lead.completed_steps) ? [...lead.completed_steps] : [];
+
+    // Yazma başarısız olursa geri dönebilmek için ÖNCEKİ hali saklıyoruz.
+    // Eskiden iyimser güncelleme geri alınmıyordu: kayıt sunucuya yazılamasa
+    // bile adım ekranda işaretli kalıyor, aşama ilerlemiş görünüyordu.
+    // Kullanıcı uyarıyı kapatıyor ve işin kaydedildiğini sanıyordu.
+    const oncekiAdimlar = Array.isArray(lead.completed_steps) ? [...lead.completed_steps] : [];
+    const oncekiDurum = lead.status;
+
+    let done = [...oncekiAdimlar];
     done = done.includes(slug) ? done.filter(x => x !== slug) : done.concat(slug);
     lead.completed_steps = done;            // iyimser güncelleme
 
@@ -616,10 +770,23 @@ window.crmToggleStep = async function(leadId, slug) {
     renderLeadSteps(lead);
     renderFacilityZone(lead);               // son adımda "Tesis Oluştur" çıksın
     crmRenderStepCounters();  // ust sayaclari (9 adim) tazele
+    crmRenderLeads();
 
+    const nowIso = new Date().toISOString();
     const { error } = await supabaseClient
-        .from('leads').update({ completed_steps: done, status: newStatus, updated_at: new Date().toISOString() }).eq('id', leadId);
-    if (error) { alert('Adım kaydedilemedi: ' + error.message); }
+        .from('leads').update({ completed_steps: done, status: newStatus, updated_at: nowIso }).eq('id', leadId);
+    if (error) {
+        lead.completed_steps = oncekiAdimlar;      // GERİ AL
+        lead.status = oncekiDurum;
+        renderLeadSteps(lead);
+        renderFacilityZone(lead);
+        crmRenderStepCounters();
+        crmRenderLeads();
+        alert('Adım kaydedilemedi, değişiklik geri alındı:\n' + error.message);
+        return;
+    }
+    lead.updated_at = nowIso;                      // "son hareket" sayacı doğru kalsın
+    crmRenderLeads();
 };
 
 
@@ -748,6 +915,62 @@ window.crmSyncConsumptionUI = function () {
 // ============================================================================
 // LİSTE KONTROLLERİ — arama, aşama filtresi, yardım kutusu
 // ============================================================================
+// --- CSV DIŞA AKTARIM -------------------------------------------------------
+// Firmanın kendi verisi firmanındır; dışarı alabilmeli. Ekranda GÖRÜNEN liste
+// (arama + filtre + sıralama uygulanmış hali) indirilir — kullanıcı ne
+// görüyorsa onu alır.
+// Excel Türkçe yerelde virgülü ayraç saymadığı için NOKTALI VİRGÜL kullanıyoruz
+// ve dosyanın başına BOM koyuyoruz; aksi halde Türkçe karakterler bozuk açılır.
+window.crmDisaAktar = function () {
+    const filtre = document.getElementById('crmFilterStatus')?.value || 'all';
+    const q = (document.getElementById('crmArama')?.value || '').trim().toLocaleLowerCase('tr-TR');
+    const steps = _processSteps || [];
+    const liste = crmSirala(crmLeads.filter(l => {
+        if (!crmAramaEslesti(l, q)) return false;
+        if (filtre === 'all') return true;
+        const cur = crmCurrentStep(l, steps);
+        return cur && cur.slug === filtre;
+    }));
+
+    if (!liste.length) { crmBildir('İndirilecek kayıt yok.', 'uyari'); return; }
+
+    const basliklar = ['Takip Kodu','Ad Soyad','Telefon','E-posta','Adres','Abone Grubu',
+                       'Fatura (TL)','Aylık kWh','Aşama','Tamamlanan Adım','Bekleme (gün)',
+                       'Teklif Durumu','Kayıt Tarihi','Son Güncelleme','Notlar'];
+    // Hücre kaçışı: ayraç, tırnak veya satır sonu içeren değer tırnağa alınır.
+    // Baştaki = + - @ karakterleri Excel'de formül olarak yorumlanır; önüne
+    // tek tırnak koyup etkisiz hale getiriyoruz (CSV injection).
+    const hucre = (v) => {
+        let t = (v === null || v === undefined) ? '' : String(v);
+        if (/^[=+\-@]/.test(t)) t = "'" + t;
+        return /[";\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    };
+    const qAd = { taslak:'Taslak', gonderildi:'Gönderildi', kabul:'Kabul', ret:'Ret' };
+    const satirlar = liste.map(l => {
+        const cur = crmCurrentStep(l, steps);
+        const yapildi = steps.filter(x => (l.completed_steps || []).includes(x.slug)).length;
+        const teklif = _quotesByLead[l.id];
+        const tarih = (t) => t ? new Date(t).toLocaleString('tr-TR') : '';
+        return [l.tracking_code, l.full_name, l.phone, l.email, l.address, l.tariff_group,
+                l.bill_amount, l.monthly_kwh,
+                cur ? `${cur.step_no || ''}. ${cur.title}` : (crmStatusLabels[l.status]?.text || l.status),
+                steps.length ? `${yapildi}/${steps.length}` : '',
+                crmBeklemeGunu(l),
+                teklif ? (qAd[teklif.status] || teklif.status) : '',
+                tarih(l.created_at), tarih(l.updated_at), l.notes].map(hucre).join(';');
+    });
+
+    const icerik = '\uFEFF' + [basliklar.map(hucre).join(';')].concat(satirlar).join('\r\n');
+    const blob = new Blob([icerik], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'musteriler-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    crmBildir(liste.length + ' kayıt indirildi.');
+};
+
 window.crmFiltreleriTemizle = function () {
     const a = document.getElementById('crmArama');   if (a) a.value = '';
     const f = document.getElementById('crmFilterStatus'); if (f) f.value = 'all';
@@ -773,6 +996,9 @@ window.crmFiltreleriTemizle = function () {
     // filtreliyken sayaçlar "Tümü" gibi görünüyordu. Artık ikisi birlikte.
     const filtre = document.getElementById('crmFilterStatus');
     if (filtre) filtre.addEventListener('change', () => { crmRenderLeads(); crmRenderStepCounters(); });
+
+    const sirala = document.getElementById('crmSirala');
+    if (sirala) sirala.addEventListener('change', () => crmRenderLeads());
 
     // Yardım kutusu: ilk açılışta açık, kapatılınca kapalı kalır.
     const yardim = document.getElementById('crmYardim');

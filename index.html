@@ -707,6 +707,14 @@
         body .yardim > summary:focus-visible { outline: 2px solid #059669; outline-offset: -2px; border-radius: var(--r-md); }
         body .yardim-govde  { padding: 0 var(--s4) var(--s4); }
 
+        /* --- Listede hızlı iletişim ikonları ---------------------------------- */
+        body .crm-ikon { display: inline-flex; align-items: center; justify-content: center;
+                         width: 28px; height: 28px; border-radius: var(--r-sm); font-size: .9rem;
+                         background: #f1f5f9; text-decoration: none;
+                         transition: background-color .15s ease; }
+        body .crm-ikon:hover { background: #e2e8f0; }
+        body .crm-ikon:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
+
         /* --- Arama kutusu ---------------------------------------------------- */
         body .arama { position: relative; flex: 1 1 220px; min-width: 0; max-width: 340px; }
         body .arama input { width: 100%; font-size: var(--fs-sm); padding: 8px 30px 8px 32px;
@@ -1428,7 +1436,7 @@
                     <!-- Dağıtım şirketi arama: 21 şirketlik kayıt buradan görünür.
                          Fonksiyon (crmOpenDisco) vardı ama HİÇBİR yerden çağrılmıyordu. -->
                     <button onclick="crmOpenDisco()" class="btn-ikincil">🔌 Dağıtım Şirketi Bul</button>
-                    <button onclick="crmLoadLeads()" class="btn-ikincil">↻ Yenile</button>
+                    <button onclick="crmLoadLeads(true)" class="btn-ikincil">↻ Yenile</button>
                     <button onclick="crmOpenNewLeadModal()" class="btn-birincil">➕ Müşteri Ekle</button>
                 </div>
             </div>
@@ -1460,7 +1468,14 @@
                             <span class="sr-only">Müşteri ara</span>
                             <input id="crmArama" type="search" autocomplete="off" placeholder="Ad, telefon veya takip kodu">
                         </label>
-                        <select id="crmFilterStatus" class="p-2 rounded-lg text-xs border border-slate-300 bg-white max-w-[240px]"><option value="all">Tüm aşamalar</option></select>
+                        <select id="crmFilterStatus" class="p-2 rounded-lg text-xs border border-slate-300 bg-white max-w-[220px]"><option value="all">Tüm aşamalar</option></select>
+                        <select id="crmSirala" class="p-2 rounded-lg text-xs border border-slate-300 bg-white" title="Sıralama">
+                            <option value="yeni">En yeni</option>
+                            <option value="eski">En eski</option>
+                            <option value="bekleyen">En uzun bekleyen</option>
+                            <option value="ad">Ada göre (A–Z)</option>
+                        </select>
+                        <button onclick="crmDisaAktar()" class="btn-ikincil" style="padding:7px 12px" title="Görünen listeyi CSV olarak indir">⬇ CSV</button>
                     </div>
                 </div>
                 <div class="tablo-sar">

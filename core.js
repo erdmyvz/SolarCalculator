@@ -139,6 +139,33 @@ window.epcLoadPanel = function () {
 };
 
 
+// --- KISA BİLDİRİM (TOAST) ---------------------------------------------------
+// Başarılı işlemler için alert() kullanılıyordu: kullanıcıyı durduruyor,
+// tıklama bekliyor ve "kaydedildi" demek için ekranı kilitliyordu. Bu yardımcı
+// aynı bilgiyi yol kesmeden veriyor. Yıkıcı işlemlerin confirm()'i DURUYOR —
+// onlar bilerek yol kesmeli.
+window.epcBildir = function (mesaj, tur) {
+    let kutu = document.getElementById('epcToastKutu');
+    if (!kutu) {
+        kutu = document.createElement('div');
+        kutu.id = 'epcToastKutu';
+        kutu.setAttribute('role', 'status');       // ekran okuyucu duyursun
+        kutu.setAttribute('aria-live', 'polite');
+        kutu.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none';
+        document.body.appendChild(kutu);
+    }
+    const renk = tur === 'hata' ? '#b91c1c' : (tur === 'uyari' ? '#b45309' : '#0f172a');
+    const t = document.createElement('div');
+    t.textContent = String(mesaj);
+    t.style.cssText = `background:${renk};color:#fff;font-size:.875rem;font-weight:700;padding:10px 18px;border-radius:999px;box-shadow:0 10px 30px -10px rgba(15,23,42,.6);opacity:0;transition:opacity .18s ease,transform .18s ease;transform:translateY(6px);max-width:90vw;text-align:center`;
+    kutu.appendChild(t);
+    requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateY(0)'; });
+    setTimeout(() => {
+        t.style.opacity = '0'; t.style.transform = 'translateY(6px)';
+        setTimeout(() => t.remove(), 220);
+    }, tur === 'hata' ? 5000 : 2600);
+};
+
 // --- ABONELİK FİYATLARI — TEK KAYNAK ----------------------------------------
 // Fiyat dört ayrı yerde elle yazılıydı ve hepsi 299 $ diyordu; rol sayfaları
 // ise 400/200/600 diyordu. Artık hepsi buradan okuyor, tek yerden değişiyor.
