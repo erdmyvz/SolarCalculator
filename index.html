@@ -1398,14 +1398,16 @@
             <div id="quoteRoot"></div>
         </div>
 
-        <div id="servicesModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
-            <div class="mb-6 flex justify-between items-center">
-                <button id="btnBackToMenuFromServices" class="text-slate-500 font-bold">← Menüye Dön</button>
-                <button id="btnRefreshServices" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded">Yenile</button>
+        <div id="servicesModule" class="hidden w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+            <div class="modul-ust">
+                <button id="btnBackToMenuFromServices" class="modul-geri">← Menüye Dön</button>
+                <div class="modul-eylem"><button id="btnRefreshServices" class="btn-ikincil">↻ Yenile</button></div>
             </div>
-            <h2 class="text-2xl font-black text-slate-800 mb-1">🔧 Bana Atanan Servisler</h2>
-            <p class="text-slate-500 text-sm mb-6 font-medium">Firmanıza atanan bakım, temizlik ve arıza talepleri. Durumu güncelleyin ve müşteriye yanıt yazın.</p>
-            <div id="servicesList" class="space-y-4"><p class="text-slate-400 text-sm">Yükleniyor...</p></div>
+            <div class="modul-basligi">
+                <h2>Bana Atanan Servisler</h2>
+                <p>Firmanıza atanan bakım, temizlik ve arıza talepleri. Durumu güncelleyin; yazdığınız yanıt müşterinin takip ekranında görünür.</p>
+            </div>
+            <div id="servicesList"><p class="text-slate-400 text-sm">Yükleniyor...</p></div>
         </div>
 
         <div id="projectsModule" class="hidden w-full max-w-6xl mx-auto mt-4 animate-fade-in">

@@ -114,7 +114,7 @@ async function fetchAdminData() {
             data.forEach(t => {
                 const dateStr = new Date(t.created_at).toLocaleString('tr-TR');
                 const imgBtn = (path, label) => path
-                    ? `<button onclick="openStorageImage('${path}')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-[10px] font-bold">${label}</button>`
+                    ? `<button onclick="openStorageImage('${window.epcAttrJs(path)}')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-[10px] font-bold">${label}</button>`
                     : '';
                 const mediaButtons = `
                     <div class="flex gap-2 mt-3 pt-3 border-t border-slate-200 flex-wrap">
