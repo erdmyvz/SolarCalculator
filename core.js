@@ -173,6 +173,22 @@ window.epcAttrJs = function (deger) {
         .replace(/"/g, '&quot;');
 };
 
+// --- YIL/AY METNİ ------------------------------------------------------------
+// Geri ödeme süresi  Math.floor(y) + ' yıl ' + Math.round((y%1)*12) + ' ay'
+// diye yazılıyordu. Ay kısmı yukarı yuvarlanınca 12 çıkabiliyor:
+// 9,98 yıl → "9 yıl 12 ay". Müşteriye giden teklif PDF'inde böyle bir ifade
+// hem yanlış hem de hesabın gözden geçirilmediği izlenimi veriyor.
+// Burada 12 ay bir yıla taşınıyor ve "0 ay" hiç yazılmıyor.
+window.epcSureMetni = function (yil) {
+    const y = Number(yil);
+    if (!isFinite(y) || y < 0) return '—';
+    let tamYil = Math.floor(y);
+    let ay = Math.round((y - tamYil) * 12);
+    if (ay >= 12) { tamYil += 1; ay = 0; }       // taşıma
+    if (tamYil === 0) return ay + ' ay';
+    return ay === 0 ? tamYil + ' yıl' : tamYil + ' yıl ' + ay + ' ay';
+};
+
 // --- KISA BİLDİRİM (TOAST) ---------------------------------------------------
 // Başarılı işlemler için alert() kullanılıyordu: kullanıcıyı durduruyor,
 // tıklama bekliyor ve "kaydedildi" demek için ekranı kilitliyordu. Bu yardımcı

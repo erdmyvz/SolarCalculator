@@ -272,6 +272,18 @@
         // Kur veya tarife sıfırsa fiyat/fizibilite anlamsız çıkar.
         if (!(Number(_qSettings.usd_rate) > 0)) { alert('Kur (USD→TL) sıfır olamaz; teklifteki TL karşılıkları hesaplanamaz.'); return; }
         if (!(Number(_qSettings.tariff_tl) > 0)) { alert('Tarife (TL/kWh) sıfır olamaz; geri ödeme süresi hesaplanamaz.'); return; }
+
+        // YILLIK ZAM, GERİ ÖDEME SÜRESİNİN EN BÜYÜK KALDIRACI.
+        // Ölçüldü (10 kWp / İstanbul): %0 zamda 10 yıl, %25'te 5,5 yıl,
+        // %40'ta 4,8 yıl. Yani bu tek alan, teklifteki süreyi iki katına
+        // kadar kısaltabiliyor. Yüksek bir değer "daha iyi teklif" değil,
+        // savunması zor bir teklif üretir — 25 yıl boyunca bileşik büyür.
+        const _zam = Number(_qSettings.yield_increase_pct);
+        if (_zam > 35) {
+            const kat = Math.pow(1 + _zam / 100, 25);
+            if (!confirm(`Yıllık elektrik zammı %${_zam} girilmiş.\n\nBu oran 25 yıl boyunca bileşik uygulanır: elektrik fiyatı ${Math.round(kat)} katına çıkar (${_qSettings.tariff_tl} TL/kWh → ${Math.round(_qSettings.tariff_tl * kat).toLocaleString('tr-TR')} TL/kWh).\n\nGeri ödeme süresi olduğundan kısa görünür ve teklifi savunmak zorlaşır.\n\nYine de kaydedilsin mi?`)) return;
+        }
+        if (_zam < 0) { alert('Yıllık elektrik zammı negatif olamaz.'); return; }
         const s = Object.assign({}, _qSettings); s.company_id = cid; s.updated_at = new Date().toISOString();
         try {
             const { error } = await supabaseClient.from('firm_quote_settings').upsert(s, { onConflict: 'company_id' });
@@ -690,7 +702,8 @@
                 py = r && r.yil;
             }
             if (py == null) py = totalTryVat / annualSaving;      // motor yoksa düz oran
-            paybackTxt = Math.floor(py) + ' yıl ' + Math.round((py % 1) * 12) + ' ay';
+            paybackTxt = window.epcSureMetni ? window.epcSureMetni(py)
+                       : (Math.floor(py) + ' yıl ' + Math.round((py % 1) * 12) + ' ay');
         }
         const pay = (s.payment_plan || []).map(p => `<tr><td>${e2(p.label)}</td><td class="r">%${p.pct}</td><td class="r">₺${fmt(totalTryVat * (Number(p.pct) || 0) / 100)}</td></tr>`).join('');
         const war = (s.warranty || []).map(w => `<tr><td>${e2(w.component)}</td><td>${e2(w.product)}</td><td>${e2(w.performance)}</td><td>${e2(w.life)}</td></tr>`).join('');
