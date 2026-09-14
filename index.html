@@ -861,12 +861,9 @@
                             </label>
                             <button onclick="heroQuickCalc()" class="btn-sun btn-phi f-go" style="min-height:var(--s6);padding-inline:var(--s5);font-size:var(--fs-base);font-weight:900">Hesapla →</button>
                         </div>
-                        <p class="text-slate-400" style="font-size:var(--fs-xs);margin-top:var(--s2);line-height:1.6">
-                            Birim fiyatlar <b class="text-slate-300">EPDK 4 Nisan 2026</b> tarifesinden (vergiler dahil).
-                            <a href="https://www.epdk.gov.tr/Detay/Icerik/3-1327/elektrik-faturalarina-esas-tarife-tablolari" target="_blank" rel="noopener noreferrer" class="text-amber-300 font-bold underline">Güncel tarife tablosu ↗</a>
-                            ·
-                            <a href="https://lisans.epdk.gov.tr/epvys-web/faces/pages/online/tarifeFatura/tarifeFatura.xhtml" target="_blank" rel="noopener noreferrer" class="text-amber-300 font-bold underline">Faturanızı EPDK'dan doğrulayın ↗</a>
-                        </p>
+                        <!-- EPDK kaynak bağlantıları hesap sonrası madde listesinde
+                             (public.js → heroQuickCalc). Hesaptan önce ekranı
+                             meşgul etmiyorlar; seçenek etiketinde zaten fiyat yazıyor. -->
                         <div id="heroResult" class="hidden"></div>
                     </div>
                 </div>

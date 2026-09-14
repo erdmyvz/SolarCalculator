@@ -309,6 +309,12 @@ window.heroQuickCalc = function () {
     const investment = kwp * PRICE;
     const annualSaving = bill * 12;
 
+    // EPDK kaynakları tek yerde: hem buradaki madde listesi hem yönetici uyarısı
+    // aynı bağlantıyı gösteriyor.
+    const EPDK_TABLO  = 'https://www.epdk.gov.tr/Detay/Icerik/3-1327/elektrik-faturalarina-esas-tarife-tablolari';
+    const EPDK_FATURA = 'https://lisans.epdk.gov.tr/epvys-web/faces/pages/online/tarifeFatura/tarifeFatura.xhtml';
+    const TARIFE_TARIHI = '4 Nisan 2026';
+
     // Panel başına ~2,5 m² (çerçeve + montaj boşluğu dahil kaba değer).
     const PANEL_M2 = 2.5;
     const roofM2 = panels * PANEL_M2;
@@ -347,20 +353,31 @@ window.heroQuickCalc = function () {
 
     box.innerHTML = `
         <div class="mt-5 pt-5 border-t border-white/15 animate-fade-in">
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+            <!-- DÜZEN: sol sütun fiziksel (ne kurulacak), sağ sütun finansal
+                 (ne kazandırır). Sistem maliyeti tek başına tam genişlikte —
+                 müşterinin ilk baktığı rakam ve uzun bir sayı. -->
+            <div class="grid grid-cols-2 gap-2 mb-2">
                 ${tile('Önerilen Sistem', kwp.toFixed(1), 'kWp', 'text-emerald-300')}
-                ${tile('Tahmini Çatı Alanı', fmt(roofM2), 'm²', 'text-white')}
                 ${tile('Tahmini Tasarruf', '₺' + fmt(annualSaving), '/yıl', 'text-amber-300')}
-                ${tile('Sistem Maliyeti', '₺' + fmt(investment), '', 'text-white')}
+                ${tile('Tahmini Çatı Alanı', fmt(roofM2), 'm²', 'text-white')}
                 ${tile('Amortisman', sure(payback), '', 'text-white')}
             </div>
-            <p class="text-[11px] text-slate-400 mb-4 leading-relaxed">
-                ≈ ${panels} panel · çatı alanı panel başına ~${PANEL_M2} m² kabulüyle.
-                <b class="text-slate-300">Sistem maliyeti kabaca hesaplanmıştır</b> — kurulacak marka/model, çatı tipi,
-                mesafe ve işçiliğe göre belirgin biçimde değişir; bağlayıcı değildir.
-                Amortisman, yıllık %${Math.round((window.epcEnflasyon ? window.epcEnflasyon() : 0.25) * 100)} elektrik zammı ve panel yıpranması varsayımıyla.
-                Tümü Türkiye ortalama değerleriyle yaklaşık hesaptır; kesin sonuç için çatı keşfi gerekir.
-            </p>
+            <div class="mb-4">
+                ${tile('Sistem Maliyeti (kabaca)', '₺' + fmt(investment), '', 'text-white')}
+            </div>
+
+            <ul class="text-[11px] text-slate-400 leading-relaxed mb-4 space-y-1.5">
+                <li class="flex gap-2"><span class="text-amber-400/70 shrink-0">•</span><span>Birim fiyatlar <b class="text-slate-300">EPDK ${TARIFE_TARIHI}</b> tarifesinden (vergiler dahil).</span></li>
+                <li class="flex gap-2"><span class="text-amber-400/70 shrink-0">•</span><span><a href="${EPDK_TABLO}" target="_blank" rel="noopener noreferrer" class="text-amber-300 font-bold underline">Güncel tarife tablosu ↗</a></span></li>
+                <li class="flex gap-2"><span class="text-amber-400/70 shrink-0">•</span><span><a href="${EPDK_FATURA}" target="_blank" rel="noopener noreferrer" class="text-amber-300 font-bold underline">Faturanızı EPDK'dan doğrulayın ↗</a></span></li>
+                <li class="flex gap-2"><span class="text-amber-400/70 shrink-0">•</span><span>Sistem, yıllık ${fmt(yearlyKwh)} kWh tüketiminizi karşılayacak biçimde boyutlandırıldı (${fmt(YIELD)} kWh/kWp Türkiye ortalaması).</span></li>
+                <li class="flex gap-2"><span class="text-amber-400/70 shrink-0">•</span><span>Çatı alanı, ≈ ${panels} panel × ~${PANEL_M2} m² kabulüyle hesaplanmıştır; çatı yönü ve gölgelenme gerçek alanı değiştirir.</span></li>
+                <li class="flex gap-2"><span class="text-amber-400/70 shrink-0">•</span><span><b class="text-slate-300">Sistem maliyeti kabaca hesaplanmıştır</b> — kurulacak marka/model, çatı tipi, mesafe ve işçiliğe göre belirgin biçimde değişir; bağlayıcı değildir.</span></li>
+                <li class="flex gap-2"><span class="text-amber-400/70 shrink-0">•</span><span>Amortisman, yıllık %${Math.round((window.epcEnflasyon ? window.epcEnflasyon() : 0.25) * 100)} elektrik zammı ve panel yıpranması varsayımıyla hesaplanır.</span></li>
+                <li class="flex gap-2"><span class="text-amber-400/70 shrink-0">•</span><span>Tasarruf, üretilen elektriğin tamamının kendi tüketiminizi karşıladığı kabulüyle; fazla üretimin şebekeye satışı farklı fiyatlanır.</span></li>
+                <li class="flex gap-2"><span class="text-amber-400/70 shrink-0">•</span><span>Tümü Türkiye ortalama değerleriyle <b class="text-slate-300">yaklaşık hesaptır</b>; kesin sonuç için çatı keşfi gerekir.</span></li>
+            </ul>
+
             <div class="flex flex-col sm:flex-row gap-2">
                 <button onclick="openPublicModule('calculatorModule')" class="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-3 rounded-xl transition">🔎 Detaylı Hesap Yap</button>
                 <button onclick="heroGoLead()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white font-black py-3 rounded-xl transition shadow-lg">📩 Ücretsiz Çatı Keşfi İste</button>
