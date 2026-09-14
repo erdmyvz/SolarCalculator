@@ -285,11 +285,40 @@ backButtons.forEach(id => {
 // ============================================================================
 // HERO HIZLI HESAP — ziyaretçi ilk ekran (ana hesaplayıcıyla aynı formül)
 // ============================================================================
+// TARİFE LİSTESİ: fiyatlar HTML'de yazılı ama tek doğru kaynak app_settings.
+// Yönetici panelinden tarife değiştirildiğinde ana sayfadaki bu liste de
+// değişmeli; yoksa ziyaretçi hero'da bir fiyat, ayrıntılı hesaplayıcıda
+// (calculators.js aynı ayarları okuyor) başka bir fiyat görür.
+// HTML'deki değerler yalnız ayar okunamazsa geçerli olan yedektir.
+window.heroTarifeleriDoldur = function () {
+    const sel = document.getElementById('heroTariff');
+    if (!sel) return;
+    const secili = sel.selectedIndex;
+    Array.prototype.forEach.call(sel.options, function (o) {
+        const anahtar = o.getAttribute('data-tariff-key');
+        const ad = o.getAttribute('data-ad');
+        if (!anahtar || !ad) return;
+        const v = window.epcTarife(anahtar);
+        if (!(v > 0)) return;
+        o.value = String(v);
+        o.textContent = ad + ' (' + v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺)';
+    });
+    if (secili >= 0) sel.selectedIndex = secili;
+};
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', window.heroTarifeleriDoldur);
+else window.heroTarifeleriDoldur();
+// Ayarlar Supabase'ten sonradan geliyor (olay bu dosyadan önce atılmış olabilir).
+if (window.epcAyarlarHazir) window.epcAyarlarHazir(window.heroTarifeleriDoldur);
+else window.addEventListener('epc-settings-loaded', window.heroTarifeleriDoldur);
+
 window.heroQuickCalc = function () {
     const billEl = document.getElementById('heroBill'), box = document.getElementById('heroResult');
     if (!billEl || !box) return;
     const bill = parseFloat(billEl.value) || 0;
-    const tariff = parseFloat(document.getElementById('heroTariff')?.value) || 2.5;
+    const tEl = document.getElementById('heroTariff');
+    const tAnahtar = tEl && tEl.selectedOptions[0] && tEl.selectedOptions[0].getAttribute('data-tariff-key');
+    const tariff = tAnahtar ? window.epcTarife(tAnahtar)
+                            : (parseFloat(tEl?.value) || window.epcTarife('tariffMesken'));
     box.classList.remove('hidden');
     if (bill <= 0) { box.innerHTML = '<p class="mt-4 text-amber-300 text-sm font-bold">Lütfen aylık fatura tutarınızı girin.</p>'; return; }
 

@@ -43,7 +43,7 @@
         const s = qSys(q), prod = pos(s.annual_prod), cons = pos(s.annual_cons);
         if (!prod) return null;
         const S = window.EPC_SETTINGS || {};
-        const unit = Number(S.tariffMesken) || Number(S.tariff) || 2.5;
+        const unit = window.epcTarife('tariffMesken');
         return (cons ? Math.min(prod, cons) : prod) * unit;
     }
     function qPayback(q) { const p = qPrice(q), sv = qSaving(q); return (p && sv) ? p / sv : null; }

@@ -884,11 +884,33 @@ window.crmCreateQuoteForLead = function (id) {
     }
 };
 
+// ⚠️ Bu liste HTML'e gömülü 2,50 / 4,00 / 3,50 ile çalışıyordu ve ayarlara hiç
+// bağlı değildi. Müşteri kaydında aylık kWh'i o orandan hesaplıyoruz; mesken
+// gerçekte 5,32 iken 2,50'den bölünce tüketim İKİ KAT çıkıyor, teklif de o
+// tüketime göre boyutlanıyordu. Artık ayarlardan (app_settings) doluyor.
+window.crmTarifeleriDoldur = function () {
+    const sel = document.getElementById('fieldTariff');
+    if (!sel) return;
+    Array.prototype.forEach.call(sel.options, function (o) {
+        const anahtar = o.getAttribute('data-tariff-key');
+        const ad = o.getAttribute('data-ad');
+        if (!anahtar || !ad) return;
+        const v = Number((window.EPC_SETTINGS || {})[anahtar]);
+        if (!(v > 0)) return;
+        o.dataset.rate = String(v);
+        o.textContent = ad + ' (~' + v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL/kWh)';
+    });
+    if (typeof crmRecalcKwh === 'function' && document.getElementById('fieldBill')) crmRecalcKwh();
+};
+
 function crmTariffRate() {
     const sel = document.getElementById('fieldTariff');
-    if (!sel || sel.selectedIndex < 0) return 2.5;
+    if (!sel || sel.selectedIndex < 0) return window.epcTarife('tariffMesken');
     const opt = sel.options[sel.selectedIndex];
-    return (opt && opt.dataset && parseFloat(opt.dataset.rate)) || 2.5;
+    const anahtar = opt && opt.getAttribute('data-tariff-key');
+    if (anahtar) return window.epcTarife(anahtar);
+    const r = opt && opt.dataset && parseFloat(opt.dataset.rate);
+    return r > 0 ? r : window.epcTarife('tariffMesken');
 }
 
 window.crmRecalcKwh = function () {
@@ -1014,6 +1036,9 @@ window.crmFiltreleriTemizle = function () {
     if (bill) bill.addEventListener('input', crmRecalcKwh);
     const tar = document.getElementById('fieldTariff');
     if (tar) tar.addEventListener('change', crmRecalcKwh);
+    // Etiketlerdeki fiyatlar ayarlardan gelsin (ayarlar sonradan da gelebilir).
+    if (window.epcAyarlarHazir) window.epcAyarlarHazir(window.crmTarifeleriDoldur);
+    else window.crmTarifeleriDoldur();
     ['fieldBlackout', 'fieldEV', 'fieldHeatPump'].forEach(function (id) {
         const e = document.getElementById(id);
         if (e) e.addEventListener('change', crmSyncConsumptionUI);

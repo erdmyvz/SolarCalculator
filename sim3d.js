@@ -1100,7 +1100,7 @@ function renderHome() {
 
         // Fatura → günlük tüketim → yük profilini ölçekle
         if (fatura > 0) {
-            const tarife = S.tariffMesken || S.tariff || 2.5;
+            const tarife = window.epcTarife('tariffMesken');
             const gunlukKwh = (fatura / tarife) / 30;
             const tabanToplam = LOAD_PROFILE.reduce((a, b) => a + b, 0);
             LOAD_SCALE = gunlukKwh / tabanToplam;

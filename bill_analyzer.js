@@ -67,13 +67,13 @@
     function panelM2()   { return panelKwp() * 5.0; }      // ~5 m²/kWp çıplak panel
     function m2PerKwp()  { return S().roofM2PerKwp; }      // yerleşim payı dahil
     // Fiyat/tarife değerleri admin panelinden (app_settings) yönetilir; yoksa varsayılan.
-    const TARIFF_DEFAULTS = { mesken: 2.50, ticarethane: 3.50, sanayi: 3.00, tarimsal: 2.20 };
+    // Yedek değerler core.js → EPC_TARIFE_YEDEK'te; burada kopyası tutulmuyor.
     const TARIFF_KEYS = { mesken: 'tariffMesken', ticarethane: 'tariffTicarethane', sanayi: 'tariffSanayi', tarimsal: 'tariffTarimsal' };
-    function tariffOf(g) { const v = Number((window.EPC_SETTINGS || {})[TARIFF_KEYS[g]]); return v > 0 ? v : (TARIFF_DEFAULTS[g] || TARIFF_DEFAULTS.mesken); }
+    function tariffOf(g) { return window.epcTarife(TARIFF_KEYS[g] || 'tariffMesken'); }
     function priceUsdPerKwp() { const v = Number((window.EPC_SETTINGS || {}).usdPerKwp); return v > 0 ? v : 1000; }        // panel + inverter, $/kWp
     function batteryUsdPerKwh() { const v = Number((window.EPC_SETTINGS || {}).batteryUsdPerKwh); return v > 0 ? v : 300; } // batarya, $/kWh
     const TARIFF_LABEL = { mesken: 'Mesken (konut)', ticarethane: 'Ticarethane / iş yeri', sanayi: 'Sanayi', tarimsal: 'Tarımsal sulama' };
-    function usdTry() { const v = Number((window.EPC_SETTINGS || {}).usdTry); return v > 0 ? v : 42; } // yaklaşık kur (ayarlardan gelebilir)
+    function usdTry() { return window.epcKur(); } // ayar → core.js yedeği
 
     // Modül durumu (her açılışta sıfırlanır)
     let _ex = null;      // çıkarılan/onaylanan alanlar

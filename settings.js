@@ -11,41 +11,62 @@ window.EPC_SETTINGS = {
     kwpPerPanel: 0.55,
     pricePerKwp: 30000,
     co2PerKwh: 0.45,
-    tariff: 2.5,
+    // tariff / tariff* anahtarları aşağıda core.js'in yedek tablosundan kuruluyor
     batteryDod: 0.9,
     inverterEff: 0.95,
     batteryModule: 5,
     inverterSurge: 1.3,
     // Fatura Analizi modülü (admin panelinden düzenlenir)
-    usdTry: 48.43,         // TCMB 11.09.2026 — ayar okunamazsa diye; asıl değer app_settings'te
+    usdTry: 48.43,         // core.js → EPC_KUR_YEDEK üzerine yazar; asıl değer app_settings'te
     usdPerKwp: 1000,
     batteryUsdPerKwh: 300,
-    // ⚠️ TARİFELER GEÇİCİ. Nisan 2026 EPDK tarifesi olarak bildirilen değerler;
-    // ulaşılabilen kaynaklar çelişiyordu, bu yüzden DOĞRULANMIŞ SAYILMIYOR.
-    // tariffDogrulandi = 0 olduğu sürece yönetici panelinde uyarı çıkar.
-    // EPDK 4 Nisan 2026 tarifesinden türetildi: enerji + dağıtım bedeli
-    // üzerine fon (%1), BTV (mesken/ticarethane %5, sanayi/tarım %1) ve KDV (%20).
-    // Enerji ve dağıtım bedelleri resmi tablodan; vergi katmanı hesaplandı.
-    tariffMesken: 5.32,          // AG tek terim, 8 kWh/gün ÜSTÜ
-    tariffMeskenDusuk: 3.54,     // AG tek terim, 8 kWh/gün ve altı
-    tariffTicarethane: 6.63,     // 30 kWh/gün ve altı
-    tariffTicarethaneUst: 7.37,  // 30 kWh/gün üstü
-    tariffSanayi: 5.85,
-    tariffTarimsal: 5.30,
     tariffDogrulandi: 0
 };
 
+// TARİFELER — EPDK "4 Nisan 2026'dan itibaren geçerli" tablosu, AG tek terim.
+//   toplam = (enerji + dağıtım + enerji×%1 fon + enerji×BTV) × 1,20 KDV
+//   BTV: mesken/ticarethanede %5, sanayi ve tarımda %1
+// Enerji ve dağıtım bedelleri RESMİ TABLODAN — kesin. Vergi katmanı yukarıdaki
+// kurala göre hesaplandı, bir faturayla karşılaştırılmadı; bu yüzden
+// tariffDogrulandi = 0 ve yönetici panelinde uyarı duruyor.
+// Sayılar core.js → EPC_TARIFE_YEDEK'te tek yerde tutuluyor; burası onu kopyalar.
+// Asıl kaynak yine de veritabanıdır (app_settings), aşağıdaki yükleyici üzerine yazar.
+Object.assign(window.EPC_SETTINGS, window.EPC_TARIFE_YEDEK || {});
+if (Number(window.EPC_KUR_YEDEK) > 0) window.EPC_SETTINGS.usdTry = Number(window.EPC_KUR_YEDEK);
+
+
+// ⚠️ YARIŞ: ayarların gelmesi ile modül dosyalarının yüklenmesi arasında
+// garantili bir sıra yok. Yalnızca 'epc-settings-loaded' olayını dinleyen bir
+// modül, olay kendisi yüklenmeden ÖNCE atıldıysa haberi hiç almıyor ve koddaki
+// varsayılan değerlerde takılı kalıyordu — yönetici panelinden girilen tarife
+// arayüze hiç yansımayabiliyordu. Bayrak + yardımcı iki yönü de kapatır.
+window.EPC_SETTINGS_HAZIR = false;
+
+// Ayarlar hazır olduğunda cb'yi çalıştırır ve SONRAKİ tazelemelere de abone eder.
+// İki iş birden: geç yüklenen modül kaçırdığı olayı hemen alır (yoksa koddaki
+// varsayılanda takılı kalırdı), erken yüklenen de yöneticinin sonradan yaptığı
+// değişikliği görür. Yalnızca birini yapmak modüllerin bir kısmını bayatlatıyordu.
+window.epcAyarlarHazir = function (cb) {
+    if (typeof cb !== 'function') return;
+    window.addEventListener('epc-settings-loaded', function () { try { cb(); } catch (e) {} });
+    if (window.EPC_SETTINGS_HAZIR) { try { cb(); } catch (e) {} }
+};
+
 (async function loadSettings() {
-    if (typeof supabaseClient === 'undefined' || !supabaseClient) return;
-    try {
-        const { data } = await supabaseClient.from('app_settings').select('key, value');
-        (data || []).forEach(r => {
-            const v = Number(r.value);
-            if (!isNaN(v)) window.EPC_SETTINGS[r.key] = v;
-        });
-    } catch (e) { /* DB yoksa/erişilemezse varsayılanlar kullanılır */ }
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+        try {
+            const { data } = await supabaseClient.from('app_settings').select('key, value');
+            (data || []).forEach(r => {
+                const v = Number(r.value);
+                if (!isNaN(v)) window.EPC_SETTINGS[r.key] = v;
+            });
+        } catch (e) { /* DB yoksa/erişilemezse varsayılanlar kullanılır */ }
+    }
     // Ayarlar sayfa açıldıktan SONRA geliyor; koddaki varsayılanlarla kurulmuş
     // arayüzler (ör. hesaplayıcının tarife listesi) bu olayla kendini tazeler.
+    // DB'ye hiç ulaşılamasa bile bayrak kalkar: bekleyenler sonsuza kadar
+    // asılı kalmaz, varsayılanlarla çizerler.
+    window.EPC_SETTINGS_HAZIR = true;
     try { window.dispatchEvent(new Event('epc-settings-loaded')); } catch (e) {}
 })();
 

@@ -43,8 +43,8 @@
         // ayarı değiştirmezse ilk teklifi siteyle çelişik çıkıyordu. Artık
         // başlangıç değeri platformdan geliyor; firma yine üstüne yazabilir.
         const ps = window.EPC_SETTINGS || {};
-        const kur = Number(ps.usdTry) > 0 ? Number(ps.usdTry) : 42;
-        const tarife = Number(ps.tariffMesken) > 0 ? Number(ps.tariffMesken) : 2.5;
+        const kur = window.epcKur();
+        const tarife = window.epcTarife('tariffMesken');
         // Ayar anahtarı tariffInflationPct (epcEnflasyon ile aynı kaynak).
         const zam = Number(ps.tariffInflationPct) > 0 ? Number(ps.tariffInflationPct) : 25;
         return {
@@ -324,7 +324,7 @@
     function wzBestBat(kwh) { const a = wzCat('battery'); if (!a.length) return null; let b = a[0], bd = 1e9; a.forEach(x => { const k = (x.specs && x.specs.kwh) || 5; const d = Math.abs(k - kwh); if (d < bd) { bd = d; b = x; } }); return b; }
 
     function wzInit(lead) {
-        const tariff = Number(_qSettings.tariff_tl) || 2.5;
+        const tariff = Number(_qSettings.tariff_tl) || window.epcTarife('tariffMesken');
         let cons = 0;
         if (lead) { const mc = Number(lead.monthly_consumption) || 0, mb = Number(lead.monthly_bill || lead.bill_amount) || 0; cons = mc > 0 ? Math.round(mc * 12) : (mb > 0 ? Math.round(mb / tariff * 12) : 0); }
         _wz = { step: 1, lead_id: lead ? lead.id : null, name: lead ? (lead.full_name || lead.name || '') : '', phone: lead ? (lead.phone || '') : '', email: lead ? (lead.email || '') : '', city: (lead && (lead.city || lead.il)) || 'İstanbul', location: '', annualCons: cons, kwp: 0, panelId: null, inverterId: null, batteryKwh: 0, batteryId: null, discount: 0, bom: [] };
@@ -382,7 +382,7 @@
         wzCaptureStep1();
         const l = (_wzLeads || []).find(x => String(x.id) === String(id));
         if (!l) { _wz.lead_id = null; renderWizard(); return; }
-        const tariff = Number(_qSettings.tariff_tl) || 2.5;
+        const tariff = Number(_qSettings.tariff_tl) || window.epcTarife('tariffMesken');
         const mc = Number(l.monthly_consumption) || 0, mb = Number(l.monthly_bill || l.bill_amount) || 0;
         _wz.lead_id = l.id; _wz.name = l.full_name || l.name || ''; _wz.phone = l.phone || ''; _wz.email = l.email || '';
         if (l.city || l.il) _wz.city = l.city || l.il;
@@ -684,7 +684,7 @@
         // Teklif KAYDEDİLDİĞİ ANDAKİ tarife ve zam oranı satırda saklanıyor.
         // Saklanmasaydı eski bir teklif bugün açıldığında güncel ayarlarla
         // yeniden hesaplanır, müşteriye gönderilen rakamdan farklı çıkardı.
-        const tariff = Number(tot.tariff_tl) || Number(s.tariff_tl) || 3.5;
+        const tariff = Number(tot.tariff_tl) || Number(s.tariff_tl) || window.epcTarife('tariffMesken');
         const zamPct = (tot.escalation_pct != null ? Number(tot.escalation_pct) : Number(s.yield_increase_pct));
         const annualSaving = Math.round(annualProd * tariff);
         const totalTryVat = Number(tot.total_try_vat) || 0;

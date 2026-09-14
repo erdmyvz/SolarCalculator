@@ -98,7 +98,7 @@
         // admin panelinde ayrı ayrı düzenlenebiliyordu: biri değişince diğeri
         // eski değerde kalıyor, amortisman ile hesaplayıcı farklı tarife
         // kullanıyordu. Mesken tarifesi esas, 'tariff' yalnız yedek.
-        const defPrice = Number(S.tariffMesken) || Number(S.tariff) || 2.5;   // TL/kWh
+        const defPrice = window.epcTarife('tariffMesken');   // TL/kWh
         // Fatura Analizi ve Tüketim Hesaplayıcı ile AYNI kaynak (core.js).
         // Eskiden pricePerKwp (30.000) okuyordu, diğerleri 42.000 diyordu.
         const defSys   = window.epcTlPerKwp ? window.epcTlPerKwp() : (Number(S.pricePerKwp) || 30000);

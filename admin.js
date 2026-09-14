@@ -1245,7 +1245,7 @@ const SETTINGS_SCHEMA = [
     // ⚠️ 'tariffMesken' ile AYNI İŞİ yapıyordu ve ikisi ayrı ayrı
     // düzenlenebildiği için birbirinden ayrışıyordu. Artık her yer
     // tariffMesken okuyor; bu yalnız yedek.
-    { key: 'tariff',        label: 'Elektrik tarifesi TL/kWh (yedek — mesken tarifesini kullanın)', cat: 'Eski / Kullanılmayan', step: '0.1',  def: 2.5 },
+    { key: 'tariff',        label: 'Elektrik tarifesi TL/kWh (yedek — mesken tarifesini kullanın)', cat: 'Eski / Kullanılmayan', step: '0.1',  def: 5.32 },
 
     // İl bazlı özgül üretim ÜSTÜNE YAZMA (kWh/kWp/yıl).
     // Boş bırakılırsa core.js'teki PVGIS değeri kullanılır — etiketteki sayı
@@ -1339,7 +1339,7 @@ const SETTINGS_SCHEMA = [
     { key: 'inverterSurge', label: 'İnverter kalkış katsayısı',        cat: 'Batarya',       step: '0.1',  def: 1.3 },
     { key: 'tariffInflationPct', label: 'Yıllık elektrik zammı (%)',      cat: 'Güneş Sistemi', step: '1',   def: 25 },
     { key: 'panelDegradationPct',label: 'Panel yıpranması (%/yıl)',        cat: 'Güneş Sistemi', step: '0.1', def: 0.7 },
-    { key: 'usdTry',            label: 'USD/TRY kuru (₺)',                cat: 'Fatura Analizi', step: '0.5', def: 42 },
+    { key: 'usdTry',            label: 'USD/TRY kuru (₺)',                cat: 'Fatura Analizi', step: '0.5', def: 48.43 },
     { key: 'usdPerKwp',         label: 'Panel + inverter ($/kWp)',        cat: 'Fatura Analizi', step: '50',  def: 1000 },
     { key: 'batteryUsdPerKwh',  label: 'Batarya ($/kWh)',                 cat: 'Fatura Analizi', step: '25',  def: 300 },
     // ⚠️ VERGİLER DAHİL birim fiyat girin (enerji + dağıtım + fon + BTV + KDV).

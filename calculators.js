@@ -23,19 +23,23 @@ function tlPerKwp() { return window.epcTlPerKwp ? window.epcTlPerKwp() : 42000; 
 // TARİFE: açılır liste artık ayarlardan doluyor. Eskiden değerler HTML'e
 // gömülüydü ve ayarlarla çelişiyordu (ticarethane 4,00 yazıyordu ama ayar 3,50;
 // sanayi 3,50 yazıyordu ama ayar 3,00; tarımsal hiç yoktu).
+// Gruplar ve adlar ana sayfadaki hızlı hesapla (index.html → #heroTariff) BİREBİR
+// aynı; ziyaretçi "Detaylı Hesap Yap"a geçtiğinde aynı seçenekleri bulmalı.
+// Fiyat yok: epcTarife() ayarı, yoksa core.js'in tek yedek tablosunu verir.
 const TARIFE_GRUPLARI = [
-    { key: 'tariffMesken',      ad: '🏠 Mesken / Ev',        vars: 2.5 },
-    { key: 'tariffTicarethane', ad: '🏢 Ticarethane',        vars: 3.5 },
-    { key: 'tariffSanayi',      ad: '🏭 Sanayi',             vars: 3.0 },
-    { key: 'tariffTarimsal',    ad: '🌾 Tarımsal sulama',    vars: 2.2 }
+    { key: 'tariffMesken',         ad: '🏠 Mesken 8 kWh/gün üstü' },
+    { key: 'tariffMeskenDusuk',    ad: '🏠 Mesken 8 kWh/gün altı' },
+    { key: 'tariffTicarethane',    ad: '🏢 Ticarethane 30 kWh/gün altı' },
+    { key: 'tariffTicarethaneUst', ad: '🏢 Ticarethane 30 kWh/gün üstü' },
+    { key: 'tariffSanayi',         ad: '🏭 Sanayi' },
+    { key: 'tariffTarimsal',       ad: '🌾 Tarımsal sulama' }
 ];
 function tarifeListesiniDoldur() {
     const sel = document.getElementById('tariffSelect');
     if (!sel) return;
-    const s = window.EPC_SETTINGS || {};
     const secili = sel.value;
     sel.innerHTML = TARIFE_GRUPLARI.map(function (g) {
-        const v = Number(s[g.key]) > 0 ? Number(s[g.key]) : g.vars;
+        const v = window.epcTarife(g.key);
         return '<option value="' + v + '">' + g.ad + ' (' +
                v.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' TL/kWh)</option>';
     }).join('');
@@ -382,7 +386,7 @@ document.querySelectorAll('.ev-reactive-input').forEach(input => input.addEventL
 
 window.calculateEVSolar = function() {
     // Tarife varsayılanı da ayarlardan (tariffMesken); sabit 2,50 ayarla çelişiyordu.
-    const _vt = Number((window.EPC_SETTINGS || {}).tariffMesken) > 0 ? Number(window.EPC_SETTINGS.tariffMesken) : 2.50;
+    const _vt = window.epcTarife('tariffMesken');
     const tariff = parseFloat(document.getElementById('evCalcTariff')?.value) || _vt;
     const evRange = parseFloat(document.getElementById('evCalcRange')?.value) || 1;
     const evBattery = parseFloat(document.getElementById('evCalcBattery')?.value) || 1;
@@ -540,6 +544,8 @@ try { calculateEVSolar(); } catch (e) { /* modül DOM'da yoksa sessiz geç */ }
     function baslat() { bagla(); tarifeListesiniDoldur(); }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', baslat);
     else baslat();
-    // Ayarlar Supabase'ten sonradan gelirse tarife listesini tazele.
-    window.addEventListener('epc-settings-loaded', tarifeListesiniDoldur);
+    // Ayarlar Supabase'ten sonradan gelirse tarife listesini tazele. Olay bu dosya
+    // yüklenmeden önce atılmış olabilir; epcAyarlarHazir o durumu da karşılar.
+    if (window.epcAyarlarHazir) window.epcAyarlarHazir(tarifeListesiniDoldur);
+    else window.addEventListener('epc-settings-loaded', tarifeListesiniDoldur);
 })();

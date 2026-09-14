@@ -223,9 +223,14 @@
         }
         /* Hızlı hesap kartı hero genişliğinin altın kesitini kaplar */
         body .hero-calc { width: 100%; max-width: clamp(20rem, 61.8%, 45rem); margin-inline: auto; }
-        /* Hesap satırı: alan / tarife / buton = φ : 1 : içerik */
+        /* Hesap satırı: fatura / tarife / buton.
+           Fatura alanı placeholder'ına yetecek kadar sabit; kalan genişliği
+           tarife alıyor. Eskiden tarife flex payını fatura ile paylaşıyordu ve
+           "🏢 Ticarethane 30 kWh/gün üstü (7,37 ₺)" (≈287px) 243px'lik kutuda
+           ortasından kesiliyordu: kullanıcı hangi grubun seçili olduğunu
+           okuyamıyordu. Abone grubu, faturadan sonraki en belirleyici girdi. */
         body .hero-calc-row:not(.hidden) { display: flex; gap: var(--s2); }
-        body .hero-calc-row > .f-bill   { flex: 1.618 1 0; min-width: 0; }
+        body .hero-calc-row > .f-bill   { flex: 0 1 10.5rem; min-width: 0; }
         body .hero-calc-row > .f-tariff { flex: 1 1 0; min-width: 0; }
         body .hero-calc-row > .f-go     { flex: 0 0 auto; }
         @media (max-width: 640px) {
@@ -842,21 +847,21 @@
                         <div class="hero-calc-row">
                             <label class="f-bill">
                                 <span class="sr-only">Aylık elektrik faturanız (TL)</span>
-                                <input id="heroBill" type="number" inputmode="numeric" placeholder="Aylık faturanız (TL)" onkeydown="if(event.key==='Enter')heroQuickCalc()" class="w-full bg-white text-slate-800 placeholder-slate-400 font-bold outline-none border-2 border-transparent focus:border-emerald-400" style="padding:var(--s3) var(--s4);border-radius:var(--r-md);font-size:var(--fs-base);min-height:var(--s6)">
+                                <input id="heroBill" type="number" inputmode="numeric" placeholder="Aylık fatura ₺" onkeydown="if(event.key==='Enter')heroQuickCalc()" class="w-full bg-white text-slate-800 placeholder-slate-400 font-bold outline-none border-2 border-transparent focus:border-emerald-400" style="padding:var(--s3) var(--s4);border-radius:var(--r-md);font-size:var(--fs-base);min-height:var(--s6)">
                             </label>
                             <label class="f-tariff">
                                 <span class="sr-only">Abone grubunuz</span>
-                                <select id="heroTariff" class="w-full bg-white text-slate-700 font-bold outline-none border-2 border-transparent focus:border-emerald-400" style="padding:var(--s3);border-radius:var(--r-md);font-size:var(--fs-sm);min-height:var(--s6)">
+                                <select id="heroTariff" class="w-full bg-white text-slate-700 font-bold outline-none border-2 border-transparent focus:border-emerald-400" style="padding:var(--s3) var(--s2);border-radius:var(--r-md);font-size:var(--fs-xs);min-height:var(--s6)">
                                     <!-- Birim fiyatlar EPDK'nın 4 Nisan 2026 tarifesinden (enerji + dağıtım
                                          bedeli + fon + BTV + KDV). Mesken ve ticarethanede iki kademe var;
                                          etikette hangi fiyatın uygulandığı yazıyor. Yönetici panelindeki
                                          değerler bu seçenekleri çalışma anında günceller. -->
-                                    <option value="5.32" data-tariff-key="tariffMesken">🏠 Mesken — 8 kWh/gün üstü (5,32 ₺)</option>
-                                    <option value="3.54" data-tariff-key="tariffMeskenDusuk">🏠 Mesken — 8 kWh/gün altı (3,54 ₺)</option>
-                                    <option value="6.63" data-tariff-key="tariffTicarethane">🏢 Ticarethane — 30 kWh/gün altı (6,63 ₺)</option>
-                                    <option value="7.37" data-tariff-key="tariffTicarethaneUst">🏢 Ticarethane — 30 kWh/gün üstü (7,37 ₺)</option>
-                                    <option value="5.85" data-tariff-key="tariffSanayi">🏭 Sanayi (5,85 ₺)</option>
-                                    <option value="5.30" data-tariff-key="tariffTarimsal">🌾 Tarımsal (5,30 ₺)</option>
+                                    <option value="5.32" data-tariff-key="tariffMesken" data-ad="🏠 Mesken 8 kWh/gün üstü">🏠 Mesken 8 kWh/gün üstü (5,32 ₺)</option>
+                                    <option value="3.54" data-tariff-key="tariffMeskenDusuk" data-ad="🏠 Mesken 8 kWh/gün altı">🏠 Mesken 8 kWh/gün altı (3,54 ₺)</option>
+                                    <option value="6.63" data-tariff-key="tariffTicarethane" data-ad="🏢 Ticarethane 30 kWh/gün altı">🏢 Ticarethane 30 kWh/gün altı (6,63 ₺)</option>
+                                    <option value="7.37" data-tariff-key="tariffTicarethaneUst" data-ad="🏢 Ticarethane 30 kWh/gün üstü">🏢 Ticarethane 30 kWh/gün üstü (7,37 ₺)</option>
+                                    <option value="5.85" data-tariff-key="tariffSanayi" data-ad="🏭 Sanayi">🏭 Sanayi (5,85 ₺)</option>
+                                    <option value="5.30" data-tariff-key="tariffTarimsal" data-ad="🌾 Tarımsal">🌾 Tarımsal (5,30 ₺)</option>
                                 </select>
                             </label>
                             <button onclick="heroQuickCalc()" class="btn-sun btn-phi f-go" style="min-height:var(--s6);padding-inline:var(--s5);font-size:var(--fs-base);font-weight:900">Hesapla →</button>
@@ -1581,9 +1586,14 @@
                             <div>
                                 <label class="block text-xs font-bold text-slate-600 mb-1">Abone Grubu</label>
                                 <select id="fieldTariff" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">
-                                    <option value="mesken" data-rate="2.5">🏠 Mesken / Ev (~2,50 TL/kWh)</option>
-                                    <option value="ticarethane" data-rate="4.0">🏢 Ticarethane (~4,00 TL/kWh)</option>
-                                    <option value="sanayi" data-rate="3.5">🏭 Sanayi (~3,50 TL/kWh)</option>
+                                    <!-- value = veritabanındaki tariff_group değeri; DEĞİŞTİRMEYİN.
+                                         Birim fiyat (data-rate) ve etiket çalışma anında ayarlardan
+                                         yazılır (crm.js → crmTarifeleriDoldur). Buradaki sayılar
+                                         yalnız ayarlara ulaşılamazsa geçerlidir. -->
+                                    <option value="mesken" data-rate="5.32" data-tariff-key="tariffMesken" data-ad="🏠 Mesken / Ev">🏠 Mesken / Ev (~5,32 TL/kWh)</option>
+                                    <option value="ticarethane" data-rate="6.63" data-tariff-key="tariffTicarethane" data-ad="🏢 Ticarethane">🏢 Ticarethane (~6,63 TL/kWh)</option>
+                                    <option value="sanayi" data-rate="5.85" data-tariff-key="tariffSanayi" data-ad="🏭 Sanayi">🏭 Sanayi (~5,85 TL/kWh)</option>
+                                    <option value="tarimsal" data-rate="5.30" data-tariff-key="tariffTarimsal" data-ad="🌾 Tarımsal sulama">🌾 Tarımsal sulama (~5,30 TL/kWh)</option>
                                 </select>
                             </div>
                             <div>
@@ -1880,7 +1890,7 @@
                 </div>
             </div>
             
-            <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 mt-4"><label class="block text-slate-800 font-black mb-3">Güncel Şebeke Abone Grubu:</label><select id="tariffSelect" class="w-full p-3 border border-slate-300 rounded-lg outline-none bg-white font-bold text-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"><option value="2.5">🏠 Mesken / Ev (Ort. 2.50 TL/kWh)</option><option value="4.0">🏢 Ticarethane (Ort. 4.00 TL/kWh)</option><option value="3.5">🏭 Sanayi (Ort. 3.50 TL/kWh)</option></select></div>
+            <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 mt-4"><label class="block text-slate-800 font-black mb-3">Güncel Şebeke Abone Grubu:</label><select id="tariffSelect" class="w-full p-3 border border-slate-300 rounded-lg outline-none bg-white font-bold text-slate-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"><option value="5.32">🏠 Mesken 8 kWh/gün üstü (5,32 TL/kWh)</option></select></div>
             
             <div id="calcUyari" class="hidden mt-4"></div>
             <button id="btnCalculate" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-lg text-xl mt-6 transition">SİSTEMİ HESAPLA</button>

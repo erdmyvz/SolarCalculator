@@ -383,8 +383,41 @@ window.epcPayback = function (o) {
 window.epcTlPerKwp = function () {
     const s = window.EPC_SETTINGS || {};
     const usd = Number(s.usdPerKwp) > 0 ? Number(s.usdPerKwp) : 1000;
-    const kur = Number(s.usdTry) > 0 ? Number(s.usdTry) : 42;
-    return usd * kur;
+    return usd * window.epcKur();
+};
+
+// --- TARİFE VE KUR: tek yedek tablo ---------------------------------------
+// Ayarlar (app_settings) asıl kaynaktır; burası yalnız ayarlara HIÇ ulaşılamadığında
+// devreye girer. Eskiden her dosya kendi yedeğini taşıyordu (2,5 · 3,5 · 4,0 · 2,2 ·
+// 42) ve bunlar ayarlarla çelişiyordu: ayar okunamayan bir oturumda mesken 5,32
+// yerine 2,50'den hesaplanıyor, müşteriye iki kat büyük sistem öneriliyordu.
+// settings.js varsayılanlarını bu tablodan kurar — sayılar tek yerde durur.
+// KAYNAK: EPDK 4 Nisan 2026 AG tek terim tarifesi (enerji + dağıtım + fon + BTV + KDV).
+window.EPC_TARIFE_YEDEK = {
+    tariffMesken:         5.32,   // 8 kWh/gün üstü
+    tariffMeskenDusuk:    3.54,   // 8 kWh/gün ve altı
+    tariffTicarethane:    6.63,   // 30 kWh/gün ve altı
+    tariffTicarethaneUst: 7.37,   // 30 kWh/gün üstü
+    tariffSanayi:         5.85,
+    tariffTarimsal:       5.30,
+    tariff:               5.32    // eski yedek anahtar
+};
+window.EPC_KUR_YEDEK = 48.43;     // TCMB 11.09.2026
+
+// Tarife (TL/kWh): önce ayar, sonra yedek tablo. Anahtar verilmezse mesken.
+window.epcTarife = function (anahtar) {
+    const a = anahtar || 'tariffMesken';
+    const s = window.EPC_SETTINGS || {};
+    const v = Number(s[a]);
+    if (v > 0) return v;
+    const y = Number(window.EPC_TARIFE_YEDEK[a]);
+    return y > 0 ? y : window.EPC_TARIFE_YEDEK.tariffMesken;
+};
+
+// USD/TRY: önce ayar, sonra yedek.
+window.epcKur = function () {
+    const v = Number((window.EPC_SETTINGS || {}).usdTry);
+    return v > 0 ? v : window.EPC_KUR_YEDEK;
 };
 
 // Zam ve yıpranma varsayılanları da ayarlardan gelsin ki iki araç aynı
