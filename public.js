@@ -308,35 +308,62 @@ window.heroQuickCalc = function () {
     const panels = Math.max(1, Math.ceil(kwp / PANEL));
     const investment = kwp * PRICE;
     const annualSaving = bill * 12;
-    const payback = annualSaving > 0 ? investment / annualSaving : 0;
+
+    // Panel başına ~2,5 m² (çerçeve + montaj boşluğu dahil kaba değer).
+    const PANEL_M2 = 2.5;
+    const roofM2 = panels * PANEL_M2;
+
+    // AMORTİSMAN — sitenin her yerindeki motorla aynı (core.js/epcPayback):
+    // elektrik zammı ve panel yıpranması modellenir. Buradaki hesap ESKİDEN
+    // düz bölme yapıyordu (yatırım ÷ yıllık tasarruf); aynı fatura için ana
+    // sayfa ~10,7 yıl, hesaplayıcı ~5,5 yıl diyordu. Tek motor.
+    let payback = null;
+    if (window.epcPayback && annualSaving > 0) {
+        const r = window.epcPayback({ yatirim: investment, yillikUretim: yearlyKwh, birimFiyat: tariff, yil: 25 });
+        payback = r && r.yil;
+    }
+    if (payback == null && annualSaving > 0) payback = investment / annualSaving;
+
     const fmt = n => Math.round(n).toLocaleString('tr-TR');
+    const sure = (y) => (y == null) ? '—' : (window.epcSureMetni ? window.epcSureMetni(y) : y.toFixed(1) + ' yıl');
 
     // Ana hesaplayıcıyla aynı özet nesnesi (rapor/lead akışları bunu kullanır)
     window.lastCalc = {
         monthly_kwh: Math.round(monthlyKwh), yearly_kwh: Math.round(yearlyKwh),
         monthly_bill: Math.round(bill), recommended_kwp: +kwp.toFixed(2),
         est_investment: Math.round(investment), est_annual_saving: Math.round(annualSaving),
-        payback_years: +payback.toFixed(1), tariff: tariff
+        payback_years: payback == null ? null : +payback.toFixed(1), tariff: tariff,
+        est_roof_m2: Math.round(roofM2), panels: panels
     };
 
+    // Kutucuk. Beş kutu yan yana geldiği için değer yazısı sabit büyük
+    // olamıyordu: "₺233.088" ve "4 yıl 4 ay" komşu kutunun üstüne taşıyordu.
+    // Boyut kutuya göre küçülüyor ve metin kırılabiliyor.
     const tile = (label, value, unit, accent) =>
-        `<div class="bg-white/10 border border-white/15 rounded-xl p-3 text-center">
-            <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1">${label}</p>
-            <p class="text-xl md:text-2xl font-black ${accent}">${value}<span class="text-xs font-bold text-slate-300 ml-0.5">${unit}</span></p>
+        `<div class="bg-white/10 border border-white/15 rounded-xl px-2 py-3 text-center min-w-0">
+            <p class="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1 leading-tight">${label}</p>
+            <p class="font-black ${accent} leading-tight whitespace-nowrap" style="font-size:clamp(.95rem,2vw,1.4rem)">${value}<span class="text-[11px] font-bold text-slate-300 ml-0.5">${unit}</span></p>
         </div>`;
 
     box.innerHTML = `
         <div class="mt-5 pt-5 border-t border-white/15 animate-fade-in">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
                 ${tile('Önerilen Sistem', kwp.toFixed(1), 'kWp', 'text-emerald-300')}
-                ${tile('Yıllık Üretim', fmt(yearlyKwh), 'kWh', 'text-white')}
-                ${tile('Yıllık Tasarruf', '₺' + fmt(annualSaving), '', 'text-amber-300')}
-                ${tile('Geri Ödeme', payback.toFixed(1), 'yıl', 'text-white')}
+                ${tile('Tahmini Çatı Alanı', fmt(roofM2), 'm²', 'text-white')}
+                ${tile('Tahmini Tasarruf', '₺' + fmt(annualSaving), '/yıl', 'text-amber-300')}
+                ${tile('Sistem Maliyeti', '₺' + fmt(investment), '', 'text-white')}
+                ${tile('Amortisman', sure(payback), '', 'text-white')}
             </div>
-            <p class="text-[11px] text-slate-400 mb-4">≈ ${panels} panel · Tahmini yatırım ₺${fmt(investment)} · Türkiye ortalama değerleriyle yaklaşık hesaptır; kesin sonuç için çatı keşfi gerekir.</p>
+            <p class="text-[11px] text-slate-400 mb-4 leading-relaxed">
+                ≈ ${panels} panel · çatı alanı panel başına ~${PANEL_M2} m² kabulüyle.
+                <b class="text-slate-300">Sistem maliyeti kabaca hesaplanmıştır</b> — kurulacak marka/model, çatı tipi,
+                mesafe ve işçiliğe göre belirgin biçimde değişir; bağlayıcı değildir.
+                Amortisman, yıllık %${Math.round((window.epcEnflasyon ? window.epcEnflasyon() : 0.25) * 100)} elektrik zammı ve panel yıpranması varsayımıyla.
+                Tümü Türkiye ortalama değerleriyle yaklaşık hesaptır; kesin sonuç için çatı keşfi gerekir.
+            </p>
             <div class="flex flex-col sm:flex-row gap-2">
-                <button onclick="heroGoLead()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white font-black py-3 rounded-xl transition shadow-lg">📩 Ücretsiz Çatı Keşfi İste</button>
                 <button onclick="openPublicModule('calculatorModule')" class="flex-1 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-3 rounded-xl transition">🔎 Detaylı Hesap Yap</button>
+                <button onclick="heroGoLead()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-white font-black py-3 rounded-xl transition shadow-lg">📩 Ücretsiz Çatı Keşfi İste</button>
             </div>
         </div>`;
 };
@@ -346,7 +373,7 @@ window.heroGoLead = function () {
     if (typeof openLeadModal === 'function') openLeadModal('kurulum');
     const c = window.lastCalc;
     if (!c) return;
-    const summary = `[Hızlı hesap] Aylık fatura: ${c.monthly_bill} TL · Önerilen sistem: ${c.recommended_kwp} kWp · Yıllık üretim: ${c.yearly_kwh} kWh · Tahmini yıllık tasarruf: ${c.est_annual_saving} TL · Geri ödeme: ${c.payback_years} yıl`;
+    const summary = `[Hızlı hesap] Aylık fatura: ${c.monthly_bill} TL · Önerilen sistem: ${c.recommended_kwp} kWp · Tahmini çatı alanı: ${c.est_roof_m2} m² (${c.panels} panel) · Tahmini yıllık tasarruf: ${c.est_annual_saving} TL · Amortisman: ${c.payback_years == null ? '—' : c.payback_years + ' yıl'}`;
     const dt = document.getElementById('leadDetails') || document.getElementById('leadNotes') || document.querySelector('#leadPublicForm textarea');
     if (dt && !String(dt.value || '').trim()) dt.value = summary;
 };

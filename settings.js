@@ -23,10 +23,15 @@ window.EPC_SETTINGS = {
     // ⚠️ TARİFELER GEÇİCİ. Nisan 2026 EPDK tarifesi olarak bildirilen değerler;
     // ulaşılabilen kaynaklar çelişiyordu, bu yüzden DOĞRULANMIŞ SAYILMIYOR.
     // tariffDogrulandi = 0 olduğu sürece yönetici panelinde uyarı çıkar.
-    tariffMesken: 3.21,
-    tariffTicarethane: 6.42,
-    tariffSanayi: 5.26,
-    tariffTarimsal: 2.40,
+    // EPDK 4 Nisan 2026 tarifesinden türetildi: enerji + dağıtım bedeli
+    // üzerine fon (%1), BTV (mesken/ticarethane %5, sanayi/tarım %1) ve KDV (%20).
+    // Enerji ve dağıtım bedelleri resmi tablodan; vergi katmanı hesaplandı.
+    tariffMesken: 5.32,          // AG tek terim, 8 kWh/gün ÜSTÜ
+    tariffMeskenDusuk: 3.54,     // AG tek terim, 8 kWh/gün ve altı
+    tariffTicarethane: 6.63,     // 30 kWh/gün ve altı
+    tariffTicarethaneUst: 7.37,  // 30 kWh/gün üstü
+    tariffSanayi: 5.85,
+    tariffTarimsal: 5.30,
     tariffDogrulandi: 0
 };
 

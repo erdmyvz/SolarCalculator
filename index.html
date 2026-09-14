@@ -838,7 +838,7 @@
                 <div class="hero-calc" style="margin-bottom:var(--s6)">
                     <div class="glass-panel shadow-2xl text-left" style="border-radius:var(--r-lg);padding:clamp(var(--s4),3vw,var(--s5))">
                         <p class="font-black text-emerald-300" style="font-size:var(--fs-base);margin-bottom:var(--s1)">⚡ 10 saniyede öğrenin</p>
-                        <p class="text-slate-300" style="font-size:var(--fs-sm);line-height:1.5;margin-bottom:var(--s4)">Faturanızı girin; çatınızın kaç kWp'lik sistem kaldırdığını ve ne kadar kazandıracağını hemen görün.</p>
+                        <p class="text-slate-300" style="font-size:var(--fs-sm);line-height:1.5;margin-bottom:var(--s4)">Faturanızı girin; çatınıza kaç kWp'lik sistem kurulabileceğini ve ne kadar fayda sağlayabileceğini hemen görün.</p>
                         <div class="hero-calc-row">
                             <label class="f-bill">
                                 <span class="sr-only">Aylık elektrik faturanız (TL)</span>
@@ -847,14 +847,26 @@
                             <label class="f-tariff">
                                 <span class="sr-only">Abone grubunuz</span>
                                 <select id="heroTariff" class="w-full bg-white text-slate-700 font-bold outline-none border-2 border-transparent focus:border-emerald-400" style="padding:var(--s3);border-radius:var(--r-md);font-size:var(--fs-sm);min-height:var(--s6)">
-                                    <option value="2.5" data-tariff-key="tariffMesken">🏠 Mesken</option>
-                                    <option value="3.5" data-tariff-key="tariffTicarethane">🏢 Ticarethane</option>
-                                    <option value="3.0" data-tariff-key="tariffSanayi">🏭 Sanayi</option>
-                                    <option value="2.2" data-tariff-key="tariffTarimsal">🌾 Tarımsal</option>
+                                    <!-- Birim fiyatlar EPDK'nın 4 Nisan 2026 tarifesinden (enerji + dağıtım
+                                         bedeli + fon + BTV + KDV). Mesken ve ticarethanede iki kademe var;
+                                         etikette hangi fiyatın uygulandığı yazıyor. Yönetici panelindeki
+                                         değerler bu seçenekleri çalışma anında günceller. -->
+                                    <option value="5.32" data-tariff-key="tariffMesken">🏠 Mesken — 8 kWh/gün üstü (5,32 ₺)</option>
+                                    <option value="3.54" data-tariff-key="tariffMeskenDusuk">🏠 Mesken — 8 kWh/gün altı (3,54 ₺)</option>
+                                    <option value="6.63" data-tariff-key="tariffTicarethane">🏢 Ticarethane — 30 kWh/gün altı (6,63 ₺)</option>
+                                    <option value="7.37" data-tariff-key="tariffTicarethaneUst">🏢 Ticarethane — 30 kWh/gün üstü (7,37 ₺)</option>
+                                    <option value="5.85" data-tariff-key="tariffSanayi">🏭 Sanayi (5,85 ₺)</option>
+                                    <option value="5.30" data-tariff-key="tariffTarimsal">🌾 Tarımsal (5,30 ₺)</option>
                                 </select>
                             </label>
                             <button onclick="heroQuickCalc()" class="btn-sun btn-phi f-go" style="min-height:var(--s6);padding-inline:var(--s5);font-size:var(--fs-base);font-weight:900">Hesapla →</button>
                         </div>
+                        <p class="text-slate-400" style="font-size:var(--fs-xs);margin-top:var(--s2);line-height:1.6">
+                            Birim fiyatlar <b class="text-slate-300">EPDK 4 Nisan 2026</b> tarifesinden (vergiler dahil).
+                            <a href="https://www.epdk.gov.tr/Detay/Icerik/3-1327/elektrik-faturalarina-esas-tarife-tablolari" target="_blank" rel="noopener noreferrer" class="text-amber-300 font-bold underline">Güncel tarife tablosu ↗</a>
+                            ·
+                            <a href="https://lisans.epdk.gov.tr/epvys-web/faces/pages/online/tarifeFatura/tarifeFatura.xhtml" target="_blank" rel="noopener noreferrer" class="text-amber-300 font-bold underline">Faturanızı EPDK'dan doğrulayın ↗</a>
+                        </p>
                         <div id="heroResult" class="hidden"></div>
                     </div>
                 </div>
@@ -2359,7 +2371,14 @@
               if (S) {
                   Array.prototype.forEach.call(sel.options, function (o) {
                       var k = o.getAttribute('data-tariff-key');
-                      if (k && S[k]) o.value = String(S[k]);
+                      if (!k || !S[k]) return;
+                      o.value = String(S[k]);
+                      // Etiketteki parantez içi fiyatı da güncelle. Eskiden yalnız
+                      // değer değişiyordu: yönetici tarifeyi değiştirdiğinde hesap
+                      // yeni fiyatla yapılıyor ama ekranda ESKİ fiyat yazıyordu.
+                      o.textContent = o.textContent.replace(
+                          /\([\d.,]+\s*₺\)/,
+                          '(' + Number(S[k]).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺)');
                   });
               }
               if (++tries < 6) setTimeout(sync, 700);

@@ -1342,10 +1342,14 @@ const SETTINGS_SCHEMA = [
     { key: 'usdTry',            label: 'USD/TRY kuru (₺)',                cat: 'Fatura Analizi', step: '0.5', def: 42 },
     { key: 'usdPerKwp',         label: 'Panel + inverter ($/kWp)',        cat: 'Fatura Analizi', step: '50',  def: 1000 },
     { key: 'batteryUsdPerKwh',  label: 'Batarya ($/kWh)',                 cat: 'Fatura Analizi', step: '25',  def: 300 },
-    { key: 'tariffMesken',      label: 'Mesken tarifesi (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 3.21 },
-    { key: 'tariffTicarethane', label: 'Ticarethane tarifesi (TL/kWh)',   cat: 'Fatura Analizi', step: '0.1', def: 6.42 },
-    { key: 'tariffSanayi',      label: 'Sanayi tarifesi (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 5.26 },
-    { key: 'tariffTarimsal',    label: 'Tarımsal tarife (TL/kWh)',        cat: 'Fatura Analizi', step: '0.1', def: 2.40 },
+    // ⚠️ VERGİLER DAHİL birim fiyat girin (enerji + dağıtım + fon + BTV + KDV).
+    // Faturanızdan "toplam tutar ÷ tüketilen kWh" ile bulabilirsiniz.
+    { key: 'tariffMesken',         label: 'Mesken — 8 kWh/gün üstü (TL/kWh)',      cat: 'Fatura Analizi', step: '0.1', def: 5.32 },
+    { key: 'tariffMeskenDusuk',    label: 'Mesken — 8 kWh/gün altı (TL/kWh)',      cat: 'Fatura Analizi', step: '0.1', def: 3.54 },
+    { key: 'tariffTicarethane',    label: 'Ticarethane — 30 kWh/gün altı (TL/kWh)', cat: 'Fatura Analizi', step: '0.1', def: 6.63 },
+    { key: 'tariffTicarethaneUst', label: 'Ticarethane — 30 kWh/gün üstü (TL/kWh)', cat: 'Fatura Analizi', step: '0.1', def: 7.37 },
+    { key: 'tariffSanayi',         label: 'Sanayi tarifesi (TL/kWh)',              cat: 'Fatura Analizi', step: '0.1', def: 5.85 },
+    { key: 'tariffTarimsal',       label: 'Tarımsal tarife (TL/kWh)',              cat: 'Fatura Analizi', step: '0.1', def: 5.30 },
     // Tarifeler doğrulanana kadar 0 kalır; 1 yapıldığında uyarı kalkar.
     { key: 'tariffDogrulandi',  label: 'Tarifeleri faturadan teyit ettim (1 = evet)', cat: 'Fatura Analizi', step: '1', def: 0 },
     { key: 'maint_clean_months',   label: 'Panel temizliği periyodu (ay)',  cat: 'Bakım Hatırlatma', step: '1', def: 6 },
@@ -1389,15 +1393,18 @@ async function renderSettingsAdmin() {
         <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 mb-5">
             <p class="font-black text-amber-900 text-sm mb-1">⚠️ Elektrik tarifeleri henüz doğrulanmadı</p>
             <p class="text-xs text-amber-800 leading-relaxed">
-                Aşağıdaki tarife değerleri <b>geçici</b>: Nisan 2026 EPDK tarifesi olarak bildirilen
-                rakamlar, ancak ulaşılabilen kaynaklar birbiriyle çelişiyordu ve teyit edilemedi.
+                Enerji ve dağıtım bedelleri <b>EPDK'nın 4 Nisan 2026 resmi tarife tablosundan</b> alındı.
+                Üzerine eklenen vergi katmanı (fon %1, BTV %5/%1, KDV %20) <b>hesaplanarak</b> bulundu;
+                kendi faturanızla teyit edilmedi.
                 Bu değerler <b>faturadan kWh türetiyor ve tasarrufu paraya çeviriyor</b> — yani
                 hesaplayıcıların, fatura analizinin ve teklif fizibilitesinin altında duruyorlar.
             </p>
             <p class="text-xs text-amber-800 leading-relaxed mt-2">
-                <b>Girilecek rakam:</b> müşterinin kWh başına <b>fiilen ödediği</b> tutar —
-                dağıtım bedeli, BTV, enerji fonu ve KDV <b>dahil</b>. Kendi elektrik faturanızdan
-                <i>toplam tutar ÷ tüketilen kWh</i> ile bulabilirsiniz.
+                <b>Teyit edin:</b> kendi faturanızda <i>toplam tutar ÷ tüketilen kWh</i> hesaplayın
+                ya da <a href="https://lisans.epdk.gov.tr/epvys-web/faces/pages/online/tarifeFatura/tarifeFatura.xhtml"
+                target="_blank" rel="noopener noreferrer" class="underline font-bold">EPDK fatura hesaplama modülünü</a> kullanın.
+                Güncel tablo: <a href="https://www.epdk.gov.tr/Detay/Icerik/3-1327/elektrik-faturalarina-esas-tarife-tablolari"
+                target="_blank" rel="noopener noreferrer" class="underline font-bold">EPDK tarife tabloları</a>.
                 Düzelttikten sonra <b>"Tarifeleri faturadan teyit ettim"</b> alanına <b>1</b> yazıp
                 kaydedin; bu uyarı kalkar.
             </p>
