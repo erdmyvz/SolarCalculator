@@ -44,9 +44,19 @@
             try { const { data } = await supabaseClient.from('profiles').select('*').eq('id', user.id).maybeSingle(); p = data || {}; }
             catch (e) { p = {}; }
         }
+        // Kurulumcu firmanın il/ilçesi: danışman firma seçicisinde buna göre
+        // arıyor. Veri sahibi firmanın kendisi, bu yüzden burada düzenleniyor.
+        let firma = null;
+        if (p && p.company_id) {
+            try {
+                const { data } = await supabaseClient.from('companies')
+                    .select('id, name, city, district').eq('id', p.company_id).maybeSingle();
+                firma = data || null;
+            } catch (e) { firma = null; }
+        }
         return { role: 'profile', id: user.id, email: user.email,
                  first: p.first_name || '', last: p.last_name || '',
-                 phone: p.phone || '', avatar: p.avatar_data || null };
+                 phone: p.phone || '', avatar: p.avatar_data || null, firma };
     }
 
     function avatarInner(name) {
@@ -110,6 +120,8 @@
                     </div>
                 </details>
 
+                ${firmaKarti(_ctx.firma)}
+
                 <button onclick="saveProfile()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl">Kaydet</button>
                 <div id="pfResult"></div>
             </div>
@@ -123,6 +135,35 @@
         if (typeof window.closeAllAndShowMenu === 'function') { window.closeAllAndShowMenu(); return; }
         window.location.hash = (typeof window.epcPanelAdresi === 'function') ? window.epcPanelAdresi() : '#app';
     };
+
+    // Firma il/ilçesi — yalnız bir firmaya bağlı kullanıcıda görünür.
+    // İl serbest metin DEĞİL, 81 ilin listesi: danışman tarafındaki arama
+    // "Istanbul" / "İstanbul" gibi yazım farklarına takılmasın diye.
+    function firmaKarti(f) {
+        if (!f) return '';
+        const iller = (window.EPC_IL_VERIM ? Object.keys(window.EPC_IL_VERIM) : [])
+            .sort((a, b) => a.localeCompare(b, 'tr'));
+        const secenekler = '<option value="">— İl seçilmedi —</option>' +
+            iller.map(il => `<option value="${esc(il)}" ${f.city === il ? 'selected' : ''}>${esc(il)}</option>`).join('');
+        return `
+            <div class="border-t border-slate-200 pt-4 mt-1">
+                <p class="text-sm font-black text-slate-700 mb-1">🏢 Firma Bilgileri</p>
+                <p class="text-[11px] text-slate-400 mb-3">
+                    ${esc(f.name || 'Firmanız')} — bağımsız danışmanlar size danışan yönlendirirken
+                    firmaları <b>il ve ilçeye göre</b> arıyor. Boş bırakırsanız yalnız firma adıyla bulunursunuz.
+                </p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">İl</label>
+                        <select id="pfCity" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${secenekler}</select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">İlçe</label>
+                        <input id="pfDistrict" value="${esc(f.district || '')}" placeholder="Örn. Pendik" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">
+                    </div>
+                </div>
+            </div>`;
+    }
 
     window.pfPick = function (input) {
         const f = input.files && input.files[0]; if (!f) return;
@@ -161,6 +202,21 @@
                     .eq('id', _ctx.id);
                 if (error) throw error;
                 if (window.currentUserProfile) Object.assign(window.currentUserProfile, { first_name: first, last_name: last, phone, avatar_data: _avatar });
+            }
+
+            // Firma il/ilçesi — kart yalnız firmaya bağlı kullanıcıda çizilir.
+            const ilEl = document.getElementById('pfCity');
+            if (_ctx.firma && ilEl) {
+                const il = ilEl.value || null;
+                const ilce = (document.getElementById('pfDistrict').value || '').trim() || null;
+                if (il !== (_ctx.firma.city || null) || ilce !== (_ctx.firma.district || null)) {
+                    const { error } = await supabaseClient.from('companies')
+                        .update({ city: il, district: ilce }).eq('id', _ctx.firma.id);
+                    // Firma satırını güncelleme yetkisi yoksa profil kaydı boşa
+                    // gitmesin: hata yutulmuyor ama diğer alanlar kaydedilmiş oluyor.
+                    if (error) notes.push('Firma il/ilçesi kaydedilemedi: ' + (error.message || error));
+                    else { _ctx.firma.city = il; _ctx.firma.district = ilce; notes.push('Firma konumu güncellendi.'); }
+                }
             }
 
             if (email && email.toLowerCase() !== String(_ctx.email).toLowerCase()) {
