@@ -1,12 +1,12 @@
 /* ============================================================================
    surum.js — SÜRÜM BİLGİSİ VE "TASLAK SÜRÜM" ŞERİDİ
    ⚠️ BU DOSYA ELLE DÜZENLENMEZ. surum-uret.sh tarafından git'ten üretilir.
-   Son üretim: 15.09.2026 10:45
+   Son üretim: 15.09.2026 11:10
    ============================================================================ */
 window.EPC_SURUM = {
-    surum:  'v0.272',
-    commit: 'b28b305',
-    tarih:  '2026-09-15T10:45:15+03:00',
+    surum:  'v0.274',
+    commit: '82021e4',
+    tarih:  '2026-09-15T11:10:51+03:00',
     kirli:  false,        // true = commit'lenmemiş değişiklikle üretildi
     taslak: true           // 1.0'a geçince false yapın, şerit kalkar
 };
