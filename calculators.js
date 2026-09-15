@@ -34,6 +34,22 @@ const TARIFE_GRUPLARI = [
     { key: 'tariffSanayi',         ad: '🏭 Sanayi' },
     { key: 'tariffTarimsal',       ad: '🌾 Tarımsal sulama' }
 ];
+// EV modülündeki birim fiyat kutusu HTML'de value="2.50" ile geliyordu; bu
+// değer her zaman dolu olduğu için koddaki "ayardan al" yedeği HİÇ çalışmıyor,
+// elektrikli araç hesabı 5,32 yerine 2,50'den yapılıyordu. Kullanıcı kutuya
+// dokunmadıysa ayarla eşitliyoruz; dokunduysa onun değeri korunuyor.
+function evTarifesiniEsitle() {
+    const el = document.getElementById('evCalcTariff');
+    if (!el || el.dataset.kullaniciGirdi === '1') return;
+    const v = window.epcTarife('tariffMesken');
+    if (!(v > 0)) return;
+    el.value = String(v);
+    if (typeof window.calculateEVSolar === 'function' && el.offsetParent) window.calculateEVSolar();
+}
+document.addEventListener('input', function (e) {
+    if (e.target && e.target.id === 'evCalcTariff') e.target.dataset.kullaniciGirdi = '1';
+});
+
 function tarifeListesiniDoldur() {
     const sel = document.getElementById('tariffSelect');
     if (!sel) return;
@@ -541,11 +557,12 @@ try { calculateEVSolar(); } catch (e) { /* modül DOM'da yoksa sessiz geç */ }
     }
     window.epcSay = say;
 
-    function baslat() { bagla(); tarifeListesiniDoldur(); }
+    function baslat() { bagla(); tarifeListesiniDoldur(); evTarifesiniEsitle(); }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', baslat);
     else baslat();
     // Ayarlar Supabase'ten sonradan gelirse tarife listesini tazele. Olay bu dosya
     // yüklenmeden önce atılmış olabilir; epcAyarlarHazir o durumu da karşılar.
-    if (window.epcAyarlarHazir) window.epcAyarlarHazir(tarifeListesiniDoldur);
-    else window.addEventListener('epc-settings-loaded', tarifeListesiniDoldur);
+    function tarifeleriTazele() { tarifeListesiniDoldur(); evTarifesiniEsitle(); }
+    if (window.epcAyarlarHazir) window.epcAyarlarHazir(tarifeleriTazele);
+    else window.addEventListener('epc-settings-loaded', tarifeleriTazele);
 })();

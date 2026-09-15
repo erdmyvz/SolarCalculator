@@ -178,6 +178,27 @@ window.addEventListener('load', async () => {
 });
 
 
+/* ----------------------------------------------------------------------------
+   MODÜLLERİ GİZLE
+   Eskiden iki ayrı yerde elle yazılmış modül id listesi vardı ve ikisi de
+   gerçekle uyuşmuyordu: batteryModule, quoteModule, servicesModule,
+   projectsModule ve dashboardModule hiçbirinde yoktu — yani yeni bir modül
+   açıldığında bunlar GİZLENMİYOR, yeni modülün altında açık kalıyordu.
+   (Listede olmayan techSupportModule ise artık DOM'da bile yok.)
+   Liste elle tutuldukça her yeni modülde aynı hata tekrarlanacaktı; artık
+   DOM'un kendisi kaynak: #appContainer'ın DOĞRUDAN çocuğu olan ve id'si
+   "Module" ile biten her kutu bir modüldür. İç içe olanlar (resultsModule
+   hesaplayıcının içinde) doğrudan çocuk olmadığı için kapsam dışı kalır.
+   ---------------------------------------------------------------------------- */
+function epcTumModulleriGizle() {
+    const kap = document.getElementById('appContainer');
+    if (!kap) return;
+    Array.prototype.forEach.call(kap.children, function (el) {
+        if (el.id && /Module$/.test(el.id)) el.classList.add('hidden');
+    });
+}
+window.epcTumModulleriGizle = epcTumModulleriGizle;
+
 // _adresGuncelleme: router kendi çağırdığında true geçer; o zaman hash'e
 // dokunulmaz (zaten hash yüzünden buradayız, yoksa sonsuz döngü olur).
 window.openPublicModule = function(moduleId, _adrestenGeldi) {
@@ -190,8 +211,9 @@ window.openPublicModule = function(moduleId, _adrestenGeldi) {
         window.location.hash = _h;
     }
 
-    // Başka bir panel açık kalmasın diye önce TÜM modülleri gizle (admin paneli + ziyaretçi sayfası üst üste binmesin)
-    ['supplierDirModule','crmModule','adminModule','calculatorModule','simulationModule','evCalcModule','companyManagementModule','techSupportModule','salesAssistantModule','educationModule','regulationsModule','amortizationModule','hardwareModule','consultantsModule','consultantPanelModule','supplierPanelModule','aboutModule','legalModule','messagesModule','investorModule','campaignsModule','billAnalyzerModule'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+    // Başka bir panel açık kalmasın diye önce TÜM modülleri gizle
+    // (admin paneli + ziyaretçi sayfası üst üste binmesin)
+    epcTumModulleriGizle();
 
     document.getElementById('landingContainer').classList.add('hidden');
     document.getElementById('appContainer').classList.remove('hidden');
@@ -216,8 +238,7 @@ window.openPublicModule = function(moduleId, _adrestenGeldi) {
 
 
 window.closeAllAndShowMenu = function() {
-    const mods = ['supplierDirModule','crmModule', 'adminModule', 'calculatorModule', 'simulationModule', 'evCalcModule', 'companyManagementModule', 'techSupportModule', 'salesAssistantModule', 'educationModule', 'regulationsModule', 'amortizationModule', 'hardwareModule', 'consultantsModule', 'consultantPanelModule','supplierPanelModule', 'quoteModule', 'aboutModule', 'legalModule', 'messagesModule', 'investorModule', 'campaignsModule', 'billAnalyzerModule'];
-    mods.forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('hidden'); });
+    epcTumModulleriGizle();
     
     const header = document.querySelector('#appContainer > div.w-full.max-w-7xl.mx-auto');
     

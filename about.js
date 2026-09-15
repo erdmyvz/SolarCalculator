@@ -100,14 +100,14 @@
 #aboutRoot .ab-journey::before{content:"";position:absolute;left:13px;top:8px;bottom:8px;width:3px;border-radius:3px;background:linear-gradient(to bottom,rgba(148,163,184,.35) 0%,#FCD34D 55%,#F59E0B 100%);}
 #aboutRoot .ab-j-row{position:relative;padding-bottom:34px;}
 #aboutRoot .ab-j-row:last-child{padding-bottom:0;}
-#aboutRoot .ab-j-node{position:absolute;left:-31px;top:2px;width:20px;height:20px;border-radius:9999px;background:#CBD5E1;box-shadow:0 0 0 4px #F9FAFB;}
+#aboutRoot .ab-j-node{position:absolute;left:-31px;top:2px;width:20px;height:20px;border-radius:9999px;background:#64748B;box-shadow:0 0 0 4px #0B1B2E;}
 #aboutRoot .ab-j-row:nth-child(2) .ab-j-node{background:#FDE08A;}
 #aboutRoot .ab-j-row:nth-child(3) .ab-j-node{background:#FBBF24;}
-#aboutRoot .ab-j-row.is-now .ab-j-node{background:radial-gradient(circle,#FEF3C7 0%,#FBBF24 45%,#F59E0B 100%);box-shadow:0 0 0 4px #F9FAFB,0 0 26px rgba(245,158,11,.85);width:24px;height:24px;left:-33px;}
-#aboutRoot .ab-j-year{font-size:12px;font-weight:700;letter-spacing:.06em;color:#B45309;}
-#aboutRoot .ab-j-title{font-size:1.12rem;font-weight:800;color:#0f172a;margin-top:2px;}
+#aboutRoot .ab-j-row.is-now .ab-j-node{background:radial-gradient(circle,#FEF3C7 0%,#FBBF24 45%,#F59E0B 100%);box-shadow:0 0 0 4px #0B1B2E,0 0 26px rgba(245,158,11,.85);width:24px;height:24px;left:-33px;}
+#aboutRoot .ab-j-year{font-size:12px;font-weight:700;letter-spacing:.06em;color:#FBBF24;}
+#aboutRoot .ab-j-title{font-size:1.12rem;font-weight:800;color:#E8EEF7;margin-top:2px;}
 #aboutRoot .ab-j-org{font-size:.82rem;font-weight:700;color:#F59E0B;margin-top:2px;}
-#aboutRoot .ab-j-desc{font-size:.92rem;color:#475569;line-height:1.6;margin-top:6px;max-width:46rem;}
+#aboutRoot .ab-j-desc{font-size:.92rem;color:#B6C4D7;line-height:1.6;margin-top:6px;max-width:46rem;}
 
 #aboutRoot .ab-video-poster{position:relative;aspect-ratio:16/9;border-radius:1rem;overflow:hidden;cursor:pointer;background:radial-gradient(700px 300px at 70% -20%,rgba(245,158,11,.22),transparent 60%),linear-gradient(140deg,#0A1A2F,#0E2540 60%,#0B1B2E);border:1px solid rgba(251,191,36,.16);}
 #aboutRoot .ab-video-poster::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(circle at 50% 40%,#000 5%,transparent 70%);mask-image:radial-gradient(circle at 50% 40%,#000 5%,transparent 70%);}
@@ -115,9 +115,9 @@
 #aboutRoot .ab-play:hover{transform:scale(1.07);}
 #aboutRoot .ab-soon{position:absolute;top:14px;right:14px;z-index:2;font-size:11px;font-weight:800;letter-spacing:.08em;background:rgba(251,191,36,.16);color:#FCD34D;border:1px solid rgba(251,191,36,.3);padding:5px 11px;border-radius:9999px;}
 
-#aboutRoot .ab-contact-card{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #E2E8F0;border-radius:.9rem;padding:15px;transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;}
-#aboutRoot .ab-contact-card:hover{border-color:#FDE08A;box-shadow:0 14px 30px -18px rgba(245,158,11,.5);transform:translateY(-2px);}
-#aboutRoot .ab-cc-icon{width:44px;height:44px;border-radius:.7rem;background:#FFF8EB;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+#aboutRoot .ab-contact-card{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.12);border-radius:.9rem;padding:15px;transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;}
+#aboutRoot .ab-contact-card:hover{border-color:rgba(251,191,36,.45);box-shadow:0 14px 30px -18px rgba(245,158,11,.5);transform:translateY(-2px);}
+#aboutRoot .ab-cc-icon{width:44px;height:44px;border-radius:.7rem;background:rgba(251,191,36,.14);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
 
 @media (prefers-reduced-motion: no-preference){
   #aboutRoot .ab-reveal{opacity:0;transform:translateY(20px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1);}

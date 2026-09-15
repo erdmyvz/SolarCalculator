@@ -759,6 +759,429 @@
         @media (prefers-reduced-motion: reduce) {
             body * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
         }
+
+        /* ============================================================
+           MODÜL YÜZEYİ — ziyaretçi araçları ana sayfanın diliyle
+           ------------------------------------------------------------
+           SORUN: Vitrin koyu lacivert + altın vurgu, modüle girince
+           bembeyaz bir form sayfası açılıyordu. Üstelik vurgu rengi de
+           değişiyordu (vitrin amber, modüller mavi). Aynı ürünün iki
+           ayrı sitesi gibi duruyordu.
+
+           YAKLAŞIM: Markup'a dokunmadan yüzey çevriliyor. Modül
+           kapsayıcılarına .modul-koyu eklendi; aşağıdaki kurallar
+           Tailwind'in açık tonlarını koyu karşılıklarına eşliyor.
+           2.000'den fazla yerde geçen bg-white / text-slate-* / mavi
+           sınıfları tek tek düzenlenemezdi — düzenlenseydi de JS'in
+           ürettiği HTML dışarıda kalırdı. Seçici gövdesi "body .modul-koyu"
+           olduğu için Tailwind'in tek sınıflı kurallarını yenerler.
+
+           KAPSAM: Yalnız ziyaretçi araçları. Kurulumcu paneli (CRM,
+           teklif, yönetim) açık kalıyor: orası yoğun veri tablolarıyla
+           uzun süre çalışılan bir çalışma yüzeyi, vitrin değil.
+           ============================================================ */
+
+        /* Sayfa zemini: modül açıkken vitrinin gradyanı. :has() ile JS'siz
+           çalışır; her modül farklı yerden açıldığı için (router, panel,
+           doğrudan adres) JS kancası güvenilir olmazdı. */
+        /* Gövde de koyuya geçmeli: içerik ekrandan kısaysa ya da kullanıcı
+           kaydırma sınırını zorladığında altta beyaz bir şerit kalıyordu. */
+        /* #appContainer'ın da açık olması şart: vitrine dönüldüğünde modül
+           kutusunun "hidden" sınıfı her zaman geri gelmiyor, yalnız kapsayıcı
+           gizleniyor. Bu koşul olmadan açık zeminli ekranlar (giriş/kayıt)
+           görünmeyen bir modül yüzünden koyu gövde alıyordu. */
+        body:has(#appContainer:not(.hidden) .modul-koyu:not(.hidden)) { background-color: #0B1B2E; }
+        body:has(#appContainer:not(.hidden) .modul-koyu:not(.hidden)) #appContainer {
+            background:
+                radial-gradient(1100px 480px at 72% -12%, rgba(245,158,11,0.16), transparent 60%),
+                linear-gradient(140deg, #0A1A2F 0%, #0E2540 55%, #0B1B2E 100%);
+            background-attachment: fixed;
+        }
+        /* Tarayıcının kendi bileşenleri (kaydırma çubuğu, tarih seçici,
+           otomatik doldurma) de koyu tarafa geçsin. */
+        body .modul-koyu { color-scheme: dark; }
+
+        /* --- Kapsayıcı: vitrindeki cam panelin aynısı --------------- */
+        body .modul-koyu {
+            /* Taban metin rengi: renk sınıfı TAŞIMAYAN öğeler (ör. amortisman
+               modülündeki yöntem sekmeleri) Tailwind'in koyu varsayılanını
+               miras alıyor, koyu zeminde görünmez oluyorlardı. Sınıflı olanlar
+               aşağıdaki eşlemelerle bunu zaten yener. */
+            color: #E8EEF7;
+            background: rgba(255,255,255,0.045);
+            border: 1px solid rgba(251,191,36,0.16);
+            border-radius: var(--r-lg);
+            box-shadow: 0 30px 70px -40px rgba(0,0,0,.85);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        /* --- Varsayılan kenar rengi ---------------------------------
+           Renk sınıfı olmayan çıplak border / border-b / border-t için.
+           Sınıflı kenarlar (border-amber-200 gibi) aşağıda kendi
+           kuralıyla bunu yener — seçici daha özgüldür. */
+        body .modul-koyu * { border-color: rgba(255,255,255,0.10); }
+
+        /* --- Yüzey katmanları --------------------------------------- */
+        body .modul-koyu [class*="bg-white"] { background: rgba(255,255,255,0.05); }
+        body .modul-koyu .bg-slate-50,
+        body .modul-koyu .bg-gray-50,
+        body .modul-koyu .bg-slate-100 { background: rgba(255,255,255,0.04); }
+        body .modul-koyu .bg-slate-200 { background: rgba(255,255,255,0.10); }
+        /* Zaten koyu olan kutular: cam zeminde ayrışsınlar diye daha derin */
+        body .modul-koyu .bg-slate-800,
+        body .modul-koyu .bg-slate-900,
+        body .modul-koyu .bg-slate-950 { background: rgba(4,12,22,0.60); }
+
+        /* --- Metin ---------------------------------------------------
+           Açık zemin için seçilmiş koyu griler koyu zeminde okunmuyordu. */
+        body .modul-koyu .text-slate-900,
+        body .modul-koyu .text-slate-800,
+        body .modul-koyu .text-slate-700,
+        body .modul-koyu .text-gray-800 { color: #E8EEF7; }
+        body .modul-koyu .text-slate-600,
+        body .modul-koyu .text-gray-600 { color: #B6C4D7; }
+        /* Ölçüldü: #97A8BD cam yüzeyde 3,9:1 — WCAG AA eşiği 4,5:1. Bir
+           kademe açıldı; yardımcı metinlerin tamamı bu iki sınıfı kullanıyor. */
+        body .modul-koyu .text-slate-500 { color: #AEBFD4; }
+        body .modul-koyu .text-slate-400 { color: #A3B5CA; }
+        body .modul-koyu .text-slate-300 { color: #C6D2E0; }
+
+        /* --- Altın vurgu (config'de "emerald" = amber) -------------- */
+        body .modul-koyu .bg-emerald-50,
+        body .modul-koyu .bg-amber-50,
+        body .modul-koyu .bg-yellow-50 { background: rgba(251,191,36,0.10); }
+        body .modul-koyu .bg-emerald-100,
+        body .modul-koyu .bg-amber-100 { background: rgba(251,191,36,0.16); }
+        body .modul-koyu [class*="border-emerald-1"],
+        body .modul-koyu [class*="border-emerald-2"],
+        body .modul-koyu [class*="border-amber-1"],
+        body .modul-koyu [class*="border-amber-2"] { border-color: rgba(251,191,36,0.30); }
+        body .modul-koyu .text-emerald-600,
+        body .modul-koyu .text-emerald-700,
+        body .modul-koyu .text-emerald-800,
+        body .modul-koyu .text-emerald-900,
+        body .modul-koyu .text-amber-600,
+        body .modul-koyu .text-amber-700,
+        body .modul-koyu .text-amber-800,
+        body .modul-koyu .text-amber-900 { color: #FCD34D; }
+
+        /* --- Mavi ve indigo, vitrinin altın diline çevriliyor --------
+           Modüller mavi CTA kullanıyordu; ana sayfada mavi hiç yok.
+           Rengi burada çeviriyoruz ki 200'den fazla sınıf elle
+           değiştirilmesin ve JS'in ürettiği HTML de kapsansın. */
+        body .modul-koyu .bg-blue-50,
+        body .modul-koyu .bg-indigo-50 { background: rgba(251,191,36,0.09); }
+        body .modul-koyu .bg-blue-100,
+        body .modul-koyu .bg-indigo-100 { background: rgba(251,191,36,0.15); }
+        body .modul-koyu [class*="border-blue-"],
+        body .modul-koyu [class*="border-indigo-"] { border-color: rgba(251,191,36,0.32); }
+        body .modul-koyu .text-blue-600,
+        body .modul-koyu .text-blue-700,
+        body .modul-koyu .text-blue-800,
+        body .modul-koyu .text-indigo-600,
+        body .modul-koyu .text-indigo-700,
+        body .modul-koyu .text-indigo-800 { color: #FCD34D; }
+
+        /* --- Kırmızı: uyarı rengi kalıyor, koyu zemine uyarlanıyor --- */
+        body .modul-koyu .bg-red-50  { background: rgba(239,68,68,0.12); }
+        body .modul-koyu .bg-red-100 { background: rgba(239,68,68,0.18); }
+        body .modul-koyu [class*="border-red-1"],
+        body .modul-koyu [class*="border-red-2"] { border-color: rgba(239,68,68,0.35); }
+        body .modul-koyu .text-red-600,
+        body .modul-koyu .text-red-700,
+        body .modul-koyu .text-red-800 { color: #FCA5A5; }
+
+        /* --- Birincil düğmeler: vitrindeki güneş gradyanı ------------ */
+        body .modul-koyu [class~="bg-blue-600"],
+        body .modul-koyu [class*="bg-blue-600/"],
+        body .modul-koyu [class~="bg-blue-700"],
+        body .modul-koyu [class*="bg-blue-700/"],
+        body .modul-koyu [class~="bg-indigo-600"],
+        body .modul-koyu [class*="bg-indigo-600/"],
+        body .modul-koyu [class~="bg-indigo-700"],
+        body .modul-koyu [class*="bg-indigo-700/"],
+        body .modul-koyu [class~="bg-emerald-500"],
+        body .modul-koyu [class*="bg-emerald-500/"],
+        body .modul-koyu [class~="bg-emerald-600"],
+        body .modul-koyu [class*="bg-emerald-600/"],
+        body .modul-koyu [class~="bg-emerald-700"],
+        body .modul-koyu [class*="bg-emerald-700/"],
+        body .modul-koyu [class~="bg-amber-400"],
+        body .modul-koyu [class*="bg-amber-400/"],
+        body .modul-koyu [class~="bg-amber-500"],
+        body .modul-koyu [class*="bg-amber-500/"],
+        body .modul-koyu [class~="bg-amber-600"],
+        body .modul-koyu [class*="bg-amber-600/"] {
+            background-image: linear-gradient(100deg, #F59E0B 0%, #FBBF24 38%, #10B981 100%);
+            background-size: 180% 100%; background-position: 0% 0%;
+            background-color: transparent; color: #0B1B2E;
+            box-shadow: 0 14px 30px -16px rgba(245,158,11,.6);
+            transition: background-position .45s ease, transform .18s ease, box-shadow .18s ease;
+        }
+        body .modul-koyu [class~="bg-blue-600"]:hover,
+        body .modul-koyu [class*="bg-blue-600/"]:hover,
+        body .modul-koyu [class~="bg-blue-700"]:hover,
+        body .modul-koyu [class*="bg-blue-700/"]:hover,
+        body .modul-koyu [class~="bg-indigo-600"]:hover,
+        body .modul-koyu [class*="bg-indigo-600/"]:hover,
+        body .modul-koyu [class~="bg-indigo-700"]:hover,
+        body .modul-koyu [class*="bg-indigo-700/"]:hover,
+        body .modul-koyu [class~="bg-emerald-500"]:hover,
+        body .modul-koyu [class*="bg-emerald-500/"]:hover,
+        body .modul-koyu [class~="bg-emerald-600"]:hover,
+        body .modul-koyu [class*="bg-emerald-600/"]:hover,
+        body .modul-koyu [class~="bg-emerald-700"]:hover,
+        body .modul-koyu [class*="bg-emerald-700/"]:hover,
+        body .modul-koyu [class~="bg-amber-400"]:hover,
+        body .modul-koyu [class*="bg-amber-400/"]:hover,
+        body .modul-koyu [class~="bg-amber-500"]:hover,
+        body .modul-koyu [class*="bg-amber-500/"]:hover,
+        body .modul-koyu [class~="bg-amber-600"]:hover,
+        body .modul-koyu [class*="bg-amber-600/"]:hover {
+            background-position: 95% 0%; transform: translateY(-1px);
+        }
+        /* Koyu düğmeler (PDF indir gibi) cam yüzeyde kaybolmasın */
+        body .modul-koyu [class*="bg-slate-8"],
+        body .modul-koyu [class*="bg-slate-9"] { color: #E8EEF7; }
+
+        /* Altın zeminin ÜSTÜNDEKİ yazı koyu mürekkep olmalı: bu yüzeyler artık
+           parlak altın: beyaz metin (text-white / text-emerald-100) üzerinde
+           okunmuyordu. */
+        body .modul-koyu [class~="bg-blue-600"],
+        body .modul-koyu [class~="bg-blue-600"] *,
+        body .modul-koyu [class*="bg-blue-600/"],
+        body .modul-koyu [class*="bg-blue-600/"] *,
+        body .modul-koyu [class~="bg-blue-700"],
+        body .modul-koyu [class~="bg-blue-700"] *,
+        body .modul-koyu [class*="bg-blue-700/"],
+        body .modul-koyu [class*="bg-blue-700/"] *,
+        body .modul-koyu [class~="bg-indigo-600"],
+        body .modul-koyu [class~="bg-indigo-600"] *,
+        body .modul-koyu [class*="bg-indigo-600/"],
+        body .modul-koyu [class*="bg-indigo-600/"] *,
+        body .modul-koyu [class~="bg-indigo-700"],
+        body .modul-koyu [class~="bg-indigo-700"] *,
+        body .modul-koyu [class*="bg-indigo-700/"],
+        body .modul-koyu [class*="bg-indigo-700/"] *,
+        body .modul-koyu [class~="bg-emerald-500"],
+        body .modul-koyu [class~="bg-emerald-500"] *,
+        body .modul-koyu [class*="bg-emerald-500/"],
+        body .modul-koyu [class*="bg-emerald-500/"] *,
+        body .modul-koyu [class~="bg-emerald-600"],
+        body .modul-koyu [class~="bg-emerald-600"] *,
+        body .modul-koyu [class*="bg-emerald-600/"],
+        body .modul-koyu [class*="bg-emerald-600/"] *,
+        body .modul-koyu [class~="bg-emerald-700"],
+        body .modul-koyu [class~="bg-emerald-700"] *,
+        body .modul-koyu [class*="bg-emerald-700/"],
+        body .modul-koyu [class*="bg-emerald-700/"] *,
+        body .modul-koyu [class~="bg-amber-400"],
+        body .modul-koyu [class~="bg-amber-400"] *,
+        body .modul-koyu [class*="bg-amber-400/"],
+        body .modul-koyu [class*="bg-amber-400/"] *,
+        body .modul-koyu [class~="bg-amber-500"],
+        body .modul-koyu [class~="bg-amber-500"] *,
+        body .modul-koyu [class*="bg-amber-500/"],
+        body .modul-koyu [class*="bg-amber-500/"] *,
+        body .modul-koyu [class~="bg-amber-600"],
+        body .modul-koyu [class~="bg-amber-600"] *,
+        body .modul-koyu [class*="bg-amber-600/"],
+        body .modul-koyu [class*="bg-amber-600/"] * { color: #0B1B2E; }
+
+        /* Altın zeminin üstündeki ikincil düğme (ör. "Ücretsiz Çatı Keşfi"):
+           cam yüzey + altın yazı, altın zeminde tamamen kayboluyordu.
+           Koyu, okunur bir çipe çevriliyor. */
+        body .modul-koyu [class~="bg-emerald-600"] [class*="bg-white"],
+        body .modul-koyu [class~="bg-blue-600"] [class*="bg-white"],
+        body .modul-koyu [class~="bg-indigo-600"] [class*="bg-white"] {
+            background: rgba(11,27,46,0.9);
+            border-color: rgba(11,27,46,0.55);
+        }
+        body .modul-koyu [class~="bg-emerald-600"] [class*="bg-white"],
+        body .modul-koyu [class~="bg-emerald-600"] [class*="bg-white"] *,
+        body .modul-koyu [class~="bg-blue-600"] [class*="bg-white"],
+        body .modul-koyu [class~="bg-blue-600"] [class*="bg-white"] *,
+        body .modul-koyu [class~="bg-indigo-600"] [class*="bg-white"],
+        body .modul-koyu [class~="bg-indigo-600"] [class*="bg-white"] * { color: #FCD34D; }
+
+        /* --- Form alanları ------------------------------------------ */
+        body .modul-koyu input:not([type="checkbox"]):not([type="radio"]),
+        body .modul-koyu select,
+        body .modul-koyu textarea {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.16);
+            color: #E8EEF7;
+        }
+        body .modul-koyu input::placeholder,
+        body .modul-koyu textarea::placeholder { color: #7F91A8; }
+        body .modul-koyu input:focus,
+        body .modul-koyu select:focus,
+        body .modul-koyu textarea:focus {
+            border-color: rgba(251,191,36,0.55);
+            box-shadow: 0 0 0 3px rgba(251,191,36,0.14);
+        }
+        /* Açılır listenin kendi paneli işletim sisteminden gelir; koyu
+           zeminde beyaz üstüne beyaz yazı çıkmasın diye açıkça veriliyor. */
+        body .modul-koyu select option { background: #0E2540; color: #E8EEF7; }
+        body .modul-koyu input[type="checkbox"],
+        body .modul-koyu input[type="radio"] { accent-color: #FBBF24; }
+
+        /* --- Modül başlığı (geri bağlantısı + ad) -------------------- */
+        body .modul-koyu > div:first-child[class*="border-b"] {
+            border-bottom-color: rgba(251,191,36,0.18);
+        }
+
+        /* --- Tablolar ------------------------------------------------ */
+        body .modul-koyu thead { background: rgba(255,255,255,0.05); }
+        body .modul-koyu tbody tr:hover { background: rgba(251,191,36,0.06); }
+        body .modul-koyu th { color: #C6D2E0; }
+        body .modul-koyu td { color: #D5DFEC; }
+
+        /* --- Gölge: açık zeminin ince gölgeleri koyuda görünmez ------ */
+        body .modul-koyu [class*="shadow"] { box-shadow: 0 18px 40px -30px rgba(0,0,0,.9); }
+
+        /* --- Kaydırma çubuğu ---------------------------------------- */
+        body .modul-koyu .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,.05); }
+        body .modul-koyu .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(251,191,36,.35); }
+
+        /* --- Açık tonlu gradyanlar -----------------------------------
+           Tailwind gradyanı background-image olarak kurar; yukarıdaki
+           background kuralları ona dokunmaz, kutu krem rengi kalırdı.
+           Yalnız açık duraklı olanları (from-*-50 / to-*-100) düzleştiriyoruz;
+           doygun renkli gradyan düğmeler koyu zeminde zaten doğru duruyor. */
+        body .modul-koyu [class*="bg-gradient-"][class*="-50"],
+        body .modul-koyu [class*="bg-gradient-"][class*="-100"] {
+            background-image: none;
+            background-color: rgba(251,191,36,0.09);
+        }
+
+        /* --- Seçenek hapları (hesaplayıcı giriş yöntemi) ------------- */
+        body .modul-koyu .calc-secenek {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.16);
+            color: #C6D2E0;
+        }
+        body .modul-koyu .calc-secenek:hover {
+            background: rgba(255,255,255,0.10);
+            border-color: rgba(251,191,36,0.35);
+        }
+        body .modul-koyu .calc-secenek.secili {
+            background: rgba(251,191,36,0.14);
+            border-color: rgba(251,191,36,0.55);
+            color: #FCD34D;
+            box-shadow: 0 0 0 3px rgba(251,191,36,0.12);
+        }
+        body .modul-koyu .calc-secenek input { accent-color: #FBBF24; }
+
+        /* --- Diğer renk aileleri -------------------------------------
+           Modüller amber/mavi dışında teal, orange, violet, green, cyan,
+           sky, yellow ve gray da kullanıyor. Bunların 600–900 tonları açık
+           zemin için seçilmişti; koyu zeminde neredeyse görünmez oluyorlar
+           (ör. text-teal-700 = #0F766E). Her aile kendi açık karşılığına
+           taşınıyor, böylece renk kodlaması korunuyor ama okunur oluyor.
+           Yeşil/teal bilerek korunuyor: vitrindeki güneş gradyanı da
+           amber'dan emerald yeşiline gidiyor, ikinci vurgu orada zaten var. */
+        body .modul-koyu [class*="text-teal-6"],
+        body .modul-koyu [class*="text-teal-7"],
+        body .modul-koyu [class*="text-teal-8"],
+        body .modul-koyu [class*="text-teal-9"],
+        body .modul-koyu [class*="text-green-6"],
+        body .modul-koyu [class*="text-green-7"],
+        body .modul-koyu [class*="text-green-8"],
+        body .modul-koyu [class*="text-green-9"],
+        body .modul-koyu [class*="text-cyan-6"],
+        body .modul-koyu [class*="text-cyan-7"],
+        body .modul-koyu [class*="text-cyan-8"],
+        body .modul-koyu [class*="text-sky-6"],
+        body .modul-koyu [class*="text-sky-7"],
+        body .modul-koyu [class*="text-sky-8"] { color: #6EE7B7; }
+
+        body .modul-koyu [class*="text-orange-6"],
+        body .modul-koyu [class*="text-orange-7"],
+        body .modul-koyu [class*="text-orange-8"],
+        body .modul-koyu [class*="text-orange-9"],
+        body .modul-koyu [class*="text-yellow-6"],
+        body .modul-koyu [class*="text-yellow-7"],
+        body .modul-koyu [class*="text-yellow-8"],
+        body .modul-koyu [class*="text-yellow-9"] { color: #FBBF24; }
+
+        body .modul-koyu [class*="text-violet-6"],
+        body .modul-koyu [class*="text-violet-7"],
+        body .modul-koyu [class*="text-violet-8"],
+        body .modul-koyu [class*="text-purple-6"],
+        body .modul-koyu [class*="text-purple-7"],
+        body .modul-koyu [class*="text-purple-8"] { color: #C4B5FD; }
+
+        /* Açık zemin kutuları */
+        body .modul-koyu .bg-teal-50,  body .modul-koyu .bg-green-50,
+        body .modul-koyu .bg-cyan-50,  body .modul-koyu .bg-sky-50 { background: rgba(16,185,129,0.10); }
+        body .modul-koyu .bg-teal-100, body .modul-koyu .bg-green-100,
+        body .modul-koyu .bg-cyan-100 { background: rgba(16,185,129,0.16); }
+        body .modul-koyu .bg-orange-50, body .modul-koyu .bg-yellow-50 { background: rgba(251,191,36,0.10); }
+        body .modul-koyu .bg-orange-100 { background: rgba(251,191,36,0.16); }
+        body .modul-koyu .bg-violet-100, body .modul-koyu .bg-purple-100 { background: rgba(167,139,250,0.16); }
+
+        /* Kenarlar */
+        body .modul-koyu [class*="border-teal-"],
+        body .modul-koyu [class*="border-green-"],
+        body .modul-koyu [class*="border-cyan-"],
+        body .modul-koyu [class*="border-sky-"] { border-color: rgba(16,185,129,0.38); }
+        body .modul-koyu [class*="border-orange-"],
+        body .modul-koyu [class*="border-yellow-"] { border-color: rgba(251,191,36,0.38); }
+        body .modul-koyu [class*="border-violet-"],
+        body .modul-koyu [class*="border-purple-"] { border-color: rgba(167,139,250,0.38); }
+        body .modul-koyu [class*="border-gray-"] { border-color: rgba(255,255,255,0.10); }
+
+        /* Doygun düğmeler: koyu mürekkeple okunur kalsın */
+        body .modul-koyu [class~="bg-teal-500"],
+        body .modul-koyu [class*="bg-teal-500/"],
+        body .modul-koyu [class~="bg-teal-600"],
+        body .modul-koyu [class*="bg-teal-600/"],
+        body .modul-koyu [class~="bg-teal-700"],
+        body .modul-koyu [class*="bg-teal-700/"],
+        body .modul-koyu [class~="bg-green-500"],
+        body .modul-koyu [class*="bg-green-500/"],
+        body .modul-koyu [class~="bg-green-600"],
+        body .modul-koyu [class*="bg-green-600/"],
+        body .modul-koyu [class~="bg-sky-500"],
+        body .modul-koyu [class*="bg-sky-500/"],
+        body .modul-koyu [class~="bg-sky-600"],
+        body .modul-koyu [class*="bg-sky-600/"],
+        body .modul-koyu [class~="bg-cyan-500"],
+        body .modul-koyu [class*="bg-cyan-500/"],
+        body .modul-koyu [class~="bg-cyan-600"],
+        body .modul-koyu [class*="bg-cyan-600/"] { background-color: #34D399; color: #06261C; }
+        body .modul-koyu [class~="bg-teal-500"] *,
+        body .modul-koyu [class*="bg-teal-500/"] *,
+        body .modul-koyu [class~="bg-teal-600"] *,
+        body .modul-koyu [class*="bg-teal-600/"] *,
+        body .modul-koyu [class~="bg-teal-700"] *,
+        body .modul-koyu [class*="bg-teal-700/"] *,
+        body .modul-koyu [class~="bg-green-500"] *,
+        body .modul-koyu [class*="bg-green-500/"] *,
+        body .modul-koyu [class~="bg-green-600"] *,
+        body .modul-koyu [class*="bg-green-600/"] *,
+        body .modul-koyu [class~="bg-sky-500"] *,
+        body .modul-koyu [class*="bg-sky-500/"] *,
+        body .modul-koyu [class~="bg-sky-600"] *,
+        body .modul-koyu [class*="bg-sky-600/"] *,
+        body .modul-koyu [class~="bg-cyan-500"] *,
+        body .modul-koyu [class*="bg-cyan-500/"] *,
+        body .modul-koyu [class~="bg-cyan-600"] *,
+        body .modul-koyu [class*="bg-cyan-600/"] * { color: #06261C; }
+        body .modul-koyu [class~="bg-orange-500"],
+        body .modul-koyu [class*="bg-orange-500/"],
+        body .modul-koyu [class~="bg-orange-600"],
+        body .modul-koyu [class*="bg-orange-600/"],
+        body .modul-koyu [class~="bg-orange-700"],
+        body .modul-koyu [class*="bg-orange-700/"] { background-color: #FBBF24; color: #2A1A05; }
+        body .modul-koyu [class~="bg-orange-500"] *,
+        body .modul-koyu [class*="bg-orange-500/"] *,
+        body .modul-koyu [class~="bg-orange-600"] *,
+        body .modul-koyu [class*="bg-orange-600/"] *,
+        body .modul-koyu [class~="bg-orange-700"] *,
+        body .modul-koyu [class*="bg-orange-700/"] * { color: #2A1A05; }
         </style>
         <!-- ============================================================ -->
         <!-- TEMA SONU                                                     -->
@@ -1397,25 +1820,25 @@
             </div>
         </div>
         
-        <div id="legalModule" class="hidden w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+        <div id="legalModule" class="hidden modul-koyu w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div id="legalRoot"></div>
         </div>
 
         <!-- FATURA ANALİZİ & GES TASARIM SİHİRBAZI (ziyaretçi) -->
-        <div id="billAnalyzerModule" class="hidden w-full max-w-4xl mx-auto mt-4 animate-fade-in">
+        <div id="billAnalyzerModule" class="hidden modul-koyu w-full max-w-4xl mx-auto mt-4 animate-fade-in">
             <button onclick="closeAllAndShowMenu()" class="text-slate-500 hover:text-emerald-600 font-bold mb-4">← Ana Sayfaya Dön</button>
             <div id="billAnalyzerRoot"></div>
         </div>
 
-        <div id="aboutModule" class="hidden w-full max-w-5xl mx-auto mt-4 px-4 animate-fade-in">
+        <div id="aboutModule" class="hidden modul-koyu w-full max-w-5xl mx-auto mt-4 px-4 animate-fade-in">
             <div id="aboutRoot"></div>
         </div>
 
-        <div id="campaignsModule" class="hidden w-full max-w-4xl mx-auto mt-4 animate-fade-in">
+        <div id="campaignsModule" class="hidden modul-koyu w-full max-w-4xl mx-auto mt-4 animate-fade-in">
             <div id="campaignsRoot"></div>
         </div>
 
-        <div id="investorModule" class="hidden w-full max-w-4xl mx-auto mt-4 animate-fade-in">
+        <div id="investorModule" class="hidden modul-koyu w-full max-w-4xl mx-auto mt-4 animate-fade-in">
             <div id="investorRoot"></div>
         </div>
 
@@ -1467,7 +1890,7 @@
             <div id="dashboardRoot"></div>
         </div>
 
-        <div id="batteryModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-5xl mx-auto mt-4 animate-fade-in border border-slate-200">
+        <div id="batteryModule" class="hidden modul-koyu bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-5xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-2 flex justify-between items-center">
                 <button id="btnBackFromBattery" class="text-slate-500 hover:text-slate-700 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
             </div>
@@ -1829,7 +2252,7 @@
             </div>
         </div>
 
-        <div id="calculatorModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+        <div id="calculatorModule" class="hidden modul-koyu bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackFromCalc" class="text-slate-500 hover:text-blue-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Güç Hesaplayıcı</span>
@@ -1908,7 +2331,7 @@
             </div>
         </div>
 
-        <div id="simulationModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+        <div id="simulationModule" class="hidden modul-koyu bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackFromSim" class="text-slate-500 hover:text-indigo-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
                 <span class="mx-2 text-slate-300">/</span>
@@ -1941,13 +2364,13 @@
             </div>
         </div>
 
-        <div id="evCalcModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+        <div id="evCalcModule" class="hidden modul-koyu bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div class="flex items-center">
                     <button id="btnBackFromEV" class="text-slate-500 hover:text-blue-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
                     <span class="mx-2 text-slate-300">/</span>
                     <span class="text-slate-800 font-black text-xl">EV & Solar Entegrasyon Analizi</span></div>
-                <div class="flex items-center bg-teal-50 px-4 py-2 rounded-lg border border-teal-200 shadow-sm"><label class="text-xs font-black text-teal-900 mr-2">Şebeke Elektrik Birim Fiyatı (TL/kWh):</label><input type="number" id="evCalcTariff" value="2.50" step="0.10" class="ev-reactive-input w-24 p-1.5 border border-teal-300 rounded text-sm text-center font-bold outline-none focus:ring-1 focus:ring-teal-500"></div>
+                <div class="flex items-center bg-teal-50 px-4 py-2 rounded-lg border border-teal-200 shadow-sm"><label class="text-xs font-black text-teal-900 mr-2">Şebeke Elektrik Birim Fiyatı (TL/kWh):</label><input type="number" id="evCalcTariff" value="5.32" step="0.10" class="ev-reactive-input w-24 p-1.5 border border-teal-300 rounded text-sm text-center font-bold outline-none focus:ring-1 focus:ring-teal-500"></div>
             </div>
             
             <div class="mb-6 bg-gradient-to-br from-teal-50 to-amber-50 border border-teal-100 rounded-xl p-6">
@@ -2180,7 +2603,7 @@
             </div>
         </div>
 
-        <div id="regulationsModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+        <div id="regulationsModule" class="hidden modul-koyu bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackToMenuFromReg" class="text-slate-500 hover:text-slate-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">TEDAŞ Mevzuatı & Teknik Süreçler</span>
@@ -2198,7 +2621,7 @@
             <div id="mevzuatRoot"></div>
         </div>
 
-        <div id="educationModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+        <div id="educationModule" class="hidden modul-koyu bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackFromEdu" class="text-slate-500 hover:text-amber-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Sektör Sözlüğü & Eğitim</span>
@@ -2236,7 +2659,7 @@
         </div>
 
         <!-- ============================ AMORTİSMAN HESAPLAYICI ============================ -->
-        <div id="amortizationModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+        <div id="amortizationModule" class="hidden modul-koyu bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackFromAmort" class="text-slate-500 hover:text-emerald-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Amortisman & Geri Ödeme Analizi</span>
@@ -2245,7 +2668,7 @@
         </div>
 
         <!-- ============================ DONANIM KARŞILAŞTIRMA ============================ -->
-        <div id="hardwareModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+        <div id="hardwareModule" class="hidden modul-koyu bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackFromHardware" class="text-slate-500 hover:text-emerald-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Donanım Karşılaştırma</span>
@@ -2254,7 +2677,7 @@
         </div>
 
         <!-- ============================ DANIŞMANLIK AL ============================ -->
-        <div id="consultantsModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+        <div id="consultantsModule" class="hidden modul-koyu bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackFromConsultants" class="text-slate-500 hover:text-indigo-600 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Danışmanlık Al</span>
