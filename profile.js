@@ -73,12 +73,7 @@
         document.getElementById('gatewayContainer')?.classList.add('hidden');
         document.getElementById('appContainer')?.classList.remove('hidden');
         document.getElementById('profileModule')?.classList.remove('hidden');
-        const _adres = (typeof window.epcModulAdresi === 'function')
-            ? window.epcModulAdresi('profilim') : '#profilim';
-        if (!_adrestenGeldi && window.location.hash !== _adres) {
-            window.__epcPanelHash = _adres;
-            window.location.hash = _adres;
-        }
+        if (window.epcAdresYaz) window.epcAdresYaz('profilim', null, _adrestenGeldi);
         window.scrollTo(0, 0);
 
         kok.innerHTML = `<div class="kart">

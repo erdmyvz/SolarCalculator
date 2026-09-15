@@ -309,7 +309,10 @@
             </div>`;
     }
     window.renderConsultantMenu = renderConsultantMenu;
-    window.consultantEditProfile = function () { renderConsultantProfile(); };
+    window.consultantEditProfile = function (_adrestenGeldi) {
+        if (window.epcAdresYaz) window.epcAdresYaz('profil-duzenle', null, _adrestenGeldi);
+        renderConsultantProfile();
+    };
     window.consultantBackToMenu = function () {
         const _kok = (typeof window.epcPanelAdresi === 'function') ? window.epcPanelAdresi() : '#app';
         if (window.location.hash && window.location.hash !== _kok) {
@@ -435,12 +438,7 @@
     // Danışan Takibi'nin kendi adresi var: yenileyince ekran kaybolmasın,
     // GERİ tuşu paneli terk etmesin diye. (Kurulumcu tarafında da aynısı.)
     window.consultantOpenCRM = function (_adrestenGeldi) {
-        const _adres = (typeof window.epcModulAdresi === 'function')
-            ? window.epcModulAdresi('danisan-takip') : '#danisan-takip';
-        if (!_adrestenGeldi && window.location.hash !== _adres) {
-            window.__epcPanelHash = _adres;
-            window.location.hash = _adres;
-        }
+        if (window.epcAdresYaz) window.epcAdresYaz('danisan-takip', null, _adrestenGeldi);
         renderConsultantCRM();
     };
 

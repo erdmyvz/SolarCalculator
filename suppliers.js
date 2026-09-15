@@ -161,14 +161,29 @@
             </div>`;
     }
 
-    window.supplierOpen = function (v) {
+    // Tedarikçi panelinin dört ekranı da kendi adresinde:
+    //   #tedarikci-panel/tedarikci-profil · /katalog · /ilanlarim · /gelen-talepler
+    // Eskiden dördü de #app'ti: yenileyince menüye düşülüyordu.
+    const SUP_SLUG = { profil: 'tedarikci-profil', katalog: 'katalog', ilan: 'ilanlarim', talep: 'gelen-talepler' };
+
+    window.supplierOpen = function (v) { return window.supplierGoto(v, false); };
+
+    // _adrestenGeldi: yönlendirici çağırdıysa adrese dokunulmaz.
+    window.supplierGoto = function (v, _adrestenGeldi) {
+        if (SUP_SLUG[v] && window.epcAdresYaz) window.epcAdresYaz(SUP_SLUG[v], null, _adrestenGeldi);
         if (v === 'profil') return renderProfil();
         if (v === 'katalog') return renderKatalog();
         if (v === 'ilan') return renderIlan();
         if (v === 'talep') return renderTalep();
         return renderMenu();
     };
-    window.supplierBack = () => renderMenu();
+    window.supplierBack = () => {
+        if (window.epcPanelAdresi && window.location.hash !== window.epcPanelAdresi()) {
+            window.__epcPanelHash = window.epcPanelAdresi();
+            window.location.hash = window.__epcPanelHash;
+        }
+        renderMenu();
+    };
 
     function baslik(t, alt) {
         return `<div class="flex items-center gap-3 mb-5">

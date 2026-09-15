@@ -2971,8 +2971,11 @@
     </div>
     <script>
       // Fiyatlandırma modalı — yalnız giriş yapmış firma & danışmana (yatırımcıya değil) gösterilir.
-      window.openPricing = function () {
+      // Abonelik ekranının da kendi adresi var: #<rol>-panel/aboneligim
+      // _adrestenGeldi: yönlendirici çağırdıysa adrese dokunulmaz.
+      window.openPricing = function (_adrestenGeldi) {
           var m = document.getElementById('pricingModal'); if (!m) return;
+          if (window.epcAdresYaz) window.epcAdresYaz('aboneligim', null, _adrestenGeldi);
           try {
               // Fiyat role göre değişiyor (core.js'teki EPC_PRICING tek kaynak).
               var tutar = document.getElementById('pricingAmount');
@@ -3004,7 +3007,14 @@
           document.getElementById('profileDropdown') && document.getElementById('profileDropdown').classList.add('hidden');
           m.classList.remove('hidden');
       };
-      window.closePricing = function () { var m = document.getElementById('pricingModal'); if (m) m.classList.add('hidden'); };
+      window.closePricing = function () {
+          var m = document.getElementById('pricingModal'); if (m) m.classList.add('hidden');
+          // Adres açık ekranı göstermeli: pencere kapanınca panel köküne dön.
+          if (window.epcPanelAdresi && /\/aboneligim$/.test(window.location.hash)) {
+              window.__epcPanelHash = window.epcPanelAdresi();
+              window.location.hash = window.__epcPanelHash;
+          }
+      };
 
       /* --- Üst çubuk: sayfa kaydırılınca yoğunlaşır --- */
       (function () {

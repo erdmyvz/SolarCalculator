@@ -297,8 +297,12 @@
         m.classList.toggle('max-w-6xl', on);
     }
 
-    window.investorCompareQuotes = function () {
+    // Yatırımcı panelinin alt ekranları da kendi adresinde:
+    //   #yatirimci-panel/teklif-karsilastir
+    //   #yatirimci-panel/basvuru/<başvuru kimliği>
+    window.investorCompareQuotes = function (_adrestenGeldi) {
         const root = document.getElementById('investorRoot'); if (!root || !_quotes.length) return;
+        if (window.epcAdresYaz) window.epcAdresYaz('teklif-karsilastir', null, _adrestenGeldi);
         setPanelWide(true);
 
         // Her ölçüt için "en iyi" değeri bul (fiyat/birim fiyat/geri ödeme → düşük iyi; üretim → yüksek iyi)
@@ -394,9 +398,10 @@
     };
 
     // ---------------------------------------------------------------- süreç detayı
-    window.investorOpenProject = async function (id) {
+    window.investorOpenProject = async function (id, _adrestenGeldi) {
         const root = document.getElementById('investorRoot'); if (!root) return;
         const p = _projects.find(x => String(x.id) === String(id)); if (!p) return;
+        if (window.epcAdresYaz) window.epcAdresYaz('basvuru', id, _adrestenGeldi);
         setPanelWide(false);
         root.innerHTML = '<p class="text-sm text-slate-400 py-6">Süreç yükleniyor...</p>';
 
@@ -436,5 +441,11 @@
             </div>`;
     };
 
-    window.investorBack = function () { setPanelWide(false); renderInvestorHome(); };
+    window.investorBack = function () {
+        if (window.epcPanelAdresi && window.location.hash !== window.epcPanelAdresi()) {
+            window.__epcPanelHash = window.epcPanelAdresi();
+            window.location.hash = window.__epcPanelHash;
+        }
+        setPanelWide(false); renderInvestorHome();
+    };
 })();

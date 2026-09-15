@@ -107,18 +107,19 @@ async function handleSPA_Routing() {
         // engelliyor (aksi hâlde liste iki kez yüklenirdi).
         const _rota = epcRotaCozumle(hash);
         if (_rota.slug) {
-            const _btn = EPC_MODUL_SLUG[_rota.slug];
-            if (_btn === null) {
+            const _ekran = EPC_EKRANLAR[_rota.slug] || {};
+            if (!_ekran.btn) {
                 // Menü düğmesi olmayan ekranlar (profil, danışan takibi).
                 // ⚠️ Bunlar HER ZAMAN yeniden açılır: yukarıdaki rol dalı
                 // showConsultantPanel'i çağırıp panel menüsünü çiziyor ve
                 // alt ekranın üstünü kapatıyordu. "Zaten açıldı" kısayolu
                 // burada kullanılamaz.
+                // Menü düğmesi olmayan ekranlar kendi açıcılarıyla gelir.
+                // ⚠️ HER ZAMAN yeniden çağrılır: rol dalı yukarıda panel
+                // menüsünü çizip alt ekranın üstünü kapatıyor olabilir.
                 window.__epcPanelHash = null;
-                if (_rota.slug === 'profilim' && typeof window.openProfileModal === 'function') {
-                    await window.openProfileModal(true);
-                } else if (_rota.slug === 'danisan-takip' && typeof window.consultantOpenCRM === 'function') {
-                    window.consultantOpenCRM(true);
+                if (typeof _ekran.ac === 'function') {
+                    try { await _ekran.ac(_rota.arg); } catch (e) { console.warn('[rota]', _rota.slug, e); }
                 }
             }
             else if (window.__epcPanelHash === hash) { window.__epcPanelHash = null; }
@@ -127,7 +128,7 @@ async function handleSPA_Routing() {
             // Eski düz adres (#crm) veya yanlış rolün kökü yazıldıysa tam
             // adrese çevir: #kurulumcu-panel/crm. replaceState — geçmişe
             // kayıt düşmez, yeniden yönlendirme tetiklemez.
-            const _tam = epcModulAdresi(_rota.slug);
+            const _tam = epcModulAdresi(_rota.slug, _rota.arg);
             if (_tam !== hash && epcPanelAdresi() !== '#app') {
                 try { history.replaceState(null, '', location.pathname + location.search + _tam); }
                 catch (e) { /* eski tarayıcı: adres olduğu gibi kalır */ }
@@ -190,56 +191,86 @@ window.epcPanelAdresi = epcPanelAdresi;
    Tek '#' kullanılıyor — bir URL'de ikinci '#' parça adının içine düşer ve
    yer imi/paylaşımda sorun çıkarır.
    ---------------------------------------------------------------------------- */
-const EPC_MODUL_SLUG = {
-    'profilim':        null,          // profile.js kendi açıyor (menü düğmesi yok)
-    'danisan-takip':   null,          // danışman paneli — consultants.js açıyor
-    'crm':             'btnGoCRM',
-    'teklifler':       'btnGoQuotes',
-    'panom':           'btnGoDashboard',
-    'danisman-kanali': 'btnGoMessages',
-    'tesislerim':      'btnGoProjects',
-    'servisler':       'btnGoServices',
-    'tedarikciler':    'btnGoSuppliers'
-};
-const EPC_SLUG_BUTONLARI = Object.fromEntries(
-    Object.entries(EPC_MODUL_SLUG).filter(([, b]) => b).map(([slug, b]) => [b, slug]));
+const EPC_EKRANLAR = {
+    // --- kurulumcu: menü kartına bağlı olanlar ---
+    'crm':             { btn: 'btnGoCRM' },
+    'teklifler':       { btn: 'btnGoQuotes' },
+    'panom':           { btn: 'btnGoDashboard' },
+    'danisman-kanali': { btn: 'btnGoMessages' },
+    'tesislerim':      { btn: 'btnGoProjects' },
+    'servisler':       { btn: 'btnGoServices' },
+    'tedarikciler':    { btn: 'btnGoSuppliers' },
+    'yonetim':         { btn: 'adminPanelCard' },
 
-// '#kurulumcu-panel/crm' → { kok:'#kurulumcu-panel', slug:'crm' }
-// '#crm'                 → { kok:null,               slug:'crm' }   (eski biçim)
-// '#kurulumcu-panel'     → { kok:'#kurulumcu-panel', slug:null }
+    // --- her rolde ortak ---
+    'profilim':        { ac: () => window.openProfileModal && window.openProfileModal(true) },
+    'aboneligim':      { ac: () => window.openPricing && window.openPricing(true) },
+
+    // --- danışman ---
+    'danisan-takip':   { ac: () => window.consultantOpenCRM && window.consultantOpenCRM(true) },
+    'profil-duzenle':  { ac: () => window.consultantEditProfile && window.consultantEditProfile(true) },
+
+    // --- tedarikçi ---
+    'tedarikci-profil':  { ac: () => window.supplierGoto && window.supplierGoto('profil', true) },
+    'katalog':           { ac: () => window.supplierGoto && window.supplierGoto('katalog', true) },
+    'ilanlarim':         { ac: () => window.supplierGoto && window.supplierGoto('ilan', true) },
+    'gelen-talepler':    { ac: () => window.supplierGoto && window.supplierGoto('talep', true) },
+
+    // --- yatırımcı (başvuru adresi kimlik alır: /basvuru/<id>) ---
+    'teklif-karsilastir': { ac: () => window.investorCompareQuotes && window.investorCompareQuotes(true) },
+    'basvuru':            { ac: (arg) => window.investorOpenProject && window.investorOpenProject(arg, true) }
+};
+const EPC_BUTON_SLUG = Object.fromEntries(
+    Object.entries(EPC_EKRANLAR).filter(([, v]) => v.btn).map(([slug, v]) => [v.btn, slug]));
+
+// '#kurulumcu-panel/crm'          → { kok:'#kurulumcu-panel', slug:'crm', arg:null }
+// '#yatirimci-panel/basvuru/9f3'  → { …, slug:'basvuru', arg:'9f3' }
+// '#crm'                          → { kok:null, slug:'crm' }   (eski düz biçim)
 function epcRotaCozumle(hash) {
     const parcalar = String(hash || '').replace(/^#/, '').split('/').filter(Boolean);
-    if (!parcalar.length) return { kok: null, slug: null };
+    if (!parcalar.length) return { kok: null, slug: null, arg: null };
     const ilk = '#' + parcalar[0];
     if (EPC_PANEL_KOKLERI.has(ilk)) {
         const slug = parcalar[1] || null;
-        return { kok: ilk, slug: (slug && slug in EPC_MODUL_SLUG) ? slug : null };
+        return { kok: ilk,
+                 slug: (slug && slug in EPC_EKRANLAR) ? slug : null,
+                 arg: parcalar[2] ? decodeURIComponent(parcalar[2]) : null };
     }
-    // Kök yok: düz modül adresi (geriye dönük)
-    return { kok: null, slug: (parcalar[0] in EPC_MODUL_SLUG) ? parcalar[0] : null };
+    return { kok: null,
+             slug: (parcalar[0] in EPC_EKRANLAR) ? parcalar[0] : null,
+             arg: parcalar[1] ? decodeURIComponent(parcalar[1]) : null };
 }
-// Bir modülün tam adresi — oturumdaki rolün kökü altında.
-function epcModulAdresi(slug) { return epcPanelAdresi() + '/' + slug; }
+// Bir ekranın tam adresi — oturumdaki rolün kökü altında.
+function epcModulAdresi(slug, arg) {
+    return epcPanelAdresi() + '/' + slug + (arg ? '/' + encodeURIComponent(arg) : '');
+}
 window.epcModulAdresi = epcModulAdresi;
 
-// Menü kartına tıklandığında adresi de güncelle. Düğmenin kendi dinleyicisi
-// modülü zaten açıyor; burada yalnız adres yazılıyor ve hashchange'in aynı
-// modülü ikinci kez açmasını engelleyen bayrak konuyor.
-document.addEventListener('click', function (e) {
-    const btn = e.target && e.target.closest && e.target.closest('button[id^="btnGo"]');
-    if (!btn) return;
-    const slug = EPC_SLUG_BUTONLARI[btn.id];
-    if (!slug) return;
-    const h = epcModulAdresi(slug);
+// Ekranı açan kodun çağıracağı tek yardımcı: adresi yazar ve hashchange'in
+// aynı ekranı ikinci kez açmasını engelleyen bayrağı koyar.
+// _adrestenGeldi true ise (yönlendirici çağırdı) adrese hiç dokunmaz.
+window.epcAdresYaz = function (slug, arg, _adrestenGeldi) {
+    if (_adrestenGeldi) return;
+    const h = epcModulAdresi(slug, arg);
     if (window.location.hash === h) return;
     window.__epcPanelHash = h;
     window.location.hash = h;
+};
+
+// Menü kartına tıklandığında adresi de güncelle. Düğmenin kendi dinleyicisi
+// ekranı zaten açıyor; burada yalnız adres yazılıyor.
+document.addEventListener('click', function (e) {
+    const btn = e.target && e.target.closest && e.target.closest('[id^="btnGo"], #adminPanelCard');
+    if (!btn) return;
+    const slug = EPC_BUTON_SLUG[btn.id];
+    if (!slug) return;
+    window.epcAdresYaz(slug, null, false);
 });
 
 // Panel modülünü adresten aç. Menü düğmesi henüz DOM'da değilse (panel paketi
 // yeni indi) kısa bir süre bekler; sonsuza kadar denemez.
 async function epcPanelRotasiniAc(slug) {
-    const btnId = EPC_MODUL_SLUG[slug];
+    const btnId = (EPC_EKRANLAR[slug] || {}).btn;
     if (!btnId) return false;
     for (let i = 0; i < 20; i++) {
         const btn = document.getElementById(btnId);
