@@ -55,25 +55,36 @@
         return `<span class="text-2xl font-black text-emerald-700">${esc(ini)}</span>`;
     }
 
-    window.openProfileModal = async function () {
+    // Profil artık pencere değil, kendi adresi olan bir sayfa (#profilim).
+    // Ad "openProfileModal" olarak kaldı: dört ayrı yerden çağrılıyor ve
+    // hepsinin beklentisi "profil ekranını aç".
+    window.openProfileModal = async function (_adrestenGeldi) {
         document.getElementById('profileDropdown')?.classList.add('hidden');
         if (!window.supabaseClient) return;
         _ctx = await context();
         if (!_ctx) { alert('Oturum bulunamadı.'); return; }
         _avatar = _ctx.avatar;
 
-        let m = document.getElementById('profileModal');
-        if (!m) {
-            m = document.createElement('div'); m.id = 'profileModal'; document.body.appendChild(m);
-            m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); });
+        const kok = document.getElementById('profileRoot');
+        if (!kok) return;
+        if (typeof window.epcTumModulleriGizle === 'function') window.epcTumModulleriGizle();
+        document.getElementById('mainMenu')?.classList.add('hidden');
+        document.getElementById('landingContainer')?.classList.add('hidden');
+        document.getElementById('gatewayContainer')?.classList.add('hidden');
+        document.getElementById('appContainer')?.classList.remove('hidden');
+        document.getElementById('profileModule')?.classList.remove('hidden');
+        if (!_adrestenGeldi && window.location.hash !== '#profilim') {
+            window.__epcPanelHash = '#profilim';
+            window.location.hash = '#profilim';
         }
-        m.className = 'fixed inset-0 z-[95] bg-black/50 flex items-center justify-center p-4 overflow-y-auto';
-        m.innerHTML = `<div class="bg-white rounded-2xl w-full max-w-md my-8">
-            <div class="flex items-center justify-between px-6 pt-6 pb-3">
-                <h3 class="font-black text-lg text-slate-800">👤 Profilim</h3>
-                <button onclick="document.getElementById('profileModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+        window.scrollTo(0, 0);
+
+        kok.innerHTML = `<div class="kart">
+            <div class="kart-ust">
+                <h3>👤 Profilim</h3>
+                <button onclick="profilKapat()" class="btn-ikincil">← Geri</button>
             </div>
-            <div class="px-6 pb-6 space-y-4">
+            <div class="p-6 space-y-4">
                 <div class="flex items-center gap-4">
                     <div id="pfAvatar" class="w-20 h-20 rounded-full bg-emerald-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">${avatarInner(_ctx.first + ' ' + _ctx.last)}</div>
                     <div>
@@ -106,7 +117,14 @@
                 <div id="pfResult"></div>
             </div>
         </div>`;
-        m.classList.remove('hidden');
+    };
+
+    // Geri: nereden gelindiyse oraya. Panel kullanıcısı menüye, ziyaretçi
+    // vitrine döner.
+    window.profilKapat = function () {
+        document.getElementById('profileModule')?.classList.add('hidden');
+        if (typeof window.closeAllAndShowMenu === 'function') { window.closeAllAndShowMenu(); return; }
+        window.location.hash = '#app';
     };
 
     window.pfPick = function (input) {

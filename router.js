@@ -55,7 +55,7 @@ async function handleSPA_Routing() {
         if (typeof openPublicModule === 'function') openPublicModule(_mod, true);
         const _init = EPC_MODULE_INIT[_mod];
         if (_init && typeof window[_init] === 'function') window[_init]();
-    } else if (hash === '#app' && app) {
+    } else if ((hash === '#app' || (hash in EPC_PANEL_ROTALARI)) && app) {
         // Eğer uygulama (panel) kısmına girmek istiyorsa, oturum (session) kontrolü yap
         if(supabaseClient) {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -82,13 +82,90 @@ async function handleSPA_Routing() {
         } else if (!window.currentUserProfile && !window.currentSupplier && typeof showInvestorPanel === 'function') {
             // Yatırımcı: firma profili yok ve danışman değil → YATIRIMCI paneli (kurulumcu menüsü DEĞİL)
             showInvestorPanel();
-        } else {
+        } else if (hash === '#app') {
             closeAllAndShowMenu(); // firma/admin → yönetim menüsü (Dashboard)
+        }
+        // ⚠️ Adres bir MODÜLÜ işaret ediyorsa closeAllAndShowMenu ÇAĞRILMAZ:
+        // o fonksiyon menüye dönerken adresi #app'e çekiyor, yani istenen
+        // modül açılmadan adres geri yazılıyor ve sayfa menüde kalıyordu.
+
+        // Adres bir panel modülünü işaret ediyorsa onu aç. Menü kartına
+        // tıklanarak gelindiyse modül zaten açıldı; bayrak ikinci açılışı
+        // engelliyor (aksi hâlde liste iki kez yüklenirdi).
+        if (hash in EPC_PANEL_ROTALARI) {
+            const _btn = EPC_PANEL_ROTALARI[hash];
+            if (_btn === null) {
+                // Menü düğmesi olmayan ekranlar (profil, danışan takibi).
+                // ⚠️ Bunlar HER ZAMAN yeniden açılır: yukarıdaki rol dalı
+                // showConsultantPanel'i çağırıp panel menüsünü çiziyor ve
+                // alt ekranın üstünü kapatıyordu. "Zaten açıldı" kısayolu
+                // burada kullanılamaz.
+                window.__epcPanelHash = null;
+                if (hash === '#profilim' && typeof window.openProfileModal === 'function') {
+                    await window.openProfileModal(true);
+                } else if (hash === '#danisan-takip' && typeof window.consultantOpenCRM === 'function') {
+                    window.consultantOpenCRM(true);
+                }
+            }
+            else if (window.__epcPanelHash === hash) { window.__epcPanelHash = null; }
+            else { await epcPanelRotasiniAc(hash); }
         }
     }
 }
 
 window.addEventListener('hashchange', handleSPA_Routing);
+
+/* ----------------------------------------------------------------------------
+   PANEL MODÜLLERİNİN ADRESLERİ
+   Panel içinde gezinirken adres hep #app kalıyordu. Sonuçları:
+     · Sayfayı yenileyince açık modül kapanıp ana menüye düşülüyordu.
+     · Tarayıcının GERİ tuşu modülden çıkmıyor, paneli tümden terk ediyordu.
+     · "Şu ekrana bak" diye bir bağlantı paylaşmak mümkün değildi.
+   Ziyaretçi modüllerinde (EPC_MODULE_HASHES) bu zaten çözülmüştü; panel
+   tarafı dışarıda kalmıştı. Aynı yaklaşım buraya da getiriliyor: her modülün
+   kendi adresi var, adres ile ekran birbirini takip ediyor.
+
+   Modüller kendi dosyalarında zaten bir menü düğmesine bağlı; burada o
+   düğmeyi yeniden kullanıyoruz — açılış mantığı tek yerde kalsın diye.
+   ---------------------------------------------------------------------------- */
+const EPC_PANEL_ROTALARI = {
+    '#profilim':        null,          // profile.js kendi açıyor (menü düğmesi yok)
+    '#danisan-takip':   null,          // danışman paneli — consultants.js açıyor
+    '#crm':             'btnGoCRM',
+    '#teklifler':       'btnGoQuotes',
+    '#panom':           'btnGoDashboard',
+    '#danisman-kanali': 'btnGoMessages',
+    '#tesislerim':      'btnGoProjects',
+    '#servisler':       'btnGoServices',
+    '#tedarikciler':    'btnGoSuppliers'
+};
+const EPC_ROTA_BUTONLARI = Object.fromEntries(
+    Object.entries(EPC_PANEL_ROTALARI).map(([h, b]) => [b, h]));
+
+// Menü kartına tıklandığında adresi de güncelle. Düğmenin kendi dinleyicisi
+// modülü zaten açıyor; burada yalnız adres yazılıyor ve hashchange'in aynı
+// modülü ikinci kez açmasını engelleyen bayrak konuyor.
+document.addEventListener('click', function (e) {
+    const btn = e.target && e.target.closest && e.target.closest('button[id^="btnGo"]');
+    if (!btn) return;
+    const h = EPC_ROTA_BUTONLARI[btn.id];
+    if (!h || window.location.hash === h) return;
+    window.__epcPanelHash = h;
+    window.location.hash = h;
+});
+
+// Panel modülünü adresten aç. Menü düğmesi henüz DOM'da değilse (panel paketi
+// yeni indi) kısa bir süre bekler; sonsuza kadar denemez.
+async function epcPanelRotasiniAc(hash) {
+    const btnId = EPC_PANEL_ROTALARI[hash];
+    if (!btnId) return false;
+    for (let i = 0; i < 20; i++) {
+        const btn = document.getElementById(btnId);
+        if (btn) { btn.click(); return true; }
+        await new Promise(r => setTimeout(r, 100));
+    }
+    return false;
+}
 
 /* ----------------------------------------------------------------------------
    Yol adı → uygulama görünümü eşlemesi
@@ -253,6 +330,14 @@ window.closeAllAndShowMenu = function() {
         document.getElementById('landingContainer').classList.remove('hidden');
     } else {
         // DURUM 2: Eğer yönetim panelinden girdiyse, geri dönünce YÖNETİM PANELİNE gitsin.
+        // Adres de menüye dönmeli; yoksa yenilemede kapalı bir modüle geri düşülür.
+        // Yönlendirici bu fonksiyonu yalnız #app için çağırır, o yüzden buraya
+        // gelen "modül adresi" mutlaka kullanıcının menüye dönüşüdür.
+        if (window.location.hash && window.location.hash !== '#app'
+            && (window.location.hash in EPC_PANEL_ROTALARI)) {
+            window.__epcPanelHash = '#app';
+            window.location.hash = '#app';
+        }
         document.getElementById('mainMenu').classList.remove('hidden');
         if(header) header.classList.remove('hidden');
         

@@ -567,6 +567,8 @@ window.crmSaveLeadDetails = async function() {
         data.company_id = firmaId;
         data.source = 'manual';
         data.status = 'yeni_basvuru';
+        // Kullanıcı kartı açarken bir başlangıç aşaması seçtiyse onu da yaz.
+        if (_yeniAdimlar && _yeniAdimlar.length) data.completed_steps = _yeniAdimlar.slice();
 
         // Takip kodu benzersiz olmalı: aynı kod iki müşteriye düşerse ziyaretçi
         // takip ekranında BAŞKASININ kaydını görebilir. Veritabanında benzersizlik
@@ -727,21 +729,60 @@ async function renderLeadSteps(lead) {
         <p class="text-[10px] text-slate-400 mt-2">Adımları işaretledikçe müşterinin genel aşaması ve panodaki sayaçlar otomatik güncellenir.</p>`;
 }
 
-// Yeni (henüz kaydedilmemiş) müşteri için: 9 adımın salt-okunur önizlemesi.
+// Yeni (henüz kaydedilmemiş) müşteri için başlangıç aşaması.
+// ⚠️ Eskiden 9 adım kartın EN ÜSTÜNDE, açık ve salt-okunur duruyordu: form
+// ekrana sığmıyor, kullanıcı ad/telefon alanlarını görmek için uzun uzun
+// kaydırıyordu — üstelik hiçbir işe yaramayan bir listeydi. Artık kapalı
+// geliyor; açan kullanıcı başlangıç aşamasını da SEÇEBİLİYOR (devam eden bir
+// işi sisteme girerken baştan işaretlemek zorunda kalmasın diye).
+let _yeniAdimlar = [];   // kaydedilmemiş müşteri için seçilen tamamlanmış adımlar
+
 async function crmRenderStepsPreview() {
     const z = crmEnsureStepsZone();
     if (!z) return;
+    _yeniAdimlar = [];
     const steps = await ensureProcessSteps();
-    const rows = (steps && steps.length) ? steps.map(s => `
-        <div class="flex items-start gap-3 px-3 py-2.5 rounded-lg border border-slate-100 mb-1.5 opacity-60">
-            <span class="text-lg leading-none mt-0.5">⬜</span>
-            <span class="flex-1 min-w-0"><span class="text-sm font-bold text-slate-600">${s.step_no || ''}. ${admEscape(s.title)}</span></span>
-        </div>`).join('') : '<p class="text-xs text-slate-400 py-2">Henüz süreç adımı tanımlı değil.</p>';
     z.innerHTML = `
-        <div class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-3">📋 Süreç & Aşama</div>
-        ${rows}
-        <p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg p-2 mt-2">Müşteriyi kaydettikten sonra adımları işaretleyebilir, aşamayı ilerletebilirsiniz.</p>`;
+        <details class="yardim" id="crmYeniAdimlar">
+            <summary>📋 Süreç &amp; Aşama <span class="text-slate-400 font-normal" id="crmYeniAdimOzet">— başlangıç aşaması seçilmedi</span></summary>
+            <div class="yardim-govde" id="crmYeniAdimGovde"></div>
+        </details>`;
+    crmYeniAdimlariBas(steps);
 }
+
+// Bir adıma tıklamak "bu adıma kadar tamamlandı" demektir; aynı adıma tekrar
+// tıklamak seçimi kaldırır. Tek tek işaretlemek yerine tek tıkla aşama seçme.
+function crmYeniAdimlariBas(steps) {
+    const govde = document.getElementById('crmYeniAdimGovde');
+    const ozet = document.getElementById('crmYeniAdimOzet');
+    if (!govde) return;
+    if (!steps || !steps.length) {
+        govde.innerHTML = '<p class="text-xs text-slate-400 py-2">Henüz süreç adımı tanımlı değil.</p>';
+        return;
+    }
+    const sonIdx = steps.reduce((a, s, i) => _yeniAdimlar.includes(s.slug) ? i : a, -1);
+    govde.innerHTML =
+        '<p class="text-[11px] text-slate-400 mb-2">Müşteri hangi aşamada? Tıkladığınız adıma kadar olanlar tamamlanmış sayılır.</p>' +
+        steps.map((s, i) => {
+            const isDone = i <= sonIdx;
+            return `<button type="button" onclick="crmYeniAdimSec(${i})" class="w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-lg ${isDone ? 'bg-emerald-50 border-emerald-200' : 'hover:bg-slate-50 border-slate-100'} border mb-1.5 transition">
+                <span class="text-lg leading-none mt-0.5">${isDone ? '✅' : '⬜'}</span>
+                <span class="flex-1 min-w-0"><span class="text-sm font-bold ${isDone ? 'text-emerald-800' : 'text-slate-700'}">${s.step_no || ''}. ${admEscape(s.title)}</span></span>
+            </button>`;
+        }).join('');
+    if (ozet) {
+        ozet.textContent = sonIdx < 0 ? '— başlangıç aşaması seçilmedi'
+            : '— ' + (steps[sonIdx].step_no || (sonIdx + 1)) + '. ' + steps[sonIdx].title + "'e kadar tamam";
+    }
+}
+
+window.crmYeniAdimSec = function (idx) {
+    const steps = _processSteps || [];
+    const sonIdx = steps.reduce((a, s, i) => _yeniAdimlar.includes(s.slug) ? i : a, -1);
+    _yeniAdimlar = (idx === sonIdx) ? [] : steps.slice(0, idx + 1).map(s => s.slug);
+    _kartKirli = true;
+    crmYeniAdimlariBas(steps);
+};
 
 // crmSetStage KALDIRILDI: aşama artık süreç adımlarından TÜRETİLİYOR
 // (crmStatusFromSteps). Elle aşama seçici arayüzden çıkalı beri bu fonksiyonu
@@ -808,7 +849,7 @@ window.crmOpenDisco = async function () {
     if (!m) {
         m = document.createElement('div');
         m.id = 'discoModal';
-        m.className = 'fixed inset-0 z-[80] bg-slate-900/60 flex items-center justify-center p-4';
+        m.className = 'tema-koyu pencere-koyu fixed inset-0 z-[80] bg-slate-900/60 flex items-center justify-center p-4';
         m.innerHTML = `
             <div class="bg-white rounded-2xl w-full max-w-2xl p-6 shadow-2xl max-h-[90vh] flex flex-col">
                 <div class="flex justify-between items-start mb-3 gap-3">

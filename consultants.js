@@ -103,7 +103,7 @@
         if (m) return m;
         m = document.createElement('div');
         m.id = 'consContactModal';
-        m.className = 'fixed inset-0 bg-black/50 z-[70] hidden flex items-center justify-center p-4';
+        m.className = 'tema-koyu pencere-koyu fixed inset-0 bg-black/50 z-[70] hidden flex items-center justify-center p-4';
         m.innerHTML = '<div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"><div id="consContactBody" class="p-6"></div></div>';
         document.body.appendChild(m);
         m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
@@ -207,21 +207,11 @@
             <div id="consDashAttention" class="mb-5"></div>
             <div id="consDashProfile" class="mb-6"></div>
             <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Araçlar</p>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button onclick="consultantEditProfile()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition">
                     <div class="text-4xl mb-3">📝</div>
                     <h3 class="font-black text-slate-800 mb-1">Profili Düzenle</h3>
                     <p class="text-sm text-slate-500">Ziyaretçi sayfasında görünen profilinizi düzenleyin ve onaya gönderin.</p>
-                </button>
-                <button onclick="consultantOpenMessages()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition">
-                    <div class="text-4xl mb-3">💬</div>
-                    <h3 class="font-black text-slate-800 mb-1">Mesajlaşma</h3>
-                    <p class="text-sm text-slate-500">Danışanınızı yönlendirdiğiniz kurulumcu firmalarla yazışın.</p>
-                </button>
-                <button onclick="consultantOpenCampaigns()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-violet-300 transition">
-                    <div class="text-4xl mb-3">📣</div>
-                    <h3 class="font-black text-slate-800 mb-1">Pazarlama</h3>
-                    <p class="text-sm text-slate-500">Kurulum yaptırmamış danışanlarınıza hatırlatma kampanyası hazırlayın.</p>
                 </button>
                 <button onclick="consultantOpenCRM()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition">
                     <div class="text-4xl mb-3">👥</div>
@@ -320,7 +310,13 @@
     }
     window.renderConsultantMenu = renderConsultantMenu;
     window.consultantEditProfile = function () { renderConsultantProfile(); };
-    window.consultantBackToMenu = function () { renderConsultantMenu(); };
+    window.consultantBackToMenu = function () {
+        if (window.location.hash && window.location.hash !== '#app') {
+            window.__epcPanelHash = '#app';
+            window.location.hash = '#app';
+        }
+        renderConsultantMenu();
+    };
 
     // 2. seviye: profil düzenleme
     function renderConsultantProfile() {
@@ -435,7 +431,15 @@
     const instLabel = (v) => (INSTALL_ST.find(x => x[0] === v) || ['',''])[1];
     let _clients = [], _companies = [];
 
-    window.consultantOpenCRM = function () { renderConsultantCRM(); };
+    // Danışan Takibi'nin kendi adresi var: yenileyince ekran kaybolmasın,
+    // GERİ tuşu paneli terk etmesin diye. (Kurulumcu tarafında da aynısı.)
+    window.consultantOpenCRM = function (_adrestenGeldi) {
+        if (!_adrestenGeldi && window.location.hash !== '#danisan-takip') {
+            window.__epcPanelHash = '#danisan-takip';
+            window.location.hash = '#danisan-takip';
+        }
+        renderConsultantCRM();
+    };
 
     async function renderConsultantCRM() {
         const root = document.getElementById('consultantPanelRoot');
@@ -533,7 +537,7 @@
         if (m) return m;
         m = document.createElement('div');
         m.id = 'consClientModal';
-        m.className = 'fixed inset-0 bg-black/50 z-[70] hidden flex items-center justify-center p-4';
+        m.className = 'tema-koyu pencere-koyu fixed inset-0 bg-black/50 z-[70] hidden flex items-center justify-center p-4';
         m.innerHTML = '<div class="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"><div id="consClientBody" class="p-6"></div></div>';
         document.body.appendChild(m);
         m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
@@ -542,7 +546,7 @@
     function openClientForm(c) {
         const m = ensureClientModal();
         const ed = !!c;
-        const compOpts = '<option value="">— Firma atanmadı —</option>' + _companies.map(x => `<option value="${x.id}" ${ed && c.assigned_company_id === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('');
+        const compOpts = consFirmaSecenekleri(ed ? c.assigned_company_id : null, '');
         const instOpts = '<option value="">— Durum yok —</option>' + INSTALL_ST.map(x => `<option value="${x[0]}" ${ed && c.install_status === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('');
         document.getElementById('consClientBody').innerHTML = `
             <div class="flex items-center justify-between mb-4">
@@ -557,14 +561,60 @@
                     <div><label class="block text-xs font-bold text-slate-600 mb-1">E-posta</label><input id="clEmail" value="${ed && c.email ? esc(c.email) : ''}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"></div>
                 </div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Danışan Durumu</label><select id="clStatus" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${CLIENT_ST.map(x => `<option value="${x[0]}" ${ed && c.status === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></div>
-                <div class="border-t border-slate-100 pt-3"><label class="block text-xs font-bold text-slate-600 mb-1">🏢 Atanan Kurulumcu Firma</label><select id="clCompany" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${compOpts}</select></div>
+                <div class="border-t border-slate-100 pt-3">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">🏢 Atanan Kurulumcu Firma</label>
+                    <input id="clCompanyAra" oninput="consFirmaAra()" placeholder="Firma adı, il veya ilçe ile ara…" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm mb-2">
+                    <select id="clCompany" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${compOpts}</select>
+                    <p id="clCompanyNot" class="text-[11px] text-slate-400 mt-1"></p>
+                </div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Kurulum Durumu</label><select id="clInstall" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${instOpts}</select></div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Notlar</label><textarea id="clNotes" rows="2" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">${ed && c.notes ? esc(c.notes) : ''}</textarea></div>
                 <button onclick="consultantClientSave()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-2.5 rounded-lg">Kaydet</button>
                 <div id="clResult"></div>
             </div>`;
         m.classList.remove('hidden');
+        consFirmaAra();   // alt bilgi satırını bir kez bas
     }
+
+    // FİRMA SEÇİCİ — eskiden düz bir açılır listeydi; firma sayısı arttıkça
+    // aradığını bulmak imkânsızlaşıyordu. Artık ad, il ve ilçe ile aranıyor.
+    // ⚠️ İl/ilçe yalnız firma bu bilgiyi girdiyse gösterilir; olmayan yerde
+    // arama ada göre çalışır — uydurma konum gösterilmez.
+    function consFirmaMetni(x) {
+        const yer = [x.city, x.district].filter(Boolean).join(' / ');
+        return x.name + (yer ? ' — ' + yer : '');
+    }
+    function consFirmaSecenekleri(seciliId, q) {
+        const ara = String(q || '').trim().toLocaleLowerCase('tr-TR');
+        const uygun = _companies.filter(x => {
+            if (!ara) return true;
+            return [x.name, x.city, x.district]
+                .some(v => String(v || '').toLocaleLowerCase('tr-TR').includes(ara));
+        });
+        // Seçili firma aramaya uymasa bile listede kalmalı; yoksa Kaydet'e
+        // basıldığında sessizce "firma atanmadı"ya düşerdi.
+        if (seciliId && !uygun.some(x => x.id === seciliId)) {
+            const sec = _companies.find(x => x.id === seciliId);
+            if (sec) uygun.unshift(sec);
+        }
+        return '<option value="">— Firma atanmadı —</option>' +
+            uygun.map(x => `<option value="${x.id}" ${seciliId === x.id ? 'selected' : ''}>${esc(consFirmaMetni(x))}</option>`).join('');
+    }
+    window.consFirmaAra = function () {
+        const sel = document.getElementById('clCompany');
+        const ara = document.getElementById('clCompanyAra');
+        const not = document.getElementById('clCompanyNot');
+        if (!sel) return;
+        const secili = sel.value || null;
+        sel.innerHTML = consFirmaSecenekleri(secili, ara ? ara.value : '');
+        if (not) {
+            const n = sel.options.length - 1;
+            const konumluMu = _companies.some(x => x.city);
+            not.textContent = !n ? 'Eşleşen firma yok.'
+                : (n + ' firma' + (konumluMu ? ' · il veya ilçe yazarak daraltabilirsiniz' : ' · firmalar henüz il/ilçe girmediği için arama ada göre çalışıyor'));
+        }
+    };
+
     window.consultantClientNew = function () { openClientForm(null); };
     window.consultantClientEdit = function (id) { const c = _clients.find(x => x.id === id); if (c) openClientForm(c); };
 

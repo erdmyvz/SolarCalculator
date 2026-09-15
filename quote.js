@@ -623,7 +623,8 @@
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
                     <select onchange="quoteSetStatus('${x.id}', this.value)" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">${Object.entries(QST).map(([k, v]) => `<option value="${k}" ${x.status === k ? 'selected' : ''}>${v[0]}</option>`).join('')}</select>
-                    <button onclick="quoteOpenById('${x.id}')" class="btn-birincil" style="background:#4f46e5">Aç / Yazdır</button>
+                    <button onclick="quoteOpenById('${x.id}')" class="btn-birincil">Aç / Yazdır</button>
+                    <button onclick="quoteSil('${x.id}')" class="btn-tehlike" title="Teklifi sil">🗑️</button>
                 </div>
             </div>`; }).join('');
     }
@@ -655,7 +656,7 @@
         box.innerHTML = `
             <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <button onclick="quoteView('list')" class="text-slate-500 hover:text-indigo-600 font-bold">← Tekliflere Dön</button>
-                <div class="flex gap-2 flex-wrap items-center"><span class="text-xs text-slate-400 self-center">${esc(q.quote_no || '')}</span><button onclick="quoteRevise(_qPreview)" class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-4 py-2 rounded-lg text-sm">✎ Revize</button><button onclick="quoteShare(_qPreview)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-lg text-sm">🔗 Paylaş</button>${q.share_token ? `<button onclick="quoteShareKapat(_qPreview)" class="bg-red-50 hover:bg-red-100 text-red-700 font-bold px-4 py-2 rounded-lg text-sm" title="Herkese açık bağlantıyı geçersiz kıl">🔒 Paylaşımı Kapat</button>` : ''}<button onclick="quotePrint()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-lg text-sm">🖨️ Yazdır / PDF</button></div>
+                <div class="flex gap-2 flex-wrap items-center"><span class="text-xs text-slate-400 self-center">${esc(q.quote_no || '')}</span><button onclick="quoteRevise()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold px-4 py-2 rounded-lg text-sm">✎ Revize</button><button onclick="quoteShare()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-lg text-sm">🔗 Paylaş</button>${q.share_token ? `<button onclick="quoteShareKapat()" class="bg-red-50 hover:bg-red-100 text-red-700 font-bold px-4 py-2 rounded-lg text-sm" title="Herkese açık bağlantıyı geçersiz kıl">🔒 Paylaşımı Kapat</button>` : ''}<button onclick="quoteSil()" class="bg-red-50 hover:bg-red-100 text-red-700 font-bold px-4 py-2 rounded-lg text-sm">🗑️ Sil</button><button onclick="quotePrint()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-lg text-sm">🖨️ Yazdır / PDF</button></div>
             </div>
             <iframe id="quoteFrame" class="w-full bg-white border border-slate-200 rounded-lg shadow" style="height:78vh"></iframe>`;
         const f = document.getElementById('quoteFrame'); if (f) f.srcdoc = html;
@@ -740,7 +741,12 @@
 
     function nextRev(no) { if (!no) return qTeklifNo(); const m = no.match(/-R(\d+)$/); return m ? no.replace(/-R\d+$/, '-R' + (parseInt(m[1]) + 1)) : (no + '-R2'); }
 
+    // ⚠️ Bu üç düğme HİÇ çalışmıyordu. onclick özniteliği GENEL kapsamda
+    // değerlendirilir; _qPreview ise bu IIFE'nin içinde tanımlı. Tarayıcı
+    // "_qPreview is not defined" atıyor, tıklama sessizce düşüyordu.
+    // Artık argüman almıyorlar; açık olan teklifi kendileri okuyor.
     window.quoteRevise = function (q) {
+        q = q || _qPreview;
         if (!q) return;
         const sys = q.system || {}, tot = q.totals || {};
         _wz = {
@@ -755,6 +761,7 @@
     };
 
     window.quoteShare = async function (q) {
+        q = q || _qPreview;
         if (!q || !supabaseClient) return;
         let token = q.share_token;
         if (!token) {
@@ -770,6 +777,7 @@
     // Paylaşımı geri alma YOKTU: bir kez paylaşılan teklif sonsuza kadar
     // herkese açık kalıyordu. Jetonu silmek bağlantıyı anında geçersiz kılar.
     window.quoteShareKapat = async function (q) {
+        q = q || _qPreview;
         if (!q || !q.share_token) return;
         if (!confirm('Paylaşım bağlantısı iptal edilsin mi?\n\nDaha önce gönderdiğiniz bağlantı çalışmayı durdurur. Gerekirse yeniden paylaşabilirsiniz.')) return;
         try {
@@ -779,6 +787,26 @@
             if (typeof window.epcBildir === 'function') window.epcBildir('Paylaşım bağlantısı iptal edildi.');
             quoteOpenPreview(q);
         } catch (e) { alert('İptal edilemedi: ' + (e.message || e)); }
+    };
+
+    // Teklif silme: liste ve önizlemeden çağrılır. Paylaşım bağlantısı varsa
+    // silinen teklif o bağlantıdan da erişilemez olur; kullanıcıya söyleniyor.
+    window.quoteSil = async function (id) {
+        const q = id ? (_qList || []).find(x => String(x.id) === String(id)) : _qPreview;
+        if (!q || !supabaseClient) return;
+        const uyari = 'Bu teklif kalıcı olarak silinecek:\n\n' +
+            (q.customer_name || '—') + ' · ' + (q.quote_no || '') + '\n\n' +
+            (q.share_token ? 'Paylaşım bağlantısı da çalışmayı durdurur.\n\n' : '') +
+            'Geri alınamaz. Devam edilsin mi?';
+        if (!confirm(uyari)) return;
+        try {
+            const { error } = await supabaseClient.from('firm_quotes').delete().eq('id', q.id);
+            if (error) throw error;
+        } catch (e) { alert('Silinemedi: ' + (e.message || e)); return; }
+        _qList = (_qList || []).filter(x => String(x.id) !== String(q.id));
+        if (_qPreview && String(_qPreview.id) === String(q.id)) _qPreview = null;
+        if (typeof window.epcBildir === 'function') window.epcBildir('Teklif silindi.');
+        quoteView('list');
     };
 
     // -------- PUBLIC SALT-OKUNUR TEKLİF
