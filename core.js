@@ -122,7 +122,7 @@ window.epcLoadPdf = function () {
 const EPC_PANEL_SCRIPTS = [
     'panel.js', 'crm.js', 'admin.js', 'sales.js', 'projects.js', 'maintenance.js',
     'services.js', 'quote.js', 'dashboard.js', 'suppliers.js', 'messaging.js',
-    'investor.js', 'documents.js', 'campaigns.js'
+    'investor.js', 'documents.js', 'campaigns.js', 'evrak.js'
 ];
 let _epcPanelPromise = null;
 window.epcPanelReady = false;

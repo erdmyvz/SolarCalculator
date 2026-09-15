@@ -200,6 +200,8 @@ const EPC_EKRANLAR = {
     'tesislerim':      { btn: 'btnGoProjects' },
     'servisler':       { btn: 'btnGoServices' },
     'tedarikciler':    { btn: 'btnGoSuppliers' },
+    // Evrak modülü müşteri kimliği taşır: /evraklar/<müşteri kimliği>
+    'evraklar':        { ac: (arg) => window.showEvrakModule && window.showEvrakModule(arg || null, true) },
     'yonetim':         { btn: 'adminPanelCard' },
 
     // --- her rolde ortak ---

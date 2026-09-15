@@ -372,6 +372,39 @@ window.crmOpenLeadDetails = async function(id) {
     // Birleşik ilerleme: tesis + (aşama + süreç adımları)
     renderFacilityZone(lead);
     renderLeadSteps(lead);
+    crmEvrakKisayolu(lead);
+};
+
+/**
+ * Müşteri kartından "Başvuru Evrakları" kısayolu.
+ * Evrak modülü bu müşterinin bilgileriyle açılır — kullanıcı aynı bilgileri
+ * ikinci kez girmek zorunda kalmasın diye kart üzerinden bağlanıyor.
+ */
+function crmEvrakKisayolu(lead) {
+    const body = document.getElementById('crmCardExtras');
+    if (!body || typeof window.showEvrakModule !== 'function') return;
+    let z = document.getElementById('crmEvrakZone');
+    if (!z) {
+        z = document.createElement('div');
+        z.id = 'crmEvrakZone';
+        z.className = 'bg-white p-5 rounded-xl border border-slate-200';
+        body.appendChild(z);
+    }
+    const d = lead.basvuru_dosyasi || null;
+    const n = d && d.evrak_durumu ? Object.values(d.evrak_durumu).filter(Boolean).length : 0;
+    z.innerHTML = `
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div class="min-w-0">
+                <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">📄 Başvuru Evrakları</p>
+                <p class="text-xs text-slate-500">${n ? n + ' evrak işaretli — dosyayı açıp devam edin.' : 'Dağıtım şirketi başvurusu için evrakları bu müşterinin bilgileriyle hazırlayın.'}</p>
+            </div>
+            <button onclick="crmEvrakAc('${admEscape(lead.id)}')" class="btn-ikincil shrink-0">Evrakları Hazırla</button>
+        </div>`;
+}
+
+window.crmEvrakAc = function (id) {
+    document.getElementById('crmDetailModal')?.classList.add('hidden');
+    window.showEvrakModule(id, false);
 };
 
 /**
