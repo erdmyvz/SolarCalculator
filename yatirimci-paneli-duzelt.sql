@@ -1,43 +1,39 @@
 -- ============================================================================
---  yatirimci-paneli-duzelt.sql
---  "⚠️ Verileriniz şu an yüklenemedi" — yatırımcı panelindeki hatanın sebebi
+--  yatirimci-paneli-duzelt.sql  (2. sürüm)
+--  "⚠️ Verileriniz şu an yüklenemedi" — yatırımcı panelindeki hata
 --
---  TEŞHİS (sunucudan doğrulandı, tahmin değil):
---    list_my_projects() çağrısı şu hatayı döndürüyor:
+--  TEŞHİS (sunucudan doğrulandı):
+--    list_my_projects() şu hatayı döndürüyor:
 --      42702: column reference "facility_code" is ambiguous
 --      "It could refer to either a PL/pgSQL variable or a table column."
 --
---    Yani fonksiyonun içinde "facility_code" adı İKİ ANLAMA geliyor:
---    fonksiyonun çıktı kolonu (RETURNS TABLE) ve sorgudaki tablo kolonu.
---    PostgreSQL hangisi olduğunu bilemeyip sorguyu reddediyor.
---    Arayüz hatayı doğru yakalıyor — bu yüzden "başvurunuz yok" yerine
---    dürüst bir uyarı gösteriyor. Sorun tamamen veritabanı tarafında.
+--    Fonksiyonun içinde "facility_code" İKİ ANLAMA geliyor: fonksiyonun
+--    çıktı kolonu (RETURNS TABLE) ve sorgudaki tablo kolonu. PostgreSQL
+--    hangisi olduğunu bilemeyip sorguyu reddediyor.
 --
---  list_my_quotes() ve claim_my_leads() sorunsuz çalışıyor; yalnız bu bozuk.
+--  ⚠️ 1. SÜRÜMDEKİ ÇÖZÜM SUPABASE'TE ÇALIŞMIYOR
+--    alter function ... set plpgsql.variable_conflict = 'use_column';
+--    → ERROR 42501: permission denied to set parameter
+--    Bu parametreyi ayarlamak superuser yetkisi istiyor; Supabase vermiyor.
+--    Tek yol fonksiyonu kolonları takma adla niteleyerek yeniden yazmak.
+--
+--  list_my_quotes() ve claim_my_leads() sorunsuz; bozuk olan yalnız bu.
 -- ============================================================================
 
--- ------------------------------------------------------------- HIZLI ÇÖZÜM
--- Fonksiyonun gövdesine hiç dokunmadan çakışmayı çözer: ad hem değişken hem
--- kolon olabiliyorsa KOLON kazanır — bu sorgunun zaten istediği davranış.
--- Tek satır, geri alınabilir ( ... reset plpgsql.variable_conflict ).
-alter function public.list_my_projects()
-    set plpgsql.variable_conflict = 'use_column';
+-- ---------------------------------------------------------------- ADIM 1/2
+-- Fonksiyonun MEVCUT hâlini dökün ve çıktıyı bana gönderin.
+-- Tek satır, hiçbir şeyi değiştirmez:
 
--- KONTROL — bu satır hata vermeden boş liste veya kayıtları döndürmeli:
---   select * from public.list_my_projects();
+select pg_get_functiondef('public.list_my_projects'::regproc);
 
-
--- ============================================================================
---  KALICI ÇÖZÜM (önerilen)
---  Yukarıdaki satır hatayı kapatır ama sebebi yerinde durur: fonksiyon
---  içindeki kolonlar tablo takma adıyla yazılırsa (p.facility_code gibi)
---  çakışma bir daha hiç oluşmaz.
+-- ---------------------------------------------------------------- ADIM 2/2
+-- Çıktıyı görünce doğru sürümü buraya yazacağım: aynı sorgu, ama her kolon
+-- tablo takma adıyla (p.facility_code gibi) nitelenmiş olacak. Çakışma
+-- kaynağında biter, bir daha oluşmaz.
 --
---  Fonksiyonun mevcut hâlini göremediğim için gövdeyi ben yazmadım:
---  yanlış yazarsam bu SECURITY DEFINER fonksiyon BAŞKA yatırımcıların
---  kayıtlarını gösterebilir. Tahminle dokunulacak yer değil.
---
---  Şu sorguyu çalıştırıp çıktısını bana gönderin, doğru sürümü yazayım:
---
---      select pg_get_functiondef('public.list_my_projects'::regproc);
+-- NEDEN GÖVDEYİ TAHMİNLE YAZMIYORUM
+-- Bu fonksiyon SECURITY DEFINER: çağıranın değil, sahibinin yetkisiyle
+-- çalışıyor ve RLS'i atlıyor. "Hangi kayıtlar bu yatırımcınındır" kuralını
+-- yanlış yazarsam panel BAŞKA yatırımcıların başvurularını, telefonlarını
+-- ve tekliflerini gösterebilir. Tahminle dokunulacak yer değil.
 -- ============================================================================
