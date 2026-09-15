@@ -1,39 +1,107 @@
 -- ============================================================================
---  yatirimci-paneli-duzelt.sql  (2. sürüm)
+--  yatirimci-paneli-duzelt.sql  (3. sürüm — ÇALIŞTIRILACAK SÜRÜM BU)
 --  "⚠️ Verileriniz şu an yüklenemedi" — yatırımcı panelindeki hata
 --
---  TEŞHİS (sunucudan doğrulandı):
---    list_my_projects() şu hatayı döndürüyor:
---      42702: column reference "facility_code" is ambiguous
---      "It could refer to either a PL/pgSQL variable or a table column."
+--  HATA
+--    42702: column reference "facility_code" is ambiguous
 --
---    Fonksiyonun içinde "facility_code" İKİ ANLAMA geliyor: fonksiyonun
---    çıktı kolonu (RETURNS TABLE) ve sorgudaki tablo kolonu. PostgreSQL
---    hangisi olduğunu bilemeyip sorguyu reddediyor.
+--  SEBEP (gövde görüldü, artık tahmin değil)
+--    Fonksiyonun RETURNS TABLE listesi facility_code · system_kwp ·
+--    install_date · created_at adlarını ÇIKTI DEĞİŞKENİ olarak tanımlıyor.
+--    Alttaki LATERAL alt sorgusu ise aynı adları TABLO KOLONU olarak
+--    niteliksiz yazıyor:
 --
---  ⚠️ 1. SÜRÜMDEKİ ÇÖZÜM SUPABASE'TE ÇALIŞMIYOR
---    alter function ... set plpgsql.variable_conflict = 'use_column';
---    → ERROR 42501: permission denied to set parameter
---    Bu parametreyi ayarlamak superuser yetkisi istiyor; Supabase vermiyor.
---    Tek yol fonksiyonu kolonları takma adla niteleyerek yeniden yazmak.
+--        left join lateral (
+--            select facility_code, system_kwp, install_date   -- ← niteliksiz
+--            from public.projects
+--            where lead_id = l.id
+--            order by created_at                              -- ← niteliksiz
+--            limit 1
+--        ) pr on true
 --
---  list_my_quotes() ve claim_my_leads() sorunsuz; bozuk olan yalnız bu.
+--    PostgreSQL "bu ad çıktı değişkeni mi, kolon mu?" diyip reddediyor.
+--
+--  DEĞİŞEN TEK ŞEY
+--    LATERAL alt sorgusuna "pj" takma adı verildi ve dört kolon referansı
+--    nitelendi (pj.facility_code, pj.system_kwp, pj.install_date,
+--    pj.created_at, pj.lead_id).
+--
+--  ⚠️ DEĞİŞMEYEN — ÖNEMLİ
+--    Sahiplik kuralı olduğu gibi duruyor:  where l.investor_id = auth.uid()
+--    Bu fonksiyon SECURITY DEFINER; o satır yanlış yazılsaydı panel başka
+--    yatırımcıların başvurularını gösterirdi. Tek harfi değiştirilmedi.
+--    Dönüş tipi, sütun sırası ve geri kalan sorgu da birebir aynı.
 -- ============================================================================
 
--- ---------------------------------------------------------------- ADIM 1/2
--- Fonksiyonun MEVCUT hâlini dökün ve çıktıyı bana gönderin.
--- Tek satır, hiçbir şeyi değiştirmez:
+create or replace function public.list_my_projects()
+returns table (
+    id           uuid,
+    tracking_code text,
+    full_name    text,
+    address      text,
+    status       text,
+    created_at   timestamp with time zone,
+    company_id   uuid,
+    company_name text,
+    steps_total  integer,
+    steps_done   integer,
+    current_step text,
+    facility_code text,
+    system_kwp   numeric,
+    install_date date
+)
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare
+  v_total int;
+begin
+  select count(*)::int into v_total from public.process_steps;
 
-select pg_get_functiondef('public.list_my_projects'::regproc);
+  return query
+  select
+    l.id,
+    l.tracking_code,
+    l.full_name,
+    l.address,
+    l.status,
+    l.created_at,
+    l.company_id,
+    c.name,
+    v_total,
+    (select count(*)::int
+       from public.process_steps p
+      where p.slug in (
+        select jsonb_array_elements_text(
+          case when jsonb_typeof(l.completed_steps) = 'array'
+               then l.completed_steps else '[]'::jsonb end))),
+    (select p.title
+       from public.process_steps p
+      where p.slug not in (
+        select jsonb_array_elements_text(
+          case when jsonb_typeof(l.completed_steps) = 'array'
+               then l.completed_steps else '[]'::jsonb end))
+      order by p.sort_order
+      limit 1),
+    pr.facility_code,
+    pr.system_kwp,
+    pr.install_date
+  from public.leads l
+  left join public.companies c on c.id = l.company_id
+  left join lateral (
+    -- ⚠️ TAKMA AD ŞART: kolonlar nitelenmezse RETURNS TABLE'daki aynı adlı
+    -- çıktı değişkenleriyle çakışıyor ve fonksiyon 42702 ile patlıyor.
+    select pj.facility_code, pj.system_kwp, pj.install_date
+    from public.projects pj
+    where pj.lead_id = l.id
+    order by pj.created_at
+    limit 1
+  ) pr on true
+  where l.investor_id = auth.uid()
+  order by l.created_at desc;
+end $function$;
 
--- ---------------------------------------------------------------- ADIM 2/2
--- Çıktıyı görünce doğru sürümü buraya yazacağım: aynı sorgu, ama her kolon
--- tablo takma adıyla (p.facility_code gibi) nitelenmiş olacak. Çakışma
--- kaynağında biter, bir daha oluşmaz.
---
--- NEDEN GÖVDEYİ TAHMİNLE YAZMIYORUM
--- Bu fonksiyon SECURITY DEFINER: çağıranın değil, sahibinin yetkisiyle
--- çalışıyor ve RLS'i atlıyor. "Hangi kayıtlar bu yatırımcınındır" kuralını
--- yanlış yazarsam panel BAŞKA yatırımcıların başvurularını, telefonlarını
--- ve tekliflerini gösterebilir. Tahminle dokunulacak yer değil.
--- ============================================================================
+-- KONTROL — hata vermeden dönmeli (yatırımcı hesabıyla kendi başvuruları,
+-- başka hesapla boş liste):
+--   select * from public.list_my_projects();
