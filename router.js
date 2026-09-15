@@ -55,7 +55,7 @@ async function handleSPA_Routing() {
         if (typeof openPublicModule === 'function') openPublicModule(_mod, true);
         const _init = EPC_MODULE_INIT[_mod];
         if (_init && typeof window[_init] === 'function') window[_init]();
-    } else if ((hash === '#app' || (hash in EPC_PANEL_ROTALARI)) && app) {
+    } else if ((EPC_PANEL_KOKLERI.has(hash) || (hash in EPC_PANEL_ROTALARI)) && app) {
         // Eğer uygulama (panel) kısmına girmek istiyorsa, oturum (session) kontrolü yap
         if(supabaseClient) {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -82,8 +82,21 @@ async function handleSPA_Routing() {
         } else if (!window.currentUserProfile && !window.currentSupplier && typeof showInvestorPanel === 'function') {
             // Yatırımcı: firma profili yok ve danışman değil → YATIRIMCI paneli (kurulumcu menüsü DEĞİL)
             showInvestorPanel();
-        } else if (hash === '#app') {
+        } else if (EPC_PANEL_KOKLERI.has(hash)) {
             closeAllAndShowMenu(); // firma/admin → yönetim menüsü (Dashboard)
+        }
+
+        // Rol artık belli: panel kökündeysek adresi ROLÜN adresine çevir.
+        // İki durumu birden kapatır:
+        //   · #app'te kalındıysa (eski adres, giriş sonrası varsayılan)
+        //   · başka bir rolün adresi elle yazıldıysa — adres yalan söylemesin
+        // replaceState: geçmişe kayıt düşmez, hashchange tetiklemez.
+        if (EPC_PANEL_KOKLERI.has(hash)) {
+            const _rol = epcPanelAdresi();
+            if (_rol !== '#app' && _rol !== hash) {
+                try { history.replaceState(null, '', location.pathname + location.search + _rol); }
+                catch (e) { /* eski tarayıcı: adres olduğu gibi kalır, işlev bozulmaz */ }
+            }
         }
         // ⚠️ Adres bir MODÜLÜ işaret ediyorsa closeAllAndShowMenu ÇAĞRILMAZ:
         // o fonksiyon menüye dönerken adresi #app'e çekiyor, yani istenen
@@ -114,6 +127,37 @@ async function handleSPA_Routing() {
 }
 
 window.addEventListener('hashchange', handleSPA_Routing);
+
+/* ----------------------------------------------------------------------------
+   PANEL KÖK ADRESLERİ — her rolün kendi adresi
+   Kurulumcu da, danışman da, tedarikçi de, yatırımcı da girdiğinde adres
+   #app oluyordu. Yani adres hangi arayüzde olduğunu söylemiyordu: yer imi
+   anlamsızdı, bağlantı paylaşınca karşı taraf nereye geldiğini bilmiyordu,
+   tarayıcı geçmişinde dört farklı panel tek satır gibi görünüyordu.
+   #app geriye dönük çalışmaya devam ediyor: rol belli olur olmaz adres
+   sessizce rolün adresiyle değiştiriliyor (history.replaceState — geçmişe
+   fazladan kayıt düşmez, hashchange tetiklenmez).
+   ---------------------------------------------------------------------------- */
+const EPC_ROL_ADRESLERI = {
+    installer:  '#kurulumcu-panel',
+    admin:      '#yonetim-panel',
+    consultant: '#danisman-panel',
+    supplier:   '#tedarikci-panel',
+    investor:   '#yatirimci-panel'
+};
+// Panel kökü sayılan adresler (#app dahil): modül değil, rolün ana ekranı.
+const EPC_PANEL_KOKLERI = new Set(['#app'].concat(Object.values(EPC_ROL_ADRESLERI)));
+
+// Oturumdaki rolün panel adresi. Rol henüz çözülmediyse eldeki duruma bakar.
+function epcPanelAdresi() {
+    const r = window.__epcRol;
+    if (r && EPC_ROL_ADRESLERI[r]) return EPC_ROL_ADRESLERI[r];
+    if (window.currentConsultant && window.currentConsultant.id) return EPC_ROL_ADRESLERI.consultant;
+    if (window.currentSupplier && window.currentSupplier.id) return EPC_ROL_ADRESLERI.supplier;
+    if (window.currentUserProfile) return EPC_ROL_ADRESLERI.installer;
+    return '#app';
+}
+window.epcPanelAdresi = epcPanelAdresi;
 
 /* ----------------------------------------------------------------------------
    PANEL MODÜLLERİNİN ADRESLERİ
@@ -246,7 +290,8 @@ window.addEventListener('load', async () => {
             else { await fetchUserProfile(session.user.id, session.user.email); }
             const _authHashes = ['#auth', '#yatirimciauth', '#kurulumcuauth', '#danismanauth', '#tedarikciauth', ''];
             if (_r !== 'expired' && _r !== 'banned' && _r !== 'panel-yuklenemedi' && _authHashes.includes(window.location.hash)) {
-                window.location.hash = '#app'; // Zaten giriş yapmışsa direkt panele al
+                window.__epcRol = _r;
+                window.location.hash = epcPanelAdresi(); // Zaten giriş yapmışsa direkt panele al
             }
         }
     }
@@ -333,10 +378,10 @@ window.closeAllAndShowMenu = function() {
         // Adres de menüye dönmeli; yoksa yenilemede kapalı bir modüle geri düşülür.
         // Yönlendirici bu fonksiyonu yalnız #app için çağırır, o yüzden buraya
         // gelen "modül adresi" mutlaka kullanıcının menüye dönüşüdür.
-        if (window.location.hash && window.location.hash !== '#app'
-            && (window.location.hash in EPC_PANEL_ROTALARI)) {
-            window.__epcPanelHash = '#app';
-            window.location.hash = '#app';
+        if (window.location.hash && (window.location.hash in EPC_PANEL_ROTALARI)) {
+            const _kok = epcPanelAdresi();
+            window.__epcPanelHash = _kok;
+            window.location.hash = _kok;
         }
         document.getElementById('mainMenu').classList.remove('hidden');
         if(header) header.classList.remove('hidden');

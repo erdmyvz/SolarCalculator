@@ -283,6 +283,7 @@ async function routeByInfo(info, user) {
     window.currentConsultant = null;
     window.currentSupplier = null;
     window.__subInfo = null;
+    window.__epcRol = info.type;   // adres çubuğu rolü buradan öğrenir
     if (info.type === 'investor') {
         // Yatırımcı ücret ödemez; abonelik kontrolü uygulanmaz.
         try { await supabaseClient.rpc('claim_my_leads'); } catch (e) { /* geçmiş başvuru eşleştirme */ }
@@ -528,7 +529,12 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
             } else {
                 applyRememberPreference(!!document.getElementById('rememberMe')?.checked);
                 const r = await routeByInfo(info, data.user);
-                if (r !== 'expired' && r !== 'banned' && r !== 'panel-yuklenemedi') window.location.hash = '#app';
+                // Adres rolü söylesin: #kurulumcu-panel / #danisman-panel / …
+                // Eskiden dört rol de #app'e gidiyordu.
+                if (r !== 'expired' && r !== 'banned' && r !== 'panel-yuklenemedi') {
+                    window.location.hash = (typeof window.epcPanelAdresi === 'function')
+                        ? window.epcPanelAdresi() : '#app';
+                }
                 document.getElementById('loginForm').reset();
             }
         }

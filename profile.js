@@ -124,7 +124,7 @@
     window.profilKapat = function () {
         document.getElementById('profileModule')?.classList.add('hidden');
         if (typeof window.closeAllAndShowMenu === 'function') { window.closeAllAndShowMenu(); return; }
-        window.location.hash = '#app';
+        window.location.hash = (typeof window.epcPanelAdresi === 'function') ? window.epcPanelAdresi() : '#app';
     };
 
     window.pfPick = function (input) {

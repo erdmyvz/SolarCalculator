@@ -311,9 +311,10 @@
     window.renderConsultantMenu = renderConsultantMenu;
     window.consultantEditProfile = function () { renderConsultantProfile(); };
     window.consultantBackToMenu = function () {
-        if (window.location.hash && window.location.hash !== '#app') {
-            window.__epcPanelHash = '#app';
-            window.location.hash = '#app';
+        const _kok = (typeof window.epcPanelAdresi === 'function') ? window.epcPanelAdresi() : '#app';
+        if (window.location.hash && window.location.hash !== _kok) {
+            window.__epcPanelHash = _kok;
+            window.location.hash = _kok;
         }
         renderConsultantMenu();
     };
