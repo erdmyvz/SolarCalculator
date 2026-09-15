@@ -420,6 +420,21 @@ window.epcKur = function () {
     return v > 0 ? v : window.EPC_KUR_YEDEK;
 };
 
+// PDF dışa aktarımı için temayı geçici olarak kaldırır.
+// html2canvas, sayfanın EKRANDAKİ görünümünü yakalar: koyu tema açıkken
+// rapor beyaz tuvale açık renk metinle basılıyor, PDF boş görünüyordu.
+// (Fatura analizi raporu klonlanıp gövdeye eklendiği için etkilenmiyor;
+// hesaplayıcı raporu ise canlı düğümden üretiliyor.) Dışa aktarma bitince
+// sınıflar geri konur — hata olsa bile, finally ile.
+window.epcTemasiz = async function (isle) {
+    const kutular = Array.prototype.slice.call(
+        document.querySelectorAll('.modul-koyu, .tema-koyu'));
+    const eski = kutular.map(function (e) { return e.className; });
+    kutular.forEach(function (e) { e.classList.remove('modul-koyu', 'tema-koyu'); });
+    try { return await isle(); }
+    finally { kutular.forEach(function (e, i) { e.className = eski[i]; }); }
+};
+
 // Zam ve yıpranma varsayılanları da ayarlardan gelsin ki iki araç aynı
 // varsayımı kullansın (amortization.js'in form varsayılanları: %25 / %0,7).
 window.epcEnflasyon = function () {

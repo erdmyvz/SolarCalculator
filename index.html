@@ -773,6 +773,13 @@
             body * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
         }
 
+        /* ⚠️ TÜM KOYU TEMA @media screen İÇİNDE.
+           Kâğıt beyazdır: yazdırıldığında modüller özgün açık biçimlerine
+           döner. Aksi hâlde Ctrl+P beyaz kâğıda beyaz metin basardı.
+           (PDF dışa aktarımı html2canvas ile EKRAN görünümünü yakalar, onu
+           bu kural kurtarmaz — orada epcTemasiz() kullanılıyor.) */
+        @media screen {
+
         /* ============================================================
            MODÜL YÜZEYİ — ziyaretçi araçları ana sayfanın diliyle
            ------------------------------------------------------------
@@ -803,8 +810,8 @@
            kutusunun "hidden" sınıfı her zaman geri gelmiyor, yalnız kapsayıcı
            gizleniyor. Bu koşul olmadan açık zeminli ekranlar (giriş/kayıt)
            görünmeyen bir modül yüzünden koyu gövde alıyordu. */
-        body:has(#appContainer:not(.hidden) .modul-koyu:not(.hidden)) { background-color: #0B1B2E; }
-        body:has(#appContainer:not(.hidden) .modul-koyu:not(.hidden)) #appContainer {
+        body:has(#appContainer:not(.hidden) :is(.modul-koyu,.tema-koyu):not(.hidden)) { background-color: #0B1B2E; }
+        body:has(#appContainer:not(.hidden) :is(.modul-koyu,.tema-koyu):not(.hidden)) #appContainer {
             background:
                 radial-gradient(1100px 480px at 72% -12%, rgba(245,158,11,0.16), transparent 60%),
                 linear-gradient(140deg, #0A1A2F 0%, #0E2540 55%, #0B1B2E 100%);
@@ -812,15 +819,25 @@
         }
         /* Tarayıcının kendi bileşenleri (kaydırma çubuğu, tarih seçici,
            otomatik doldurma) de koyu tarafa geçsin. */
-        body .modul-koyu { color-scheme: dark; }
-
-        /* --- Kapsayıcı: vitrindeki cam panelin aynısı --------------- */
-        body .modul-koyu {
+        /* İKİ SINIF, İKİ İŞ:
+             .modul-koyu → palet + cam kart kabuğu (ziyaretçi araçları: kendisi
+                           bir kart olan kapsayıcılar)
+             .tema-koyu  → yalnız palet (panel sarmalayıcıları: kendileri kart
+                           değil, içlerinde .kart çocukları var; kabuk verilse
+                           kart içinde kart görünürdü)
+           Aşağıdaki tüm eşlemeler ikisi için de geçerli. */
+        body .modul-koyu,
+        body .tema-koyu {
+            color-scheme: dark;
             /* Taban metin rengi: renk sınıfı TAŞIMAYAN öğeler (ör. amortisman
                modülündeki yöntem sekmeleri) Tailwind'in koyu varsayılanını
                miras alıyor, koyu zeminde görünmez oluyorlardı. Sınıflı olanlar
                aşağıdaki eşlemelerle bunu zaten yener. */
             color: #E8EEF7;
+        }
+
+        /* --- Kart kabuğu: vitrindeki cam panelin aynısı ------------- */
+        body .modul-koyu {
             background: rgba(255,255,255,0.045);
             border: 1px solid rgba(251,191,36,0.16);
             border-radius: var(--r-lg);
@@ -833,259 +850,259 @@
            Renk sınıfı olmayan çıplak border / border-b / border-t için.
            Sınıflı kenarlar (border-amber-200 gibi) aşağıda kendi
            kuralıyla bunu yener — seçici daha özgüldür. */
-        body .modul-koyu * { border-color: rgba(255,255,255,0.10); }
+        body :is(.modul-koyu,.tema-koyu) * { border-color: rgba(255,255,255,0.10); }
 
         /* --- Yüzey katmanları --------------------------------------- */
-        body .modul-koyu [class*="bg-white"] { background: rgba(255,255,255,0.05); }
-        body .modul-koyu .bg-slate-50,
-        body .modul-koyu .bg-gray-50,
-        body .modul-koyu .bg-slate-100 { background: rgba(255,255,255,0.04); }
-        body .modul-koyu .bg-slate-200 { background: rgba(255,255,255,0.10); }
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-white"] { background: rgba(255,255,255,0.05); }
+        body :is(.modul-koyu,.tema-koyu) .bg-slate-50,
+        body :is(.modul-koyu,.tema-koyu) .bg-gray-50,
+        body :is(.modul-koyu,.tema-koyu) .bg-slate-100 { background: rgba(255,255,255,0.04); }
+        body :is(.modul-koyu,.tema-koyu) .bg-slate-200 { background: rgba(255,255,255,0.10); }
         /* Zaten koyu olan kutular: cam zeminde ayrışsınlar diye daha derin */
-        body .modul-koyu .bg-slate-800,
-        body .modul-koyu .bg-slate-900,
-        body .modul-koyu .bg-slate-950 { background: rgba(4,12,22,0.60); }
+        body :is(.modul-koyu,.tema-koyu) .bg-slate-800,
+        body :is(.modul-koyu,.tema-koyu) .bg-slate-900,
+        body :is(.modul-koyu,.tema-koyu) .bg-slate-950 { background: rgba(4,12,22,0.60); }
 
         /* --- Metin ---------------------------------------------------
            Açık zemin için seçilmiş koyu griler koyu zeminde okunmuyordu. */
-        body .modul-koyu .text-slate-900,
-        body .modul-koyu .text-slate-800,
-        body .modul-koyu .text-slate-700,
-        body .modul-koyu .text-gray-800 { color: #E8EEF7; }
-        body .modul-koyu .text-slate-600,
-        body .modul-koyu .text-gray-600 { color: #B6C4D7; }
+        body :is(.modul-koyu,.tema-koyu) .text-slate-900,
+        body :is(.modul-koyu,.tema-koyu) .text-slate-800,
+        body :is(.modul-koyu,.tema-koyu) .text-slate-700,
+        body :is(.modul-koyu,.tema-koyu) .text-gray-800 { color: #E8EEF7; }
+        body :is(.modul-koyu,.tema-koyu) .text-slate-600,
+        body :is(.modul-koyu,.tema-koyu) .text-gray-600 { color: #B6C4D7; }
         /* Ölçüldü: #97A8BD cam yüzeyde 3,9:1 — WCAG AA eşiği 4,5:1. Bir
            kademe açıldı; yardımcı metinlerin tamamı bu iki sınıfı kullanıyor. */
-        body .modul-koyu .text-slate-500 { color: #AEBFD4; }
-        body .modul-koyu .text-slate-400 { color: #A3B5CA; }
-        body .modul-koyu .text-slate-300 { color: #C6D2E0; }
+        body :is(.modul-koyu,.tema-koyu) .text-slate-500 { color: #AEBFD4; }
+        body :is(.modul-koyu,.tema-koyu) .text-slate-400 { color: #A3B5CA; }
+        body :is(.modul-koyu,.tema-koyu) .text-slate-300 { color: #C6D2E0; }
 
         /* --- Altın vurgu (config'de "emerald" = amber) -------------- */
-        body .modul-koyu .bg-emerald-50,
-        body .modul-koyu .bg-amber-50,
-        body .modul-koyu .bg-yellow-50 { background: rgba(251,191,36,0.10); }
-        body .modul-koyu .bg-emerald-100,
-        body .modul-koyu .bg-amber-100 { background: rgba(251,191,36,0.16); }
-        body .modul-koyu [class*="border-emerald-1"],
-        body .modul-koyu [class*="border-emerald-2"],
-        body .modul-koyu [class*="border-amber-1"],
-        body .modul-koyu [class*="border-amber-2"] { border-color: rgba(251,191,36,0.30); }
-        body .modul-koyu .text-emerald-600,
-        body .modul-koyu .text-emerald-700,
-        body .modul-koyu .text-emerald-800,
-        body .modul-koyu .text-emerald-900,
-        body .modul-koyu .text-amber-600,
-        body .modul-koyu .text-amber-700,
-        body .modul-koyu .text-amber-800,
-        body .modul-koyu .text-amber-900 { color: #FCD34D; }
+        body :is(.modul-koyu,.tema-koyu) .bg-emerald-50,
+        body :is(.modul-koyu,.tema-koyu) .bg-amber-50,
+        body :is(.modul-koyu,.tema-koyu) .bg-yellow-50 { background: rgba(251,191,36,0.10); }
+        body :is(.modul-koyu,.tema-koyu) .bg-emerald-100,
+        body :is(.modul-koyu,.tema-koyu) .bg-amber-100 { background: rgba(251,191,36,0.16); }
+        body :is(.modul-koyu,.tema-koyu) [class*="border-emerald-1"],
+        body :is(.modul-koyu,.tema-koyu) [class*="border-emerald-2"],
+        body :is(.modul-koyu,.tema-koyu) [class*="border-amber-1"],
+        body :is(.modul-koyu,.tema-koyu) [class*="border-amber-2"] { border-color: rgba(251,191,36,0.30); }
+        body :is(.modul-koyu,.tema-koyu) .text-emerald-600,
+        body :is(.modul-koyu,.tema-koyu) .text-emerald-700,
+        body :is(.modul-koyu,.tema-koyu) .text-emerald-800,
+        body :is(.modul-koyu,.tema-koyu) .text-emerald-900,
+        body :is(.modul-koyu,.tema-koyu) .text-amber-600,
+        body :is(.modul-koyu,.tema-koyu) .text-amber-700,
+        body :is(.modul-koyu,.tema-koyu) .text-amber-800,
+        body :is(.modul-koyu,.tema-koyu) .text-amber-900 { color: #FCD34D; }
 
         /* --- Mavi ve indigo, vitrinin altın diline çevriliyor --------
            Modüller mavi CTA kullanıyordu; ana sayfada mavi hiç yok.
            Rengi burada çeviriyoruz ki 200'den fazla sınıf elle
            değiştirilmesin ve JS'in ürettiği HTML de kapsansın. */
-        body .modul-koyu .bg-blue-50,
-        body .modul-koyu .bg-indigo-50 { background: rgba(251,191,36,0.09); }
-        body .modul-koyu .bg-blue-100,
-        body .modul-koyu .bg-indigo-100 { background: rgba(251,191,36,0.15); }
-        body .modul-koyu [class*="border-blue-"],
-        body .modul-koyu [class*="border-indigo-"] { border-color: rgba(251,191,36,0.32); }
-        body .modul-koyu .text-blue-600,
-        body .modul-koyu .text-blue-700,
-        body .modul-koyu .text-blue-800,
-        body .modul-koyu .text-indigo-600,
-        body .modul-koyu .text-indigo-700,
-        body .modul-koyu .text-indigo-800 { color: #FCD34D; }
+        body :is(.modul-koyu,.tema-koyu) .bg-blue-50,
+        body :is(.modul-koyu,.tema-koyu) .bg-indigo-50 { background: rgba(251,191,36,0.09); }
+        body :is(.modul-koyu,.tema-koyu) .bg-blue-100,
+        body :is(.modul-koyu,.tema-koyu) .bg-indigo-100 { background: rgba(251,191,36,0.15); }
+        body :is(.modul-koyu,.tema-koyu) [class*="border-blue-"],
+        body :is(.modul-koyu,.tema-koyu) [class*="border-indigo-"] { border-color: rgba(251,191,36,0.32); }
+        body :is(.modul-koyu,.tema-koyu) .text-blue-600,
+        body :is(.modul-koyu,.tema-koyu) .text-blue-700,
+        body :is(.modul-koyu,.tema-koyu) .text-blue-800,
+        body :is(.modul-koyu,.tema-koyu) .text-indigo-600,
+        body :is(.modul-koyu,.tema-koyu) .text-indigo-700,
+        body :is(.modul-koyu,.tema-koyu) .text-indigo-800 { color: #FCD34D; }
 
         /* --- Kırmızı: uyarı rengi kalıyor, koyu zemine uyarlanıyor --- */
-        body .modul-koyu .bg-red-50  { background: rgba(239,68,68,0.12); }
-        body .modul-koyu .bg-red-100 { background: rgba(239,68,68,0.18); }
-        body .modul-koyu [class*="border-red-1"],
-        body .modul-koyu [class*="border-red-2"] { border-color: rgba(239,68,68,0.35); }
-        body .modul-koyu .text-red-600,
-        body .modul-koyu .text-red-700,
-        body .modul-koyu .text-red-800 { color: #FCA5A5; }
+        body :is(.modul-koyu,.tema-koyu) .bg-red-50  { background: rgba(239,68,68,0.12); }
+        body :is(.modul-koyu,.tema-koyu) .bg-red-100 { background: rgba(239,68,68,0.18); }
+        body :is(.modul-koyu,.tema-koyu) [class*="border-red-1"],
+        body :is(.modul-koyu,.tema-koyu) [class*="border-red-2"] { border-color: rgba(239,68,68,0.35); }
+        body :is(.modul-koyu,.tema-koyu) .text-red-600,
+        body :is(.modul-koyu,.tema-koyu) .text-red-700,
+        body :is(.modul-koyu,.tema-koyu) .text-red-800 { color: #FCA5A5; }
 
         /* --- Birincil düğmeler: vitrindeki güneş gradyanı ------------ */
-        body .modul-koyu [class~="bg-blue-600"],
-        body .modul-koyu [class*="bg-blue-600/"],
-        body .modul-koyu [class~="bg-blue-700"],
-        body .modul-koyu [class*="bg-blue-700/"],
-        body .modul-koyu [class~="bg-indigo-600"],
-        body .modul-koyu [class*="bg-indigo-600/"],
-        body .modul-koyu [class~="bg-indigo-700"],
-        body .modul-koyu [class*="bg-indigo-700/"],
-        body .modul-koyu [class~="bg-emerald-500"],
-        body .modul-koyu [class*="bg-emerald-500/"],
-        body .modul-koyu [class~="bg-emerald-600"],
-        body .modul-koyu [class*="bg-emerald-600/"],
-        body .modul-koyu [class~="bg-emerald-700"],
-        body .modul-koyu [class*="bg-emerald-700/"],
-        body .modul-koyu [class~="bg-amber-400"],
-        body .modul-koyu [class*="bg-amber-400/"],
-        body .modul-koyu [class~="bg-amber-500"],
-        body .modul-koyu [class*="bg-amber-500/"],
-        body .modul-koyu [class~="bg-amber-600"],
-        body .modul-koyu [class*="bg-amber-600/"] {
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-blue-600"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-blue-600/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-blue-700"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-blue-700/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-indigo-600"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-indigo-600/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-indigo-700"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-indigo-700/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-500"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-500/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-600"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-600/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-700"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-700/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-400"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-400/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-500"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-500/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-600"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-600/"] {
             background-image: linear-gradient(100deg, #F59E0B 0%, #FBBF24 38%, #10B981 100%);
             background-size: 180% 100%; background-position: 0% 0%;
             background-color: transparent; color: #0B1B2E;
             box-shadow: 0 14px 30px -16px rgba(245,158,11,.6);
             transition: background-position .45s ease, transform .18s ease, box-shadow .18s ease;
         }
-        body .modul-koyu [class~="bg-blue-600"]:hover,
-        body .modul-koyu [class*="bg-blue-600/"]:hover,
-        body .modul-koyu [class~="bg-blue-700"]:hover,
-        body .modul-koyu [class*="bg-blue-700/"]:hover,
-        body .modul-koyu [class~="bg-indigo-600"]:hover,
-        body .modul-koyu [class*="bg-indigo-600/"]:hover,
-        body .modul-koyu [class~="bg-indigo-700"]:hover,
-        body .modul-koyu [class*="bg-indigo-700/"]:hover,
-        body .modul-koyu [class~="bg-emerald-500"]:hover,
-        body .modul-koyu [class*="bg-emerald-500/"]:hover,
-        body .modul-koyu [class~="bg-emerald-600"]:hover,
-        body .modul-koyu [class*="bg-emerald-600/"]:hover,
-        body .modul-koyu [class~="bg-emerald-700"]:hover,
-        body .modul-koyu [class*="bg-emerald-700/"]:hover,
-        body .modul-koyu [class~="bg-amber-400"]:hover,
-        body .modul-koyu [class*="bg-amber-400/"]:hover,
-        body .modul-koyu [class~="bg-amber-500"]:hover,
-        body .modul-koyu [class*="bg-amber-500/"]:hover,
-        body .modul-koyu [class~="bg-amber-600"]:hover,
-        body .modul-koyu [class*="bg-amber-600/"]:hover {
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-blue-600"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-blue-600/"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-blue-700"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-blue-700/"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-indigo-600"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-indigo-600/"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-indigo-700"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-indigo-700/"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-500"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-500/"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-600"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-600/"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-700"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-700/"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-400"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-400/"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-500"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-500/"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-600"]:hover,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-600/"]:hover {
             background-position: 95% 0%; transform: translateY(-1px);
         }
         /* Koyu düğmeler (PDF indir gibi) cam yüzeyde kaybolmasın */
-        body .modul-koyu [class*="bg-slate-8"],
-        body .modul-koyu [class*="bg-slate-9"] { color: #E8EEF7; }
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-slate-8"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-slate-9"] { color: #E8EEF7; }
 
         /* Altın zeminin ÜSTÜNDEKİ yazı koyu mürekkep olmalı: bu yüzeyler artık
            parlak altın: beyaz metin (text-white / text-emerald-100) üzerinde
            okunmuyordu. */
-        body .modul-koyu [class~="bg-blue-600"],
-        body .modul-koyu [class~="bg-blue-600"] *,
-        body .modul-koyu [class*="bg-blue-600/"],
-        body .modul-koyu [class*="bg-blue-600/"] *,
-        body .modul-koyu [class~="bg-blue-700"],
-        body .modul-koyu [class~="bg-blue-700"] *,
-        body .modul-koyu [class*="bg-blue-700/"],
-        body .modul-koyu [class*="bg-blue-700/"] *,
-        body .modul-koyu [class~="bg-indigo-600"],
-        body .modul-koyu [class~="bg-indigo-600"] *,
-        body .modul-koyu [class*="bg-indigo-600/"],
-        body .modul-koyu [class*="bg-indigo-600/"] *,
-        body .modul-koyu [class~="bg-indigo-700"],
-        body .modul-koyu [class~="bg-indigo-700"] *,
-        body .modul-koyu [class*="bg-indigo-700/"],
-        body .modul-koyu [class*="bg-indigo-700/"] *,
-        body .modul-koyu [class~="bg-emerald-500"],
-        body .modul-koyu [class~="bg-emerald-500"] *,
-        body .modul-koyu [class*="bg-emerald-500/"],
-        body .modul-koyu [class*="bg-emerald-500/"] *,
-        body .modul-koyu [class~="bg-emerald-600"],
-        body .modul-koyu [class~="bg-emerald-600"] *,
-        body .modul-koyu [class*="bg-emerald-600/"],
-        body .modul-koyu [class*="bg-emerald-600/"] *,
-        body .modul-koyu [class~="bg-emerald-700"],
-        body .modul-koyu [class~="bg-emerald-700"] *,
-        body .modul-koyu [class*="bg-emerald-700/"],
-        body .modul-koyu [class*="bg-emerald-700/"] *,
-        body .modul-koyu [class~="bg-amber-400"],
-        body .modul-koyu [class~="bg-amber-400"] *,
-        body .modul-koyu [class*="bg-amber-400/"],
-        body .modul-koyu [class*="bg-amber-400/"] *,
-        body .modul-koyu [class~="bg-amber-500"],
-        body .modul-koyu [class~="bg-amber-500"] *,
-        body .modul-koyu [class*="bg-amber-500/"],
-        body .modul-koyu [class*="bg-amber-500/"] *,
-        body .modul-koyu [class~="bg-amber-600"],
-        body .modul-koyu [class~="bg-amber-600"] *,
-        body .modul-koyu [class*="bg-amber-600/"],
-        body .modul-koyu [class*="bg-amber-600/"] * { color: #0B1B2E; }
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-blue-600"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-blue-600"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-blue-600/"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-blue-600/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-blue-700"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-blue-700"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-blue-700/"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-blue-700/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-indigo-600"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-indigo-600"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-indigo-600/"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-indigo-600/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-indigo-700"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-indigo-700"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-indigo-700/"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-indigo-700/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-500"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-500"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-500/"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-500/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-600"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-600"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-600/"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-600/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-700"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-700"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-700/"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-emerald-700/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-400"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-400"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-400/"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-400/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-500"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-500"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-500/"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-500/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-600"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-amber-600"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-600/"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-amber-600/"] * { color: #0B1B2E; }
 
         /* Altın zeminin üstündeki ikincil düğme (ör. "Ücretsiz Çatı Keşfi"):
            cam yüzey + altın yazı, altın zeminde tamamen kayboluyordu.
            Koyu, okunur bir çipe çevriliyor. */
-        body .modul-koyu [class~="bg-emerald-600"] [class*="bg-white"],
-        body .modul-koyu [class~="bg-blue-600"] [class*="bg-white"],
-        body .modul-koyu [class~="bg-indigo-600"] [class*="bg-white"] {
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-600"] [class*="bg-white"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-blue-600"] [class*="bg-white"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-indigo-600"] [class*="bg-white"] {
             background: rgba(11,27,46,0.9);
             border-color: rgba(11,27,46,0.55);
         }
-        body .modul-koyu [class~="bg-emerald-600"] [class*="bg-white"],
-        body .modul-koyu [class~="bg-emerald-600"] [class*="bg-white"] *,
-        body .modul-koyu [class~="bg-blue-600"] [class*="bg-white"],
-        body .modul-koyu [class~="bg-blue-600"] [class*="bg-white"] *,
-        body .modul-koyu [class~="bg-indigo-600"] [class*="bg-white"],
-        body .modul-koyu [class~="bg-indigo-600"] [class*="bg-white"] * { color: #FCD34D; }
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-600"] [class*="bg-white"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-emerald-600"] [class*="bg-white"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-blue-600"] [class*="bg-white"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-blue-600"] [class*="bg-white"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-indigo-600"] [class*="bg-white"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-indigo-600"] [class*="bg-white"] * { color: #FCD34D; }
 
         /* --- Form alanları ------------------------------------------ */
-        body .modul-koyu input:not([type="checkbox"]):not([type="radio"]),
-        body .modul-koyu select,
-        body .modul-koyu textarea {
+        body :is(.modul-koyu,.tema-koyu) input:not([type="checkbox"]):not([type="radio"]),
+        body :is(.modul-koyu,.tema-koyu) select,
+        body :is(.modul-koyu,.tema-koyu) textarea {
             background: rgba(255,255,255,0.06);
             border-color: rgba(255,255,255,0.16);
             color: #E8EEF7;
         }
-        body .modul-koyu input::placeholder,
-        body .modul-koyu textarea::placeholder { color: #7F91A8; }
-        body .modul-koyu input:focus,
-        body .modul-koyu select:focus,
-        body .modul-koyu textarea:focus {
+        body :is(.modul-koyu,.tema-koyu) input::placeholder,
+        body :is(.modul-koyu,.tema-koyu) textarea::placeholder { color: #7F91A8; }
+        body :is(.modul-koyu,.tema-koyu) input:focus,
+        body :is(.modul-koyu,.tema-koyu) select:focus,
+        body :is(.modul-koyu,.tema-koyu) textarea:focus {
             border-color: rgba(251,191,36,0.55);
             box-shadow: 0 0 0 3px rgba(251,191,36,0.14);
         }
         /* Açılır listenin kendi paneli işletim sisteminden gelir; koyu
            zeminde beyaz üstüne beyaz yazı çıkmasın diye açıkça veriliyor. */
-        body .modul-koyu select option { background: #0E2540; color: #E8EEF7; }
-        body .modul-koyu input[type="checkbox"],
-        body .modul-koyu input[type="radio"] { accent-color: #FBBF24; }
+        body :is(.modul-koyu,.tema-koyu) select option { background: #0E2540; color: #E8EEF7; }
+        body :is(.modul-koyu,.tema-koyu) input[type="checkbox"],
+        body :is(.modul-koyu,.tema-koyu) input[type="radio"] { accent-color: #FBBF24; }
 
         /* --- Modül başlığı (geri bağlantısı + ad) -------------------- */
-        body .modul-koyu > div:first-child[class*="border-b"] {
+        body :is(.modul-koyu,.tema-koyu) > div:first-child[class*="border-b"] {
             border-bottom-color: rgba(251,191,36,0.18);
         }
 
         /* --- Tablolar ------------------------------------------------ */
-        body .modul-koyu thead { background: rgba(255,255,255,0.05); }
-        body .modul-koyu tbody tr:hover { background: rgba(251,191,36,0.06); }
-        body .modul-koyu th { color: #C6D2E0; }
-        body .modul-koyu td { color: #D5DFEC; }
+        body :is(.modul-koyu,.tema-koyu) thead { background: rgba(255,255,255,0.05); }
+        body :is(.modul-koyu,.tema-koyu) tbody tr:hover { background: rgba(251,191,36,0.06); }
+        body :is(.modul-koyu,.tema-koyu) th { color: #C6D2E0; }
+        body :is(.modul-koyu,.tema-koyu) td { color: #D5DFEC; }
 
         /* --- Gölge: açık zeminin ince gölgeleri koyuda görünmez ------ */
-        body .modul-koyu [class*="shadow"] { box-shadow: 0 18px 40px -30px rgba(0,0,0,.9); }
+        body :is(.modul-koyu,.tema-koyu) [class*="shadow"] { box-shadow: 0 18px 40px -30px rgba(0,0,0,.9); }
 
         /* --- Kaydırma çubuğu ---------------------------------------- */
-        body .modul-koyu .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,.05); }
-        body .modul-koyu .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(251,191,36,.35); }
+        body :is(.modul-koyu,.tema-koyu) .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,.05); }
+        body :is(.modul-koyu,.tema-koyu) .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(251,191,36,.35); }
 
         /* --- Açık tonlu gradyanlar -----------------------------------
            Tailwind gradyanı background-image olarak kurar; yukarıdaki
            background kuralları ona dokunmaz, kutu krem rengi kalırdı.
            Yalnız açık duraklı olanları (from-*-50 / to-*-100) düzleştiriyoruz;
            doygun renkli gradyan düğmeler koyu zeminde zaten doğru duruyor. */
-        body .modul-koyu [class*="bg-gradient-"][class*="-50"],
-        body .modul-koyu [class*="bg-gradient-"][class*="-100"] {
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-gradient-"][class*="-50"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-gradient-"][class*="-100"] {
             background-image: none;
             background-color: rgba(251,191,36,0.09);
         }
 
         /* --- Seçenek hapları (hesaplayıcı giriş yöntemi) ------------- */
-        body .modul-koyu .calc-secenek {
+        body :is(.modul-koyu,.tema-koyu) .calc-secenek {
             background: rgba(255,255,255,0.06);
             border-color: rgba(255,255,255,0.16);
             color: #C6D2E0;
         }
-        body .modul-koyu .calc-secenek:hover {
+        body :is(.modul-koyu,.tema-koyu) .calc-secenek:hover {
             background: rgba(255,255,255,0.10);
             border-color: rgba(251,191,36,0.35);
         }
-        body .modul-koyu .calc-secenek.secili {
+        body :is(.modul-koyu,.tema-koyu) .calc-secenek.secili {
             background: rgba(251,191,36,0.14);
             border-color: rgba(251,191,36,0.55);
             color: #FCD34D;
             box-shadow: 0 0 0 3px rgba(251,191,36,0.12);
         }
-        body .modul-koyu .calc-secenek input { accent-color: #FBBF24; }
+        body :is(.modul-koyu,.tema-koyu) .calc-secenek input { accent-color: #FBBF24; }
 
         /* --- Diğer renk aileleri -------------------------------------
            Modüller amber/mavi dışında teal, orange, violet, green, cyan,
@@ -1095,106 +1112,286 @@
            taşınıyor, böylece renk kodlaması korunuyor ama okunur oluyor.
            Yeşil/teal bilerek korunuyor: vitrindeki güneş gradyanı da
            amber'dan emerald yeşiline gidiyor, ikinci vurgu orada zaten var. */
-        body .modul-koyu [class*="text-teal-6"],
-        body .modul-koyu [class*="text-teal-7"],
-        body .modul-koyu [class*="text-teal-8"],
-        body .modul-koyu [class*="text-teal-9"],
-        body .modul-koyu [class*="text-green-6"],
-        body .modul-koyu [class*="text-green-7"],
-        body .modul-koyu [class*="text-green-8"],
-        body .modul-koyu [class*="text-green-9"],
-        body .modul-koyu [class*="text-cyan-6"],
-        body .modul-koyu [class*="text-cyan-7"],
-        body .modul-koyu [class*="text-cyan-8"],
-        body .modul-koyu [class*="text-sky-6"],
-        body .modul-koyu [class*="text-sky-7"],
-        body .modul-koyu [class*="text-sky-8"] { color: #6EE7B7; }
+        body :is(.modul-koyu,.tema-koyu) [class*="text-teal-6"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-teal-7"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-teal-8"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-teal-9"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-green-6"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-green-7"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-green-8"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-green-9"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-cyan-6"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-cyan-7"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-cyan-8"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-sky-6"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-sky-7"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-sky-8"] { color: #6EE7B7; }
 
-        body .modul-koyu [class*="text-orange-6"],
-        body .modul-koyu [class*="text-orange-7"],
-        body .modul-koyu [class*="text-orange-8"],
-        body .modul-koyu [class*="text-orange-9"],
-        body .modul-koyu [class*="text-yellow-6"],
-        body .modul-koyu [class*="text-yellow-7"],
-        body .modul-koyu [class*="text-yellow-8"],
-        body .modul-koyu [class*="text-yellow-9"] { color: #FBBF24; }
+        body :is(.modul-koyu,.tema-koyu) [class*="text-orange-6"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-orange-7"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-orange-8"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-orange-9"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-yellow-6"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-yellow-7"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-yellow-8"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-yellow-9"] { color: #FBBF24; }
 
-        body .modul-koyu [class*="text-violet-6"],
-        body .modul-koyu [class*="text-violet-7"],
-        body .modul-koyu [class*="text-violet-8"],
-        body .modul-koyu [class*="text-purple-6"],
-        body .modul-koyu [class*="text-purple-7"],
-        body .modul-koyu [class*="text-purple-8"] { color: #C4B5FD; }
+        body :is(.modul-koyu,.tema-koyu) [class*="text-violet-6"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-violet-7"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-violet-8"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-purple-6"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-purple-7"],
+        body :is(.modul-koyu,.tema-koyu) [class*="text-purple-8"] { color: #C4B5FD; }
 
         /* Açık zemin kutuları */
-        body .modul-koyu .bg-teal-50,  body .modul-koyu .bg-green-50,
-        body .modul-koyu .bg-cyan-50,  body .modul-koyu .bg-sky-50 { background: rgba(16,185,129,0.10); }
-        body .modul-koyu .bg-teal-100, body .modul-koyu .bg-green-100,
-        body .modul-koyu .bg-cyan-100 { background: rgba(16,185,129,0.16); }
-        body .modul-koyu .bg-orange-50, body .modul-koyu .bg-yellow-50 { background: rgba(251,191,36,0.10); }
-        body .modul-koyu .bg-orange-100 { background: rgba(251,191,36,0.16); }
-        body .modul-koyu .bg-violet-100, body .modul-koyu .bg-purple-100 { background: rgba(167,139,250,0.16); }
+        body :is(.modul-koyu,.tema-koyu) .bg-teal-50,  body :is(.modul-koyu,.tema-koyu) .bg-green-50,
+        body :is(.modul-koyu,.tema-koyu) .bg-cyan-50,  body :is(.modul-koyu,.tema-koyu) .bg-sky-50 { background: rgba(16,185,129,0.10); }
+        body :is(.modul-koyu,.tema-koyu) .bg-teal-100, body :is(.modul-koyu,.tema-koyu) .bg-green-100,
+        body :is(.modul-koyu,.tema-koyu) .bg-cyan-100 { background: rgba(16,185,129,0.16); }
+        body :is(.modul-koyu,.tema-koyu) .bg-orange-50, body :is(.modul-koyu,.tema-koyu) .bg-yellow-50 { background: rgba(251,191,36,0.10); }
+        body :is(.modul-koyu,.tema-koyu) .bg-orange-100 { background: rgba(251,191,36,0.16); }
+        body :is(.modul-koyu,.tema-koyu) .bg-violet-100, body :is(.modul-koyu,.tema-koyu) .bg-purple-100 { background: rgba(167,139,250,0.16); }
 
         /* Kenarlar */
-        body .modul-koyu [class*="border-teal-"],
-        body .modul-koyu [class*="border-green-"],
-        body .modul-koyu [class*="border-cyan-"],
-        body .modul-koyu [class*="border-sky-"] { border-color: rgba(16,185,129,0.38); }
-        body .modul-koyu [class*="border-orange-"],
-        body .modul-koyu [class*="border-yellow-"] { border-color: rgba(251,191,36,0.38); }
-        body .modul-koyu [class*="border-violet-"],
-        body .modul-koyu [class*="border-purple-"] { border-color: rgba(167,139,250,0.38); }
-        body .modul-koyu [class*="border-gray-"] { border-color: rgba(255,255,255,0.10); }
+        body :is(.modul-koyu,.tema-koyu) [class*="border-teal-"],
+        body :is(.modul-koyu,.tema-koyu) [class*="border-green-"],
+        body :is(.modul-koyu,.tema-koyu) [class*="border-cyan-"],
+        body :is(.modul-koyu,.tema-koyu) [class*="border-sky-"] { border-color: rgba(16,185,129,0.38); }
+        body :is(.modul-koyu,.tema-koyu) [class*="border-orange-"],
+        body :is(.modul-koyu,.tema-koyu) [class*="border-yellow-"] { border-color: rgba(251,191,36,0.38); }
+        body :is(.modul-koyu,.tema-koyu) [class*="border-violet-"],
+        body :is(.modul-koyu,.tema-koyu) [class*="border-purple-"] { border-color: rgba(167,139,250,0.38); }
+        body :is(.modul-koyu,.tema-koyu) [class*="border-gray-"] { border-color: rgba(255,255,255,0.10); }
 
         /* Doygun düğmeler: koyu mürekkeple okunur kalsın */
-        body .modul-koyu [class~="bg-teal-500"],
-        body .modul-koyu [class*="bg-teal-500/"],
-        body .modul-koyu [class~="bg-teal-600"],
-        body .modul-koyu [class*="bg-teal-600/"],
-        body .modul-koyu [class~="bg-teal-700"],
-        body .modul-koyu [class*="bg-teal-700/"],
-        body .modul-koyu [class~="bg-green-500"],
-        body .modul-koyu [class*="bg-green-500/"],
-        body .modul-koyu [class~="bg-green-600"],
-        body .modul-koyu [class*="bg-green-600/"],
-        body .modul-koyu [class~="bg-sky-500"],
-        body .modul-koyu [class*="bg-sky-500/"],
-        body .modul-koyu [class~="bg-sky-600"],
-        body .modul-koyu [class*="bg-sky-600/"],
-        body .modul-koyu [class~="bg-cyan-500"],
-        body .modul-koyu [class*="bg-cyan-500/"],
-        body .modul-koyu [class~="bg-cyan-600"],
-        body .modul-koyu [class*="bg-cyan-600/"] { background-color: #34D399; color: #06261C; }
-        body .modul-koyu [class~="bg-teal-500"] *,
-        body .modul-koyu [class*="bg-teal-500/"] *,
-        body .modul-koyu [class~="bg-teal-600"] *,
-        body .modul-koyu [class*="bg-teal-600/"] *,
-        body .modul-koyu [class~="bg-teal-700"] *,
-        body .modul-koyu [class*="bg-teal-700/"] *,
-        body .modul-koyu [class~="bg-green-500"] *,
-        body .modul-koyu [class*="bg-green-500/"] *,
-        body .modul-koyu [class~="bg-green-600"] *,
-        body .modul-koyu [class*="bg-green-600/"] *,
-        body .modul-koyu [class~="bg-sky-500"] *,
-        body .modul-koyu [class*="bg-sky-500/"] *,
-        body .modul-koyu [class~="bg-sky-600"] *,
-        body .modul-koyu [class*="bg-sky-600/"] *,
-        body .modul-koyu [class~="bg-cyan-500"] *,
-        body .modul-koyu [class*="bg-cyan-500/"] *,
-        body .modul-koyu [class~="bg-cyan-600"] *,
-        body .modul-koyu [class*="bg-cyan-600/"] * { color: #06261C; }
-        body .modul-koyu [class~="bg-orange-500"],
-        body .modul-koyu [class*="bg-orange-500/"],
-        body .modul-koyu [class~="bg-orange-600"],
-        body .modul-koyu [class*="bg-orange-600/"],
-        body .modul-koyu [class~="bg-orange-700"],
-        body .modul-koyu [class*="bg-orange-700/"] { background-color: #FBBF24; color: #2A1A05; }
-        body .modul-koyu [class~="bg-orange-500"] *,
-        body .modul-koyu [class*="bg-orange-500/"] *,
-        body .modul-koyu [class~="bg-orange-600"] *,
-        body .modul-koyu [class*="bg-orange-600/"] *,
-        body .modul-koyu [class~="bg-orange-700"] *,
-        body .modul-koyu [class*="bg-orange-700/"] * { color: #2A1A05; }
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-teal-500"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-teal-500/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-teal-600"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-teal-600/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-teal-700"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-teal-700/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-green-500"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-green-500/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-green-600"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-green-600/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-sky-500"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-sky-500/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-sky-600"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-sky-600/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-cyan-500"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-cyan-500/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-cyan-600"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-cyan-600/"] { background-color: #34D399; color: #06261C; }
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-teal-500"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-teal-500/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-teal-600"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-teal-600/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-teal-700"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-teal-700/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-green-500"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-green-500/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-green-600"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-green-600/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-sky-500"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-sky-500/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-sky-600"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-sky-600/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-cyan-500"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-cyan-500/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-cyan-600"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-cyan-600/"] * { color: #06261C; }
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-orange-500"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-orange-500/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-orange-600"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-orange-600/"],
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-orange-700"],
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-orange-700/"] { background-color: #FBBF24; color: #2A1A05; }
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-orange-500"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-orange-500/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-orange-600"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-orange-600/"] *,
+        body :is(.modul-koyu,.tema-koyu) [class~="bg-orange-700"] *,
+        body :is(.modul-koyu,.tema-koyu) [class*="bg-orange-700/"] * { color: #2A1A05; }
+
+        /* ====================================================================
+           PANEL BİLEŞENLERİ — koyu karşılıkları
+           Kurulumcu / danışman / tedarikçi panelleri Tailwind yerine kendi
+           sınıflarını kullanıyor (.kart, .panel-card, .adm-grup, .q-tab …) ve
+           renkleri bu dosyada sabit yazılı. Yukarıdaki Tailwind eşlemeleri
+           onlara dokunamaz; her biri burada ayrıca karşılanıyor.
+           ==================================================================== */
+
+        /* --- Üst çubuk (kendisi bg-white taşıyor; alt öğe kuralı ona ulaşmaz) */
+        body #dashboardHeader.tema-koyu {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.10);
+            box-shadow: 0 18px 40px -30px rgba(0,0,0,.9);
+        }
+
+        /* Süper Admin'in kırmızı üst şeridi bir kimlik işareti: "burası yetkili
+           ekran, dikkatli ol". Kart kabuğunun border kısayolu onu siliyordu. */
+        body #adminModule.modul-koyu { border-top: 4px solid rgba(239,68,68,0.8); }
+
+        /* Müşteri kartı penceresi: panelin en çok kullanılan yüzeyi, o da
+           koyuya geçiyor. Kart saydam cam OLAMAZ — arkasındaki %60 siyah
+           perdeyle karışıp okunaklılığı düşüyor; opak bir yüzey veriliyor. */
+        body #crmDetailModal.tema-koyu > div { background: #12263D; }
+
+        /* --- Panel ana ekranı ------------------------------------------------ */
+        body .tema-koyu .panel-eyebrow      { color: #A3B5CA; }
+        body .tema-koyu .panel-eyebrow-role { color: #FBBF24; }
+        body .tema-koyu .panel-title        { color: #F2F6FB; }
+        body .tema-koyu .panel-sub          { color: #B6C4D7; }
+        body .tema-koyu .panel-sub b        { color: #F2F6FB; }
+        body .tema-koyu .panel-legend       { color: #A3B5CA; }
+
+        body .tema-koyu .panel-stat {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.10);
+        }
+        body .tema-koyu .panel-stat:hover { border-color: rgba(251,191,36,0.42); }
+        body .tema-koyu .panel-stat-num   { color: #F2F6FB; }
+        /* Veri gelmediğinde sayı yerine soluk bir çizgi basılıyor; koyu zeminde
+           de "boş" olduğu anlaşılmalı ama okunan bir sayı gibi durmamalı. */
+        body .tema-koyu .panel-stat-num[data-bos="1"] { color: #4A5C72; }
+        body .tema-koyu .panel-stat-lbl   { color: #A3B5CA; }
+
+        body .tema-koyu .panel-card {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.10);
+        }
+        body .tema-koyu .panel-card:hover      { border-color: rgba(251,191,36,0.42); }
+        body .tema-koyu .panel-card-title      { color: #F2F6FB; }
+        body .tema-koyu .panel-card-desc       { color: #B6C4D7; }
+        body .tema-koyu .panel-badge           { background: rgba(251,191,36,0.18); color: #FCD34D; }
+        body .tema-koyu .panel-badge[data-bos="1"] { background: rgba(255,255,255,0.07); color: #8B9CB2; }
+        /* Günlük işin geçtiği CRM kartı tek vurgu; yeşil gradyan yerine
+           vitrindeki güneş gradyanı, üstünde koyu mürekkep. */
+        body .tema-koyu .panel-card-hero {
+            background: linear-gradient(120deg, #F59E0B 0%, #FBBF24 45%, #10B981 100%);
+            border-color: transparent;
+        }
+        body .tema-koyu .panel-card-hero .panel-card-title { color: #0B1B2E; }
+        body .tema-koyu .panel-card-hero .panel-card-desc  { color: rgba(11,27,46,.8); }
+        body .tema-koyu .panel-card-hero .panel-ico        { background: rgba(11,27,46,.16); }
+        body .tema-koyu .panel-card-hero .panel-badge      { background: rgba(11,27,46,.2); color: #0B1B2E; }
+        body .tema-koyu .panel-card-hero .panel-badge[data-bos="1"] { background: rgba(11,27,46,.12); color: rgba(11,27,46,.6); }
+
+        /* --- Modül kabuğu ---------------------------------------------------- */
+        body :is(.modul-koyu,.tema-koyu) .modul-geri        { color: #A3B5CA; }
+        body :is(.modul-koyu,.tema-koyu) .modul-geri:hover  { color: #FCD34D; }
+        body :is(.modul-koyu,.tema-koyu) .modul-basligi h2  { color: #F2F6FB; }
+        body :is(.modul-koyu,.tema-koyu) .modul-basligi p   { color: #B6C4D7; }
+
+        /* --- Düğmeler --------------------------------------------------------
+           Birincil düğme yeşildi; vitrinin güneş gradyanına çekildi ve
+           mürekkep koyulaştı (altın üstüne beyaz okunmuyor). */
+        body :is(.modul-koyu,.tema-koyu) .btn-birincil {
+            background-image: linear-gradient(100deg, #F59E0B 0%, #FBBF24 38%, #10B981 100%);
+            background-size: 180% 100%; background-position: 0% 0%;
+            background-color: transparent; color: #0B1B2E;
+            box-shadow: 0 12px 26px -16px rgba(245,158,11,.6);
+            transition: background-position .45s ease, box-shadow .18s ease;
+        }
+        body :is(.modul-koyu,.tema-koyu) .btn-birincil:hover { background-position: 95% 0%; }
+        body :is(.modul-koyu,.tema-koyu) .btn-ikincil {
+            background: rgba(255,255,255,0.07); color: #D5DFEC; border-color: rgba(255,255,255,0.16);
+        }
+        body :is(.modul-koyu,.tema-koyu) .btn-ikincil:hover {
+            background: rgba(255,255,255,0.12); border-color: rgba(251,191,36,0.42);
+        }
+        body :is(.modul-koyu,.tema-koyu) .btn-tehlike {
+            background: rgba(239,68,68,0.12); color: #FCA5A5; border-color: rgba(239,68,68,0.35);
+        }
+        body :is(.modul-koyu,.tema-koyu) .btn-tehlike:hover {
+            background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.6);
+        }
+
+        /* --- Kart ve tablo ---------------------------------------------------- */
+        body :is(.modul-koyu,.tema-koyu) .kart {
+            background: rgba(255,255,255,0.045);
+            border-color: rgba(255,255,255,0.10);
+            box-shadow: 0 18px 40px -30px rgba(0,0,0,.9);
+        }
+        body :is(.modul-koyu,.tema-koyu) .kart-ust    { border-bottom-color: rgba(255,255,255,0.10); }
+        body :is(.modul-koyu,.tema-koyu) .kart-ust h3 { color: #F2F6FB; }
+        body :is(.modul-koyu,.tema-koyu) .tablo-sar thead th {
+            color: #A3B5CA;
+            background: rgba(255,255,255,0.055);
+            border-bottom-color: rgba(255,255,255,0.12);
+        }
+
+        /* --- Adım sayaçları ---------------------------------------------------- */
+        body :is(.modul-koyu,.tema-koyu) .adim-sayac {
+            background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.10);
+        }
+        body :is(.modul-koyu,.tema-koyu) .adim-sayac-ad { color: #B6C4D7; }
+        body :is(.modul-koyu,.tema-koyu) .adim-sayac-no { color: #F2F6FB; }
+        /* Seçili adımın halkası koyu laciverttti — koyu zeminde görünmüyordu. */
+        body :is(.modul-koyu,.tema-koyu) .adim-sayac[aria-pressed="true"] { box-shadow: 0 0 0 2px #FBBF24; }
+
+        /* --- Boş durum --------------------------------------------------------- */
+        body :is(.modul-koyu,.tema-koyu) .bos-durum h4 { color: #E8EEF7; }
+        body :is(.modul-koyu,.tema-koyu) .bos-durum p  { color: #A3B5CA; }
+
+        /* --- Katlanabilir yardım kutusu ---------------------------------------- */
+        body :is(.modul-koyu,.tema-koyu) .yardim {
+            background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.10);
+        }
+        body :is(.modul-koyu,.tema-koyu) .yardim > summary        { color: #D5DFEC; }
+        body :is(.modul-koyu,.tema-koyu) .yardim > summary::after { color: #A3B5CA; }
+
+        /* --- Admin sekme grupları ---------------------------------------------- */
+        body :is(.modul-koyu,.tema-koyu) .adm-grup-cubugu {
+            background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.10);
+        }
+        body :is(.modul-koyu,.tema-koyu) .adm-grup        { color: #B6C4D7; }
+        body :is(.modul-koyu,.tema-koyu) .adm-grup:hover  { background: rgba(255,255,255,0.08); }
+        body :is(.modul-koyu,.tema-koyu) .adm-grup-on     { background: #FBBF24; color: #0B1B2E; }
+        body :is(.modul-koyu,.tema-koyu) .adm-sekme-cubugu {
+            background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.10);
+        }
+        body :is(.modul-koyu,.tema-koyu) .admin-tab-btn       { color: #B6C4D7; }
+        body :is(.modul-koyu,.tema-koyu) .admin-tab-btn:hover { background: rgba(255,255,255,0.08); }
+        body :is(.modul-koyu,.tema-koyu) .admin-tab-on {
+            background: rgba(251,191,36,0.16); color: #FCD34D; box-shadow: none;
+        }
+
+        /* --- Teklif modülü sekmeleri -------------------------------------------- */
+        body :is(.modul-koyu,.tema-koyu) .q-tab {
+            background: rgba(255,255,255,0.05); color: #B6C4D7; border-color: rgba(255,255,255,0.12);
+        }
+        body :is(.modul-koyu,.tema-koyu) .q-tab:hover { background: rgba(255,255,255,0.09); }
+        body :is(.modul-koyu,.tema-koyu) .q-tab-on {
+            background: #FBBF24; color: #0B1B2E; border-color: #FBBF24;
+        }
+
+        /* --- Hızlı iletişim ikonları --------------------------------------------- */
+        body :is(.modul-koyu,.tema-koyu) .crm-ikon       { background: rgba(255,255,255,0.08); }
+        body :is(.modul-koyu,.tema-koyu) .crm-ikon:hover { background: rgba(251,191,36,0.2); }
+
+        /* --- Arama kutusu --------------------------------------------------------- */
+        body :is(.modul-koyu,.tema-koyu) .arama input {
+            background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.16); color: #E8EEF7;
+        }
+        body :is(.modul-koyu,.tema-koyu) .arama input:focus  { border-color: rgba(251,191,36,0.55); }
+        body :is(.modul-koyu,.tema-koyu) .arama-temizle       { color: #A3B5CA; }
+        body :is(.modul-koyu,.tema-koyu) .arama-temizle:hover { color: #FCD34D; }
+
+        /* --- Odak halkası: yeşilden altına ---------------------------------------- */
+        body :is(.modul-koyu,.tema-koyu) .btn-birincil:focus-visible,
+        body :is(.modul-koyu,.tema-koyu) .btn-ikincil:focus-visible,
+        body :is(.modul-koyu,.tema-koyu) .btn-tehlike:focus-visible,
+        body :is(.modul-koyu,.tema-koyu) .modul-geri:focus-visible,
+        body :is(.modul-koyu,.tema-koyu) .adm-grup:focus-visible,
+        body :is(.modul-koyu,.tema-koyu) .admin-tab-btn:focus-visible,
+        body :is(.modul-koyu,.tema-koyu) .q-tab:focus-visible,
+        body :is(.modul-koyu,.tema-koyu) .crm-ikon:focus-visible,
+        body .tema-koyu .panel-card:focus-visible,
+        body .tema-koyu .panel-stat:focus-visible { outline-color: #FBBF24; }
+
+        }   /* @media screen — koyu tema sonu */
+
         </style>
         <!-- ============================================================ -->
         <!-- TEMA SONU                                                     -->
@@ -1732,7 +1929,7 @@
 
     <div id="appContainer" class="hidden w-full px-4 md:px-8 pb-10 bg-slate-50 min-h-screen">
         
-        <div id="dashboardHeader" class="w-full max-w-7xl mx-auto mt-4 mb-8 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <div id="dashboardHeader" class="tema-koyu w-full max-w-7xl mx-auto mt-4 mb-8 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <a href="#home" class="text-xl font-extrabold text-slate-800"> EPC <span class="text-emerald-600">Merkezim</span></a>
             
             <div class="flex items-center gap-4">
@@ -1756,7 +1953,7 @@
             </div>
         </div></div>
 
-        <div id="mainMenu" class="w-full max-w-7xl mx-auto animate-fade-in">
+        <div id="mainMenu" class="tema-koyu w-full max-w-7xl mx-auto animate-fade-in">
 
             <!-- Karşılama. Eskiden burada sabit bir slogan vardı ("Tüm
                  analizlerinizi tek merkezden yönetin") — her gün aynı şeyi
@@ -1855,15 +2052,15 @@
             <div id="investorRoot"></div>
         </div>
 
-        <div id="messagesModule" class="hidden w-full max-w-4xl mx-auto mt-4 animate-fade-in">
+        <div id="messagesModule" class="hidden tema-koyu w-full max-w-4xl mx-auto mt-4 animate-fade-in">
             <div id="messagesRoot"></div>
         </div>
 
-        <div id="quoteModule" class="hidden w-full max-w-7xl mx-auto mt-4 animate-fade-in">
+        <div id="quoteModule" class="hidden tema-koyu w-full max-w-7xl mx-auto mt-4 animate-fade-in">
             <div id="quoteRoot"></div>
         </div>
 
-        <div id="servicesModule" class="hidden w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+        <div id="servicesModule" class="hidden tema-koyu w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="modul-ust">
                 <button id="btnBackToMenuFromServices" class="modul-geri">← Menüye Dön</button>
                 <div class="modul-eylem"><button id="btnRefreshServices" class="btn-ikincil">↻ Yenile</button></div>
@@ -1875,7 +2072,7 @@
             <div id="servicesList"><p class="text-slate-400 text-sm">Yükleniyor...</p></div>
         </div>
 
-        <div id="projectsModule" class="hidden w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+        <div id="projectsModule" class="hidden tema-koyu w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="modul-ust">
                 <button id="btnBackToMenuFromProjects" class="modul-geri">← Menüye Dön</button>
                 <div class="modul-eylem"><button id="btnRefreshProjects" class="btn-ikincil">↻ Yenile</button></div>
@@ -1889,7 +2086,7 @@
             </div>
         </div>
 
-        <div id="dashboardModule" class="hidden w-full max-w-7xl mx-auto mt-4 animate-fade-in">
+        <div id="dashboardModule" class="hidden tema-koyu w-full max-w-7xl mx-auto mt-4 animate-fade-in">
             <div class="modul-ust">
                 <button id="btnBackToMenuFromDashboard" class="modul-geri">← Menüye Dön</button>
                 <div class="modul-eylem">
@@ -1910,7 +2107,7 @@
             <div id="batteryRoot"></div>
         </div>
 
-        <div id="crmModule" class="hidden w-full max-w-7xl mx-auto mt-4 animate-fade-in">
+        <div id="crmModule" class="hidden tema-koyu w-full max-w-7xl mx-auto mt-4 animate-fade-in">
 
             <div class="modul-ust">
                 <button id="btnBackToMenuFromCRM" class="modul-geri">← Menüye Dön</button>
@@ -1977,7 +2174,7 @@
             </div>
         </div>
 
-        <div id="crmDetailModal" class="hidden fixed inset-0 z-[60] bg-slate-900/60 flex items-center justify-center p-4">
+        <div id="crmDetailModal" class="hidden tema-koyu fixed inset-0 z-[60] bg-slate-900/60 flex items-center justify-center p-4">
             <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div class="px-6 py-5 bg-slate-900 text-white flex justify-between items-start gap-4 sticky top-0 z-10">
                     <div>
@@ -2113,7 +2310,7 @@
         </div>
         
 
-        <div id="adminModule" class="hidden bg-slate-50 p-4 md:p-6 rounded-2xl shadow-lg max-w-7xl mx-auto mt-4 border border-slate-200 border-t-4 border-t-red-600">
+        <div id="adminModule" class="hidden modul-koyu bg-slate-50 p-4 md:p-6 rounded-2xl shadow-lg max-w-7xl mx-auto mt-4 border border-slate-200 border-t-4 border-t-red-600">
             <!-- Başlık -->
             <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
                 <div class="min-w-0">
@@ -2456,7 +2653,7 @@
         </div>
 
 
-        <div id="salesAssistantModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+        <div id="salesAssistantModule" class="hidden modul-koyu bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackToMenuFromSales" class="text-slate-500 hover:text-orange-600 font-bold flex items-center transition">← Yönetim Paneli</button>
@@ -2547,12 +2744,12 @@
             </div>
         </div>
 
-        <div id="consultantPanelModule" class="hidden w-full max-w-5xl mx-auto mt-4 animate-fade-in">
+        <div id="consultantPanelModule" class="hidden tema-koyu w-full max-w-5xl mx-auto mt-4 animate-fade-in">
             <div id="consultantPanelRoot"></div>
         </div>
 
         <!-- TEDARİKÇİ DİZİNİ — kurulumcu firma görünümü (supplier_directory.js) -->
-        <div id="supplierDirModule" class="hidden w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+        <div id="supplierDirModule" class="hidden tema-koyu w-full max-w-6xl mx-auto mt-4 animate-fade-in">
             <div class="modul-ust">
                 <button id="btnBackFromSuppliers" class="modul-geri">← Menüye Dön</button>
                 <div class="modul-eylem"><button onclick="showSupplierDirectory()" class="btn-ikincil">↻ Yenile</button></div>
@@ -2565,11 +2762,11 @@
         </div>
 
         <!-- TEDARİKÇİ PANELİ (suppliers.js doldurur) -->
-        <div id="supplierPanelModule" class="hidden w-full max-w-5xl mx-auto mt-4 animate-fade-in">
+        <div id="supplierPanelModule" class="hidden tema-koyu w-full max-w-5xl mx-auto mt-4 animate-fade-in">
             <div id="supplierPanelRoot"></div>
         </div>
 
-        <div id="companyManagementModule" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
+        <div id="companyManagementModule" class="hidden modul-koyu bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in border border-slate-200">
             <div class="mb-6 border-b pb-4 flex items-center">
                 <button id="btnBackToMenuFromCompanyMgmt" class="text-slate-500 hover:text-slate-600 font-bold flex items-center transition">← Yönetim Paneli</button>
                 <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">Kurumsal Zeka & Yapay Zeka Danışmanı</span>

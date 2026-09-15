@@ -292,7 +292,8 @@ async function runPdfDownload() {
         image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 },
         jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
-    html2pdf().set(opt).from(element).save();
+    // Koyu tema açıkken bu düğüm beyaz tuvale açık renk metinle basılıyordu.
+    await window.epcTemasiz(function () { return html2pdf().set(opt).from(element).save(); });
 }
 
 // Bilgi toplama modalını (bir kez) oluşturur
