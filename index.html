@@ -223,21 +223,34 @@
         }
         /* Hızlı hesap kartı hero genişliğinin altın kesitini kaplar */
         body .hero-calc { width: 100%; max-width: clamp(20rem, 61.8%, 45rem); margin-inline: auto; }
-        /* Hesap satırı: fatura / tarife / buton.
-           Fatura alanı placeholder'ına yetecek kadar sabit; kalan genişliği
-           tarife alıyor. Eskiden tarife flex payını fatura ile paylaşıyordu ve
-           "🏢 Ticarethane 30 kWh/gün üstü (7,37 ₺)" (≈287px) 243px'lik kutuda
-           ortasından kesiliyordu: kullanıcı hangi grubun seçili olduğunu
-           okuyamıyordu. Abone grubu, faturadan sonraki en belirleyici girdi. */
-        body .hero-calc-row:not(.hidden) { display: flex; gap: var(--s2); }
-        body .hero-calc-row > .f-bill   { flex: 0 1 10.5rem; min-width: 0; }
-        body .hero-calc-row > .f-tariff { flex: 1 1 0; min-width: 0; }
-        body .hero-calc-row > .f-go     { flex: 0 0 auto; }
+        /* Hesap satırı iki sıra:
+             1. sıra → fatura + Hesapla   (asıl eylem yan yana)
+             2. sıra → abone grubu        (tüm genişlik)
+           Üçü tek sırada dururken tarife etiketleri ("🏢 Ticarethane 30 kWh/gün
+           üstü (7,37 ₺)" ≈287px) dar kutuda ortasından kesiliyordu. Alt sıraya
+           alınınca hem tam okunuyor hem de girdi/eylem çifti öne çıkıyor.
+           Sıralama DOM'da fatura→tarife→buton; görsel sıra order ile kuruluyor. */
+        body .hero-calc-row:not(.hidden) { display: flex; flex-wrap: wrap; gap: var(--s2); }
+        /* Yazı boyutu ve dolgu burada; satır içi style'da olsalardı aşağıdaki
+           dar ekran kuralı onları yenemezdi (satır içi bildirim daha güçlü). */
+        body #heroTariff { padding: var(--s3); font-size: var(--fs-sm); }
+        body .hero-calc-row > .f-bill   { order: 1; flex: 1 1 0; min-width: 0; }
+        body .hero-calc-row > .f-go     { order: 2; flex: 0 0 auto; }
+        body .hero-calc-row > .f-tariff { order: 3; flex: 1 1 100%; min-width: 0; }
         @media (max-width: 640px) {
             body .hero-calc-row { flex-direction: column; }
+            /* Dar ekranda alt alta: fatura → tarife → Hesapla. Düğmenin
+               tarifeden önce gelmesi "seçmeden hesapla" gibi okunuyordu. */
+            body .hero-calc-row > .f-bill   { order: 1; }
+            body .hero-calc-row > .f-tariff { order: 2; }
+            body .hero-calc-row > .f-go     { order: 3; }
             body .hero-calc-row > .f-bill,
             body .hero-calc-row > .f-tariff,
             body .hero-calc-row > .f-go { flex: 0 0 auto; }
+            /* Dar ekranda tarife kutusu ~224px; en uzun etiket 14px yazıyla
+               273px tutuyor ve sonu kesiliyordu. Bir kademe küçük yazı ve
+               dar dolgu ile altısı da tam okunuyor. */
+            body #heroTariff { font-size: var(--fs-xs); padding-inline: var(--s2); }
         }
         /* ============================================================
            DÖNÜŞÜM YÜZEYLERİ — başvuru formu ve giriş ekranı
@@ -1270,11 +1283,11 @@
                         <div class="hero-calc-row">
                             <label class="f-bill">
                                 <span class="sr-only">Aylık elektrik faturanız (TL)</span>
-                                <input id="heroBill" type="number" inputmode="numeric" placeholder="Aylık fatura ₺" onkeydown="if(event.key==='Enter')heroQuickCalc()" class="w-full bg-white text-slate-800 placeholder-slate-400 font-bold outline-none border-2 border-transparent focus:border-emerald-400" style="padding:var(--s3) var(--s4);border-radius:var(--r-md);font-size:var(--fs-base);min-height:var(--s6)">
+                                <input id="heroBill" type="number" inputmode="numeric" placeholder="Aylık faturanız (TL)" onkeydown="if(event.key==='Enter')heroQuickCalc()" class="w-full bg-white text-slate-800 placeholder-slate-400 font-bold outline-none border-2 border-transparent focus:border-emerald-400" style="padding:var(--s3) var(--s4);border-radius:var(--r-md);font-size:var(--fs-base);min-height:var(--s6)">
                             </label>
                             <label class="f-tariff">
                                 <span class="sr-only">Abone grubunuz</span>
-                                <select id="heroTariff" class="w-full bg-white text-slate-700 font-bold outline-none border-2 border-transparent focus:border-emerald-400" style="padding:var(--s3) var(--s2);border-radius:var(--r-md);font-size:var(--fs-xs);min-height:var(--s6)">
+                                <select id="heroTariff" class="w-full bg-white text-slate-700 font-bold outline-none border-2 border-transparent focus:border-emerald-400" style="border-radius:var(--r-md);min-height:var(--s6)">
                                     <!-- Birim fiyatlar EPDK'nın 4 Nisan 2026 tarifesinden (enerji + dağıtım
                                          bedeli + fon + BTV + KDV). Mesken ve ticarethanede iki kademe var;
                                          etikette hangi fiyatın uygulandığı yazıyor. Yönetici panelindeki
