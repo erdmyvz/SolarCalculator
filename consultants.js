@@ -435,9 +435,11 @@
     // Danışan Takibi'nin kendi adresi var: yenileyince ekran kaybolmasın,
     // GERİ tuşu paneli terk etmesin diye. (Kurulumcu tarafında da aynısı.)
     window.consultantOpenCRM = function (_adrestenGeldi) {
-        if (!_adrestenGeldi && window.location.hash !== '#danisan-takip') {
-            window.__epcPanelHash = '#danisan-takip';
-            window.location.hash = '#danisan-takip';
+        const _adres = (typeof window.epcModulAdresi === 'function')
+            ? window.epcModulAdresi('danisan-takip') : '#danisan-takip';
+        if (!_adrestenGeldi && window.location.hash !== _adres) {
+            window.__epcPanelHash = _adres;
+            window.location.hash = _adres;
         }
         renderConsultantCRM();
     };

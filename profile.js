@@ -73,9 +73,11 @@
         document.getElementById('gatewayContainer')?.classList.add('hidden');
         document.getElementById('appContainer')?.classList.remove('hidden');
         document.getElementById('profileModule')?.classList.remove('hidden');
-        if (!_adrestenGeldi && window.location.hash !== '#profilim') {
-            window.__epcPanelHash = '#profilim';
-            window.location.hash = '#profilim';
+        const _adres = (typeof window.epcModulAdresi === 'function')
+            ? window.epcModulAdresi('profilim') : '#profilim';
+        if (!_adrestenGeldi && window.location.hash !== _adres) {
+            window.__epcPanelHash = _adres;
+            window.location.hash = _adres;
         }
         window.scrollTo(0, 0);
 
