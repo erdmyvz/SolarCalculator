@@ -193,6 +193,14 @@
             ${tile('📄', _quotes.length, 'Gelen Teklif', 'text-indigo-600')}
         </div>`;
 
+        // Yarışmalı firma seçimi ve kurulum sonrası puanlama.
+        // Buradan sonraki bloklar veri yoksa erken dönebiliyor; bu iki bölüm
+        // onlara bağlı olmamalı.
+        invKutu('invFirmaSecim');
+        invKutu('invPuanlama');
+        invFirmaSecimi();
+        invPuanlama();
+
         // projeler
         const pBox = document.getElementById('invProjects');
         if (!_projects.length) {
@@ -287,7 +295,149 @@
             }).join('')}
             ${_quotes.length > 1 ? `<button onclick="investorCompareQuotes()" class="w-full mt-1 bg-slate-800 hover:bg-slate-900 text-white font-black py-3 rounded-xl text-sm">⚖️ ${_quotes.length} Teklifi Yan Yana Karşılaştır</button>` : ''}
             <p class="text-[11px] text-slate-400 mt-2">Teklif detayları ve pazarlık için ilgili firmayla iletişime geçebilirsiniz.</p>`;
+
     }
+
+    // Bölüm kutusunu #investorRoot içinde bir kez oluşturur.
+    function invKutu(id) {
+        let el = document.getElementById(id);
+        if (el) return el;
+        const kok = document.getElementById('investorRoot'); if (!kok) return null;
+        el = document.createElement('div');
+        el.id = id; el.className = 'mt-5';
+        kok.appendChild(el);
+        return el;
+    }
+
+    const YKN = { 1: 'Aynı ilçe', 2: 'Aynı il', 3: 'Aynı bölge', 4: 'Uzak' };
+    function invYildiz(p) {
+        const n = Math.round(Number(p) || 0);
+        return '★'.repeat(n) + '<span style="opacity:.28">' + '☆'.repeat(5 - n) + '</span>';
+    }
+
+    // -------------------------------------------------------- FİRMA SEÇİMİ
+    // company_id'si boş olan kayıt hâlâ yarışmada: davet edilen firmalar
+    // puanlarıyla listelenir, yatırımcı birini seçer.
+    async function invFirmaSecimi() {
+        const el = document.getElementById('invFirmaSecim'); if (!el) return;
+        const acik = _projects.filter(p => !p.company_id);
+        if (!acik.length) { el.innerHTML = ''; return; }
+
+        const parcalar = [];
+        for (const pr of acik) {
+            let firmalar = [];
+            try {
+                const { data, error } = await supabaseClient.rpc('davetli_firmalar', { p_lead_id: pr.id });
+                if (error) throw error;
+                firmalar = data || [];
+            } catch (e) { continue; }   // SQL yoksa bölüm hiç çıkmaz
+            if (!firmalar.length) continue;
+
+            parcalar.push(`
+                <div class="bg-white border border-slate-200 rounded-xl p-4 mb-2">
+                    <p class="text-xs text-slate-400 mb-2">${esc(pr.address || pr.tracking_code || 'Başvurunuz')}</p>
+                    ${firmalar.map(f => `
+                        <div class="border border-slate-100 rounded-lg p-3 mb-2 flex items-start justify-between gap-3 flex-wrap">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-black text-slate-800">${esc(f.firma)}</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">${YKN[f.yakinlik] || 'Uzak'}</span>
+                                    ${f.teklif_var
+                                        ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Teklif verdi</span>'
+                                        : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Teklif bekleniyor</span>'}
+                                </div>
+                                <div class="text-[11px] text-slate-400 mt-0.5">${esc([f.ilce, f.il].filter(Boolean).join(' / '))}</div>
+                                <div class="text-xs mt-1">
+                                    ${(f.puan != null && Number(f.puan_adedi) > 0)
+                                        ? `<span class="text-amber-500">${invYildiz(f.puan)}</span> <span class="font-bold text-slate-700">${Number(f.puan).toFixed(1)}</span> <span class="text-slate-400">· ${f.puan_adedi} değerlendirme · ${Number(f.tamamlanan_is) || 0} tesis</span>`
+                                        : `<span class="text-slate-400">Henüz değerlendirilmemiş · ${Number(f.tamamlanan_is) || 0} tamamlanan tesis</span>`}
+                                </div>
+                            </div>
+                            <button onclick="investorFirmaSec('${pr.id}','${f.company_id}','${esc(f.firma).replace(/'/g, "\\'")}')"
+                                class="shrink-0 ${f.teklif_var ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-300'} text-white font-black px-4 py-2 rounded-lg text-xs"
+                                ${f.teklif_var ? '' : 'disabled title="Bu firma henüz teklif vermedi"'}>Bu firmayı seç</button>
+                        </div>`).join('')}
+                </div>`);
+        }
+
+        el.innerHTML = parcalar.length ? `
+            <h3 class="font-black text-slate-800 mb-1">🏢 Firma Seçimi</h3>
+            <p class="text-[11px] text-slate-500 mb-2">Talebiniz bu firmalara iletildi. Teklifleri karşılaştırıp birini seçtiğinizde süreç o firmayla devam eder, diğerleri bilgilendirilir.</p>
+            ${parcalar.join('')}` : '';
+    }
+
+    window.investorFirmaSec = async function (leadId, companyId, firmaAd) {
+        if (!confirm(firmaAd + ' ile devam etmek istediğinize emin misiniz?\n\nSeçiminiz diğer firmalara bildirilir ve süreç bu firmayla yürür.')) return;
+        try {
+            const { error } = await supabaseClient.rpc('lead_kazanan', { p_lead_id: leadId, p_company_id: companyId });
+            if (error) throw error;
+            alert(firmaAd + ' seçildi. Firma sizinle iletişime geçecek.');
+            await loadData();
+            renderInvestorHome();
+        } catch (e) { alert('Seçim kaydedilemedi: ' + (e.message || e)); }
+    };
+
+    // ---------------------------------------------------------- PUANLAMA
+    // ⚠️ Yalnız kurulum tamamlandıktan sonra. Yarı yoldaki iş adil
+    // değerlendirilemez; sunucu da bunu ayrıca kontrol ediyor.
+    async function invPuanlama() {
+        const el = document.getElementById('invPuanlama'); if (!el) return;
+        let liste = [];
+        try {
+            const { data, error } = await supabaseClient.rpc('puanlanacaklar');
+            if (error) throw error;
+            liste = data || [];
+        } catch (e) { el.innerHTML = ''; return; }
+        if (!liste.length) { el.innerHTML = ''; return; }
+
+        const satir = (t, etiket, aciklama, mevcut, hedefTip) => `
+            <div class="border border-slate-100 rounded-lg p-3 mb-2">
+                <p class="text-sm font-bold text-slate-700">${esc(etiket)}</p>
+                <p class="text-[11px] text-slate-400 mb-1.5">${esc(aciklama)}</p>
+                <div class="flex items-center gap-1">
+                    ${[1,2,3,4,5].map(n => `<button onclick="investorPuanla('${t.lead_id}','${hedefTip}',${n})"
+                        class="text-xl leading-none ${mevcut && n <= mevcut ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'}"
+                        title="${n} yıldız">★</button>`).join('')}
+                    ${mevcut ? `<span class="text-xs text-slate-500 ml-2">${mevcut}/5 verdiniz</span>` : '<span class="text-xs text-slate-400 ml-2">puanlayın</span>'}
+                    <button onclick="investorYorum('${t.lead_id}','${hedefTip}')" class="ml-auto text-xs font-bold text-indigo-600 hover:underline">Yorum yaz</button>
+                </div>
+            </div>`;
+
+        el.innerHTML = `
+            <h3 class="font-black text-slate-800 mb-1">⭐ Deneyiminizi Değerlendirin</h3>
+            <p class="text-[11px] text-slate-500 mb-2">Puanlarınız diğer yatırımcıların doğru firmayı seçmesine yardım eder. Yorumlar yayınlanmadan önce incelenir.</p>
+            ${liste.map(t => `
+                <div class="bg-white border border-slate-200 rounded-xl p-4 mb-2">
+                    <p class="text-xs text-slate-400 mb-2">${esc(t.tesis || 'Tesisiniz')}</p>
+                    ${satir(t, 'epcmerkezim deneyimi', 'Süreci şeffaf ve anlaşılır buldunuz mu?', t.puan_platform, 'platform')}
+                    ${t.firma_id ? satir(t, esc(t.firma || 'Kurulumcu firma'), 'Kurulum kalitesi, iletişim, söz tutma', t.puan_firma, 'company') : ''}
+                    ${t.danisman_id ? satir(t, esc(t.danisman || 'Danışmanınız'), 'Sistemi anlatması, tarafsızlığı, erişilebilirliği', t.puan_danisman, 'consultant') : ''}
+                </div>`).join('')}`;
+    }
+
+    window.investorPuanla = async function (leadId, hedefTip, puan) {
+        try {
+            const { error } = await supabaseClient.rpc('puan_ver',
+                { p_lead_id: leadId, p_hedef_tip: hedefTip, p_puan: puan, p_yorum: null });
+            if (error) throw error;
+            invPuanlama();
+        } catch (e) { alert('Puan kaydedilemedi: ' + (e.message || e)); }
+    };
+
+    window.investorYorum = async function (leadId, hedefTip) {
+        const y = prompt('Deneyiminizi birkaç cümleyle anlatın:\n\n(Yorumunuz yayınlanmadan önce incelenir.)');
+        if (y == null || !y.trim()) return;
+        const p = prompt('Kaç yıldız veriyorsunuz? (1-5)');
+        const n = parseInt(p, 10);
+        if (!(n >= 1 && n <= 5)) { alert('1 ile 5 arasında bir puan girin.'); return; }
+        try {
+            const { error } = await supabaseClient.rpc('puan_ver',
+                { p_lead_id: leadId, p_hedef_tip: hedefTip, p_puan: n, p_yorum: y.trim() });
+            if (error) throw error;
+            alert('Teşekkürler. Yorumunuz incelendikten sonra yayınlanacak.');
+            invPuanlama();
+        } catch (e) { alert('Kaydedilemedi: ' + (e.message || e)); }
+    };
 
     // ------------------------------------------------------ TEKLİF KARŞILAŞTIRMA
     // Panel genişliğini karşılaştırma tablosu için geçici olarak genişletir.

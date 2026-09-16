@@ -2452,3 +2452,73 @@ window.mvGuncSil = async function (id) {
     if (error) { alert('Silinemedi: ' + error.message); return; }
     renderMevzuatAdmin();
 };
+
+
+/* ============================================================================
+   YORUM ONAYLARI
+   Puan anında sayılır; YORUM onaydan geçer. Bir firmanın itibarını tek bir
+   onaysız yorum kalıcı olarak zedeleyebilir — bu yüzden yayın öncesi kontrol.
+   Reddedilen yorumun PUANI silinmez, yalnız metni yayınlanmaz.
+   ============================================================================ */
+(function () {
+    let _yorumlar = [];
+
+    const TIP = { platform: ['epcmerkezim', 'bg-slate-800 text-white'],
+                  company:  ['Kurulumcu firma', 'bg-amber-100 text-amber-800'],
+                  consultant: ['Danışman', 'bg-emerald-100 text-emerald-700'] };
+
+    async function yukle() {
+        if (!window.supabaseClient) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('bekleyen_yorumlar');
+            if (error) throw error;
+            _yorumlar = data || [];
+        } catch (e) { _yorumlar = []; }
+    }
+
+    function ciz() {
+        const kart = document.getElementById('adminYorumKart');
+        const liste = document.getElementById('adminYorumList');
+        if (!kart || !liste) return;
+        if (!_yorumlar.length) { kart.classList.add('hidden'); liste.innerHTML = ''; return; }
+        kart.classList.remove('hidden');
+
+        liste.innerHTML = _yorumlar.map(y => {
+            const t = TIP[y.hedef_tip] || TIP.platform;
+            return `
+            <div class="border border-slate-200 rounded-lg p-3">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${t[1]}">${t[0]}</span>
+                    <strong class="text-sm text-slate-800">${admEscape(y.hedef_ad || '')}</strong>
+                    <span class="text-amber-500 text-sm">${'★'.repeat(Number(y.puan) || 0)}</span>
+                    <span class="text-[11px] text-slate-400 ml-auto">${y.tarih ? new Date(y.tarih).toLocaleDateString('tr-TR') : ''}</span>
+                </div>
+                <p class="text-sm text-slate-600 mb-2">${admEscape(y.yorum)}</p>
+                <div class="flex gap-1.5">
+                    <button onclick="admYorumKarar('${y.id}','approved')" class="text-[11px] bg-emerald-600 text-white font-bold px-2.5 py-1 rounded">Yayınla</button>
+                    <button onclick="admYorumKarar('${y.id}','rejected')" class="text-[11px] bg-red-50 text-red-600 font-bold px-2.5 py-1 rounded">Yayınlama</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    window.admYorumKarar = async function (id, karar) {
+        if (karar === 'rejected' && !confirm('Bu yorum yayınlanmayacak. Puanı silinmez, yalnız metni gizlenir. Onaylıyor musunuz?')) return;
+        try {
+            const { error } = await supabaseClient.rpc('yorum_karari', { p_id: id, p_karar: karar });
+            if (error) throw error;
+            _yorumlar = _yorumlar.filter(x => x.id !== id);
+            ciz();
+        } catch (e) { alert('İşlenemedi: ' + (e.message || e)); }
+    };
+
+    window.admYorumlariTazele = async function () { await yukle(); ciz(); };
+
+    // Yönetim paneli açıldığında bir kez yükle.
+    const kart = document.getElementById('adminPanelCard');
+    if (kart) kart.addEventListener('click', () => setTimeout(() => window.admYorumlariTazele(), 600));
+    document.addEventListener('DOMContentLoaded', () => {
+        const m = document.getElementById('adminModule');
+        if (m && !m.classList.contains('hidden')) window.admYorumlariTazele();
+    });
+})();

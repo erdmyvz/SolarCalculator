@@ -758,3 +758,66 @@ window.heroFocusCalc = function () {
         });
     };
 })();
+
+
+/* ============================================================================
+   YATIRIMCI DENEYİMİ — ana sayfa
+   ⚠️ Burada YALNIZCA platform puanı ve yorumları gösterilir. Kurulumcu firma
+   ve danışman puanları ana sayfaya ÇIKMAZ; onlar yatırımcının firma seçtiği
+   ekranda, kararın verildiği yerde durur. Ana sayfada firma sıralaması
+   yayınlamak platformu taraf haline getirirdi.
+
+   Veri yoksa bölüm HİÇ gösterilmez — boş yıldızlar veya "henüz yorum yok"
+   kutusu, olmayan bir itibarı varmış gibi gösterirdi.
+   ============================================================================ */
+(function () {
+    const kok = document.getElementById('deneyimRoot');
+    const bolum = document.getElementById('deneyimBolumu');
+    if (!kok || !bolum || !window.supabaseClient) return;
+
+    const esc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const yildiz = (p) => {
+        const n = Math.round(Number(p) || 0);
+        return '★'.repeat(n) + '<span style="opacity:.3">' + '☆'.repeat(5 - n) + '</span>';
+    };
+
+    (async function () {
+        let ozet = null, yorumlar = [];
+        try {
+            const [rp, ry] = await Promise.all([
+                supabaseClient.rpc('platform_puani'),
+                supabaseClient.rpc('platform_deneyimi', { p_limit: 6 })
+            ]);
+            ozet = (rp.data && rp.data[0]) || null;
+            yorumlar = ry.data || [];
+        } catch (e) { return; }   // SQL çalıştırılmadıysa bölüm sessizce kapalı kalır
+
+        if (!ozet || !Number(ozet.adet)) return;
+
+        kok.innerHTML = `
+            <div class="text-center" style="margin-bottom:var(--s5)">
+                <div class="text-amber-400" style="font-size:var(--fs-2xl);letter-spacing:2px">${yildiz(ozet.ortalama)}</div>
+                <p class="font-black text-slate-800" style="font-size:var(--fs-xl);margin-top:var(--s2)">
+                    ${Number(ozet.ortalama).toFixed(1)} <span class="text-slate-400" style="font-size:var(--fs-md)">/ 5</span>
+                </p>
+                <p class="text-slate-500" style="font-size:var(--fs-sm)">
+                    Kurulumu tamamlanan <strong>${ozet.adet}</strong> yatırımcının epcmerkezim deneyimine verdiği puan
+                </p>
+            </div>
+            ${yorumlar.length ? `
+                <div class="grid grid-cols-1 md:grid-cols-3" style="gap:var(--s3)">
+                    ${yorumlar.map(y => `
+                        <div class="kart" style="padding:var(--s4)">
+                            <div class="text-amber-400" style="font-size:var(--fs-sm);letter-spacing:1px">${yildiz(y.puan)}</div>
+                            <p class="text-slate-600" style="font-size:var(--fs-sm);margin-top:var(--s2);line-height:1.6">${esc(y.yorum)}</p>
+                            <p class="text-slate-400 font-bold" style="font-size:var(--fs-xs);margin-top:var(--s2)">
+                                ${esc(y.ad || 'Yatırımcı')} · ${y.tarih ? new Date(y.tarih).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' }) : ''}
+                            </p>
+                        </div>`).join('')}
+                </div>` : ''}`;
+        bolum.classList.remove('hidden');
+    })();
+})();

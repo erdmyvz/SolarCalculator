@@ -523,15 +523,17 @@
                     </div>
                 </div>
                 <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
-                    <span class="text-[11px] text-slate-400">Kurulumcu firma:</span>
-                    ${c.assigned_company_id
-                        ? `<span class="text-xs font-bold text-slate-700">🏢 ${esc(c.assigned_company_name || 'Firma')}</span>
-                           <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${INSTALL_BADGE[c.install_status] || 'bg-slate-100 text-slate-500'}">${esc(instLabel(c.install_status) || 'Durum yok')}</span>
-                           ${c.lead_id
-                               ? `<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700" title="Kayıt firmanın CRM listesine düştü; durumu firma güncelliyor">✓ CRM'e aktarıldı</span>
-                                  ${c.tracking_code ? `<span class="text-[10px] font-mono text-slate-400 tracking-wider">${esc(c.tracking_code)}</span>` : ''}`
-                               : `<select onchange="consultantClientInstall('${c.id}', this.value)" title="Kurulum durumu" class="ml-auto text-xs border border-slate-300 rounded-lg px-2 py-1 bg-white">${instOpts(c.install_status)}</select>`}`
-                        : `<span class="text-xs text-slate-400 italic">atanmadı</span><button onclick="consultantClientEdit('${c.id}')" class="ml-auto text-xs font-bold text-indigo-600 hover:underline">Firma ata →</button>`}
+                    ${!c.lead_id
+                        ? `<span class="text-[11px] text-slate-400">Henüz CRM'e aktarılmadı</span>
+                           <button onclick="consultantClientEdit('${c.id}')" class="ml-auto text-xs font-bold text-indigo-600 hover:underline">Konumu gir ve aktar →</button>`
+                        : (c.assigned_company_id
+                            ? `<span class="text-[11px] text-slate-400">Seçilen firma:</span>
+                               <span class="text-xs font-bold text-slate-700">🏢 ${esc(c.assigned_company_name || 'Firma')}</span>
+                               <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${INSTALL_BADGE[c.install_status] || 'bg-slate-100 text-slate-500'}">${esc(instLabel(c.install_status) || 'Durum yok')}</span>
+                               ${c.tracking_code ? `<span class="ml-auto text-[10px] font-mono text-slate-400 tracking-wider">${esc(c.tracking_code)}</span>` : ''}`
+                            : `<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">⏳ Teklif bekleniyor</span>
+                               <span class="text-[11px] text-slate-400">firmalar davet edildi, yatırımcı seçecek</span>
+                               ${c.tracking_code ? `<span class="ml-auto text-[10px] font-mono text-slate-400 tracking-wider">${esc(c.tracking_code)}</span>` : ''}`)}
                 </div>
             </div>`).join('');
     }
@@ -550,7 +552,6 @@
     function openClientForm(c) {
         const m = ensureClientModal();
         const ed = !!c;
-        const compOpts = consFirmaSecenekleri(ed ? c.assigned_company_id : null, '');
         const instOpts = '<option value="">— Durum yok —</option>' + INSTALL_ST.map(x => `<option value="${x[0]}" ${ed && c.install_status === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('');
         document.getElementById('consClientBody').innerHTML = `
             <div class="flex items-center justify-between mb-4">
@@ -567,10 +568,12 @@
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Kurulum Adresi</label><input id="clAddress" value="${ed && c.address ? esc(c.address) : ''}" placeholder="İlçe / il yazmanız yeterli" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm"><p class="text-[11px] text-slate-400 mt-1">Firma atadığınızda bu adres kurulumcunun müşteri kartına geçer.</p></div>
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Danışan Durumu</label><select id="clStatus" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${CLIENT_ST.map(x => `<option value="${x[0]}" ${ed && c.status === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></div>
                 <div class="border-t border-slate-100 pt-3">
-                    <label class="block text-xs font-bold text-slate-600 mb-1">🏢 Atanan Kurulumcu Firma</label>
-                    <input id="clCompanyAra" oninput="consFirmaAra()" placeholder="Firma adı, il veya ilçe ile ara…" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm mb-2">
-                    <select id="clCompany" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${compOpts}</select>
-                    <p id="clCompanyNot" class="text-[11px] text-slate-400 mt-1"></p>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">📍 Tesis Konumu</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="clCity" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${ilSecenekleri(ed ? c.city : null)}</select>
+                        <input id="clDistrict" value="${ed && c.district ? esc(c.district) : ''}" placeholder="İlçe" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-1">Danışanınız CRM'e aktarıldığında bu konuma <strong>en yakın 3 kurulumcu firma</strong> teklif vermeye davet edilir. Firmayı siz seçmezsiniz — yatırımcı teklifleri karşılaştırıp kendisi seçer.</p>
                 </div>
                 ${ed && c.lead_id
                     ? `<div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3">
@@ -626,6 +629,13 @@
         }
     };
 
+    // 81 il — hesaplayıcıyla aynı kaynak. Konum olmadan en yakın firma bulunamaz.
+    function ilSecenekleri(secili) {
+        const iller = Object.keys(window.EPC_IL_VERIM || {}).sort((a, b) => a.localeCompare(b, 'tr'));
+        return '<option value="">İl seçiniz…</option>' +
+            iller.map(i => `<option value="${esc(i)}" ${secili === i ? 'selected' : ''}>${esc(i)}</option>`).join('');
+    }
+
     window.consultantClientNew = function () { openClientForm(null); };
     window.consultantClientEdit = function (id) { const c = _clients.find(x => x.id === id); if (c) openClientForm(c); };
 
@@ -646,31 +656,29 @@
         const name = (document.getElementById('clName').value || '').trim();
         const res = document.getElementById('clResult');
         if (!name) { res.innerHTML = '<p class="text-red-500 text-sm">Ad soyad zorunludur.</p>'; return; }
-        const compId  = document.getElementById('clCompany').value || null;
-        const mevcut  = id ? _clients.find(x => x.id === id) : null;
-        const eskiComp = mevcut ? (mevcut.assigned_company_id || null) : null;
+        const il   = (document.getElementById('clCity').value || '').trim();
+        const ilce = (document.getElementById('clDistrict').value || '').trim();
+        const mevcut = id ? _clients.find(x => x.id === id) : null;
+        const bagli  = !!(mevcut && mevcut.lead_id);
 
         const row = {
             name,
             phone:   (document.getElementById('clPhone').value || '').trim() || null,
             email:   (document.getElementById('clEmail').value || '').trim() || null,
             address: (document.getElementById('clAddress').value || '').trim() || null,
+            city:    il || null,
+            district: ilce || null,
             status:  document.getElementById('clStatus').value,
             notes:   (document.getElementById('clNotes').value || '').trim() || null,
             updated_at: new Date().toISOString()
         };
 
-        // ⚠️ assigned_company_id / assigned_company_name / install_status ARTIK
-        // BURADAN YAZILMIYOR. Eskiden yazılıyordu ve atama yalnız bu tabloda
-        // kalıyordu: kurulumcu firmanın CRM listesinde hiçbir şey belirmiyordu,
-        // firma müşteriyi elle açmak zorunda kalıyor, iki kayıt iki ayrı durum
-        // taşıyordu. Atamayı artık assign_client_to_company() yapıyor — aynı
-        // işlemde firmanın CRM'ine müşteri kartı düşürüp bağı kuruyor.
-        // Firma atanmamış (ve hiç atanmamış) kayıtlarda kurulum durumu hâlâ
-        // elle girilebilir; bağlı kayıtta o alan zaten forma basılmıyor.
-        if (!compId && !eskiComp) {
+        // ⚠️ DANIŞMAN ARTIK FİRMA SEÇMİYOR. assigned_company_id buradan yazılmaz;
+        // kazanan firmayı lead_kazanan() yatırımcının seçimiyle yazar. Danışmanın
+        // işi yatırımcıya sistemi anlatmak, teklifleri yorumlamak.
+        if (!bagli) {
             const ins = document.getElementById('clInstall');
-            row.install_status = (ins && ins.value) || null;
+            if (ins && ins.tagName === 'SELECT') row.install_status = ins.value || null;
         }
 
         res.innerHTML = '<p class="text-xs text-slate-400">Kaydediliyor...</p>';
@@ -691,8 +699,10 @@
             try {
                 clientId = await yaz(row);
             } catch (e) {
-                if (!_kolonYok(e) || !('address' in row)) throw e;
-                delete row.address; adresDustu = true;   // kolon henüz yok
+                if (!_kolonYok(e)) throw e;
+                // Şema güncellemesi henüz yapılmadıysa yeni alanları atla.
+                ['address', 'city', 'district'].forEach(k => { delete row[k]; });
+                adresDustu = true;
                 clientId = await yaz(row);
             }
         } catch (e) {
@@ -700,55 +710,43 @@
             return;
         }
 
-        // Firma değiştiyse VEYA firma atanmış ama CRM'e hiç düşmemişse (eski
-        // kayıtlar) aktarımı çalıştır. Aynı firmaya ikinci kez kayıt açılmaz.
-        const aktarGerek = (compId !== eskiComp) || (compId && !(mevcut && mevcut.lead_id));
+        // CRM'E AKTAR — yarışmalı atamayı çalıştırır (en yakın 3 firma).
         let bilgi = '';
-        if (aktarGerek) {
-            res.innerHTML = '<p class="text-xs text-slate-400">Firmaya aktarılıyor...</p>';
+        if (!bagli && il) {
+            res.innerHTML = '<p class="text-xs text-slate-400">En yakın firmalar bulunuyor...</p>';
             try {
-                const { data, error } = await supabaseClient.rpc('assign_client_to_company', {
-                    p_client_id: clientId, p_company_id: compId
+                const { data, error } = await supabaseClient.rpc('danisan_crm_e_aktar', {
+                    p_client_id: clientId, p_il: il, p_ilce: ilce || null, p_kapsam: 2
                 });
                 if (error) throw error;
-                if (data && data.durum === 'olusturuldu') {
-                    bilgi = `✓ ${data.firma} firmasının CRM listesine düştü · takip kodu ${data.takip_kodu}`;
-                } else if (data && data.durum === 'kaldirildi') {
-                    bilgi = 'Firma ataması kaldırıldı. Firmadaki kayıt silinmedi, yalnız bağ koparıldı.';
+                if (data && data.durum === 'aktarildi') {
+                    const n = Number(data.atanan_firma) || 0;
+                    bilgi = n > 0
+                        ? `✓ ${n} kurulumcu firma teklif vermeye davet edildi · ${data.takip_kodu}`
+                        : `Kayıt açıldı ama bölgede kayıtlı firma bulunamadı · ${data.takip_kodu}`;
                 }
             } catch (e) {
-                // Veritabanı güncellemesi henüz yapılmadıysa eski usul yaz —
-                // atama görünsün ama firmanın CRM'ine düşmediğini SÖYLE.
-                // Sessizce eski davranışa dönmek, kullanıcının müşterinin
-                // firmaya ulaştığını sanmasına yol açardı.
                 if (_rpcYok(e)) {
-                    const comp = _companies.find(x => x.id === compId);
-                    await supabaseClient.from('consultant_clients').update({
-                        assigned_company_id: compId,
-                        assigned_company_name: comp ? comp.name : null,
-                        updated_at: new Date().toISOString()
-                    }).eq('id', clientId);
-                    res.innerHTML = `<p class="text-amber-600 text-sm font-bold">Atama kaydedildi, ama firmanın CRM listesine düşmedi.</p>
-                                     <p class="text-xs text-slate-500 mt-1">Veritabanı güncellemesi (danisman-crm-koprusu.sql) henüz çalıştırılmamış. Çalıştırıldıktan sonra firmayı yeniden kaydederseniz aktarım tamamlanır.</p>`;
+                    res.innerHTML = `<p class="text-amber-600 text-sm font-bold">Danışan kaydedildi, CRM'e aktarılamadı.</p>
+                                     <p class="text-xs text-slate-500 mt-1">Veritabanı güncellemesi (danisman-rolu.sql) henüz çalıştırılmamış.</p>`;
                     await loadClients(); applyClientFilters();
                     return;
                 }
-                // Danışan KAYDEDİLDİ, aktarım başarısız. İkisini ayırt etmeden
-                // "kaydedilemedi" demek yanlış olurdu — kullanıcı tekrar
-                // kaydedince ikinci bir kayıt açtığını sanırdı.
-                res.innerHTML = `<p class="text-amber-600 text-sm font-bold">Danışan kaydedildi, ama firmaya aktarılamadı.</p>
+                res.innerHTML = `<p class="text-amber-600 text-sm font-bold">Danışan kaydedildi, CRM'e aktarılamadı.</p>
                                  <p class="text-xs text-slate-500 mt-1">${esc(e.message || e)}</p>
-                                 <p class="text-xs text-slate-400 mt-1">Firmayı yeniden seçip kaydederseniz aktarım tekrar denenir.</p>`;
+                                 <p class="text-xs text-slate-400 mt-1">Kaydı açıp tekrar kaydederseniz aktarım yeniden denenir.</p>`;
                 await loadClients(); applyClientFilters();
                 return;
             }
+        } else if (!bagli && !il) {
+            bilgi = 'Kaydedildi. İl seçilmediği için henüz firmalara iletilmedi.';
         }
 
         await loadClients(); applyClientFilters();
-        if (adresDustu) bilgi = (bilgi ? bilgi + ' · ' : '') + 'Adres kaydedilemedi (veritabanı güncellemesi bekleniyor).';
+        if (adresDustu) bilgi = (bilgi ? bilgi + ' · ' : '') + 'Konum kaydedilemedi (veritabanı güncellemesi bekleniyor).';
         if (bilgi) {
             res.innerHTML = `<p class="text-emerald-600 text-sm font-bold">${esc(bilgi)}</p>`;
-            setTimeout(() => { const m = document.getElementById('consClientModal'); if (m) m.classList.add('hidden'); }, 1600);
+            setTimeout(() => { const m = document.getElementById('consClientModal'); if (m) m.classList.add('hidden'); }, 1800);
         } else {
             document.getElementById('consClientModal').classList.add('hidden');
         }

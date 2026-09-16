@@ -1757,6 +1757,12 @@
             </div>
         </div>
     
+            <!-- YATIRIMCI DENEYİMİ — yalnız epcmerkezim puanı. Firma ve danışman
+                 puanları BURADA GÖSTERİLMEZ; onlar firma seçim ekranında. -->
+            <section id="deneyimBolumu" class="hidden px-6" style="padding-block:var(--s6)">
+                <div class="max-w-5xl mx-auto"><div id="deneyimRoot"></div></div>
+            </section>
+
             <footer class="bg-slate-900 text-slate-400 px-6" style="padding-block:var(--s6)">
                 <div class="max-w-6xl mx-auto">
                     <!-- Üst şerit: marka (φ) / bağlantı sütunları (1) -->
@@ -2403,6 +2409,7 @@
             <div id="adminPaneOps" class="admin-pane hidden space-y-6">
                 <div class="bg-white border border-slate-200 rounded-xl p-5"><h3 class="font-black text-lg text-slate-800 mb-3">🌐 Genel Başvuru Havuzu</h3><div id="adminLeadsList" class="space-y-2"></div></div>
                 <div class="bg-white border border-slate-200 rounded-xl p-5"><h3 class="font-black text-lg text-slate-800 mb-3">🔧 Teknik Servis Biletleri</h3><div id="adminTicketsList" class="space-y-2"></div></div>
+                <div id="adminYorumKart" class="hidden bg-white border border-slate-200 rounded-xl p-5"><h3 class="font-black text-lg text-slate-800 mb-1">💬 Yorum Onayları</h3><p class="text-xs text-slate-400 mb-3">Puanlar anında sayılır, yorumlar onaydan sonra yayınlanır. Onaysız yayınlamak firmaları iftiraya açık bırakır.</p><div id="adminYorumList" class="space-y-2"></div></div>
                 <!-- 🌱 Potansiyel Müşteriler buraya JS ile eklenir -->
             </div>
 

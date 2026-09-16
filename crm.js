@@ -1124,3 +1124,121 @@ window.crmFiltreleriTemizle = function () {
         if (e) e.addEventListener('change', crmSyncConsumptionUI);
     });
 })();
+
+
+/* ============================================================================
+   YARIŞMALI DAVETLER — kurulumcu firma tarafı
+   Yatırımcının konumuna en yakın 3 firmaya aynı anda davet gider. Bu bölüm
+   firmaya "hangi taleplere davet edildim, kaç rakibim var, teklif verdim mi"
+   sorusunu cevaplar.
+
+   ⚠️ Davet edilen kayıt leads tablosunda ama company_id'si BOŞ. Firma bu satırı
+   YAZAMAZ (RLS yalnız okuma veriyor); kendi yarışma durumunu
+   lead_assignments üzerinden günceller. Üç firma aynı leads.status'u
+   birbirinin üstüne yazmasın diye böyle.
+   ============================================================================ */
+(function () {
+    let _davetler = [];
+
+    const DURUM = {
+        davet:          ['Yeni davet',    'bg-indigo-100 text-indigo-700'],
+        iletisim:       ['İletişimde',    'bg-blue-100 text-blue-700'],
+        teklif_verildi: ['Teklif verdim', 'bg-emerald-100 text-emerald-700'],
+        vazgecti:       ['Vazgeçtim',     'bg-slate-100 text-slate-500']
+    };
+    const YAKIN = { 1: 'Aynı ilçe', 2: 'Aynı il', 3: 'Aynı bölge', 4: 'Uzak' };
+
+    function kutu() {
+        let el = document.getElementById('crmDavetKutu');
+        if (el) return el;
+        const gövde = document.getElementById('crmLeadsTableBody');
+        if (!gövde) return null;
+        const tablo = gövde.closest('table');
+        const hedef = (tablo && tablo.parentElement) || gövde.parentElement;
+        if (!hedef || !hedef.parentElement) return null;
+        el = document.createElement('div');
+        el.id = 'crmDavetKutu';
+        el.className = 'mb-4';
+        hedef.parentElement.insertBefore(el, hedef);
+        return el;
+    }
+
+    async function yukle() {
+        if (!window.supabaseClient) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('firma_davetleri');
+            if (error) throw error;
+            _davetler = data || [];
+        } catch (e) { _davetler = []; }   // SQL çalıştırılmadıysa bölüm hiç çıkmaz
+    }
+
+    function ciz() {
+        const el = kutu(); if (!el) return;
+        if (!_davetler.length) { el.innerHTML = ''; return; }
+
+        const satir = (d) => {
+            const du = DURUM[d.durum] || DURUM.davet;
+            const tel = String(d.telefon || '').replace(/[^\d+]/g, '');
+            return `
+            <div class="bg-white border border-indigo-100 rounded-xl p-4 mb-2">
+                <div class="flex items-start justify-between gap-3 flex-wrap">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap mb-0.5">
+                            <span class="font-black text-slate-800">${admEscape(d.ad || 'Yatırımcı')}</span>
+                            <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${du[1]}">${du[0]}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">${YAKIN[d.yakinlik] || 'Uzak'}</span>
+                            ${Number(d.rakip_sayisi) > 0
+                                ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800" title="Bu talebe davet edilen diğer firma sayısı">⚔️ ${d.rakip_sayisi} rakip</span>`
+                                : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Tek davetli</span>'}
+                        </div>
+                        <div class="text-[11px] text-slate-400">${admEscape([d.ilce, d.il].filter(Boolean).join(' / '))}${d.adres ? ' · ' + admEscape(d.adres) : ''}</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">${d.telefon ? admEscape(d.telefon) : ''}${d.telefon && d.eposta ? ' · ' : ''}${d.eposta ? admEscape(d.eposta) : ''}</div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        ${tel ? `<a href="tel:${admEscape(tel)}" class="crm-ikon" title="Ara">📞</a>` : ''}
+                        <select onchange="crmDavetDurum('${d.assignment_id}', this.value)" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
+                            ${Object.keys(DURUM).map(k => `<option value="${k}" ${d.durum === k ? 'selected' : ''}>${DURUM[k][0]}</option>`).join('')}
+                        </select>
+                        <button onclick="crmDavetTeklif('${d.lead_id}')" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1.5 rounded-lg text-xs">📄 Teklif</button>
+                    </div>
+                </div>
+                ${d.teklif_verdim
+                    ? '<p class="text-[11px] text-emerald-600 font-bold mt-2">✓ Teklifiniz iletildi — yatırımcı diğer tekliflerle karşılaştırıyor.</p>'
+                    : '<p class="text-[11px] text-slate-400 mt-2">Teklif verilmedi. Yatırımcı teklifleri yan yana karşılaştıracak.</p>'}
+            </div>`;
+        };
+
+        el.innerHTML = `
+            <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
+                <div class="flex items-baseline justify-between gap-2 flex-wrap mb-2">
+                    <h3 class="font-black text-slate-800">⚔️ Yarışmalı Davetler <span class="text-indigo-600">${_davetler.length}</span></h3>
+                    <span class="text-[11px] text-slate-500">Bu talepler henüz kimseye bağlanmadı; yatırımcı teklifleri karşılaştırıp seçecek.</span>
+                </div>
+                ${_davetler.map(satir).join('')}
+            </div>`;
+    }
+
+    window.crmDavetDurum = async function (aid, durum) {
+        try {
+            const { error } = await supabaseClient.rpc('davet_durumu_yaz', { p_assignment_id: aid, p_durum: durum });
+            if (error) throw error;
+            const d = _davetler.find(x => x.assignment_id === aid); if (d) d.durum = durum;
+            ciz();
+        } catch (e) { alert('Güncellenemedi: ' + (e.message || e)); }
+    };
+
+    window.crmDavetTeklif = function (leadId) {
+        if (typeof window.crmCreateQuoteForLead === 'function') window.crmCreateQuoteForLead(leadId);
+        else alert('Teklif modülü açılamadı.');
+    };
+
+    // crmRenderLeads her liste tazelemesinde çalışıyor; davetleri ona bağlıyoruz.
+    const _eski = window.crmRenderLeads;
+    if (typeof _eski === 'function') {
+        window.crmRenderLeads = function () {
+            const r = _eski.apply(this, arguments);
+            yukle().then(ciz);
+            return r;
+        };
+    }
+})();
