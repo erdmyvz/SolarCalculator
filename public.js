@@ -119,7 +119,10 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
             p_full_name: document.getElementById('leadName').value,
             p_phone:     document.getElementById('leadPhone').value,
             p_email:     document.getElementById('leadEmail').value,
-            p_address:   document.getElementById('leadAddress').value,
+            p_address:   [document.getElementById('leadAddress').value,
+                          document.getElementById('leadDistrict') ? document.getElementById('leadDistrict').value : '',
+                          document.getElementById('leadCity') ? document.getElementById('leadCity').value : '']
+                         .map(x => String(x || '').trim()).filter(Boolean).join(' / '),
             p_outage:    outage,
             p_extra_consumption: evHp,
             p_notes:     notes,
@@ -148,7 +151,20 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
         const _lEmail = document.getElementById('leadEmail').value;
         const _lName  = document.getElementById('leadName').value;
         const _lPhone = document.getElementById('leadPhone').value;
+        const _lIl    = document.getElementById('leadCity') ? document.getElementById('leadCity').value : '';
+        const _lIlce  = document.getElementById('leadDistrict') ? document.getElementById('leadDistrict').value : '';
         closeLeadModal();
+
+        // KONUM + FİRMA EŞLEŞTİRME
+        // submit_lead il/ilçe almıyor; konumu ayrı yazıp en yakın firmaları
+        // yatırımcıya GÖSTERİYORUZ. Atama arka planda sessizce yapılmıyor —
+        // kaç firma bulunduğunu ve neden o kadar olduğunu görmesi gerekiyor.
+        if (_lIl && code) {
+            try { await supabaseClient.rpc('lead_konum_yaz', { p_tracking_code: String(code), p_il: _lIl, p_ilce: _lIlce || null }); }
+            catch (e) { console.warn('konum yazılamadı', e); }
+            try { await epcFirmaEslestir(String(code), _lIl, _lIlce); }
+            catch (e) { console.warn('firma eşleştirme', e); }
+        }
         let _mail = { ok: false, error: '' };
         try { _mail = await sendInvestorMagicLink(_lEmail, _lName, _lPhone); } catch (e) { _mail = { ok: false, error: String(e && e.message || e) }; }
         if (_mail.ok) {
@@ -564,4 +580,181 @@ window.heroFocusCalc = function () {
     }
 
     document.addEventListener('DOMContentLoaded', () => { uygula(); });
+})();
+
+
+/* ============================================================================
+   FİRMA EŞLEŞTİRME — yarışmalı atama
+   Başvuru alındıktan sonra yatırımcıya en yakın kurulumcu firmalar gösterilir
+   ve onayıyla üçüne birden davet gider. Üçü de teklif verir, yatırımcı
+   karşılaştırır.
+
+   ⚠️ NEDEN SESSİZCE ATAMIYORUZ: yatırımcının kaç firma bulunduğunu ve neden
+   o kadar olduğunu görmesi gerekiyor. "Bölgenizde 1 firma var" demek,
+   arkada hiçbir şey olmamış gibi davranmaktan dürüst.
+   ============================================================================ */
+(function () {
+    const esc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const YAKIN = { 1: ['Aynı ilçe', 'bg-emerald-100 text-emerald-700'],
+                    2: ['Aynı il',   'bg-blue-100 text-blue-700'],
+                    3: ['Aynı bölge','bg-amber-100 text-amber-800'],
+                    4: ['Uzak',      'bg-slate-100 text-slate-600'] };
+
+    // İl listesini hesaplayıcıyla aynı kaynaktan doldur (81 il).
+    function ilListesiniDoldur() {
+        const sel = document.getElementById('leadCity');
+        if (!sel || sel.options.length > 1) return;
+        const iller = Object.keys(window.EPC_IL_VERIM || {}).sort((a, b) => a.localeCompare(b, 'tr'));
+        if (!iller.length) return;
+        sel.insertAdjacentHTML('beforeend',
+            iller.map(i => `<option value="${esc(i)}">${esc(i)}</option>`).join(''));
+    }
+    document.addEventListener('DOMContentLoaded', ilListesiniDoldur);
+    ilListesiniDoldur();
+    // Modal açılışında da dene: EPC_IL_VERIM geç yüklenmiş olabilir.
+    const _eskiAc = window.openLeadModal;
+    if (typeof _eskiAc === 'function') {
+        window.openLeadModal = function () { const r = _eskiAc.apply(this, arguments); ilListesiniDoldur(); return r; };
+    }
+
+    function yildiz(p) {
+        const n = Math.round(Number(p) || 0);
+        return '<span style="letter-spacing:1px">' + '★'.repeat(n) + '<span style="opacity:.28">' + '☆'.repeat(5 - n) + '</span></span>';
+    }
+
+    function firmaKarti(f) {
+        const y = YAKIN[f.yakinlik] || YAKIN[4];
+        const puanli = f.puan != null && Number(f.puan_adedi) > 0;
+        return `
+        <div class="bg-white border border-slate-200 rounded-xl p-4 flex items-start justify-between gap-3 flex-wrap">
+            <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-black text-slate-800">${esc(f.firma)}</span>
+                    <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${y[1]}">${y[0]}</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-0.5">${esc([f.ilce, f.il].filter(Boolean).join(' / ') || '—')}</div>
+                <div class="text-xs mt-1.5">
+                    ${puanli
+                        ? `<span class="text-amber-500">${yildiz(f.puan)}</span>
+                           <span class="font-bold text-slate-700 ml-1">${Number(f.puan).toFixed(1)}</span>
+                           <span class="text-slate-400">· ${f.puan_adedi} değerlendirme</span>`
+                        : '<span class="text-slate-400">Henüz değerlendirilmemiş</span>'}
+                </div>
+            </div>
+            <div class="text-right shrink-0">
+                <div class="text-lg font-black text-slate-800">${Number(f.tamamlanan_is) || 0}</div>
+                <div class="text-[10px] text-slate-400">tamamlanan tesis</div>
+            </div>
+        </div>`;
+    }
+
+    // Ekranı kurar ve kullanıcı kapatana kadar bekler.
+    window.epcFirmaEslestir = function (kod, il, ilce) {
+        return new Promise(async (bitir) => {
+            let kapsam = 2, limit = 3;
+
+            let k = document.getElementById('epcFirmaKatman');
+            if (!k) {
+                k = document.createElement('div');
+                k.id = 'epcFirmaKatman';
+                document.body.appendChild(k);
+            }
+            k.className = 'fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4';
+
+            const kapat = () => { k.remove(); bitir(); };
+
+            async function ciz() {
+                k.innerHTML = `<div class="bg-slate-50 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+                    <p class="text-sm text-slate-400">Bölgenizdeki firmalar aranıyor…</p></div>`;
+
+                let firmalar = [], sayi = null;
+                try {
+                    const [rf, rs] = await Promise.all([
+                        supabaseClient.rpc('en_yakin_firmalar', { p_il: il, p_ilce: ilce || null, p_limit: limit, p_kapsam: kapsam }),
+                        supabaseClient.rpc('firma_sayilari',    { p_il: il, p_ilce: ilce || null })
+                    ]);
+                    firmalar = rf.data || [];
+                    sayi = (rs.data && rs.data[0]) || null;
+                } catch (e) {
+                    k.innerHTML = `<div class="bg-white rounded-2xl w-full max-w-md p-6">
+                        <h3 class="font-black text-lg text-slate-800 mb-2">Başvurunuz alındı</h3>
+                        <p class="text-sm text-slate-600">Firma eşleştirmesi şu an yapılamadı; ekibimiz başvurunuzu elle yönlendirecek.</p>
+                        <button onclick="document.getElementById('epcFirmaKatman').remove()" class="mt-4 w-full bg-slate-800 text-white font-black py-2.5 rounded-lg">Tamam</button></div>`;
+                    k.querySelector('button').addEventListener('click', bitir);
+                    return;
+                }
+
+                // Kapsam dışında kalan firma var mı? Varsa dürüstçe söyle.
+                const uzakta = sayi
+                    ? (kapsam < 3 ? (Number(sayi.ayni_bolge) || 0) + (Number(sayi.diger) || 0)
+                                  : (kapsam < 4 ? (Number(sayi.diger) || 0) : 0))
+                    : 0;
+
+                const bosluk = !firmalar.length;
+                const azFirma = firmalar.length > 0 && firmalar.length < 3;
+
+                k.innerHTML = `<div class="bg-slate-50 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 pb-4">
+                        <div class="text-3xl mb-2">🎉</div>
+                        <h3 class="font-black text-xl text-slate-900">Başvurunuz alındı</h3>
+                        <p class="text-sm text-slate-600 mt-1">
+                            ${bosluk
+                                ? 'Bölgenizde kayıtlı kurulumcu firma bulunamadı. Ekibimiz başvurunuzu elle yönlendirecek.'
+                                : (firmalar.length === 1
+                                    ? `Size en yakın <strong>1 firma</strong> bulundu. Onayınızla talebiniz bu firmaya iletilir ve teklifi panelinizde görürsünüz.`
+                                    : `Size en yakın <strong>${firmalar.length} firma</strong> bulundu. Onayınızla talebiniz ${firmalar.length} firmaya birden iletilir; <strong>her biri ayrı teklif hazırlar</strong> ve teklifleri panelinizde yan yana karşılaştırırsınız.`)}
+                        </p>
+                    </div>
+
+                    <div class="px-6 space-y-2">${firmalar.map(firmaKarti).join('')}</div>
+
+                    ${(azFirma || bosluk) && uzakta > 0 ? `
+                        <div class="mx-6 mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5">
+                            <p class="text-xs text-amber-900 font-bold">Bölgenizde kayıtlı ${firmalar.length} firma gösteriliyor.</p>
+                            <p class="text-[11px] text-amber-800 mt-0.5">Diğer ${uzakta} firma konum olarak uzak kalıyor. Uzak firma nakliye ve servis süresini uzatabilir; yine de görmek isterseniz kapsamı genişletebilirsiniz.</p>
+                            <button id="epcKapsamBtn" class="mt-2 text-xs font-black text-amber-900 underline">Daha uzaktaki firmaları da ekle →</button>
+                        </div>` : ''}
+
+                    ${uzakta === 0 && !bosluk ? `
+                        <p class="mx-6 mt-3 text-[11px] text-slate-400">Sistemde kayıtlı tüm uygun firmalar gösteriliyor.</p>` : ''}
+
+                    <div class="p-6 pt-4 flex gap-2">
+                        ${firmalar.length ? `<button id="epcOnayBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl">${firmalar.length} firmaya gönder</button>` : ''}
+                        <button id="epcVazgecBtn" class="${firmalar.length ? '' : 'flex-1 '}text-slate-500 font-bold px-5 py-3">${firmalar.length ? 'Şimdilik gönderme' : 'Tamam'}</button>
+                    </div>
+                </div>`;
+
+                const kb = document.getElementById('epcKapsamBtn');
+                if (kb) kb.addEventListener('click', () => { kapsam = kapsam < 3 ? 3 : 4; limit = 3; ciz(); });
+
+                const vb = document.getElementById('epcVazgecBtn');
+                if (vb) vb.addEventListener('click', kapat);
+
+                const ob = document.getElementById('epcOnayBtn');
+                if (ob) ob.addEventListener('click', async () => {
+                    ob.disabled = true; ob.textContent = 'Gönderiliyor…';
+                    try {
+                        const { data, error } = await supabaseClient.rpc('lead_firma_esle',
+                            { p_tracking_code: kod, p_limit: limit, p_kapsam: kapsam });
+                        if (error) throw error;
+                        const n = (data && data.atanan) || 0;
+                        k.innerHTML = `<div class="bg-white rounded-2xl w-full max-w-md p-6 text-center">
+                            <div class="text-3xl mb-2">✅</div>
+                            <h3 class="font-black text-lg text-slate-900">${n} firmaya iletildi</h3>
+                            <p class="text-sm text-slate-600 mt-1">Firmalar sizinle iletişime geçip keşif yapacak. Teklifler hazır olduğunda yatırımcı panelinizde karşılaştırabilirsiniz.</p>
+                            <button id="epcBittiBtn" class="mt-4 w-full bg-slate-800 text-white font-black py-2.5 rounded-lg">Tamam</button></div>`;
+                        document.getElementById('epcBittiBtn').addEventListener('click', kapat);
+                    } catch (e) {
+                        ob.disabled = false; ob.textContent = 'Tekrar dene';
+                        alert('Gönderilemedi: ' + (e.message || e));
+                    }
+                });
+            }
+
+            ciz();
+        });
+    };
 })();
