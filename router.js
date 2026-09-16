@@ -211,6 +211,7 @@ const EPC_EKRANLAR = {
 
     // --- danışman ---
     'danisan-takip':   { ac: () => window.consultantOpenCRM && window.consultantOpenCRM(true) },
+    'teklif-degerlendirme': { ac: () => window.consultantQuoteReviews && window.consultantQuoteReviews(true) },
     'profil-duzenle':  { ac: () => window.consultantEditProfile && window.consultantEditProfile(true) },
 
     // --- tedarikçi ---

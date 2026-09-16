@@ -218,6 +218,11 @@
                     <h3 class="font-black text-slate-800 mb-1">Danışan Takibi (CRM)</h3>
                     <p class="text-sm text-slate-500">Görüştüğünüz yatırımcıları/danışanları ekleyin, durumlarını takip edin.</p>
                 </button>
+                <button onclick="consultantQuoteReviews()" class="bg-white border border-slate-200 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 hover:border-indigo-300 transition">
+                    <div class="text-4xl mb-3">⚖️</div>
+                    <h3 class="font-black text-slate-800 mb-1">Teklif Değerlendirme</h3>
+                    <p class="text-sm text-slate-500">Yatırımcıların aldığı teklifleri karşılaştırıp görüş verin.</p>
+                </button>
             </div>`;
         fillConsultantDash();   // istatistikler arkadan dolar (kabuk asla beklemez)
     }
@@ -768,4 +773,169 @@
 
 
     if (document.getElementById('consultantsRoot')) renderConsultantsList();
+})();
+
+
+/* ============================================================================
+   TEKLİF DEĞERLENDİRME DANIŞMANLIĞI — danışman tarafı
+   Yatırımcı üç firmadan teklif aldıktan sonra danışmandan görüş isteyebilir.
+   Danışman burada teklifleri yan yana görür ve görüşünü yazar.
+
+   ⚠️ DANIŞMAN MALİYET GÖRMEZ. Sunucudaki danisman_teklif_ozeti() firm_quotes
+   items alanını hiç döndürmüyor; orada firmanın alış maliyeti (cost) ve kâr
+   marjı (margin) duruyor. Danışman yalnız yatırımcıya zaten söylenmiş bedeli
+   ve sistem özetini görür.
+   ============================================================================ */
+(function () {
+    const esc = (s) => (typeof admEscape === 'function' ? admEscape(s) : String(s == null ? '' : s));
+    const say = (n) => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString('tr-TR');
+    let _talepler = [], _acik = null, _teklifler = [];
+
+    window.consultantQuoteReviews = async function (_adrestenGeldi) {
+        if (window.epcAdresYaz) window.epcAdresYaz('teklif-degerlendirme', null, _adrestenGeldi);
+        _acik = null;
+        await yukle();
+        ciz();
+    };
+
+    async function yukle() {
+        if (!supabaseClient) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('danisman_talepleri');
+            if (error) throw error;
+            _talepler = data || [];
+        } catch (e) { _talepler = []; }
+    }
+
+    function ust() {
+        return `
+            <div class="flex items-center gap-3 mb-5">
+                <button onclick="consultantBackToMenu()" class="text-slate-500 hover:text-indigo-600 font-bold">← Panele Dön</button>
+                <span class="text-slate-300">/</span>
+                <h2 class="text-lg md:text-xl font-black text-slate-800">⚖️ Teklif Değerlendirme</h2>
+            </div>`;
+    }
+
+    function ciz() {
+        const root = document.getElementById('consultantPanelRoot');
+        if (!root) return;
+
+        if (!_talepler.length) {
+            root.innerHTML = ust() + `
+                <div class="bos-durum"><span class="bos-durum-ico">⚖️</span>
+                    <h4>Henüz değerlendirme talebi yok</h4>
+                    <p>Yatırımcılar aldıkları teklifleri değerlendirmenizi istediğinde burada görünür.</p></div>`;
+            return;
+        }
+
+        const kart = (t) => `
+            <div class="kart p-4 mb-2">
+                <div class="flex items-start justify-between gap-3 flex-wrap">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-black text-slate-800">${esc(t.yatirimci || 'Yatırımcı')}</span>
+                            <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${t.durum === 'acik' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}">${t.durum === 'acik' ? 'Görüş bekleniyor' : 'Görüş verildi'}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">${t.teklif_sayisi || 0} teklif</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">${esc([t.ilce, t.il].filter(Boolean).join(' / ') || '')}</div>
+                        ${t.gorus ? `<p class="text-xs text-slate-600 mt-1.5" style="white-space:pre-wrap">${esc(t.gorus)}</p>` : ''}
+                    </div>
+                    <button onclick="consultantReviewOpen('${t.request_id}')" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3.5 py-2 rounded-lg text-xs">
+                        ${t.durum === 'acik' ? 'Teklifleri incele' : 'Görüşü düzenle'}
+                    </button>
+                </div>
+            </div>`;
+
+        root.innerHTML = ust() + `
+            <p class="text-[11px] text-slate-400 mb-3">Teklifleri karşılaştırıp yatırımcıya görüş yazın. Firmaların maliyet ve kâr bilgisi size gösterilmez; yalnız yatırımcıya sunulan bedeller görünür.</p>
+            ${_talepler.map(kart).join('')}`;
+    }
+
+    window.consultantReviewOpen = async function (rid) {
+        _acik = _talepler.find(t => t.request_id === rid) || null;
+        if (!_acik) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('danisman_teklif_ozeti', { p_request_id: rid });
+            if (error) throw error;
+            _teklifler = data || [];
+        } catch (e) { alert('Teklifler alınamadı: ' + (e.message || e)); return; }
+        cizDetay();
+    };
+
+    function cizDetay() {
+        const root = document.getElementById('consultantPanelRoot');
+        if (!root || !_acik) return;
+
+        const enUcuz = _teklifler.reduce((m, q) => (m == null || (Number(q.bedel_try_kdv) || Infinity) < m) ? (Number(q.bedel_try_kdv) || Infinity) : m, null);
+
+        const satir = (q) => {
+            const kwp = Number(q.kwp) || 0;
+            const birim = (kwp > 0 && q.bedel_try_kdv) ? Math.round(Number(q.bedel_try_kdv) / kwp) : null;
+            const ucuz = enUcuz != null && Math.abs((Number(q.bedel_try_kdv) || 0) - enUcuz) < 1;
+            return `
+            <tr class="border-b border-slate-100">
+                <td class="p-2">
+                    <div class="font-bold text-slate-800 text-sm">${esc(q.firma || '')}</div>
+                    <div class="text-[10px] text-slate-400">${esc(q.teklif_no || '')}</div>
+                    ${(q.firma_puani != null && Number(q.firma_puan_adedi) > 0)
+                        ? `<div class="text-[11px] text-amber-600">★ ${Number(q.firma_puani).toFixed(1)} <span class="text-slate-400">(${q.firma_puan_adedi})</span></div>`
+                        : '<div class="text-[11px] text-slate-400">puan yok</div>'}
+                </td>
+                <td class="p-2 text-xs text-slate-600">${kwp} kWp${q.panel_sayisi ? `<br><span class="text-slate-400">${q.panel_sayisi} panel</span>` : ''}${Number(q.batarya_kwh) > 0 ? `<br><span class="text-slate-400">+${q.batarya_kwh} kWh</span>` : ''}</td>
+                <td class="p-2 text-xs text-slate-600">${say(q.yillik_uretim)} kWh</td>
+                <td class="p-2 text-right">
+                    <div class="font-black text-slate-800 text-sm">₺${say(q.bedel_try_kdv)}</div>
+                    ${birim ? `<div class="text-[11px] text-slate-400">₺${say(birim)}/kWp</div>` : ''}
+                    ${ucuz ? '<div class="text-[10px] font-black text-emerald-600">EN DÜŞÜK</div>' : ''}
+                </td>
+            </tr>`;
+        };
+
+        const firmaSec = '<option value="">— Firma öne çıkarma —</option>' +
+            _teklifler.map(q => `<option value="${q.company_id}" ${_acik.onerilen_company_id === q.company_id ? 'selected' : ''}>${esc(q.firma)}</option>`).join('');
+
+        root.innerHTML = `
+            <div class="flex items-center gap-3 mb-5">
+                <button onclick="consultantQuoteReviews()" class="text-slate-500 hover:text-indigo-600 font-bold">← Taleplere Dön</button>
+                <span class="text-slate-300">/</span>
+                <h2 class="text-lg md:text-xl font-black text-slate-800">${esc(_acik.yatirimci || 'Yatırımcı')}</h2>
+            </div>
+
+            ${_teklifler.length ? `
+            <div class="kart overflow-x-auto mb-4">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50"><tr class="text-[11px] text-slate-500 text-left">
+                        <th class="p-2">Firma</th><th class="p-2">Sistem</th><th class="p-2">Yıllık üretim</th><th class="p-2 text-right">Bedel (KDV dahil)</th>
+                    </tr></thead>
+                    <tbody>${_teklifler.map(satir).join('')}</tbody>
+                </table>
+            </div>`
+            : '<div class="kart p-5 mb-4"><p class="text-sm text-slate-500">Bu başvuruya henüz teklif gelmemiş.</p></div>'}
+
+            <div class="kart p-4">
+                <label class="block text-xs font-bold text-slate-600 mb-1">Görüşünüz</label>
+                <textarea id="consGorus" rows="5" placeholder="Teklifleri neye göre karşılaştırdınız? Yatırımcının dikkat etmesi gereken farklar neler?" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">${esc(_acik.gorus || '')}</textarea>
+                <label class="block text-xs font-bold text-slate-600 mt-3 mb-1">Öne çıkardığınız firma (isteğe bağlı)</label>
+                <select id="consOneri" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm bg-white">${firmaSec}</select>
+                <p class="text-[11px] text-slate-400 mt-1">Yatırımcıya "bu bir görüştür, karar sizindir" notuyla gösterilir.</p>
+                <button onclick="consultantReviewSave()" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-lg">Görüşü Gönder</button>
+                <div id="consGorusSonuc" class="mt-2"></div>
+            </div>`;
+    }
+
+    window.consultantReviewSave = async function () {
+        if (!_acik) return;
+        const g = (document.getElementById('consGorus').value || '').trim();
+        const sonuc = document.getElementById('consGorusSonuc');
+        if (!g) { sonuc.innerHTML = '<p class="text-red-500 text-sm">Görüş boş olamaz.</p>'; return; }
+        const oneri = document.getElementById('consOneri').value || null;
+        sonuc.innerHTML = '<p class="text-xs text-slate-400">Gönderiliyor…</p>';
+        try {
+            const { error } = await supabaseClient.rpc('danisman_gorus_yaz',
+                { p_request_id: _acik.request_id, p_gorus: g, p_onerilen: oneri });
+            if (error) throw error;
+            sonuc.innerHTML = '<p class="text-emerald-600 text-sm font-bold">Görüşünüz yatırımcıya iletildi.</p>';
+            setTimeout(() => window.consultantQuoteReviews(), 1200);
+        } catch (e) { sonuc.innerHTML = `<p class="text-red-500 text-sm">${esc(e.message || e)}</p>`; }
+    };
 })();

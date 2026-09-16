@@ -315,6 +315,100 @@
         return '★'.repeat(n) + '<span style="opacity:.28">' + '☆'.repeat(5 - n) + '</span>';
     }
 
+    // ------------------------------------- TEKLİF DEĞERLENDİRME DANIŞMANLIĞI
+    // Yatırımcı üç teklifi karşılaştırırken teknik bir görüşe ihtiyaç duyabilir.
+    // Daha önce bir danışmanla ilerliyorsa o danışman doğrudan önerilir.
+    //
+    // ⚠️ Danışman teklifleri görürken firmanın MALİYETİNİ ve MARJINI GÖRMEZ;
+    // sunucudaki danisman_teklif_ozeti() items alanını hiç döndürmüyor.
+    function invDanismanBlok(leadId, gorusler, danismanim) {
+        const tamam = (gorusler || []).filter(g => g.durum === 'tamamlandi');
+        const bekleyen = (gorusler || []).find(g => g.durum === 'acik');
+
+        if (tamam.length) {
+            return tamam.map(g => `
+                <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-3">
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white">⚖️ DANIŞMAN GÖRÜŞÜ</span>
+                        <span class="text-xs font-bold text-slate-700">${esc(g.danisman || 'Danışman')}</span>
+                        ${g.unvan ? `<span class="text-[11px] text-slate-400">${esc(g.unvan)}</span>` : ''}
+                    </div>
+                    <p class="text-sm text-slate-700" style="white-space:pre-wrap">${esc(g.gorus || '')}</p>
+                    ${g.onerilen_firma ? `<p class="text-xs font-bold text-emerald-800 mt-2">Öne çıkardığı firma: ${esc(g.onerilen_firma)}</p>` : ''}
+                    <p class="text-[11px] text-slate-400 mt-1.5">Bu bir görüştür, karar sizindir.</p>
+                </div>`).join('');
+        }
+
+        if (bekleyen) {
+            return `<div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                <p class="text-xs font-bold text-amber-900">⏳ Değerlendirme bekleniyor</p>
+                <p class="text-[11px] text-amber-800 mt-0.5">${esc(bekleyen.danisman || 'Danışmanınız')} teklifleri inceliyor.</p>
+            </div>`;
+        }
+
+        if (danismanim) {
+            return `<div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-3 flex items-start justify-between gap-3 flex-wrap">
+                <div class="min-w-0">
+                    <p class="text-xs font-bold text-indigo-900">Teklifleri değerlendirmekte zorlanıyor musunuz?</p>
+                    <p class="text-[11px] text-indigo-800 mt-0.5">Danışmanınız <strong>${esc(danismanim.ad || '')}</strong> teklifleri karşılaştırıp görüş verebilir.</p>
+                </div>
+                <button onclick="investorDanismanlikIste('${leadId}','${danismanim.consultant_id}')"
+                    class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-black px-3.5 py-2 rounded-lg text-xs">Görüş iste</button>
+            </div>`;
+        }
+
+        return `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3 flex items-start justify-between gap-3 flex-wrap">
+            <div class="min-w-0">
+                <p class="text-xs font-bold text-slate-700">Teklifleri değerlendirmekte zorlanıyor musunuz?</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Bağımsız bir danışmandan teklif değerlendirme desteği alabilirsiniz.</p>
+            </div>
+            <button onclick="investorDanismanSec('${leadId}')"
+                class="shrink-0 bg-slate-800 hover:bg-slate-900 text-white font-black px-3.5 py-2 rounded-lg text-xs">Danışman seç</button>
+        </div>`;
+    }
+
+    window.investorDanismanlikIste = async function (leadId, consultantId) {
+        if (!confirm('Danışmana bu başvurunuza gelen teklifler gösterilecek.\n\nFirmaların size yazdığı bedeller ve sistem bilgileri paylaşılır; firmaların maliyet ve kâr bilgisi paylaşılmaz.\n\nDevam edilsin mi?')) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('teklif_danismanligi_iste',
+                { p_lead_id: leadId, p_consultant_id: consultantId });
+            if (error) throw error;
+            alert(((data && data.danisman) || 'Danışman') + ' bilgilendirildi. Görüşü hazır olduğunda panelinizde görünecek.');
+            invFirmaSecimi();
+        } catch (e) { alert('İstek gönderilemedi: ' + (e.message || e)); }
+    };
+
+    window.investorDanismanSec = async function (leadId) {
+        let liste = [];
+        try {
+            const { data, error } = await supabaseClient.rpc('list_approved_consultants');
+            if (error) throw error;
+            liste = data || [];
+        } catch (e) { alert('Danışman listesi alınamadı: ' + (e.message || e)); return; }
+        if (!liste.length) { alert('Şu an onaylı danışman bulunmuyor.'); return; }
+
+        let m = document.getElementById('invDanismanModal');
+        if (!m) { m = document.createElement('div'); m.id = 'invDanismanModal'; document.body.appendChild(m);
+                  m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); }); }
+        m.className = 'fixed inset-0 z-[130] bg-black/55 flex items-center justify-center p-4';
+        m.innerHTML = `<div class="bg-white rounded-2xl w-full max-w-md max-h-[85vh] overflow-y-auto p-6">
+            <h3 class="font-black text-lg text-slate-800 mb-1">Teklif değerlendirme danışmanı</h3>
+            <p class="text-xs text-slate-500 mb-4">Seçtiğiniz danışmana bu başvurunuza gelen teklifler gösterilir. Firmaların maliyet ve kâr bilgisi paylaşılmaz.</p>
+            <div class="space-y-2">
+                ${liste.map(c => `
+                    <div class="border border-slate-200 rounded-lg p-3 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="font-bold text-slate-800 text-sm">${esc(c.full_name || 'Danışman')}</p>
+                            <p class="text-[11px] text-slate-400">${esc(c.title || '')}</p>
+                        </div>
+                        <button onclick="document.getElementById('invDanismanModal').classList.add('hidden'); investorDanismanlikIste('${leadId}','${c.id}')"
+                            class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs">Seç</button>
+                    </div>`).join('')}
+            </div>
+            <button onclick="document.getElementById('invDanismanModal').classList.add('hidden')" class="mt-4 w-full text-slate-500 font-bold py-2">Kapat</button>
+        </div>`;
+    };
+
     // -------------------------------------------------------- FİRMA SEÇİMİ
     // company_id'si boş olan kayıt hâlâ yarışmada: davet edilen firmalar
     // puanlarıyla listelenir, yatırımcı birini seçer.
@@ -333,9 +427,20 @@
             } catch (e) { continue; }   // SQL yoksa bölüm hiç çıkmaz
             if (!firmalar.length) continue;
 
+            // Teklif değerlendirme danışmanlığı — görüş varsa göster, yoksa iste.
+            let danismanBlok = '';
+            try {
+                const [rg, rd] = await Promise.all([
+                    supabaseClient.rpc('teklif_gorusu', { p_lead_id: pr.id }),
+                    supabaseClient.rpc('danismanim',    { p_lead_id: pr.id })
+                ]);
+                danismanBlok = invDanismanBlok(pr.id, rg.data || [], (rd.data && rd.data[0]) || null);
+            } catch (e) { danismanBlok = ''; }
+
             parcalar.push(`
                 <div class="bg-white border border-slate-200 rounded-xl p-4 mb-2">
                     <p class="text-xs text-slate-400 mb-2">${esc(pr.address || pr.tracking_code || 'Başvurunuz')}</p>
+                    ${danismanBlok}
                     ${firmalar.map(f => `
                         <div class="border border-slate-100 rounded-lg p-3 mb-2 flex items-start justify-between gap-3 flex-wrap">
                             <div class="min-w-0">
