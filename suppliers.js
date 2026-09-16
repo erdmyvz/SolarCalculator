@@ -38,6 +38,13 @@
         rejected: { t: 'Düzeltme İstendi',  css: 'bg-red-100 text-red-700' }
     };
 
+    // Satır durumu rozeti — katalog ve stok ekranlarının ikisi de kullanıyor.
+    const durumRozet = (st) => ({
+        pending:  '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Onay bekliyor</span>',
+        approved: '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Yayında</span>',
+        rejected: '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">Düzeltme istendi</span>'
+    })[st] || '';
+
     // ------------------------------------------------------------ panel girişi
     window.showSupplierPanel = function (sup, email) {
         document.getElementById('authContainer')?.classList.add('hidden');
@@ -129,14 +136,15 @@
         const d = DURUM[S.status] || DURUM.draft;
 
         // Rozet sayıları (tablo yoksa sessizce 0)
-        let urun = 0, ilan = 0, talep = 0;
+        let urun = 0, ilan = 0, talep = 0, stok = 0;
         try {
-            const [p, a, r] = await Promise.all([
+            const [p, a, r, k] = await Promise.all([
                 supabaseClient.from('supplier_products').select('id', { count: 'exact', head: true }).eq('supplier_id', S.id),
                 supabaseClient.from('supplier_dealer_ads').select('id', { count: 'exact', head: true }).eq('supplier_id', S.id),
-                supabaseClient.from('supplier_requests').select('id', { count: 'exact', head: true }).eq('supplier_id', S.id).eq('status', 'open')
+                supabaseClient.from('supplier_requests').select('id', { count: 'exact', head: true }).eq('supplier_id', S.id).eq('status', 'open'),
+                supabaseClient.from('supplier_stock').select('id', { count: 'exact', head: true }).eq('supplier_id', S.id).eq('is_active', true)
             ]);
-            urun = p.count || 0; ilan = a.count || 0; talep = r.count || 0;
+            urun = p.count || 0; ilan = a.count || 0; talep = r.count || 0; stok = k.count || 0;
         } catch (e) { /* tablolar yoksa 0 kalir */ }
 
         el.innerHTML = `
@@ -157,6 +165,7 @@
                 ${kart('🏢', 'Firma Profili', 'Marka, kategori ve bölge bilgileriniz. Onaya buradan gönderilir.', "supplierOpen('profil')")}
                 ${kart('📦', 'Ürün Kataloğu', 'Ürünlerinizi teknik değerleri ve kaynağıyla ekleyin.', "supplierOpen('katalog')", urun ? urun + ' ürün' : null)}
                 ${kart('🤝', 'Bayi İlanları', 'Hangi illerde bayi veya yetkili kurulumcu arıyorsunuz?', "supplierOpen('ilan')", ilan ? ilan + ' ilan' : null)}
+                ${kart('🏷️', 'Stok & Fiyat', 'Hangi üründen NEREDE kaç adet var, fiyatı açık mı? Kurulumcular en yakın depoyu görür.', "supplierOpen('stok')", stok ? stok + ' kalem' : null)}
                 ${kart('📨', 'Gelen Talepler', 'Kurulumcu firmalardan gelen fiyat ve stok talepleri.', "supplierOpen('talep')", talep ? talep + ' açık' : null)}
             </div>`;
     }
@@ -164,7 +173,7 @@
     // Tedarikçi panelinin dört ekranı da kendi adresinde:
     //   #tedarikci-panel/tedarikci-profil · /katalog · /ilanlarim · /gelen-talepler
     // Eskiden dördü de #app'ti: yenileyince menüye düşülüyordu.
-    const SUP_SLUG = { profil: 'tedarikci-profil', katalog: 'katalog', ilan: 'ilanlarim', talep: 'gelen-talepler' };
+    const SUP_SLUG = { profil: 'tedarikci-profil', katalog: 'katalog', ilan: 'ilanlarim', talep: 'gelen-talepler', stok: 'stok-fiyat' };
 
     window.supplierOpen = function (v) { return window.supplierGoto(v, false); };
 
@@ -175,6 +184,7 @@
         if (v === 'katalog') return renderKatalog();
         if (v === 'ilan') return renderIlan();
         if (v === 'talep') return renderTalep();
+        if (v === 'stok') return renderStok();
         return renderMenu();
     };
     window.supplierBack = () => {
@@ -286,12 +296,6 @@
         }
         window.__supCats = cats.data || [];
         const rows = prods.data || [];
-
-        const durumRozet = (st) => ({
-            pending:  '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Onay bekliyor</span>',
-            approved: '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Yayında</span>',
-            rejected: '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">Düzeltme istendi</span>'
-        })[st] || '';
 
         el.innerHTML = baslik('Ürün Kataloğu', 'Onaylanan ürünler donanım karşılaştırma tablosunda yayınlanır') + `
             <div class="flex justify-end mb-3">
@@ -519,5 +523,235 @@
             .update({ answer: a, status: 'answered', answered_at: new Date().toISOString() }).eq('id', id);
         if (error) { alert('Gönderilemedi: ' + error.message); return; }
         supplierCloseModal(); renderTalep();
+    };
+    // ======================================================== STOK & FİYAT
+    // Kataloğun (teknik karşılaştırma) ticari karşılığı. Bir ürün birden çok
+    // depoda bulunabildiği için her (ürün × konum) ayrı satırdır.
+    //
+    // FİYAT GÖRÜNÜRLÜĞÜ satır bazında sizin kararınız: açarsanız kurulumcu
+    // firma fiyatı doğrudan görüp maliyetini anında hesaplar; kapatırsanız
+    // "fiyat teklifi iste" düğmesi çıkar ve talep size düşer. Gizli fiyat
+    // sunucuda saklanır, kurulumcunun tarayıcısına hiç gitmez.
+    const STOK_KAT = [['panel','Güneş Paneli'],['inverter','İnverter'],['battery','Depolama'],
+                      ['cable','Kablo ve Bağlantı'],['mounting','Konstrüksiyon']];
+    const STOK_BIRIM = ['adet', 'metre', 'takım', 'kWh'];
+    // EUR kuru sistemde tutulmadığı için iki para birimiyle sınırlı; uydurma
+    // kurla hesaplanan bir maliyet tablosu kurulumcuyu yanıltırdı.
+    const STOK_PARA = ['USD', 'TRY'];
+    const STOK_BAZ = ['adet', 'Wp', 'metre', 'kWh'];
+    let _stokAlan = {};
+
+    async function stokAlanlariYukle() {
+        if (Object.keys(_stokAlan).length) return;
+        try {
+            const { data } = await supabaseClient.from('stok_alanlari')
+                .select('kategori,anahtar,etiket,birim,tip,secenek,sira').order('sira');
+            (data || []).forEach(a => { (_stokAlan[a.kategori] = _stokAlan[a.kategori] || []).push(a); });
+        } catch (e) { /* tablo yoksa teknik alanlar gösterilmez */ }
+    }
+
+    async function renderStok() {
+        _view = 'stok';
+        const el = root(); if (!el) return;
+        el.innerHTML = baslik('Stok & Fiyat', 'Yükleniyor…');
+        await stokAlanlariYukle();
+
+        let rows = [], hata = null;
+        try {
+            const { data, error } = await supabaseClient.from('supplier_stock')
+                .select('*').eq('supplier_id', S.id).order('category_key').order('brand');
+            if (error) throw error;
+            rows = data || [];
+        } catch (e) { hata = e.message || String(e); }
+        window.__supStok = rows;
+
+        const ozet = (r) => (_stokAlan[r.category_key] || [])
+            .map(a => (r.specs && r.specs[a.anahtar] != null && r.specs[a.anahtar] !== '')
+                ? `${a.etiket}: ${r.specs[a.anahtar]}${a.birim ? ' ' + a.birim : ''}` : null)
+            .filter(Boolean).join(' · ');
+
+        const liste = rows.map(r => {
+            const kat = (STOK_KAT.find(k => k[0] === r.category_key) || [r.category_key, r.category_key])[1];
+            const konum = [r.district, r.city].filter(Boolean).join(' / ');
+            return `<div class="bg-white border border-slate-200 rounded-xl p-4 flex items-start justify-between gap-3 flex-wrap">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <strong class="text-sm text-slate-800">${esc(r.brand)} ${esc(r.model)}</strong>
+                        ${durumRozet(r.status)}
+                        ${r.price_visible
+                            ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">fiyat açık</span>'
+                            : '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">fiyat gizli</span>'}
+                        ${r.is_active ? '' : '<span class="text-[10px] font-bold text-slate-400">yayında değil</span>'}
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-0.5">${esc(kat)} · 📍 ${esc(konum || 'konum girilmemiş')}${r.lead_time_days ? ' · ' + r.lead_time_days + ' gün termin' : ''}</p>
+                    ${ozet(r) ? `<p class="text-[11px] text-slate-400 mt-0.5">${esc(ozet(r))}</p>` : ''}
+                    ${r.status === 'rejected' && r.reject_reason ? `<p class="text-[11px] text-red-600 mt-1">${esc(r.reject_reason)}</p>` : ''}
+                </div>
+                <div class="text-right shrink-0">
+                    <div class="text-sm font-black text-slate-800">${Number(r.quantity).toLocaleString('tr-TR')} <span class="text-[11px] font-normal text-slate-400">${esc(r.unit)}</span></div>
+                    <div class="text-[11px] text-slate-500 mb-1.5">${r.price_visible && r.unit_price != null
+                        ? Number(r.unit_price).toLocaleString('tr-TR') + ' ' + esc(r.currency) + '/' + esc(r.price_basis)
+                        : '—'}</div>
+                    <span class="flex gap-1 justify-end">
+                        <button onclick="supplierEditStok('${r.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Düzenle</button>
+                        <button onclick="supplierDeleteStok('${r.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Sil</button>
+                    </span>
+                </div>
+            </div>`;
+        }).join('');
+
+        el.innerHTML = baslik('Stok & Fiyat', 'Hangi üründen nerede kaç adet var; fiyatı açık mı, talebe mi bağlı.') +
+            (hata ? `<div class="bg-red-50 border border-red-100 rounded-xl p-4 mb-3"><p class="text-sm font-bold text-red-700">${esc(hata)}</p><p class="text-xs text-red-600 mt-1">stok-fiyatlandirma.sql çalıştırıldı mı?</p></div>` : '') + `
+            <div class="bg-sky-50 border border-sky-100 rounded-xl p-4 mb-4">
+                <p class="text-xs text-sky-900 leading-relaxed"><strong>Konum neden önemli?</strong> Kurulumcu firmalar stok listesini önce yakınlığa göre görür — aynı ilçe, aynı il, aynı bölge. Deponuzun ilini ve ilçesini doğru girmek, size en yakın işleri getirir.</p>
+            </div>
+            <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                <p class="text-[11px] text-slate-400">Yeni satırlar yönetici onayından sonra kurulumcu firmalara görünür.</p>
+                <button onclick="supplierNewStok()" class="bg-sky-600 hover:bg-sky-700 text-white font-bold px-4 py-2 rounded-lg text-sm">+ Stok kalemi</button>
+            </div>
+            <div class="space-y-2">${liste || '<p class="text-sm text-slate-400 italic">Henüz stok kalemi eklemediniz.</p>'}</div>`;
+    }
+
+    function stokAlanFormu(kat, specs) {
+        const s = specs || {};
+        return (_stokAlan[kat] || []).map(a => {
+            const v = s[a.anahtar] == null ? '' : s[a.anahtar];
+            const alan = a.tip === 'secim' && (a.secenek || []).length
+                ? `<select id="ss_${a.anahtar}" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white"><option value="">—</option>${a.secenek.map(o => `<option ${String(v) === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`
+                : `<input id="ss_${a.anahtar}" value="${esc(v)}" type="${a.tip === 'sayi' ? 'number' : 'text'}" step="any" class="w-full border border-slate-300 p-2 rounded-lg text-sm">`;
+            return `<div><label class="block text-[11px] font-bold text-slate-600 mb-1">${esc(a.etiket)}${a.birim ? ' (' + esc(a.birim) + ')' : ''}</label>${alan}</div>`;
+        }).join('');
+    }
+
+    window.supplierNewStok = () => openStokModal(null);
+    window.supplierEditStok = (id) => openStokModal((window.__supStok || []).find(x => x.id === id));
+
+    function openStokModal(r) {
+        const e = r || {};
+        const kat = e.category_key || 'panel';
+        const iller = Object.keys(window.EPC_IL_VERIM || {}).sort((a, b) => a.localeCompare(b, 'tr'));
+        const sec = (id, liste, deg) => `<select id="${id}" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white">${liste.map(x => `<option ${deg === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
+
+        supModal(`
+            <h3 class="text-lg font-black text-slate-800 mb-1">${r ? 'Stok Kalemini Düzenle' : 'Yeni Stok Kalemi'}</h3>
+            <p class="text-xs text-slate-500 mb-4">Kaydedilen satır yönetici onayından sonra yayına girer.</p>
+            <div class="space-y-3">
+                <div><label class="block text-xs font-bold text-slate-600 mb-1">Kategori</label>
+                    <select id="skCat" onchange="supplierStokKatDegisti()" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white">
+                        ${STOK_KAT.map(([k, a]) => `<option value="${k}" ${kat === k ? 'selected' : ''}>${esc(a)}</option>`).join('')}
+                    </select></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">Üretici *</label><input id="skBrand" value="${esc(e.brand || '')}" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                    <div><label class="block text-xs font-bold text-slate-600 mb-1">Model / Seri *</label><input id="skModel" value="${esc(e.model || '')}" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-3">
+                    <p class="text-[11px] font-bold text-slate-500 mb-2">Stok ve konum</p>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Miktar *</label><input id="skQty" type="number" step="any" value="${e.quantity != null ? e.quantity : 0}" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Birim</label>${sec('skUnit', STOK_BIRIM, e.unit || 'adet')}</div>
+                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Asgari sipariş</label><input id="skMin" type="number" step="any" value="${e.min_order != null ? e.min_order : ''}" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 mt-3">
+                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">İl *</label>
+                            <select id="skCity" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white"><option value="">— Seçin —</option>${iller.map(i => `<option ${e.city === i ? 'selected' : ''}>${esc(i)}</option>`).join('')}</select></div>
+                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">İlçe</label><input id="skDist" value="${esc(e.district || '')}" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Termin (gün)</label><input id="skLead" type="number" value="${e.lead_time_days != null ? e.lead_time_days : ''}" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-3">
+                    <label class="flex items-start gap-2 cursor-pointer bg-slate-50 border border-slate-200 rounded-lg p-3">
+                        <input type="checkbox" id="skVis" ${e.price_visible ? 'checked' : ''} onchange="supplierStokFiyatAc()" class="mt-0.5">
+                        <span>
+                            <span class="text-sm font-bold text-slate-800">Fiyatı kurulumcu firmalara açık göster</span>
+                            <span class="block text-[11px] text-slate-500 mt-0.5">Açarsanız fiyatınız maliyet tablosuna doğrudan girer ve iş size daha hızlı gelir; rakip tedarikçiler de görebilir. Kapatırsanız kurulumcuya "fiyat teklifi iste" düğmesi çıkar, talep size düşer.</span>
+                        </span>
+                    </label>
+                    <div id="skFiyatAlan" class="grid grid-cols-4 gap-3 mt-3 ${e.price_visible ? '' : 'hidden'}">
+                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Birim fiyat</label><input id="skPrice" type="number" step="any" value="${e.unit_price != null ? e.unit_price : ''}" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Para</label>${sec('skCur', STOK_PARA, e.currency || 'USD')}</div>
+                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Başına</label>${sec('skBasis', STOK_BAZ, e.price_basis || 'adet')}</div>
+                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Geçerlilik</label><input id="skValid" type="date" value="${e.valid_until || ''}" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-3">
+                    <p class="text-[11px] font-bold text-slate-500 mb-2">Teknik bilgiler</p>
+                    <div id="skSpecWrap" class="grid grid-cols-2 gap-3">${stokAlanFormu(kat, e.specs)}</div>
+                </div>
+
+                <div><label class="block text-xs font-bold text-slate-600 mb-1">Teknik doküman bağlantısı</label><input id="skSrc" value="${esc(e.source_url || '')}" placeholder="https://" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                <label class="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" id="skActive" ${e.is_active === false ? '' : 'checked'}> Yayında</label>
+            </div>
+            <div class="flex gap-2 mt-5">
+                <button onclick="supplierCloseModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-lg">İptal</button>
+                <button onclick="supplierSaveStok('${r ? r.id : ''}')" class="flex-1 bg-sky-600 text-white font-bold py-2 rounded-lg">Kaydet</button>
+            </div>
+            <div id="skMsg"></div>`);
+    }
+
+    window.supplierStokKatDegisti = function () {
+        const k = document.getElementById('skCat').value;
+        document.getElementById('skSpecWrap').innerHTML = stokAlanFormu(k, null);
+    };
+    window.supplierStokFiyatAc = function () {
+        const a = document.getElementById('skFiyatAlan');
+        if (a) a.classList.toggle('hidden', !document.getElementById('skVis').checked);
+    };
+
+    window.supplierSaveStok = async function (id) {
+        const g = (x) => document.getElementById(x);
+        const msg = g('skMsg');
+        const brand = (g('skBrand').value || '').trim();
+        const model = (g('skModel').value || '').trim();
+        const city  = g('skCity').value || '';
+        const acik  = !!g('skVis').checked;
+        const fiyat = g('skPrice').value === '' ? null : parseFloat(g('skPrice').value);
+
+        if (!brand || !model) { msg.innerHTML = '<p class="text-red-500 text-sm mt-2">Üretici ve model zorunludur.</p>'; return; }
+        if (!city) { msg.innerHTML = '<p class="text-red-500 text-sm mt-2">İl zorunludur — stok konumu bu modülün asıl bilgisi.</p>'; return; }
+        // Sunucuda da kısıt var; burada erken ve anlaşılır söylüyoruz.
+        if (acik && !(fiyat > 0)) { msg.innerHTML = '<p class="text-red-500 text-sm mt-2">Fiyatı açık gösteriyorsanız birim fiyat girmelisiniz. Fiyat vermeyecekseniz kutuyu kapatın.</p>'; return; }
+
+        const kat = g('skCat').value;
+        const specs = {};
+        (_stokAlan[kat] || []).forEach(a => {
+            const el = g('ss_' + a.anahtar);
+            if (el && el.value !== '') specs[a.anahtar] = a.tip === 'sayi' ? Number(el.value) : el.value;
+        });
+
+        const row = {
+            supplier_id: S.id, category_key: kat, brand, model,
+            unit: g('skUnit').value,
+            quantity: parseFloat(g('skQty').value) || 0,
+            min_order: g('skMin').value === '' ? null : parseFloat(g('skMin').value),
+            city, district: (g('skDist').value || '').trim() || null,
+            lead_time_days: g('skLead').value === '' ? null : parseInt(g('skLead').value, 10),
+            price_visible: acik,
+            unit_price: acik ? fiyat : null,
+            currency: g('skCur').value,
+            price_basis: g('skBasis').value,
+            valid_until: g('skValid').value || null,
+            specs,
+            source_url: (g('skSrc').value || '').trim() || null,
+            is_active: !!g('skActive').checked,
+            status: 'pending'          // her değişiklik yeniden onaya girer
+        };
+
+        msg.innerHTML = '<p class="text-xs text-slate-400 mt-2">Kaydediliyor…</p>';
+        try {
+            if (id) { const { error } = await supabaseClient.from('supplier_stock').update(row).eq('id', id); if (error) throw error; }
+            else { const { error } = await supabaseClient.from('supplier_stock').insert([row]); if (error) throw error; }
+            supplierCloseModal(); renderStok();
+        } catch (e) { msg.innerHTML = `<p class="text-red-500 text-sm mt-2">${esc(e.message || e)}</p>`; }
+    };
+
+    window.supplierDeleteStok = async function (id) {
+        const r = (window.__supStok || []).find(x => x.id === id);
+        if (!confirm(`"${r ? r.brand + ' ' + r.model : 'Bu kalem'}" silinsin mi?`)) return;
+        const { error } = await supabaseClient.from('supplier_stock').delete().eq('id', id);
+        if (error) { alert('Silinemedi: ' + error.message); return; }
+        renderStok();
     };
 })();

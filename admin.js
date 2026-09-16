@@ -748,17 +748,18 @@ window.psDelete = async (id) => {
 // approve_supplier_product() RPC'si ile donanım karşılaştırmasına taşınır.
 // tedarikci.sql çalıştırılmış olmalıdır.
 // ============================================================================
-let _supList = [], _supProds = [], _supAds = [];
+let _supList = [], _supProds = [], _supAds = [], _supStock = [];
 
 async function renderSuppliersAdmin() {
     const pane = document.getElementById('adminPaneSuppliers');
     if (!pane || !supabaseClient) return;
     pane.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
 
-    const [sup, prod, ads] = await Promise.all([
+    const [sup, prod, ads, stk] = await Promise.all([
         supabaseClient.from('suppliers').select('*').order('created_at', { ascending: false }),
         supabaseClient.from('supplier_products').select('*').order('created_at', { ascending: false }),
-        supabaseClient.from('supplier_dealer_ads').select('*').order('created_at', { ascending: false })
+        supabaseClient.from('supplier_dealer_ads').select('*').order('created_at', { ascending: false }),
+        supabaseClient.from('supplier_stock').select('*').order('created_at', { ascending: false })
     ]);
     if (sup.error) {
         pane.innerHTML = `<div class="bg-white border border-slate-200 rounded-xl p-5">
@@ -767,10 +768,14 @@ async function renderSuppliersAdmin() {
         return;
     }
     _supList = sup.data || []; _supProds = prod.data || []; _supAds = ads.data || [];
+    // stok-fiyatlandirma.sql henüz çalışmadıysa bu tablo yoktur; bölüm gizlenir.
+    _supStock = (stk && !stk.error) ? (stk.data || []) : [];
+    const stokTablosuVar = !(stk && stk.error);
 
     const bekleyenP = _supList.filter(x => x.status === 'pending');
     const bekleyenU = _supProds.filter(x => x.status === 'pending');
     const bekleyenI = _supAds.filter(x => x.status === 'pending');
+    const bekleyenS = _supStock.filter(x => x.status === 'pending');
 
     const rozet = (st) => ({
         draft:    '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">Taslak</span>',
@@ -831,6 +836,32 @@ async function renderSuppliersAdmin() {
         </div>
     </div>
 
+    ${stokTablosuVar ? `
+    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <h3 class="text-lg font-black text-slate-800 mb-1">🏷️ Stok & Fiyat Onayları</h3>
+        <p class="text-xs text-slate-400 mb-4">Onaylanan stok satırları kurulumcu firmalara konuma göre sıralı gösterilir. Fiyatı gizli satırlarda kurulumcuya yalnız "fiyat teklifi iste" düğmesi çıkar.</p>
+        ${bekleyenS.length ? `<p class="text-xs font-bold text-amber-700 mb-2">${bekleyenS.length} stok satırı onay bekliyor</p>` : ''}
+        <div class="space-y-2">
+            ${_supStock.map(x => `
+                <div class="border border-slate-200 rounded-lg p-3 flex items-start justify-between gap-2 flex-wrap">
+                    <div class="min-w-0">
+                        <strong class="text-sm text-slate-800">${admEscape(x.brand)} ${admEscape(x.model)}</strong> ${rozet(x.status)}
+                        ${x.price_visible
+                            ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">fiyat açık</span>'
+                            : '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">fiyat gizli</span>'}
+                        ${x.source_url ? `<a href="${admEscape(x.source_url)}" target="_blank" rel="noopener nofollow" class="text-[11px] text-emerald-700 font-bold ml-1">Kaynak ↗</a>` : ''}
+                        <div class="text-[11px] text-slate-400">${admEscape(supAd(x.supplier_id))} · ${admEscape(x.category_key)} · 📍 ${admEscape([x.district, x.city].filter(Boolean).join(' / ') || 'konum yok')}</div>
+                        <div class="text-[11px] text-slate-500">${Number(x.quantity).toLocaleString('tr-TR')} ${admEscape(x.unit)}${x.price_visible && x.unit_price != null ? ' · ' + Number(x.unit_price).toLocaleString('tr-TR') + ' ' + admEscape(x.currency) + '/' + admEscape(x.price_basis) : ''}${x.valid_until ? ' · geçerlilik ' + admEscape(x.valid_until) : ''}</div>
+                        ${x.status === 'rejected' && x.reject_reason ? `<div class="text-[11px] text-red-600 mt-0.5">${admEscape(x.reject_reason)}</div>` : ''}
+                    </div>
+                    <span class="flex gap-1 flex-shrink-0">
+                        ${x.status !== 'approved' ? `<button onclick="supAdminApproveStock('${x.id}')" class="text-[11px] bg-emerald-600 text-white font-bold px-2 py-1 rounded">Onayla</button>` : ''}
+                        ${x.status === 'pending' ? `<button onclick="supAdminRejectStock('${x.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Düzeltme İste</button>` : ''}
+                    </span>
+                </div>`).join('') || '<p class="text-xs text-slate-400 italic">Stok kaydı yok.</p>'}
+        </div>
+    </div>` : ''}
+
     <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
         <h3 class="text-lg font-black text-slate-800 mb-1">🤝 Bayi İlanı Onayları</h3>
         <p class="text-xs text-slate-400 mb-4">Onaylanan ilanlar kurulumcu firmalara gösterilir.</p>
@@ -851,7 +882,7 @@ async function renderSuppliersAdmin() {
         </div>
     </div>`;
 
-    if (typeof setTabBadge === 'function') setTabBadge('suppliers', bekleyenP.length + bekleyenU.length + bekleyenI.length);
+    if (typeof setTabBadge === 'function') setTabBadge('suppliers', bekleyenP.length + bekleyenU.length + bekleyenI.length + bekleyenS.length);
 }
 
 window.supAdminApprove = async (id) => {
@@ -888,6 +919,22 @@ window.supAdminRejectProduct = async (id) => {
     const r = prompt('Tedarikçiye iletilecek düzeltme notu:');
     if (r === null) return;
     const { error } = await supabaseClient.from('supplier_products').update({ status: 'rejected', reject_reason: r || null }).eq('id', id);
+    if (error) { alert('Kaydedilemedi: ' + error.message); return; }
+    renderSuppliersAdmin();
+};
+
+window.supAdminApproveStock = async (id) => {
+    const x = _supStock.find(p => p.id === id);
+    // Konum bu modülün asıl bilgisi: ilsiz satır yakınlık sıralamasına giremez.
+    if (x && !x.city) { alert('Bu satırda il yok. Konumsuz stok, kurulumcuya en yakın depoyu gösteremez — tedarikçiden düzeltme isteyin.'); return; }
+    const { error } = await supabaseClient.rpc('set_supplier_stock_status', { p_id: id, p_status: 'approved' });
+    if (error) { alert('Onaylanamadı: ' + error.message); return; }
+    renderSuppliersAdmin();
+};
+window.supAdminRejectStock = async (id) => {
+    const r = prompt('Tedarikçiye iletilecek düzeltme notu:');
+    if (r === null) return;
+    const { error } = await supabaseClient.rpc('set_supplier_stock_status', { p_id: id, p_status: 'rejected', p_reason: r || null });
     if (error) { alert('Kaydedilemedi: ' + error.message); return; }
     renderSuppliersAdmin();
 };

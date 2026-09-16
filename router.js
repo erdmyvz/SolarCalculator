@@ -202,6 +202,7 @@ const EPC_EKRANLAR = {
     'tedarikciler':    { btn: 'btnGoSuppliers' },
     // Evrak modülü müşteri kimliği taşır: /evraklar/<müşteri kimliği>
     'evraklar':        { ac: (arg) => window.showEvrakModule && window.showEvrakModule(arg || null, true) },
+    'stok':            { ac: () => window.showStokModule && window.showStokModule(true) },
     'yonetim':         { btn: 'adminPanelCard' },
 
     // --- her rolde ortak ---
@@ -217,6 +218,7 @@ const EPC_EKRANLAR = {
     'katalog':           { ac: () => window.supplierGoto && window.supplierGoto('katalog', true) },
     'ilanlarim':         { ac: () => window.supplierGoto && window.supplierGoto('ilan', true) },
     'gelen-talepler':    { ac: () => window.supplierGoto && window.supplierGoto('talep', true) },
+    'stok-fiyat':        { ac: () => window.supplierGoto && window.supplierGoto('stok', true) },
 
     // --- yatırımcı (başvuru adresi kimlik alır: /basvuru/<id>) ---
     'teklif-karsilastir': { ac: () => window.investorCompareQuotes && window.investorCompareQuotes(true) },

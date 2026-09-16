@@ -2030,6 +2030,12 @@
                     <span class="panel-card-desc">Fiyat ve stok talebi gönderin, bayiliğe başvurun.</span>
                 </button>
 
+                <button id="btnGoStok" class="panel-card panel-card-sm" style="--accent:#0f766e;--accent-bg:#f0fdfa">
+                    <span class="panel-ico" aria-hidden="true">🧮</span>
+                    <span class="panel-card-title">Stok & Maliyet</span>
+                    <span class="panel-card-desc">Depodaki malzeme, en yakın tedarikçi stoğu ve teklif öncesi maliyet tablosu.</span>
+                </button>
+
                 <button id="btnGoEvrak" class="panel-card panel-card-sm" style="--accent:#b45309;--accent-bg:#fffbeb">
                     <span class="panel-ico" aria-hidden="true">📄</span>
                     <span class="panel-card-title">Başvuru Evrakları</span>
@@ -2059,6 +2065,12 @@
 
         <div id="investorModule" class="hidden modul-koyu w-full max-w-4xl mx-auto mt-4 animate-fade-in">
             <div id="investorRoot"></div>
+        </div>
+
+        <!-- STOK & MALİYET — firmanın kendi deposu, tedarikçi stoğu (konuma göre)
+             ve teklif öncesi malzeme maliyeti tablosu. -->
+        <div id="stokModule" class="hidden tema-koyu w-full max-w-5xl mx-auto mt-4 animate-fade-in">
+            <div id="stokRoot"></div>
         </div>
 
         <!-- BAŞVURU EVRAKLARI — dağıtım şirketine yapılacak bağlantı
