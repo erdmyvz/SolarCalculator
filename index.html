@@ -1924,6 +1924,14 @@
                         <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Soyad</label><input type="text" id="regSurname" required class="auth-input"></div>
                     </div>
                     <div id="regCompanyWrap"><label id="regCompanyLabel" class="block text-xs font-bold text-slate-600 mb-1.5">Resmi Firma Ünvanı</label><input type="text" id="regCompany" class="auth-input"></div>
+                    <div id="regKonumWrap" class="hidden">
+                        <label class="block text-xs font-bold text-slate-600 mb-1.5">Hizmet Verdiğiniz Konum</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <select id="regCity" class="auth-input"><option value="">İl seçiniz…</option></select>
+                            <input type="text" id="regDistrict" placeholder="İlçe" class="auth-input">
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">📍 Yatırımcılara <strong>en yakın firmalar</strong> gösterilir. Konum girilmezse başvurular size düşmez.</p>
+                    </div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Telefon</label><input type="tel" id="regPhone" required class="auth-input"></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">E-posta</label><input type="email" id="regEmail" required class="auth-input"></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Şifre</label><input type="password" id="regPassword" required minlength="6" class="auth-input"></div>

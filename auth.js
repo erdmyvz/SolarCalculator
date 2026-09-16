@@ -40,6 +40,17 @@ window.authSetRole = function (role) {
     // Firma ünvanı alanı hem kurulumcu hem tedarikçi için gerekli (ikisi de tüzel taraf).
     const wrap = document.getElementById('regCompanyWrap');
     if (wrap) wrap.classList.toggle('hidden', role !== 'firma' && role !== 'supplier');
+    // Konum yalnız kurulumcu firmada gerekli: eşleştirme buna göre yapılıyor.
+    // Tedarikçinin konumu stok satırında ayrı ayrı tutuluyor (depo başına).
+    const kw = document.getElementById('regKonumWrap');
+    if (kw) {
+        kw.classList.toggle('hidden', role !== 'firma');
+        const sel = document.getElementById('regCity');
+        if (sel && sel.options.length <= 1) {
+            const iller = Object.keys(window.EPC_IL_VERIM || {}).sort((a, b) => a.localeCompare(b, 'tr'));
+            sel.insertAdjacentHTML('beforeend', iller.map(i => `<option value="${i}">${i}</option>`).join(''));
+        }
+    }
     const lbl = document.getElementById('regCompanyLabel');
     if (lbl) lbl.textContent = role === 'supplier' ? 'Resmi Firma Ünvanı (Tedarikçi)' : 'Resmi Firma Ünvanı';
     const rb = document.getElementById('btnRegisterSubmit');
@@ -475,6 +486,14 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
     if (!company || company.trim().length < 3) {
         alert("Geçerli bir EPC/Kurulum Firması ünvanı girmek zorunludur. Bireysel kayıt yasaktır."); return;
     }
+    // ⚠️ KONUM ZORUNLU. Yatırımcıya "en yakın 3 firma" gösteriliyor; konumu
+    // olmayan firma bu sıralamaya HİÇ giremez, yani hiç başvuru almaz.
+    // Kayıt anında almak, sonradan "neden iş gelmiyor" sorusunu önlüyor.
+    const regIl   = (document.getElementById('regCity')?.value || '').trim();
+    const regIlce = (document.getElementById('regDistrict')?.value || '').trim();
+    if (!regIl) {
+        alert("Hizmet verdiğiniz ili seçin.\n\nYatırımcılara konumlarına en yakın firmalar gösteriliyor; il seçilmezse başvurular size düşmez."); return;
+    }
     btn.textContent = "Kaydediliyor..."; btn.disabled = true;
     try {
         const { error: signUpErr } = await supabaseClient.auth.signUp({ email, password });
@@ -492,8 +511,20 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
             p_company_name: company, p_phone: phone, p_first_name: firstName, p_last_name: lastName
         });
         if (bootErr) throw bootErr;
+
+        // bootstrap_company() konum almıyor ve gövdesi bilinmediği için ona
+        // dokunulmuyor; konumu oturum kapanmadan ayrı fonksiyonla yazıyoruz.
+        let konumYazildi = true;
+        try {
+            const { error: kErr } = await supabaseClient.rpc('firma_konum_yaz',
+                { p_il: regIl, p_ilce: regIlce || null });
+            if (kErr) throw kErr;
+        } catch (e) { konumYazildi = false; console.warn('firma konumu yazılamadı', e); }
+
         await supabaseClient.auth.signOut();
-        alert("Firma Kaydı Başarılı! Artık sisteme giriş yapabilirsiniz.");
+        alert(konumYazildi
+            ? "Firma Kaydı Başarılı! Artık sisteme giriş yapabilirsiniz."
+            : "Firma Kaydı Başarılı! Ancak konumunuz kaydedilemedi — giriş yaptıktan sonra Profilim sayfasından il/ilçe girin, yoksa başvurular size düşmez.");
         document.getElementById('registerForm').reset(); document.getElementById('tabLogin').click();
     } catch (err) {
         alert("Kayıt Hatası: " + (err.message || err));
