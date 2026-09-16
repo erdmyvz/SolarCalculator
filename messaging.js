@@ -171,8 +171,11 @@
         _refLead = {};
         try {
             const { data } = await supabaseClient
-                .from('leads').select('id,status,consultant_client_id')
-                .not('consultant_client_id', 'is', null);
+                .from('leads').select('id,status,company_id,consultant_client_id')
+                .not('consultant_client_id', 'is', null)
+                // ⚠️ Yalnız KAZANILAN kayıtlar. Yarışmadaki davette CRM aşaması
+                // göstermek yanlış olurdu: iş henüz bu firmanın değil.
+                .not('company_id', 'is', null);
             (data || []).forEach(l => { _refLead[l.consultant_client_id] = { id: l.id, status: l.status }; });
         } catch (e) { /* kolon yoksa (SQL çalıştırılmadıysa) eski davranış sürer */ }
     }

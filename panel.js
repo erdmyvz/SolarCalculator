@@ -56,7 +56,7 @@
         // yazan HİÇBİR yer yok — yani "Kazanılan İş", "Dönüşüm Oranı" ve tüm
         // teklif özeti firma kaç teklif verirse versin ₺0 / %0 gösteriyordu.
         const [lr, qr, pr, sr, cr] = await Promise.all([
-            supabaseClient.from('leads').select('status, created_at, updated_at, completed_steps'),
+            supabaseClient.from('leads').select('company_id, status, created_at, updated_at, completed_steps'),
             supabaseClient.from('firm_quotes').select('id, lead_id, status, totals, created_at'),
             supabaseClient.from('projects').select('id, created_at'),
             supabaseClient.from('service_requests').select('status, created_at'),
@@ -66,7 +66,11 @@
         // Hata alan tablo null kalır — 0 DEĞİL. "Bilinmiyor" ile "yok" aynı şey
         // değil; biri boş kutu gösterir, diğeri firmanın işi yok sanmasına yol açar.
         _kayit = {
-            leads:    lr.error ? null : (lr.data || []),
+            // ⚠️ YARIŞMALI DAVETLERİ SAYMA. leads RLS'ine "davet edilen firma
+            // görebilir" politikası eklendi; filtre olmasa firma henüz
+            // kazanmadığı işleri kendi başvurusu sanır, dönüşüm oranı ve
+            // "kazanılan iş" rakamları olduğundan iyi görünürdü.
+            leads:    lr.error ? null : (lr.data || []).filter(l => !!l.company_id),
             quotes:   qr.error ? null : (qr.data || []).map(window.epcTeklifNormalle),
             projects: pr.error ? null : (pr.data || []),
             services: sr.error ? null : (sr.data || []),

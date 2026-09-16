@@ -70,12 +70,37 @@ async function fetchAdminData() {
             .from('leads').select('*').is('company_id', null)
             .order('created_at', { ascending: false });
 
+        // ⚠️ HAVUZ ARTIK İKİ TÜR KAYIT İÇERİYOR.
+        // Yarışmalı atamada kazanan seçilene kadar company_id NULL kalıyor;
+        // yani "en yakın 3 firmaya açılmış" kayıtlar da bu listeye düşüyor.
+        // İşaretlemezsek yönetici bunları sahipsiz sanıp elle atar ve
+        // yarışmayı farkında olmadan iptal eder.
+        const _yarisma = {};
+        try {
+            const ids = (pool || []).map(l => l.id);
+            if (ids.length) {
+                const { data: la } = await supabaseClient
+                    .from('lead_assignments').select('lead_id, company_id, durum').in('lead_id', ids);
+                (la || []).forEach(r => {
+                    if (!_yarisma[r.lead_id]) _yarisma[r.lead_id] = [];
+                    _yarisma[r.lead_id].push(r);
+                });
+            }
+        } catch (e) { /* tablo yoksa eski davranış */ }
+
         if (!pool || pool.length === 0) {
             leadsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Genel havuzda atanmamış başvuru bulunmuyor.</p>';
         } else {
             leadsBox.innerHTML = '';
             pool.forEach(l => {
                 const dateStr = new Date(l.created_at).toLocaleString('tr-TR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+                const yar = _yarisma[l.id] || [];
+                const yarRozet = yar.length
+                    ? `<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">⚔️ ${yar.length} firmaya açık</span>`
+                    : '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">sahipsiz</span>';
+                const yarNot = yar.length
+                    ? `<p class="text-[11px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded p-2 mt-2">Bu kayıt ${yar.length} firmanın teklif yarışında. Yatırımcı seçimini kendisi yapacak; buradan elle atarsanız yarışma sonlanır ve diğer firmalara "başka firma seçildi" bildirimi gider.</p>`
+                    : '';
                 const assignUI = companies.length
                     ? `<select id="assign_${l.id}" class="flex-1 border border-slate-300 p-2 rounded text-xs">
                            <option value="">Firma seçin...</option>${companyOptions}
@@ -87,13 +112,14 @@ async function fetchAdminData() {
                     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-xs mb-3">
                         <div class="flex justify-between items-start gap-3">
                             <div>
-                                <div class="flex items-center gap-2"><strong class="text-sm text-slate-800">${admEscape(l.full_name)}</strong>
-                                    <span class="font-mono text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">${admEscape(l.tracking_code)}</span></div>
+                                <div class="flex items-center gap-2 flex-wrap"><strong class="text-sm text-slate-800">${admEscape(l.full_name)}</strong>
+                                    <span class="font-mono text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">${admEscape(l.tracking_code)}</span>${yarRozet}</div>
                                 <p class="text-slate-500 mt-1 font-medium">📞 ${admEscape(l.phone)} | ✉️ ${admEscape(l.email) || '-'} | 📍 ${admEscape(l.address) || '-'}</p>
                                 <p class="text-slate-400 mt-2 bg-slate-50 p-2 rounded text-[11px] font-medium border border-slate-100 whitespace-pre-line">${admEscape(l.notes)}</p>
                             </div>
                             <span class="text-[10px] text-slate-400 font-mono whitespace-nowrap">${dateStr}</span>
                         </div>
+                        ${yarNot}
                         <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">${assignUI}</div>
                     </div>`;
             });
@@ -333,9 +359,32 @@ window.adminAssignLead = async function(leadId) {
     const sel = document.getElementById(`assign_${leadId}`);
     const companyId = sel ? sel.value : '';
     if (!companyId) { alert("Lütfen bir firma seçin."); return; }
-    const { error } = await supabaseClient.from('leads').update({ company_id: companyId }).eq('id', leadId);
-    if (error) { alert("Atama hatası: " + error.message); return; }
-    alert("Başvuru firmaya atandı. Firma kendi CRM ekranında görecek.");
+
+    // ⚠️ Kayıt yarışmadaysa DOĞRUDAN company_id yazmak yanlış: lead_assignments
+    // satırları 'davet'te kalır, kaybeden firmalara bildirim gitmez, danışan
+    // kaydına kazanan yazılmaz. lead_kazanan() bunların hepsini yapıyor ve
+    // admin'i de yetkili sayıyor.
+    let yarismada = false;
+    try {
+        const { data } = await supabaseClient.from('lead_assignments')
+            .select('company_id').eq('lead_id', leadId);
+        yarismada = !!(data && data.length);
+        if (yarismada && !data.some(r => r.company_id === companyId)) {
+            alert('Bu firma bu talebe davet edilmemiş.\n\nYarışmadaki bir kaydı yalnız davet edilen firmalardan birine atayabilirsiniz.');
+            return;
+        }
+    } catch (e) { /* tablo yoksa eski yola düş */ }
+
+    if (yarismada) {
+        if (!confirm('Bu kayıt firmaların teklif yarışında.\n\nElle atarsanız yarışma sonlanır, diğer firmalara "başka firma seçildi" bildirimi gider. Normalde bu seçimi yatırımcı yapar.\n\nDevam edilsin mi?')) return;
+        const { error } = await supabaseClient.rpc('lead_kazanan', { p_lead_id: leadId, p_company_id: companyId });
+        if (error) { alert("Atama hatası: " + error.message); return; }
+        alert("Firma seçildi. Diğer firmalar bilgilendirildi.");
+    } else {
+        const { error } = await supabaseClient.from('leads').update({ company_id: companyId }).eq('id', leadId);
+        if (error) { alert("Atama hatası: " + error.message); return; }
+        alert("Başvuru firmaya atandı. Firma kendi CRM ekranında görecek.");
+    }
     fetchAdminData();
 };
 
@@ -2156,14 +2205,33 @@ window.adminUnban = async function (table, id) {
         const cname = _companies.find(c => String(c.id) === String(companyId));
         if (!confirm(`${ids.length} başvuru "${cname ? cname.name : 'seçili firma'}" firmasına atanacak. Onaylıyor musunuz?`)) return;
 
+        // ⚠️ Yarışmadaki kayıt toplu atamaya KARIŞTIRILMAZ. Doğrudan company_id
+        // yazmak lead_assignments'ı 'davet'te bırakır, kaybeden firmalara
+        // bildirim gitmez. Bunlar tek tek, uyarıyla atanmalı.
+        let yarismalilar = [];
         try {
-            const { error } = await supabaseClient.from('leads').update({ company_id: companyId }).in('id', ids);
+            const { data } = await supabaseClient.from('lead_assignments')
+                .select('lead_id').in('lead_id', ids);
+            yarismalilar = [...new Set((data || []).map(r => r.lead_id))];
+        } catch (e) { /* tablo yoksa eski davranış */ }
+
+        const temiz = ids.filter(id => !yarismalilar.includes(id));
+        if (yarismalilar.length && !temiz.length) {
+            alert('Seçtiğiniz kayıtların hepsi firmaların teklif yarışında.\n\nBunları Operasyon sekmesinden tek tek atayın; orada ne olacağı açıklanıyor.');
+            return;
+        }
+        if (yarismalilar.length) {
+            if (!confirm(`${yarismalilar.length} kayıt firmaların teklif yarışında ve toplu atamaya DAHİL EDİLMEYECEK.\n\nKalan ${temiz.length} kayıt atanacak. Devam edilsin mi?`)) return;
+        }
+
+        try {
+            const { error } = await supabaseClient.from('leads').update({ company_id: companyId }).in('id', temiz);
             if (error) throw error;
             // indeksten güncelle: bu leadler artık atanmış
-            _idx.forEach(r => { if (r.type === 'lead' && _sel.has(r.id)) { r.assignable = false; r.sub = '→ ' + (cname ? cname.name : ''); r.raw.company_id = companyId; } });
+            _idx.forEach(r => { if (r.type === 'lead' && temiz.includes(r.id)) { r.assignable = false; r.sub = '→ ' + (cname ? cname.name : ''); r.raw.company_id = companyId; } });
             _sel.clear();
             adminSearchRun();
-            alert(`✅ ${ids.length} başvuru firmaya atandı.`);
+            alert(`✅ ${temiz.length} başvuru firmaya atandı.` + (yarismalilar.length ? `\n${yarismalilar.length} yarışmadaki kayıt atlandı.` : ''));
             // Operasyon sekmesindeki havuz da güncellensin
             if (typeof fetchAdminData === 'function') fetchAdminData();
         } catch (err) {

@@ -33,7 +33,14 @@ async function crmLoadLeads(tazele) {
         const { data, error } = await supabaseClient
             .from('leads').select('*').order('created_at', { ascending: false });
         if (error) throw error;
-        crmLeads = data || [];
+        // ⚠️ YARIŞMALI DAVETLERİ ANA LİSTEDEN AYIR.
+        // leads RLS'ine "davet edilen firma bu satırı görebilir" politikası
+        // eklendi. Filtre olmasa davet edilen kayıtlar hem bu tabloda hem
+        // "Yarışmalı Davetler" kutusunda çıkardı; üstelik bu tablodan açılan
+        // kart YAZMA denerdi ve RLS engellediği için kullanıcı "kaydettim"
+        // sanıp kaybederdi. Yazma hakkı yalnız kazanan firmadadır.
+        // company_id dolu = bu firmanın kendi kaydı.
+        crmLeads = (data || []).filter(l => !!l.company_id);
     } catch (err) {
         crmLeads = [];
         if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500">Liste yüklenemedi: ${err.message}</td></tr>`;

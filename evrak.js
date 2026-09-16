@@ -190,7 +190,11 @@
         let liste = [];
         try {
             const { data, error } = await supabaseClient.from('leads')
-                .select('id, full_name, address, tracking_code, basvuru_dosyasi')
+                .select('id, full_name, address, tracking_code, basvuru_dosyasi, company_id')
+                // ⚠️ Yarışmadaki davetler burada ÇIKMAMALI. Evrak hazırlamak
+                // işi almış olmayı gerektirir; üstelik basvuru_dosyasi yazması
+                // RLS'e takılır ve kullanıcı doldurduğu formu kaybederdi.
+                .not('company_id', 'is', null)
                 .order('created_at', { ascending: false });
             if (error) throw error;
             liste = data || [];
