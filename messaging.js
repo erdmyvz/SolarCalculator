@@ -11,6 +11,7 @@
 
     let _convs = [], _active = null, _msgs = [], _companies = [], _poll = null;
     let _tab = 'msgs', _refs = [];   // firma tarafı: Mesajlar / Yönlendirmeler
+    let _refLead = {};               // consultant_client_id -> { id, status } (CRM'e aktarılmış yönlendirmeler)
 
     // ---------------------------------------------------------------- kimlik
     function me() {
@@ -163,25 +164,51 @@
     async function loadRefs() {
         try { const { data, error } = await supabaseClient.rpc('list_assigned_clients'); if (error) throw error; _refs = data || []; _refHata = null; }
         catch (e) { _refHata = e.message || String(e); }
+
+        // Hangi yönlendirmeler CRM'e aktarıldı? RLS zaten yalnız kendi firmamızın
+        // kayıtlarını döndürür, ayrıca süzmeye gerek yok. Bu bilgi olmadan ekran
+        // CRM'de ilerleyen bir müşteri için eski kurulum durumunu gösteriyordu.
+        _refLead = {};
+        try {
+            const { data } = await supabaseClient
+                .from('leads').select('id,status,consultant_client_id')
+                .not('consultant_client_id', 'is', null);
+            (data || []).forEach(l => { _refLead[l.consultant_client_id] = { id: l.id, status: l.status }; });
+        } catch (e) { /* kolon yoksa (SQL çalıştırılmadıysa) eski davranış sürer */ }
     }
 
     function drawRefs(u) {
         const host = document.getElementById(_hostId); if (!host) return;
         const opts = (sel) => INST.map(x => `<option value="${x[0]}" ${x[0] === sel ? 'selected' : ''}>${x[1]}</option>`).join('');
-        const body = _refs.length ? _refs.map(r => `
+        const body = _refs.length ? _refs.map(r => {
+            // CRM'e aktarılmış yönlendirmede tek doğru kaynak müşteri kartıdır.
+            // Buradaki açılır liste ile kart birbiriyle çelişebiliyordu; artık
+            // aktarılmış kayıtta liste yerine CRM aşaması gösterilip karta
+            // yönlendiriyoruz. Aktarılmamış (eski) kayıtlarda liste duruyor.
+            const bag = _refLead[r.id];
+            const asama = bag
+                ? (typeof stageLabel === 'function' ? stageLabel(bag.status) : bag.status)
+                : null;
+            const sag = bag
+                ? `<div class="flex items-center gap-2 shrink-0">
+                       <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">${esc(asama)}</span>
+                       <button onclick="msgCrmAc('${bag.id}')" class="text-xs font-bold text-indigo-600 hover:underline whitespace-nowrap">Müşteri kartı →</button>
+                   </div>`
+                : `<select onchange="msgSetInstall('${r.id}', this.value)" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white shrink-0">${opts(r.install_status)}</select>`;
+            return `
             <div class="p-4 border-b border-slate-50 last:border-0">
                 <div class="flex items-start justify-between gap-3 flex-wrap">
                     <div class="min-w-0">
                         <div class="flex items-center gap-2 flex-wrap mb-0.5">
                             <span class="font-black text-slate-800">${esc(r.name)}</span>
-                            <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${INST_CLS[r.install_status] || 'bg-slate-100 text-slate-500'}">${esc((INST.find(x => x[0] === r.install_status) || ['','Durum yok'])[1])}</span>
+                            ${bag ? '' : `<span class="text-[10px] font-black px-2 py-0.5 rounded-full ${INST_CLS[r.install_status] || 'bg-slate-100 text-slate-500'}">${esc((INST.find(x => x[0] === r.install_status) || ['','Durum yok'])[1])}</span>`}
                         </div>
                         <div class="text-[11px] text-slate-400">${r.phone ? esc(r.phone) : ''}${r.phone && r.email ? ' · ' : ''}${r.email ? esc(r.email) : ''}</div>
                         <div class="text-[11px] text-indigo-600 font-bold mt-0.5">🎯 Yönlendiren: ${esc(r.consultant_name || 'Danışman')}</div>
                     </div>
-                    <select onchange="msgSetInstall('${r.id}', this.value)" class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white shrink-0">${opts(r.install_status)}</select>
+                    ${sag}
                 </div>
-            </div>`).join('')
+            </div>`; }).join('')
             : `<div class="bos-durum"><span class="bos-durum-ico">🤝</span>
                 <h4>Henüz yönlendirme yok</h4>
                 <p>Danışmanlar size danışan yönlendirdiğinde burada görünür.</p></div>`;
@@ -189,9 +216,18 @@
         host.innerHTML = `
             ${ustBar(u, 'refs')}
             ${hataKutusu(_refHata)}
-            <p class="text-[11px] text-slate-400 mb-2">Durumu güncellediğinizde yönlendiren danışman bildirim alır — süreç şeffaf kalır.</p>
+            <p class="text-[11px] text-slate-400 mb-2">CRM'e aktarılan yönlendirmelerde aşama müşteri kartındaki süreç adımlarından ilerler; her değişimde yönlendiren danışman bildirim alır.</p>
             <div class="kart overflow-hidden">${body}</div>`;
     }
+
+    // Yönlendirme satırından müşteri kartına geçiş. CRM modülü kapalıyken
+    // crmOpenLeadDetails tek başına yetmiyor (kart görünmeyen modülün içinde
+    // açılıyordu); önce menü kartına basıp modülü açıyoruz.
+    window.msgCrmAc = function (leadId) {
+        const btn = document.getElementById('btnGoCRM');
+        if (btn) btn.click();
+        setTimeout(() => { if (typeof window.crmOpenLeadDetails === 'function') window.crmOpenLeadDetails(leadId); }, 260);
+    };
 
     window.msgSetInstall = async function (clientId, status) {
         try {

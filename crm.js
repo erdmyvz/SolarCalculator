@@ -284,6 +284,12 @@ function crmRenderLeads() {
             ? `<span class="inline-block mt-1 ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${bek >= CRM_SOGUK_GUN * 2 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}" title="Bu kayıtta ${bek} gündür hiçbir güncelleme yok">⏳ ${bek} gün</span>`
             : '';
 
+        // DANIŞMAN YÖNLENDİRMESİ — kayıt firmanın kendi başvurusu değil, bir
+        // danışman tarafından aktarıldı. Satışçı ilk aramada bunu bilmeli.
+        const refBadge = lead.consultant_name
+            ? `<span class="inline-block mt-1 ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700" title="Bu müşteriyi bir danışman yönlendirdi">🎯 ${admEscape(lead.consultant_name)}</span>`
+            : '';
+
         // Hızlı iletişim: satışçının işi telefon etmek. Kartı açmadan arayabilsin.
         const telHam = String(lead.phone || '').replace(/[^\d+]/g, '');
         const telUluslararasi = telHam.startsWith('+') ? telHam.slice(1)
@@ -304,7 +310,7 @@ function crmRenderLeads() {
             <td class="p-4">
                 <div class="font-black text-slate-900 text-sm mb-0.5">${admEscape(lead.full_name)}</div>
                 <div class="text-[10px] text-slate-400 font-mono tracking-wider">${admEscape(lead.tracking_code)}${lead.phone ? ' · ' + admEscape(lead.phone) : ''}</div>
-                ${qBadge}${soguk}
+                ${qBadge}${soguk}${refBadge}
             </td>
             <td class="p-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.css}">${admEscape(badge.text)}</span></td>
             <td class="p-4 text-slate-600 font-bold text-[11px]">${techSummary}</td>
