@@ -550,6 +550,84 @@
         } catch (e) { /* tablo yoksa teknik alanlar gösterilmez */ }
     }
 
+    // -----------------------------------------------------------------------
+    // VARSAYILAN DEPO
+    // Tedarikçinin stoğu çoğunlukla tek noktadan çıkıyor. Her kalemde il/ilçe
+    // sormak, yüz kalemlik bir listeyi girilemez hâle getiriyordu. Bir kez
+    // seçiliyor, yeni satırlar otomatik alıyor; farklı depodan çıkan kalem
+    // satır detayından değiştirilebiliyor.
+    // -----------------------------------------------------------------------
+    let _stokDepo = null;
+    let _stokKirli = {};          // id -> satır içinde kaydedilmemiş değişiklik var
+
+    function depoAnahtar() { return 'epcSupDepo_' + (S ? S.id : 'x'); }
+    function depoOku() {
+        // Önbellek hesaba bağlı: başka bir tedarikçi oturumu açılırsa
+        // öncekinin deposu taşınmasın.
+        if (_stokDepo && _stokDepo.__anahtar === depoAnahtar()) return _stokDepo;
+        try {
+            const h = JSON.parse(localStorage.getItem(depoAnahtar()) || 'null');
+            if (h && h.city) { _stokDepo = { city: h.city, district: h.district || '', __anahtar: depoAnahtar() }; return _stokDepo; }
+        } catch (e) { /* depo erişimi yoksa profildeki ile düşülür */ }
+        _stokDepo = { city: (S && S.city) || '', district: '', __anahtar: depoAnahtar() };
+        return _stokDepo;
+    }
+    window.supplierDepoKaydet = function () {
+        const il = document.getElementById('depoIl')?.value || '';
+        const ilce = (document.getElementById('depoIlce')?.value || '').trim();
+        if (!il) { alert('Depo ili seçilmeden yeni kalem eklenemez.'); return; }
+        _stokDepo = { city: il, district: ilce, __anahtar: depoAnahtar() };
+        try { localStorage.setItem(depoAnahtar(), JSON.stringify(_stokDepo)); } catch (e) { }
+        renderStok();
+    };
+
+    // -----------------------------------------------------------------------
+    // YAPIŞTIRILAN SAYIYI OKU — ⚠️ NOKTA İKİ ANLAMA GELİYOR
+    // Türkçe Excel binlik ayırıcı olarak nokta veriyor ("1.200" = bin iki yüz);
+    // İngilizce yerelde aynı nokta ondalık ("1.5" = bir buçuk). Körlemesine
+    // noktaları silmek "1.5 metre"yi 15 metre yapar — sessiz ve tehlikeli.
+    // Kural:
+    //   · virgül varsa → virgül ondalıktır, noktalar binliktir
+    //   · virgül yoksa → nokta YALNIZCA tam binlik kalıbındaysa (1.200,
+    //     12.000, 1.200.000) binliktir; değilse ondalıktır
+    //
+    // ⚠️ Binlik kalıbı SIFIRLA BAŞLAYAMAZ. Aksi hâlde panel fiyatı olan
+    // "0.099" (USD/Wp) binlik sanılıp 99 oluyordu — teklifleri bin katına
+    // çıkaran bir hata. Binlikte ilk grup her zaman 1-9 ile başlar.
+    // -----------------------------------------------------------------------
+    function sayiOku(ham) {
+        let t = String(ham == null ? '' : ham).trim().replace(/\s/g, '');
+        if (t === '') return null;
+        if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+        else if (/^[1-9]\d{0,2}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+        const s = parseFloat(t);
+        return isNaN(s) ? null : s;
+    }
+
+    const katAd = (k) => (STOK_KAT.find(x => x[0] === k) || [k, k])[1];
+    const ilListesi = () => Object.keys(window.EPC_IL_VERIM || {}).sort((a, b) => a.localeCompare(b, 'tr'));
+    const secKutu = (id, liste, deger, ekSinif) =>
+        `<select id="${id}" class="${ekSinif || 'w-full border border-slate-300 p-2 rounded-lg text-sm bg-white'}">` +
+        liste.map(x => `<option ${deger === x ? 'selected' : ''}>${esc(x)}</option>`).join('') + '</select>';
+
+    // -----------------------------------------------------------------------
+    // ⚠️ ONAY NEYİ KAPSAR — ÖNEMLİ KURAL
+    // Onay, İLANIN KENDİSİ içindir: kategori, üretici, model, teknik değerler
+    // ve kaynak belgesi. Bunlar değişirse satır yeniden onaya girer.
+    //
+    // MİKTAR ve FİYAT onay kapsamı DIŞINDADIR. Eskiden her kayıt satırı
+    // 'pending' yapıyordu; tedarikçi günlük stok güncellemesi yaptığında satır
+    // yayından düşüyor ve admin onaylayana kadar hiçbir kurulumcu göremiyordu.
+    // Stok pazarının çalışabilmesi için rakamlar tedarikçinin kendi
+    // sorumluluğunda, anında yayında.
+    // -----------------------------------------------------------------------
+    const KIMLIK_ALANLARI = ['category_key', 'brand', 'model', 'source_url'];
+    function kimlikDegistiMi(eski, yeni) {
+        if (!eski) return true;
+        if (KIMLIK_ALANLARI.some(a => String(eski[a] == null ? '' : eski[a]) !== String(yeni[a] == null ? '' : yeni[a]))) return true;
+        return JSON.stringify(eski.specs || {}) !== JSON.stringify(yeni.specs || {});
+    }
+
     async function renderStok() {
         _view = 'stok';
         const el = root(); if (!el) return;
@@ -564,53 +642,333 @@
             rows = data || [];
         } catch (e) { hata = e.message || String(e); }
         window.__supStok = rows;
+        _stokKirli = {};
+
+        const depo = depoOku();
+        const iller = ilListesi();
+        const yayinda = rows.filter(r => r.status === 'approved' && r.is_active && Number(r.quantity) > 0).length;
+        const bekleyen = rows.filter(r => r.status === 'pending').length;
+
+        el.innerHTML = baslik('Stok & Fiyat', 'Hangi üründen nerede kaç adet var; fiyatı açık mı, talebe mi bağlı.') +
+            (hata ? `<div class="bg-red-50 border border-red-100 rounded-xl p-4 mb-3">
+                <p class="text-sm font-bold text-red-700">${esc(hata)}</p>
+                <p class="text-xs text-red-600 mt-1">stok-fiyatlandirma.sql çalıştırıldı mı?</p></div>` : '') + `
+
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="bg-white border border-slate-200 rounded-xl p-3 text-center">
+                    <div class="text-2xl font-black text-slate-800">${rows.length}</div>
+                    <div class="text-[11px] text-slate-500">kalem</div></div>
+                <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-center">
+                    <div class="text-2xl font-black text-emerald-700">${yayinda}</div>
+                    <div class="text-[11px] text-emerald-700">kurulumcuya görünen</div></div>
+                <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 text-center">
+                    <div class="text-2xl font-black text-amber-700">${bekleyen}</div>
+                    <div class="text-[11px] text-amber-700">onay bekleyen</div></div>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4">
+                <div class="flex items-end gap-2 flex-wrap">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">📍 Varsayılan depo — il *</label>
+                        <select id="depoIl" class="border border-slate-300 p-2 rounded-lg text-sm bg-white w-44">
+                            <option value="">— Seçin —</option>
+                            ${iller.map(i => `<option ${depo.city === i ? 'selected' : ''}>${esc(i)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">İlçe</label>
+                        <input id="depoIlce" value="${esc(depo.district || '')}" class="border border-slate-300 p-2 rounded-lg text-sm w-40">
+                    </div>
+                    <button onclick="supplierDepoKaydet()" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-2 rounded-lg text-sm">Depoyu kaydet</button>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-2">Kurulumcu firmalar stok listesini önce yakınlığa göre görür — aynı ilçe, aynı il, aynı bölge. Yeni eklediğiniz kalemler bu depoyu otomatik alır.</p>
+            </div>
+
+            ${depo.city ? hizliEkleKutusu(depo) : `
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                <p class="text-sm font-bold text-amber-800">Önce depo ilinizi seçin</p>
+                <p class="text-xs text-amber-700 mt-1">Stok kaleminin hangi ilden çıkacağı bu modülün asıl bilgisi; il seçilmeden kalem eklenemez.</p>
+            </div>`}
+
+            <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
+                <p class="text-[11px] text-slate-400">Miktar ve fiyat değişiklikleri <strong>anında yayında</strong>. Üretici, model veya teknik değer değişirse satır yeniden onaya girer.</p>
+                <button onclick="supplierNewStok()" class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold px-3 py-1.5 rounded-lg">+ Detaylı ekle</button>
+            </div>
+            <div id="stokListe" class="space-y-2">${stokListeHtml(rows)}</div>`;
+    }
+
+    function hizliEkleKutusu(depo) {
+        return `<div class="bg-white border-2 border-sky-200 rounded-xl p-4 mb-4">
+            <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                <p class="text-sm font-black text-slate-800">⚡ Hızlı ekle</p>
+                <span class="text-[11px] text-slate-500">📍 ${esc([depo.district, depo.city].filter(Boolean).join(' / '))}</span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
+                <div class="col-span-2 md:col-span-1">
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Kategori</label>
+                    <select id="hzCat" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white">
+                        ${STOK_KAT.map(([k, a]) => `<option value="${k}">${esc(a)}</option>`).join('')}
+                    </select>
+                </div>
+                <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Üretici *</label>
+                    <input id="hzBrand" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Model *</label>
+                    <input id="hzModel" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Miktar</label>
+                    <input id="hzQty" type="number" step="any" value="0" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Birim</label>
+                    ${secKutu('hzUnit', STOK_BIRIM, 'adet')}</div>
+                <div><button onclick="supplierHizliEkle()" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 rounded-lg text-sm">+ Ekle</button></div>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-slate-100">
+                <label class="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" id="hzVis" onchange="supplierHizliFiyatAc()" class="mt-0.5">
+                    <span>
+                        <span class="text-sm font-bold text-slate-800">Fiyatı kurulumcu firmalara açık göster</span>
+                        <span class="block text-[11px] text-slate-500">Kapalıyken kurulumcu "fiyat teklifi iste" düğmesi görür, talep size düşer.</span>
+                    </span>
+                </label>
+                <div id="hzFiyatAlan" class="hidden grid grid-cols-3 gap-2 mt-2 max-w-md">
+                    <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Birim fiyat</label>
+                        <input id="hzPrice" type="number" step="any" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                    <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Para</label>${secKutu('hzCur', STOK_PARA, 'USD')}</div>
+                    <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Başına</label>${secKutu('hzBasis', STOK_BAZ, 'adet')}</div>
+                </div>
+            </div>
+            <div id="hzMsg" class="mt-2"></div>
+
+            <details class="mt-3 pt-3 border-t border-slate-100">
+                <summary class="text-xs font-bold text-slate-600 cursor-pointer">📋 Excel'den toplu yapıştır</summary>
+                <p class="text-[11px] text-slate-500 mt-2">Excel'de <strong>Üretici · Model · Miktar · Fiyat</strong> sütunlarını seçip kopyalayın, aşağıya yapıştırın. Fiyat sütunu boş bırakılırsa o kalem "teklif üzerine" olur. Kategori, birim, para birimi ve depo yukarıdaki seçimlerden alınır.</p>
+                <textarea id="hzToplu" rows="5" placeholder="Jinko&#9;Tiger Neo 580W&#9;240&#9;0.11&#10;Huawei&#9;SUN2000-50KTL&#9;6&#9;1850" class="w-full border border-slate-300 p-2 rounded-lg text-xs font-mono mt-2"></textarea>
+                <button onclick="supplierTopluEkle()" class="mt-2 bg-slate-700 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-lg text-sm">Satırları ekle</button>
+                <div id="hzTopluMsg" class="mt-2"></div>
+            </details>
+        </div>`;
+    }
+
+    window.supplierHizliFiyatAc = function () {
+        const a = document.getElementById('hzFiyatAlan');
+        if (a) a.classList.toggle('hidden', !document.getElementById('hzVis').checked);
+    };
+
+    function stokListeHtml(rows) {
+        if (!rows.length) return '<p class="text-sm text-slate-400 italic">Henüz stok kalemi eklemediniz. Yukarıdaki hızlı ekle satırından başlayın.</p>';
 
         const ozet = (r) => (_stokAlan[r.category_key] || [])
             .map(a => (r.specs && r.specs[a.anahtar] != null && r.specs[a.anahtar] !== '')
                 ? `${a.etiket}: ${r.specs[a.anahtar]}${a.birim ? ' ' + a.birim : ''}` : null)
             .filter(Boolean).join(' · ');
 
-        const liste = rows.map(r => {
-            const kat = (STOK_KAT.find(k => k[0] === r.category_key) || [r.category_key, r.category_key])[1];
+        return rows.map(r => {
             const konum = [r.district, r.city].filter(Boolean).join(' / ');
-            return `<div class="bg-white border border-slate-200 rounded-xl p-4 flex items-start justify-between gap-3 flex-wrap">
-                <div class="min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <strong class="text-sm text-slate-800">${esc(r.brand)} ${esc(r.model)}</strong>
-                        ${durumRozet(r.status)}
-                        ${r.price_visible
-                            ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">fiyat açık</span>'
-                            : '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">fiyat gizli</span>'}
-                        ${r.is_active ? '' : '<span class="text-[10px] font-bold text-slate-400">yayında değil</span>'}
+            const acik = !!r.price_visible;
+            const gorunur = r.status === 'approved' && r.is_active && Number(r.quantity) > 0;
+            return `<div class="bg-white border ${gorunur ? 'border-slate-200' : 'border-slate-200 bg-slate-50'} rounded-xl p-3">
+                <div class="flex items-start justify-between gap-3 flex-wrap">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <strong class="text-sm text-slate-800">${esc(r.brand)} ${esc(r.model)}</strong>
+                            ${durumRozet(r.status)}
+                            ${r.is_active ? '' : '<span class="text-[10px] font-bold text-slate-400">yayında değil</span>'}
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-0.5">${esc(katAd(r.category_key))} · 📍 ${esc(konum || 'konum girilmemiş')}${r.lead_time_days ? ' · ' + r.lead_time_days + ' gün termin' : ''}</p>
+                        ${ozet(r) ? `<p class="text-[11px] text-slate-400 mt-0.5">${esc(ozet(r))}</p>` : ''}
+                        ${r.status === 'rejected' && r.reject_reason ? `<p class="text-[11px] text-red-600 mt-1">${esc(r.reject_reason)}</p>` : ''}
                     </div>
-                    <p class="text-[11px] text-slate-500 mt-0.5">${esc(kat)} · 📍 ${esc(konum || 'konum girilmemiş')}${r.lead_time_days ? ' · ' + r.lead_time_days + ' gün termin' : ''}</p>
-                    ${ozet(r) ? `<p class="text-[11px] text-slate-400 mt-0.5">${esc(ozet(r))}</p>` : ''}
-                    ${r.status === 'rejected' && r.reject_reason ? `<p class="text-[11px] text-red-600 mt-1">${esc(r.reject_reason)}</p>` : ''}
+
+                    <div class="flex items-end gap-2 flex-wrap">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Miktar</label>
+                            <div class="flex items-center gap-1">
+                                <input id="q_${r.id}" type="number" step="any" value="${r.quantity != null ? r.quantity : 0}"
+                                       oninput="supplierStokKirlet('${r.id}')" onkeydown="if(event.key==='Enter')supplierStokSatirKaydet('${r.id}')"
+                                       class="w-24 border border-slate-300 p-1.5 rounded-lg text-sm text-right">
+                                <span class="text-[11px] text-slate-400">${esc(r.unit)}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Fiyat</label>
+                            ${acik ? `<div class="flex items-center gap-1">
+                                <input id="p_${r.id}" type="number" step="any" value="${r.unit_price != null ? r.unit_price : ''}"
+                                       oninput="supplierStokKirlet('${r.id}')" onkeydown="if(event.key==='Enter')supplierStokSatirKaydet('${r.id}')"
+                                       class="w-24 border border-slate-300 p-1.5 rounded-lg text-sm text-right">
+                                <span class="text-[11px] text-slate-400">${esc(r.currency)}/${esc(r.price_basis)}</span>
+                            </div>`
+                            : `<div class="w-24 p-1.5 text-[11px] text-slate-400 italic text-right">teklif üzerine</div>`}
+                        </div>
+                        <button id="s_${r.id}" onclick="supplierStokSatirKaydet('${r.id}')"
+                                class="hidden bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs">Kaydet</button>
+                    </div>
                 </div>
-                <div class="text-right shrink-0">
-                    <div class="text-sm font-black text-slate-800">${Number(r.quantity).toLocaleString('tr-TR')} <span class="text-[11px] font-normal text-slate-400">${esc(r.unit)}</span></div>
-                    <div class="text-[11px] text-slate-500 mb-1.5">${r.price_visible && r.unit_price != null
-                        ? Number(r.unit_price).toLocaleString('tr-TR') + ' ' + esc(r.currency) + '/' + esc(r.price_basis)
-                        : '—'}</div>
-                    <span class="flex gap-1 justify-end">
-                        <button onclick="supplierEditStok('${r.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Düzenle</button>
-                        <button onclick="supplierDeleteStok('${r.id}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Sil</button>
-                    </span>
+
+                <div class="flex items-center gap-1 mt-2 pt-2 border-t border-slate-100 flex-wrap">
+                    <button onclick="supplierFiyatModu('${r.id}')"
+                            class="text-[11px] font-bold px-2 py-1 rounded ${acik ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}">
+                        ${acik ? '🟢 Fiyat açık' : '🔒 Teklif üzerine'} · değiştir
+                    </button>
+                    <span class="flex-1"></span>
+                    <button onclick="supplierEditStok('${r.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Detay</button>
+                    <button onclick="supplierCopyStok('${r.id}')" class="text-[11px] bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded">Benzerini ekle</button>
+                    <button onclick="supplierDeleteStok('${r.id}')" class="text-[11px] bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded">Sil</button>
                 </div>
             </div>`;
         }).join('');
-
-        el.innerHTML = baslik('Stok & Fiyat', 'Hangi üründen nerede kaç adet var; fiyatı açık mı, talebe mi bağlı.') +
-            (hata ? `<div class="bg-red-50 border border-red-100 rounded-xl p-4 mb-3"><p class="text-sm font-bold text-red-700">${esc(hata)}</p><p class="text-xs text-red-600 mt-1">stok-fiyatlandirma.sql çalıştırıldı mı?</p></div>` : '') + `
-            <div class="bg-sky-50 border border-sky-100 rounded-xl p-4 mb-4">
-                <p class="text-xs text-sky-900 leading-relaxed"><strong>Konum neden önemli?</strong> Kurulumcu firmalar stok listesini önce yakınlığa göre görür — aynı ilçe, aynı il, aynı bölge. Deponuzun ilini ve ilçesini doğru girmek, size en yakın işleri getirir.</p>
-            </div>
-            <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
-                <p class="text-[11px] text-slate-400">Yeni satırlar yönetici onayından sonra kurulumcu firmalara görünür.</p>
-                <button onclick="supplierNewStok()" class="bg-sky-600 hover:bg-sky-700 text-white font-bold px-4 py-2 rounded-lg text-sm">+ Stok kalemi</button>
-            </div>
-            <div class="space-y-2">${liste || '<p class="text-sm text-slate-400 italic">Henüz stok kalemi eklemediniz.</p>'}</div>`;
     }
+
+    window.supplierStokKirlet = function (id) {
+        _stokKirli[id] = true;
+        const b = document.getElementById('s_' + id);
+        if (b) b.classList.remove('hidden');
+    };
+
+    // Satır içi kaydet: YALNIZ miktar ve fiyat. Onay durumuna DOKUNMAZ.
+    window.supplierStokSatirKaydet = async function (id) {
+        const r = (window.__supStok || []).find(x => x.id === id);
+        if (!r) return;
+        const qEl = document.getElementById('q_' + id);
+        const pEl = document.getElementById('p_' + id);
+        const btn = document.getElementById('s_' + id);
+
+        const miktar = qEl && qEl.value !== '' ? parseFloat(qEl.value) : 0;
+        if (!(miktar >= 0)) { alert('Miktar sayı olmalı.'); return; }
+
+        const yama = { quantity: miktar };
+        if (r.price_visible) {
+            const f = pEl && pEl.value !== '' ? parseFloat(pEl.value) : null;
+            if (!(f > 0)) { alert('Fiyatı açık gösteriyorsanız birim fiyat girmelisiniz.\n\nFiyat vermeyecekseniz "Teklif üzerine"ye çevirin.'); return; }
+            yama.unit_price = f;
+        }
+
+        if (btn) { btn.textContent = '…'; btn.disabled = true; }
+        try {
+            const { error } = await supabaseClient.from('supplier_stock').update(yama).eq('id', id);
+            if (error) throw error;
+            Object.assign(r, yama);
+            delete _stokKirli[id];
+            if (btn) { btn.textContent = '✓'; setTimeout(() => { btn.classList.add('hidden'); btn.textContent = 'Kaydet'; btn.disabled = false; }, 900); }
+        } catch (e) {
+            alert('Kaydedilemedi: ' + (e.message || e));
+            if (btn) { btn.textContent = 'Kaydet'; btn.disabled = false; }
+        }
+    };
+
+    // Fiyat açık ↔ teklif üzerine. Açığa çevirirken fiyat yoksa sorulur.
+    window.supplierFiyatModu = async function (id) {
+        const r = (window.__supStok || []).find(x => x.id === id);
+        if (!r) return;
+        const yeni = !r.price_visible;
+        let fiyat = r.unit_price;
+
+        if (yeni) {
+            const pEl = document.getElementById('p_' + id);
+            if (pEl && pEl.value !== '') fiyat = parseFloat(pEl.value);
+            if (!(fiyat > 0)) {
+                const c = prompt(`"${r.brand} ${r.model}" için kurulumculara gösterilecek birim fiyat (${r.currency}/${r.price_basis}):`, '');
+                if (c === null) return;
+                fiyat = sayiOku(c);
+                if (!(fiyat > 0)) { alert('Geçerli bir fiyat girilmedi.'); return; }
+            }
+        }
+
+        const yama = yeni ? { price_visible: true, unit_price: fiyat } : { price_visible: false, unit_price: null };
+        try {
+            const { error } = await supabaseClient.from('supplier_stock').update(yama).eq('id', id);
+            if (error) throw error;
+            Object.assign(r, yama);
+            const liste = document.getElementById('stokListe');
+            if (liste) liste.innerHTML = stokListeHtml(window.__supStok || []);
+        } catch (e) { alert('Değiştirilemedi: ' + (e.message || e)); }
+    };
+
+    // -------------------------------------------------------------- HIZLI EKLE
+    window.supplierHizliEkle = async function () {
+        const g = (x) => document.getElementById(x);
+        const msg = g('hzMsg');
+        const yaz = (t, kotu) => { if (msg) msg.innerHTML = `<p class="text-xs font-bold ${kotu ? 'text-red-600' : 'text-emerald-600'}">${t}</p>`; };
+        const depo = depoOku();
+        if (!depo.city) { yaz('Önce depo ilini seçin.', true); return; }
+
+        const brand = (g('hzBrand').value || '').trim();
+        const model = (g('hzModel').value || '').trim();
+        if (!brand || !model) { yaz('Üretici ve model zorunludur.', true); return; }
+
+        const acik = !!g('hzVis').checked;
+        const fiyat = acik && g('hzPrice').value !== '' ? parseFloat(g('hzPrice').value) : null;
+        if (acik && !(fiyat > 0)) { yaz('Fiyatı açık gösteriyorsanız birim fiyat girin.', true); return; }
+
+        const row = {
+            supplier_id: S.id, category_key: g('hzCat').value, brand, model,
+            unit: g('hzUnit').value, quantity: parseFloat(g('hzQty').value) || 0,
+            city: depo.city, district: depo.district || null,
+            price_visible: acik, unit_price: acik ? fiyat : null,
+            currency: acik ? g('hzCur').value : 'USD',
+            price_basis: acik ? g('hzBasis').value : 'adet',
+            specs: {}, is_active: true, status: 'pending'
+        };
+
+        yaz('Ekleniyor…');
+        try {
+            const { error } = await supabaseClient.from('supplier_stock').insert([row]);
+            if (error) throw error;
+            g('hzBrand').value = ''; g('hzModel').value = ''; g('hzQty').value = '0';
+            if (g('hzPrice')) g('hzPrice').value = '';
+            await renderStok();
+            g('hzBrand')?.focus();
+        } catch (e) { yaz('Eklenemedi: ' + (e.message || e), true); }
+    };
+
+    // ------------------------------------------------------------ TOPLU EKLEME
+    window.supplierTopluEkle = async function () {
+        const g = (x) => document.getElementById(x);
+        const msg = g('hzTopluMsg');
+        const yaz = (t, kotu) => { if (msg) msg.innerHTML = `<p class="text-xs font-bold ${kotu ? 'text-red-600' : 'text-emerald-600'}">${t}</p>`; };
+        const depo = depoOku();
+        if (!depo.city) { yaz('Önce depo ilini seçin.', true); return; }
+
+        const ham = (g('hzToplu').value || '').trim();
+        if (!ham) { yaz('Yapıştırılan bir şey yok.', true); return; }
+
+        const kat = g('hzCat').value, birim = g('hzUnit').value;
+        const acikVarsayilan = !!g('hzVis').checked;
+        const para = g('hzCur') ? g('hzCur').value : 'USD';
+        const baz  = g('hzBasis') ? g('hzBasis').value : 'adet';
+
+        const satirlar = [];
+        const hatalar = [];
+        ham.split(/\r?\n/).forEach((satir, i) => {
+            if (!satir.trim()) return;
+            // Excel sekme verir; noktalı virgül de kabul ediliyor.
+            const p = satir.includes('\t') ? satir.split('\t') : satir.split(';');
+            const brand = (p[0] || '').trim();
+            const model = (p[1] || '').trim();
+            if (!brand || !model) { hatalar.push((i + 1) + '. satır: üretici veya model boş'); return; }
+            const miktar = sayiOku(p[2]) || 0;
+            const fiyat = sayiOku(p[3]);
+            // ⚠️ Fiyatı olmayan satır AÇIK olamaz — sunucu kısıtı da bunu ister.
+            // Bu yüzden karar satırın kendi fiyatına bakar, yukarıdaki kutuya değil.
+            const acik = fiyat > 0;
+            if (acikVarsayilan && !acik) hatalar.push((i + 1) + '. satır: fiyat boş, "teklif üzerine" olarak eklendi');
+            satirlar.push({
+                supplier_id: S.id, category_key: kat, brand, model, unit: birim,
+                quantity: miktar, city: depo.city, district: depo.district || null,
+                price_visible: !!acik, unit_price: acik ? fiyat : null,
+                currency: para, price_basis: baz,
+                specs: {}, is_active: true, status: 'pending'
+            });
+        });
+
+        if (!satirlar.length) { yaz('Okunabilir satır bulunamadı. ' + hatalar.join(' · '), true); return; }
+        yaz(satirlar.length + ' satır ekleniyor…');
+        try {
+            const { error } = await supabaseClient.from('supplier_stock').insert(satirlar);
+            if (error) throw error;
+            g('hzToplu').value = '';
+            await renderStok();
+            alert(satirlar.length + ' kalem eklendi.' + (hatalar.length ? '\n\nAtlanan satırlar:\n' + hatalar.join('\n') : ''));
+        } catch (e) { yaz('Eklenemedi: ' + (e.message || e), true); }
+    };
 
     function stokAlanFormu(kat, specs) {
         const s = specs || {};
@@ -625,16 +983,28 @@
 
     window.supplierNewStok = () => openStokModal(null);
     window.supplierEditStok = (id) => openStokModal((window.__supStok || []).find(x => x.id === id));
+    // "Benzerini ekle": aynı markadan farklı güçte kalem girerken tüm alanları
+    // yeniden doldurmayı önler. id düşürülür, satır YENİ olarak kaydedilir.
+    window.supplierCopyStok = (id) => {
+        const r = (window.__supStok || []).find(x => x.id === id);
+        if (!r) return;
+        const kopya = Object.assign({}, r);
+        delete kopya.id; delete kopya.status; delete kopya.reject_reason;
+        delete kopya.created_at; delete kopya.updated_at;
+        openStokModal(kopya);
+    };
 
     function openStokModal(r) {
         const e = r || {};
+        const yeni = !(r && r.id);
         const kat = e.category_key || 'panel';
-        const iller = Object.keys(window.EPC_IL_VERIM || {}).sort((a, b) => a.localeCompare(b, 'tr'));
-        const sec = (id, liste, deg) => `<select id="${id}" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white">${liste.map(x => `<option ${deg === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
+        const depo = depoOku();
+        const iller = ilListesi();
+        const sec = (id, liste, deg) => secKutu(id, liste, deg);
 
         supModal(`
-            <h3 class="text-lg font-black text-slate-800 mb-1">${r ? 'Stok Kalemini Düzenle' : 'Yeni Stok Kalemi'}</h3>
-            <p class="text-xs text-slate-500 mb-4">Kaydedilen satır yönetici onayından sonra yayına girer.</p>
+            <h3 class="text-lg font-black text-slate-800 mb-1">${yeni ? 'Yeni Stok Kalemi' : 'Stok Kalemini Düzenle'}</h3>
+            <p class="text-xs text-slate-500 mb-4">${yeni ? 'Yeni satır yönetici onayından sonra yayına girer.' : 'Miktar ve fiyat anında yayında. Üretici, model veya teknik değer değişirse satır yeniden onaya girer.'}</p>
             <div class="space-y-3">
                 <div><label class="block text-xs font-bold text-slate-600 mb-1">Kategori</label>
                     <select id="skCat" onchange="supplierStokKatDegisti()" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white">
@@ -654,8 +1024,8 @@
                     </div>
                     <div class="grid grid-cols-3 gap-3 mt-3">
                         <div><label class="block text-[11px] font-bold text-slate-600 mb-1">İl *</label>
-                            <select id="skCity" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white"><option value="">— Seçin —</option>${iller.map(i => `<option ${e.city === i ? 'selected' : ''}>${esc(i)}</option>`).join('')}</select></div>
-                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">İlçe</label><input id="skDist" value="${esc(e.district || '')}" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
+                            <select id="skCity" class="w-full border border-slate-300 p-2 rounded-lg text-sm bg-white"><option value="">— Seçin —</option>${iller.map(i => `<option ${(e.city || depo.city) === i ? 'selected' : ''}>${esc(i)}</option>`).join('')}</select></div>
+                        <div><label class="block text-[11px] font-bold text-slate-600 mb-1">İlçe</label><input id="skDist" value="${esc(e.district != null ? e.district : depo.district || '')}" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
                         <div><label class="block text-[11px] font-bold text-slate-600 mb-1">Termin (gün)</label><input id="skLead" type="number" value="${e.lead_time_days != null ? e.lead_time_days : ''}" class="w-full border border-slate-300 p-2 rounded-lg text-sm"></div>
                     </div>
                 </div>
@@ -686,7 +1056,7 @@
             </div>
             <div class="flex gap-2 mt-5">
                 <button onclick="supplierCloseModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-lg">İptal</button>
-                <button onclick="supplierSaveStok('${r ? r.id : ''}')" class="flex-1 bg-sky-600 text-white font-bold py-2 rounded-lg">Kaydet</button>
+                <button onclick="supplierSaveStok('${(r && r.id) ? r.id : ''}')" class="flex-1 bg-sky-600 text-white font-bold py-2 rounded-lg">Kaydet</button>
             </div>
             <div id="skMsg"></div>`);
     }
@@ -735,9 +1105,12 @@
             valid_until: g('skValid').value || null,
             specs,
             source_url: (g('skSrc').value || '').trim() || null,
-            is_active: !!g('skActive').checked,
-            status: 'pending'          // her değişiklik yeniden onaya girer
+            is_active: !!g('skActive').checked
         };
+
+        // Onay YALNIZ ilan kimliği değişirse sıfırlanır — yukarıdaki kurala bakın.
+        const eski = id ? (window.__supStok || []).find(x => x.id === id) : null;
+        if (!id || kimlikDegistiMi(eski, row)) row.status = 'pending';
 
         msg.innerHTML = '<p class="text-xs text-slate-400 mt-2">Kaydediliyor…</p>';
         try {

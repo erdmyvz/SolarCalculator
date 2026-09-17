@@ -91,32 +91,56 @@ window.authUnlockRole = function () {
     if (back) back.setAttribute('href', '#home');
 };
 
-// Girişten sonra rol tespiti: danışman mı, firma/admin mi?
-// Hesap türünü belirle: 'admin' | 'consultant' | 'installer'
+// Girişten sonra rol tespiti.
+// Hesap türü: 'admin' | 'consultant' | 'supplier' | 'investor' | 'installer'
+//           | 'yarim-kayit' (aşağıya bakın)
+//
+// ⚠️ BURADA SIRA DEĞİL, ÖNCELİK VAR — eski kod bu yüzden bozuktu.
+// Eskiden profiles.role 'investor' okununca fonksiyon ORADA dönüyordu;
+// consultants ve suppliers tablolarına hiç bakılmıyordu. Bir tedarikçinin
+// profiles satırı herhangi bir sebeple 'investor' olduysa (kayıt trigger'ı,
+// önce yatırımcı olarak denenmiş bir hesap, elle düzeltme) tedarikçi
+// panelinin TAMAMI erişilemez hâle geliyor, kullanıcı yatırımcı panelinde
+// "Henüz başvurunuz yok" ekranına düşüyordu.
+//
+// suppliers/consultants satırı KAYIT AKIŞININ BİLEREK açtığı satırdır;
+// profiles satırı otomatik da oluşabilir. Bu yüzden açık olan kazanır.
+//
+// Üç sorgu PARALEL gidiyor: toplam süre tek sorgu kadar, yani yatırımcı
+// girişine gecikme eklenmiyor.
 async function getAccountInfo(user) {
-    let role = null, consultant = null;
-    if (supabaseClient) {
-        try {
-            const { data: prof } = await supabaseClient.from('profiles').select('role').eq('id', user.id).maybeSingle();
-            if (prof) role = prof.role;
-        } catch (e) { /* profiles okunamadı */ }
-        if (role === 'admin') return { type: 'admin', consultant: null };
-        if (role === 'investor') return { type: 'investor', consultant: null };
-        // Magic-link ile oluşan hesap: profiles satırı (trigger) gecikse/oluşmasa bile
-        // kayıt metadata'sındaki rol üzerinden yatırımcı say (defansif güvenlik ağı).
-        if (!role && user.user_metadata && user.user_metadata.role === 'investor') return { type: 'investor', consultant: null };
-        try {
-            const { data: cons } = await supabaseClient.from('consultants').select('*').eq('id', user.id).maybeSingle();
-            if (cons) consultant = cons;
-        } catch (e) { /* consultants tablosu yoksa sessiz gec */ }
-        if (!consultant) {
-            try {
-                const { data: sup } = await supabaseClient.from('suppliers').select('*').eq('id', user.id).maybeSingle();
-                if (sup) return { type: 'supplier', consultant: null, supplier: sup };
-            } catch (e) { /* suppliers tablosu yoksa sessiz gec */ }
-        }
+    if (!supabaseClient) return { type: 'installer', consultant: null };
+
+    // ⚠️ PostgrestBuilder'ın .catch()'i YOK (yalnız then). Sarmalayıcı şart.
+    const sor = async (q) => { try { return await q; } catch (e) { return { data: null }; } };
+
+    const [profR, consR, supR] = await Promise.all([
+        sor(supabaseClient.from('profiles').select('role').eq('id', user.id).maybeSingle()),
+        sor(supabaseClient.from('consultants').select('*').eq('id', user.id).maybeSingle()),
+        sor(supabaseClient.from('suppliers').select('*').eq('id', user.id).maybeSingle())
+    ]);
+
+    const role = profR && profR.data ? profR.data.role : null;
+    const meta = user.user_metadata || {};
+
+    if (role === 'admin')  return { type: 'admin', consultant: null };
+    if (consR && consR.data) return { type: 'consultant', consultant: consR.data };
+    if (supR  && supR.data)  return { type: 'supplier', consultant: null, supplier: supR.data };
+    if (role === 'investor') return { type: 'investor', consultant: null };
+    // Magic-link ile oluşan hesap: profiles satırı (trigger) gecikse/oluşmasa bile
+    // kayıt metadata'sındaki rol üzerinden yatırımcı say (defansif güvenlik ağı).
+    if (!role && meta.role === 'investor') return { type: 'investor', consultant: null };
+
+    // ⚠️ YARIM KAYIT. Kullanıcı tedarikçi/danışman olarak kaydolmuş (auth
+    // metadata'sı öyle diyor) ama ilgili tablo satırı YOK. Kayıt akışındaki
+    // delikten geliyor: e-posta doğrulaması zorunluysa signInWithPassword
+    // başarısız oluyor, kod "✅ Kaydınız oluşturuldu" deyip satırı HİÇ
+    // açmadan dönüyordu. Kullanıcı e-postasını doğrulayıp giriş yapınca
+    // rolsüz kalıyordu. Sessizce yatırımcı/firma saymak yerine kaydı
+    // tamamlatıyoruz.
+    if (meta.role === 'supplier' || meta.role === 'consultant') {
+        return { type: 'yarim-kayit', eksikRol: meta.role, consultant: null };
     }
-    if (consultant) return { type: 'consultant', consultant };
     return { type: 'installer', consultant: null };
 }
 window.getAccountInfo = getAccountInfo;
@@ -162,6 +186,102 @@ function showBanScreen(email, reason) {
     </div>`;
     m.classList.remove('hidden');
 }
+
+// ---------------------------------------------------------------------------
+// YARIM KALMIŞ KAYDI TAMAMLAT
+//
+// NEDEN GEREKLİ: kayıt akışı, e-posta doğrulaması zorunlu olduğunda
+// signInWithPassword'e takılıyor ve suppliers/consultants satırını AÇAMADAN
+// "✅ Kaydınız oluşturuldu" diyerek dönüyordu. Kullanıcı e-postasını
+// doğrulayıp giriş yapınca ortada rolünü kanıtlayan satır olmuyor.
+//
+// Satırı burada açıyoruz: RLS zaten "id = auth.uid()" ile kendi satırını
+// eklemeye izin veriyor (sup_self_insert / danışman muadili). Tedarikçide
+// company_name NOT NULL olduğu için ünvan soruluyor; danışmanda metadata
+// yeterli olduğundan tek tuşla tamamlanıyor.
+// ---------------------------------------------------------------------------
+function showKayitTamamlaScreen(eksikRol, user) {
+    const tedarikci = eksikRol === 'supplier';
+    const meta = (user && user.user_metadata) || {};
+    const adSoyad = meta.full_name || '';
+    const unvan   = meta.company_name || '';
+    const safe = (t) => String(t == null ? '' : t)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    let m = document.getElementById('kayitTamamlaScreen');
+    if (!m) { m = document.createElement('div'); m.id = 'kayitTamamlaScreen'; document.body.appendChild(m); }
+    m.className = 'fixed inset-0 z-[100] bg-slate-900/95 flex items-center justify-center p-4 overflow-y-auto';
+    m.innerHTML = `<div class="bg-white rounded-2xl max-w-md w-full p-7 my-8">
+        <div class="text-center mb-5">
+            <div class="text-4xl mb-2">🧩</div>
+            <h2 class="text-2xl font-black text-slate-800">Kaydınız yarım kalmış</h2>
+            <p class="text-sm text-slate-500 mt-2">${tedarikci ? 'Tedarikçi' : 'Danışman'} olarak kaydolmuşsunuz ama profiliniz oluşturulamamış — bu yüzden panelinize giremiyorsunuz. Aşağıdan tek adımda tamamlayalım.</p>
+        </div>
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Ad Soyad</label>
+                <input id="ktAd" value="${safe(adSoyad)}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">
+            </div>
+            ${tedarikci ? `<div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Resmi Firma Ünvanı *</label>
+                <input id="ktUnvan" value="${safe(unvan)}" placeholder="Örn. Güneş Enerji Sanayi A.Ş." class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">
+                <p class="text-[11px] text-slate-400 mt-1">Kurulumcu firmalara bu ünvanla görüneceksiniz.</p>
+            </div>` : ''}
+            <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Telefon</label>
+                <input id="ktTel" value="${safe(meta.phone || '')}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">
+            </div>
+        </div>
+        <div id="ktMsg" class="mt-3"></div>
+        <button id="ktBtn" onclick="epcKaydiTamamla('${tedarikci ? 'supplier' : 'consultant'}')" class="w-full mt-4 bg-sky-600 hover:bg-sky-700 text-white font-bold py-2.5 rounded-lg">Kaydı Tamamla ve Panele Gir</button>
+        <button onclick="(async()=>{ try{ if(supabaseClient) await supabaseClient.auth.signOut(); }catch(e){} window.location.hash='#home'; window.location.reload(); })()" class="w-full mt-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-lg text-sm">Çıkış Yap</button>
+    </div>`;
+    m.classList.remove('hidden');
+}
+
+window.epcKaydiTamamla = async function (rol) {
+    const btn = document.getElementById('ktBtn');
+    const msg = document.getElementById('ktMsg');
+    const yaz = (t, kotu) => { if (msg) msg.innerHTML = `<p class="text-xs font-bold ${kotu ? 'text-red-600' : 'text-emerald-600'}">${t}</p>`; };
+    const ad  = (document.getElementById('ktAd')?.value || '').trim();
+    const tel = (document.getElementById('ktTel')?.value || '').trim();
+    const unvan = (document.getElementById('ktUnvan')?.value || '').trim();
+
+    if (rol === 'supplier' && unvan.length < 3) { yaz('Geçerli bir firma ünvanı girin.', true); return; }
+    if (!ad) { yaz('Ad soyad boş olamaz.', true); return; }
+
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.textContent = 'Kaydediliyor…'; btn.disabled = true; }
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) throw new Error('Oturum bulunamadı, tekrar giriş yapın.');
+
+        if (rol === 'supplier') {
+            const { error } = await supabaseClient.from('suppliers').insert({
+                id: user.id, company_name: unvan, full_name: ad,
+                email: user.email, phone: tel, status: 'draft'
+            });
+            if (error && error.code !== '23505') throw error;
+        } else {
+            const parcalar = ad.split(/\s+/);
+            const bas = ((parcalar[0] || '').charAt(0) + (parcalar[parcalar.length - 1] || '').charAt(0)).toUpperCase();
+            const { error } = await supabaseClient.from('consultants').insert({
+                id: user.id, full_name: ad, email: user.email,
+                phone: tel, avatar_initials: bas, status: 'draft'
+            });
+            if (error && error.code !== '23505') throw error;
+        }
+        // Bir daha sorulmasın: metadata'ya da yaz (satır zaten açıldı, bu ek güvence).
+        try { await supabaseClient.auth.updateUser({ data: { role: rol, full_name: ad, phone: tel, company_name: unvan || undefined } }); } catch (e) { }
+
+        document.getElementById('kayitTamamlaScreen')?.remove();
+        const { data: { user: u2 } } = await supabaseClient.auth.getUser();
+        await routeByInfo(await getAccountInfo(u2), u2);
+    } catch (err) {
+        yaz('Tamamlanamadı: ' + (err.message || err), true);
+        if (btn) { btn.textContent = orig; btn.disabled = false; }
+    }
+};
 
 // rolAnahtari: routeByInfo bu ekranı currentConsultant/currentSupplier
 // atanmadan ÖNCE çağırıyor, o yüzden rol dışarıdan geliyor.
@@ -301,6 +421,12 @@ async function routeByInfo(info, user) {
         if (typeof showInvestorPanel === 'function') showInvestorPanel();
         return 'investor';
     }
+    // Yarım kalmış tedarikçi/danışman kaydı: satırı burada tamamlatıyoruz.
+    // Abonelik kontrolünden ÖNCE — henüz abonelik satırı bile yok.
+    if (info.type === 'yarim-kayit') {
+        showKayitTamamlaScreen(info.eksikRol, user);
+        return 'yarim-kayit';
+    }
     if (info.type !== 'admin') {
         const sub = await getSubscription(info, user);
         if (sub && sub.banned) { showBanScreen(user.email, sub.banReason); return 'banned'; }
@@ -402,7 +528,8 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
             if (!session) {
                 const { data: si, error: siErr } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (siErr) {
-                    alert("✅ Kaydınız oluşturuldu! Sizlere mail doğrulama linki gönderdik. Lütfen e-postanızı doğrulayın, sonra giriş yapın.");
+                    // Satır açılamadı; ilk girişte showKayitTamamlaScreen tamamlatacak.
+                    alert("✅ Kaydınız oluşturuldu! Sizlere mail doğrulama linki gönderdik.\n\nE-postanızı doğrulayıp giriş yaptığınızda danışman profiliniz otomatik tamamlanacak.");
                     document.getElementById('registerForm').reset(); document.getElementById('tabLogin').click(); return;
                 }
                 session = si.session;
@@ -433,16 +560,23 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
         }
         const orig = btn.textContent; btn.textContent = "Kaydediliyor..."; btn.disabled = true;
         try {
+            // ⚠️ company_name METADATA'YA DA YAZILIYOR.
+            // Aşağıdaki suppliers.insert her zaman çalışmıyor: e-posta
+            // doğrulaması zorunluysa signInWithPassword başarısız oluyor ve
+            // fonksiyon satırı açmadan dönüyor. O durumda kullanıcı ilk
+            // girişinde showKayitTamamlaScreen'e düşüyor; ünvanı burada
+            // sakladığımız için form önden dolu geliyor, kullanıcı yeniden
+            // yazmak zorunda kalmıyor.
             const { error: signUpErr } = await supabaseClient.auth.signUp({
                 email, password,
-                options: { data: { role: 'supplier', full_name: (firstName + ' ' + lastName).trim(), phone: phone } }
+                options: { data: { role: 'supplier', full_name: (firstName + ' ' + lastName).trim(), phone: phone, company_name: supCompany } }
             });
             if (signUpErr) throw signUpErr;
             let { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) {
                 const { data: si, error: siErr } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (siErr) {
-                    alert("✅ Kaydınız oluşturuldu! Sizlere mail doğrulama linki gönderdik. Lütfen e-postanızı doğrulayın, sonra giriş yapın.");
+                    alert("✅ Kaydınız oluşturuldu! Sizlere mail doğrulama linki gönderdik.\n\nE-postanızı doğrulayıp giriş yaptığınızda tedarikçi profiliniz otomatik tamamlanacak.");
                     document.getElementById('registerForm').reset(); document.getElementById('tabLogin').click(); return;
                 }
                 session = si.session;
