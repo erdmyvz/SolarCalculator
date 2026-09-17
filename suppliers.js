@@ -111,6 +111,27 @@
         </div>`;
     }
 
+    // -----------------------------------------------------------------------
+    // ⚠️ ŞEHİR SERBEST METİN OLAMAZ.
+    // Tedarikçi dizini ili TAM DİZGİ olarak karşılaştırıyor. "İstanbul",
+    // "istanbul" ve "Istanbul" üç ayrı il gibi davranıyor: süzgeç kutusunda üç
+    // satır çıkıyor ve birini seçen kurulumcu diğer iki tedarikçiyi hiç
+    // göremiyor. Kaynağı kapatmak için alan 81 illik listeden seçiliyor.
+    //
+    // Listede olmayan eski bir değer varsa SİLİNMİYOR; ayrı bir seçenek olarak
+    // korunuyor ki tedarikçi kaydettiğinde verisi sessizce değişmesin.
+    // -----------------------------------------------------------------------
+    function ilSecici(id, deger) {
+        const liste = Object.keys(window.EPC_IL_VERIM || {}).sort((a, b) => a.localeCompare(b, 'tr'));
+        const mevcut = (deger || '').trim();
+        const listede = liste.some(i => i === mevcut);
+        return `<select id="${id}" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-white">
+            <option value="">— İl seçin —</option>
+            ${(!listede && mevcut) ? `<option selected value="${esc(mevcut)}">${esc(mevcut)} (listede yok)</option>` : ''}
+            ${liste.map(i => `<option ${i === mevcut ? 'selected' : ''}>${esc(i)}</option>`).join('')}
+        </select>`;
+    }
+
     function eksikAlanlar() {
         const e = [];
         if (!S.company_name) e.push('Firma ünvanı');
@@ -224,7 +245,7 @@
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Telefon *</label>
                         <input id="supPhone" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm" value="${esc(S.phone)}"></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5">Şehir *</label>
-                        <input id="supCity" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm" value="${esc(S.city)}"></div>
+                        ${ilSecici('supCity', S.city)}</div>
                     <div class="md:col-span-2"><label class="block text-xs font-bold text-slate-600 mb-1.5">Web sitesi</label>
                         <input id="supWebsite" type="url" placeholder="https://..." class="w-full p-2.5 border border-slate-300 rounded-lg text-sm" value="${esc(S.website)}"></div>
                 </div>

@@ -34,6 +34,21 @@
 
     const companyId = () => (window.currentUserProfile && window.currentUserProfile.company_id) || null;
 
+    // ⚠️ İL KARŞILAŞTIRMASI TAM DİZGİ OLAMAZ.
+    // suppliers.city eskiden serbest metindi; "İstanbul", "istanbul" ve
+    // "Istanbul" üç ayrı il gibi davranıyordu. Süzgeç kutusunda üç satır
+    // çıkıyor, birini seçen kurulumcu diğer iki tedarikçiyi HİÇ göremiyordu.
+    // Profil alanı artık listeden seçiliyor ama eski kayıtlar duruyor; burada
+    // da normalleştirerek gruplandırıyoruz.
+    //
+    // toLocaleLowerCase('tr-TR') tek başına yetmez: 'İ' birleşik noktalı i
+    // üretip 'i' ile eşleşmez. Türkçe harfler önce sadeleştiriliyor —
+    // SQL tarafındaki public.epc_norm() ile aynı kural.
+    const ilNorm = (t) => String(t == null ? '' : t).trim()
+        .replace(/[İIı]/g, 'i').replace(/[Şş]/g, 's').replace(/[Ğğ]/g, 'g')
+        .replace(/[Üü]/g, 'u').replace(/[Öö]/g, 'o').replace(/[Çç]/g, 'c')
+        .toLowerCase().replace(/\s+/g, '');
+
     // ------------------------------------------------------------ modül girişi
     window.showSupplierDirectory = function () {
         document.getElementById('mainMenu')?.classList.add('hidden');
@@ -98,7 +113,11 @@
 
     function suzgec() {
         const kats = [...new Set(_sups.flatMap(s => s.categories || []))].sort();
-        const iller = [...new Set(_sups.map(s => s.city).filter(Boolean))].sort();
+        // Aynı ile giden farklı yazımlar tek satırda toplanır; kutuda ilk
+        // görülen yazım gösterilir, süzgeç normalleştirilmiş anahtarla çalışır.
+        const ilHarita = new Map();
+        _sups.forEach(s => { const k = ilNorm(s.city); if (k && !ilHarita.has(k)) ilHarita.set(k, String(s.city).trim()); });
+        const iller = [...ilHarita.entries()].sort((a, b) => a[1].localeCompare(b[1], 'tr'));
         const opt = (v, sel) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(v)}</option>`;
         return `<div class="kart mb-4" style="padding:var(--s3) var(--s4)">
           <div class="flex flex-wrap gap-2 items-center">
@@ -108,7 +127,7 @@
                 <option value="">Tüm kategoriler</option>${kats.map(k => opt(k, _fKat)).join('')}
             </select>
             <select onchange="supDirFilter('il', this.value)" class="p-2 border border-slate-300 rounded-lg text-sm bg-white">
-                <option value="">Tüm iller</option>${iller.map(i => opt(i, _fIl)).join('')}
+                <option value="">Tüm iller</option>${iller.map(([k, ad]) => `<option value="${esc(k)}" ${k === _fIl ? 'selected' : ''}>${esc(ad)}</option>`).join('')}
             </select>
             ${(_fKat || _fIl || _ara) ? '<button onclick="supDirFilter(\'sifirla\')" class="text-xs font-bold text-slate-500 hover:text-slate-800 px-2">Süzgeci temizle</button>' : ''}
             <span class="text-xs font-bold text-slate-400 ml-auto">${suzulmus().length} tedarikçi</span>
@@ -127,7 +146,7 @@
         const q = _ara.trim().toLocaleLowerCase('tr-TR');
         return _sups.filter(s => {
             if (_fKat && !(s.categories || []).includes(_fKat)) return false;
-            if (_fIl && s.city !== _fIl) return false;
+            if (_fIl && ilNorm(s.city) !== _fIl) return false;
             if (!q) return true;
             // Ürün adı da aransın: kurulumcu "615W panel kimde var" diye bakar.
             const urun = _prods.filter(p => p.supplier_id === s.id).map(p => p.name).join(' ');
