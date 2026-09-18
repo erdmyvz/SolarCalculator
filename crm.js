@@ -1209,9 +1209,21 @@ window.crmFiltreleriTemizle = function () {
                         <button onclick="crmDavetTeklif('${d.lead_id}')" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-1.5 rounded-lg text-xs">📄 Teklif</button>
                     </div>
                 </div>
+                ${/* ⚠️ İKİ AYRI KAYNAK, ÇELİŞEBİLİR.
+                      Yukarıdaki açılır liste lead_assignments.durum'u yazıyor —
+                      firmanın kendi BEYANI. Buradaki teklif_verdim ise
+                      firm_quotes'ta gerçekten satır var mı diye bakıyor.
+                      Firma "Teklif verdim" seçip sihirbazdan teklif
+                      göndermezse ekran aynı anda "Teklif verdim" ve "Teklif
+                      verilmedi" diyordu. Daha kötüsü: yatırımcının "Bu
+                      firmayı seç" düğmesi firm_quotes'a baktığı için kapalı
+                      kalıyor, firma neden seçilmediğini anlamıyordu.
+                      Çelişkiyi gizlemek yerine adını koyuyoruz. */''}
                 ${d.teklif_verdim
                     ? '<p class="text-[11px] text-emerald-600 font-bold mt-2">✓ Teklifiniz iletildi — yatırımcı diğer tekliflerle karşılaştırıyor.</p>'
-                    : '<p class="text-[11px] text-slate-400 mt-2">Teklif verilmedi. Yatırımcı teklifleri yan yana karşılaştıracak.</p>'}
+                    : (d.durum === 'teklif_verildi'
+                        ? '<p class="text-[11px] text-amber-700 font-bold mt-2">⚠ Durumu “Teklif verdim” işaretlediniz ama sistemde teklifiniz yok. Yatırımcı sizi seçemez — “📄 Teklif” ile teklifi gönderin.</p>'
+                        : '<p class="text-[11px] text-slate-400 mt-2">Teklif verilmedi. Yatırımcı teklifleri yan yana karşılaştıracak.</p>')}
             </div>`;
         };
 

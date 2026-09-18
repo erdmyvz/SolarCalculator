@@ -237,14 +237,21 @@ notify pgrst, 'reload schema';
 --  ÇALIŞTIRDIKTAN SONRA — EKSİKSİZ OLDUĞUNU GÖRÜN
 --  Tarayıcı konsolunda (herhangi bir oturumla):
 --
---    for (const f of ['danisan_crm_e_aktar','davet_durumu_yaz',
---                     'puanlanacaklar','bekleyen_yorumlar','yorum_karari']) {
---      const { error } = await supabaseClient.rpc(f, {});
---      console.log(f, error && error.code === 'PGRST202' ? 'EKSİK' : 'var');
---    }
+--    const S='00000000-0000-0000-0000-000000000000';
+--    const t=[['danisan_crm_e_aktar',{p_client_id:S,p_il:'İstanbul'}],
+--             ['davet_durumu_yaz',{p_assignment_id:S,p_durum:'iletisim'}],
+--             ['puanlanacaklar',{}],['bekleyen_yorumlar',{}],
+--             ['yorum_karari',{p_id:S,p_karar:'approved'}]];
+--    for (const [f,a] of t) { const {error}=await supabaseClient.rpc(f,a);
+--      console.log(f, error && error.code==='PGRST202' ? 'EKSİK' : 'var'); }
 --
---  Beşi de "var" demeli. (PGRST202 dışındaki hatalar normaldir — fonksiyon
---  vardır, yalnız boş parametreyi reddeder.)
+--  ⚠️ ARGÜMANLARI BOŞ GEÇMEYİN. PostgREST fonksiyonu İMZASIYLA arıyor;
+--  parametreli bir fonksiyonu {} ile çağırmak da PGRST202 verir ve fonksiyon
+--  varken "EKSİK" sanılır. (Bu tuzağa bizzat düştük.)
+--
+--  Beşi de "var" demeli. PGRST202 dışındaki hatalar normaldir — fonksiyon
+--  vardır, yalnız sahte kimliği reddeder ("Danışan kaydı bulunamadı",
+--  "Bu davet size ait değil", "Yetkiniz yok").
 --
 --  Ardından firma hesabıyla CRM → Yarışmalı Davetler → "İletişimde"
 --  düğmesine basın; durum değişmeli.
