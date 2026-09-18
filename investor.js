@@ -476,9 +476,15 @@
         try {
             const { error } = await supabaseClient.rpc('lead_kazanan', { p_lead_id: leadId, p_company_id: companyId });
             if (error) throw error;
-            alert(firmaAd + ' seçildi. Firma sizinle iletişime geçecek.');
+            // ⚠️ ÖNCE TAZELE, SONRA HABER VER.
+            // alert() sayfayı bloke ediyor: kullanıcı "Tamam"a basana kadar
+            // arkadaki ekran ESKİ hâlinde kalıyordu — kart hâlâ "Firma ataması
+            // bekleniyor" diyor, firma seçim bloğu hâlâ duruyor. Seçimin işe
+            // yaramadığı izlenimi veriyordu. Artık uyarı çıktığında ekran
+            // zaten güncel.
             await loadData();
             renderInvestorHome();
+            alert(firmaAd + ' seçildi. Firma sizinle iletişime geçecek.');
         } catch (e) { alert('Seçim kaydedilemedi: ' + (e.message || e)); }
     };
 
