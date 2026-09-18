@@ -36,9 +36,14 @@ set search_path = public
 as $$
     select c.id, c.name, c.city, c.district, la.yakinlik, la.durum,
            o.ortalama, o.adet, o.tamamlanan_is,
+           -- ⚠️ YALNIZ GÖNDERİLMİŞ TEKLİF sayılır. Eskiden 'revised'
+           -- dışındaki her durum sayılıyordu, TASLAK dahil; sihirbaz teklifi
+           -- hep 'draft' açtığı için firma kaydedip göndermese bile yatırımcı
+           -- "teklif verdi" görüyor ve HİÇ GÖRMEDİĞİ teklif yüzünden o firmayı
+           -- seçebiliyordu. Bkz. taslak-teklif-duzelt.sql
            exists (select 1 from public.firm_quotes q
                     where q.lead_id = p_lead_id and q.company_id = c.id
-                      and coalesce(q.status, '') <> 'revised')
+                      and coalesce(q.status, '') in ('sent', 'accepted'))
     from public.lead_assignments la
     join public.companies c on c.id = la.company_id
     left join lateral public.firma_puan_ozeti(c.id) o on true
@@ -63,9 +68,10 @@ as $$
     select la.id, l.id, l.full_name, l.phone, l.email,
            l.city, l.district, l.address, la.yakinlik, la.durum,
            (select count(*)::int - 1 from public.lead_assignments x where x.lead_id = l.id),
+           -- Firmanın kendi ekranında da aynı ölçü: taslak "verdim" değildir.
            exists (select 1 from public.firm_quotes q
                     where q.lead_id = l.id and q.company_id = la.company_id
-                      and coalesce(q.status, '') <> 'revised'),
+                      and coalesce(q.status, '') in ('sent', 'accepted')),
            l.created_at
     from public.lead_assignments la
     join public.leads l on l.id = la.lead_id
