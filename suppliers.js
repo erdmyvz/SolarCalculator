@@ -496,11 +496,37 @@
     };
 
     // --------------------------------------------------------- gelen talepler
+    // ⚠️ TALEBİ KİMİN GÖNDERDİĞİ YAZMIYORDU.
+    // Kart yalnız konu, metin ve tarih gösteriyordu; company_id satırda duruyor
+    // ama hiç çözülmüyordu. Tedarikçi fiyat verirken karşısındaki firmayı
+    // görmüyor — hangi firma, nerede, daha önce ne istemiş bilmiyordu.
+    // list_companies() zaten SECURITY DEFINER ve authenticated'a açık; firma
+    // adını oradan çözüyoruz (companies tablosuna doğrudan erişim gerekmiyor).
+    let _firmaHarita = null;
+    async function firmalariYukle() {
+        if (_firmaHarita) return _firmaHarita;
+        _firmaHarita = new Map();
+        try {
+            const { data } = await supabaseClient.rpc('list_companies');
+            (data || []).forEach(c => _firmaHarita.set(c.id, c));
+        } catch (e) { /* çözülemezse kart "Kurulumcu firma" der, akış durmaz */ }
+        return _firmaHarita;
+    }
+    function firmaEtiketi(companyId) {
+        const f = _firmaHarita && _firmaHarita.get(companyId);
+        if (!f) return 'Kurulumcu firma';
+        const konum = [f.district, f.city].filter(Boolean).join(' / ');
+        return f.name + (konum ? ' · ' + konum : '');
+    }
+
     async function renderTalep() {
         _view = 'talep';
         const el = root(); if (!el) return;
-        const { data, error } = await supabaseClient.from('supplier_requests')
-            .select('*').eq('supplier_id', S.id).order('created_at', { ascending: false });
+        const [{ data, error }] = await Promise.all([
+            supabaseClient.from('supplier_requests')
+                .select('*').eq('supplier_id', S.id).order('created_at', { ascending: false }),
+            firmalariYukle()
+        ]);
         if (error) { el.innerHTML = baslik('Gelen Talepler') + `<p class="text-sm text-red-500">Yüklenemedi: ${esc(error.message)}</p>`; return; }
         window.__supReqs = data || [];
 
@@ -512,10 +538,11 @@
                             <strong class="text-sm text-slate-800">${esc(r.subject)}</strong>
                             <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${r.status === 'answered' ? 'bg-emerald-100 text-emerald-800' : r.status === 'closed' ? 'bg-slate-100 text-slate-600' : 'bg-amber-100 text-amber-800'}">${r.status === 'answered' ? 'Yanıtlandı' : r.status === 'closed' ? 'Kapalı' : 'Açık'}</span>
                         </div>
-                        ${r.body ? `<p class="text-xs text-slate-600 leading-relaxed">${esc(r.body)}</p>` : ''}
+                        <p class="text-[11px] font-bold text-sky-700 mb-1">🏢 ${esc(firmaEtiketi(r.company_id))}</p>
+                        ${r.body ? `<p class="text-xs text-slate-600 leading-relaxed whitespace-pre-line">${esc(r.body)}</p>` : ''}
                         <p class="text-[11px] text-slate-400 mt-1">${new Date(r.created_at).toLocaleDateString('tr-TR')}</p>
-                        ${r.answer ? `<div class="mt-2 bg-emerald-50 border border-emerald-100 rounded-lg p-3"><p class="text-[11px] font-bold text-emerald-800 mb-0.5">Yanıtınız</p><p class="text-xs text-emerald-900">${esc(r.answer)}</p></div>` : ''}
-                        ${r.status === 'open' ? `<button onclick="supplierAnswer('${r.id}')" class="mt-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Yanıtla</button>` : ''}
+                        ${r.answer ? `<div class="mt-2 bg-emerald-50 border border-emerald-100 rounded-lg p-3"><p class="text-[11px] font-bold text-emerald-800 mb-0.5">Yanıtınız</p><p class="text-xs text-emerald-900 whitespace-pre-line">${esc(r.answer)}</p></div>` : ''}
+                        ${r.status === 'closed' ? '' : `<button onclick="supplierAnswer('${r.id}')" class="mt-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">${r.answer ? 'Yanıtı güncelle' : 'Yanıtla'}</button>`}
                     </div>`).join('') || `<div class="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center">
                         <div class="text-3xl mb-2">📭</div>
                         <p class="text-sm font-bold text-slate-700">Henüz talep yok</p>
@@ -528,9 +555,11 @@
         const r = (window.__supReqs || []).find(x => x.id === id);
         if (!r) return;
         supModal(`
-            <h3 class="text-lg font-black text-slate-800 mb-1">Talebi Yanıtla</h3>
-            <p class="text-xs text-slate-500 mb-4">${esc(r.subject)}</p>
-            <textarea id="reqAnswer" rows="5" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="Fiyat, stok durumu ve teslim süresi..."></textarea>
+            <h3 class="text-lg font-black text-slate-800 mb-1">${r.answer ? 'Yanıtı Güncelle' : 'Talebi Yanıtla'}</h3>
+            <p class="text-xs font-bold text-sky-700">🏢 ${esc(firmaEtiketi(r.company_id))}</p>
+            <p class="text-xs text-slate-500 mb-3">${esc(r.subject)}</p>
+            ${r.body ? `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3"><p class="text-[11px] text-slate-600 whitespace-pre-line">${esc(r.body)}</p></div>` : ''}
+            <textarea id="reqAnswer" rows="5" class="w-full p-2 border border-slate-300 rounded-lg text-sm" placeholder="Fiyat, stok durumu ve teslim süresi...">${esc(r.answer || '')}</textarea>
             <div class="flex gap-2 mt-5">
                 <button onclick="supplierCloseModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-2 rounded-lg">İptal</button>
                 <button onclick="supplierSaveAnswer('${id}')" class="flex-1 bg-sky-600 text-white font-bold py-2 rounded-lg">Gönder</button>
