@@ -741,11 +741,25 @@ window.heroFocusCalc = function () {
                             { p_tracking_code: kod, p_limit: limit, p_kapsam: kapsam });
                         if (error) throw error;
                         const n = (data && data.atanan) || 0;
-                        k.innerHTML = `<div class="bg-white rounded-2xl w-full max-w-md p-6 text-center">
-                            <div class="text-3xl mb-2">✅</div>
-                            <h3 class="font-black text-lg text-slate-900">${n} firmaya iletildi</h3>
-                            <p class="text-sm text-slate-600 mt-1">Firmalar sizinle iletişime geçip keşif yapacak. Teklifler hazır olduğunda yatırımcı panelinizde karşılaştırabilirsiniz.</p>
-                            <button id="epcBittiBtn" class="mt-4 w-full bg-slate-800 text-white font-black py-2.5 rounded-lg">Tamam</button></div>`;
+                        // ⚠️ SIFIR ATAMAYI BAŞARI GİBİ GÖSTERME.
+                        // lead_firma_esle {durum:'atandi', atanan:0} dönebiliyor:
+                        // ekranda firma listelendikten sonra o firma engellenmiş,
+                        // silinmiş ya da kaydın ili başka bir değere yazılmış
+                        // olabilir. Eski kod bu durumda yeşil tik ve
+                        // "0 firmaya iletildi — Firmalar sizinle iletişime geçip
+                        // keşif yapacak" diyordu; yatırımcı gelmeyecek bir telefon
+                        // bekliyordu. Söz verilen şey olmuyorsa söz verilmez.
+                        k.innerHTML = n > 0
+                            ? `<div class="bg-white rounded-2xl w-full max-w-md p-6 text-center">
+                                <div class="text-3xl mb-2">✅</div>
+                                <h3 class="font-black text-lg text-slate-900">${n} firmaya iletildi</h3>
+                                <p class="text-sm text-slate-600 mt-1">Firmalar sizinle iletişime geçip keşif yapacak. Teklifler hazır olduğunda yatırımcı panelinizde karşılaştırabilirsiniz.</p>
+                                <button id="epcBittiBtn" class="mt-4 w-full bg-slate-800 text-white font-black py-2.5 rounded-lg">Tamam</button></div>`
+                            : `<div class="bg-white rounded-2xl w-full max-w-md p-6">
+                                <h3 class="font-black text-lg text-slate-900">Başvurunuz kayıtlı</h3>
+                                <p class="text-sm text-slate-600 mt-1">Talebiniz şu an hiçbir firmaya iletilemedi — bölgenizdeki firma kaydı bu sırada değişmiş olabilir. Başvurunuz kaybolmadı; ekibimiz elle yönlendirecek.</p>
+                                <p class="text-xs text-slate-500 mt-3">Takip kodunuz: <strong class="font-mono text-slate-800">${String(kod)}</strong></p>
+                                <button id="epcBittiBtn" class="mt-4 w-full bg-slate-800 text-white font-black py-2.5 rounded-lg">Tamam</button></div>`;
                         document.getElementById('epcBittiBtn').addEventListener('click', kapat);
                     } catch (e) {
                         ob.disabled = false; ob.textContent = 'Tekrar dene';
