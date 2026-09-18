@@ -198,6 +198,9 @@ async function fetchAdminData() {
     await renderProcessAdmin();
     await renderMevzuatAdmin();
 
+    // 6b) FİRMA KONUMLARI — yarışmalı atamanın ön koşulu
+    await renderFirmaKonumAdmin();
+
     // 7) DAĞITIM ŞİRKETLERİ (yalnız admin görür)
     await renderDiscoAdmin();
 
@@ -1213,6 +1216,115 @@ window.hwDeleteItem = async (id) => {
     renderHardwareAdmin();
 };
 
+
+// ============================================================================
+// FİRMA KONUMLARI (yalnız admin)
+//
+// ⚠️ YARIŞMALI ATAMANIN TEK ÖN KOŞULU BU.
+// en_yakin_firmalar() "where c.city is not null" diyor. Konumu olmayan firma
+// hiçbir yatırımcıya eşleşmez — ne davet alır ne teklif verir. Canlıda
+// ölçüldü: tek kayıtlı firmanın city'si NULL, en_yakin_firmalar(...,kapsam=4)
+// yani TÜM TÜRKİYE kapsamında bile [] dönüyordu.
+//
+// Kayıt formuna il/ilçe eklendi ama ondan önce kaydolmuş firmalar boş kaldı
+// ve panelde konum girilecek hiçbir ekran yoktu ("Firmalar" sekmesi profil
+// listeliyor, "Düzenle" düğmesinin onclick'i bile yok).
+//
+// firma-konum-admin.sql çalıştırılmış olmalıdır.
+// ============================================================================
+let _fkFirmalar = [];
+
+function fkKok() {
+    if (document.getElementById('fkRoot')) return document.getElementById('fkRoot');
+    const admin = document.getElementById('adminPaneCompanies') || document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'fkRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <h3 class="text-lg font-black text-slate-800 mb-1">📍 Firma Konumları</h3>
+        <p class="text-xs text-slate-500 mb-3">Yatırımcıya <strong>en yakın 3 firma</strong> bu alanlardan hesaplanıyor. İli boş olan firma hiçbir başvuruya eşleşmez — ne davet alır ne teklif verir.</p>
+        <div id="fkOzet" class="mb-3"></div>
+        <div id="fkList" class="space-y-2"></div>`;
+    // Firmalar tablosunun hemen altına koy: sekmenin en acil işi bu.
+    admin.insertBefore(card, admin.children[1] || null);
+    return card;
+}
+
+async function renderFirmaKonumAdmin() {
+    const wrap = fkKok();
+    if (!wrap || !supabaseClient) return;
+    const box = document.getElementById('fkList');
+    const ozet = document.getElementById('fkOzet');
+    box.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
+
+    const { data, error } = await supabaseClient.rpc('firmalar_konum');
+    if (error) {
+        box.innerHTML = `<p class="text-xs text-red-500">Yüklenemedi: ${admEscape(error.message)}</p>
+            <p class="text-[11px] text-slate-400 mt-1">firma-konum-admin.sql çalıştırıldı mı?</p>`;
+        return;
+    }
+    _fkFirmalar = data || [];
+
+    const eksik = _fkFirmalar.filter(f => !f.il).length;
+    ozet.innerHTML = _fkFirmalar.length === 0
+        ? '<p class="text-xs text-slate-400 italic">Kayıtlı firma yok.</p>'
+        : (eksik
+            ? `<div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                 <p class="text-xs font-black text-red-700">${eksik} firmanın konumu yok</p>
+                 <p class="text-[11px] text-red-600 mt-0.5">Bu firmalar eşleştirmeye hiç girmiyor. Doldurulana kadar o bölgelerde yarışma başlamaz.</p>
+               </div>`
+            : `<div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                 <p class="text-xs font-black text-emerald-700">Tüm firmaların konumu tanımlı</p>
+                 <p class="text-[11px] text-emerald-600 mt-0.5">${_fkFirmalar.length} firma eşleştirmeye giriyor.</p>
+               </div>`);
+
+    const iller = Object.keys(window.EPC_IL_VERIM || {}).sort((a, b) => a.localeCompare(b, 'tr'));
+    box.innerHTML = _fkFirmalar.map(f => `
+        <div class="border ${f.il ? 'border-slate-200' : 'border-red-300 bg-red-50/40'} rounded-lg p-3">
+            <div class="flex items-center gap-2 flex-wrap mb-2">
+                <strong class="text-sm text-slate-800">${admEscape(f.ad || 'Firma')}</strong>
+                ${f.il
+                    ? `<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">${admEscape([f.ilce, f.il].filter(Boolean).join(' / '))}${f.bolge ? ' · ' + admEscape(f.bolge) : ''}</span>`
+                    : '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">konum yok</span>'}
+                ${f.banned ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-800 text-white">engelli</span>' : ''}
+                <span class="text-[11px] text-slate-400">${f.basvuru || 0} başvuru</span>
+            </div>
+            <div class="flex items-end gap-2 flex-wrap">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">İl *</label>
+                    <select id="fkIl_${f.id}" class="border border-slate-300 p-1.5 rounded-lg text-xs bg-white w-40">
+                        <option value="">— Seçin —</option>
+                        ${iller.map(i => `<option ${f.il === i ? 'selected' : ''}>${admEscape(i)}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">İlçe</label>
+                    <input id="fkIlce_${f.id}" value="${admEscape(f.ilce || '')}" class="border border-slate-300 p-1.5 rounded-lg text-xs w-36">
+                </div>
+                <button onclick="fkKaydet('${f.id}')" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Kaydet</button>
+                <span id="fkMsg_${f.id}" class="text-[11px]"></span>
+            </div>
+        </div>`).join('') || '<p class="text-xs text-slate-400 italic">Kayıtlı firma yok.</p>';
+}
+
+window.fkKaydet = async function (id) {
+    const il = document.getElementById('fkIl_' + id)?.value || '';
+    const ilce = (document.getElementById('fkIlce_' + id)?.value || '').trim();
+    const msg = document.getElementById('fkMsg_' + id);
+    const yaz = (t, kotu) => { if (msg) msg.innerHTML = `<span class="font-bold ${kotu ? 'text-red-600' : 'text-emerald-600'}">${admEscape(t)}</span>`; };
+    if (!il) { yaz('İl seçin.', true); return; }
+
+    yaz('Kaydediliyor…');
+    try {
+        const { data, error } = await supabaseClient.rpc('firma_konum_admin', {
+            p_company_id: id, p_il: il, p_ilce: ilce || null
+        });
+        if (error) throw error;
+        yaz('✓ ' + ((data && data.il) || il) + ((data && data.ilce) ? ' / ' + data.ilce : ''));
+        await renderFirmaKonumAdmin();
+    } catch (e) { yaz(e.message || String(e), true); }
+};
 
 // ============================================================================
 // DAĞITIM ŞİRKETİ YÖNETİMİ (distribution_companies — yalnız admin)
