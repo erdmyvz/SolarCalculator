@@ -501,9 +501,9 @@ create policy la_admin_all on public.lead_assignments for all to authenticated
 
 -- Yatırımcı kendi kaydının davetlerini görür (firmaları karşılaştırabilsin).
 drop policy if exists la_yatirimci_select on public.lead_assignments;
+-- ⚠️ Alt sorgu yerine fonksiyon — yukarıdaki döngü açıklamasına bakın.
 create policy la_yatirimci_select on public.lead_assignments for select to authenticated
-    using (exists (select 1 from public.leads l
-                   where l.id = lead_assignments.lead_id and l.investor_id = auth.uid()));
+    using (public.lead_yatirimcisi(lead_assignments.lead_id));
 
 -- Puanlar: yatırımcı kendi puanını görür/yazar, admin hepsini yönetir.
 drop policy if exists r_kendi on public.ratings;
@@ -516,10 +516,15 @@ create policy r_admin on public.ratings for all to authenticated
 
 -- ⚠️ leads'e YALNIZCA EKLEME. Politikalar OR'lanır; mevcutlara dokunulmuyor.
 -- Davet edilen firma kaydı GÖRÜR ama YAZAMAZ — yazma kazananda kalır.
+-- ⚠️ ALT SORGU DEĞİL, FONKSİYON. Bu politika doğrudan lead_assignments'tan
+-- SELECT yapıyordu; lead_assignments'ın la_yatirimci_select politikası da
+-- leads'ten SELECT yapıyor. İkisi birbirini çağırınca PostgreSQL
+-- "infinite recursion detected in policy" verip HER İKİ TABLOYU DA oturum
+-- açmış kullanıcılara tamamen kapattı. Çözüm rls-dongu-duzelt.sql'de:
+-- alt sorgu SECURITY DEFINER fonksiyona taşındı, döngü kırıldı.
 drop policy if exists leads_davetli_select on public.leads;
 create policy leads_davetli_select on public.leads for select to authenticated
-    using (exists (select 1 from public.lead_assignments la
-                   where la.lead_id = leads.id and la.company_id = public.my_company_id()));
+    using (public.lead_davetli_firma(leads.id));
 
 notify pgrst, 'reload schema';
 
