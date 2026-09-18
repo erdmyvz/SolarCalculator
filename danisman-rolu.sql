@@ -15,6 +15,16 @@
 --  ⚠️ assign_client_to_company() KALDIRILIYOR. Yerine danisan_crm_e_aktar()
 --  geliyor: kaydı firmasız açar, yarışmalı atamayı çalıştırır.
 --  yarismali-atama.sql önce çalıştırılmış olmalıdır.
+--
+--  ⚠️⚠️ BU DOSYAYI ARTIK ÇALIŞTIRMAYIN — eksik-fonksiyonlar.sql'i kullanın.
+--  Aşağıdaki davetli_firmalar() ve firma_davetleri() ESKİ, HATALI sürümler:
+--  teklif kontrolünü public.quotes üzerinde yapıyorlar. Gerçek tablo
+--  firm_quotes. Bu hata teklif_var'ı hep false bırakıp yatırımcının
+--  "Bu firmayı seç" düğmesini kalıcı kapatıyordu; teklif-danismanligi.sql
+--  ile düzeltildi. Bu dosyayı tekrar çalıştırmak o hatayı GERİ GETİRİR.
+--
+--  Ayrıca danisan_crm_e_aktar() consultant_clients.city/district'e yazıyor;
+--  o kolonlar tabloda YOK. eksik-fonksiyonlar.sql onları da ekliyor.
 -- ============================================================================
 
 alter table public.consultant_clients add column if not exists city     text;
