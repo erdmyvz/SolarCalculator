@@ -2766,23 +2766,27 @@ async function renderEpostaAdmin() {
     } else {
         ozet.innerHTML = `<div class="flex flex-wrap gap-2">${satirlar.map(s => {
             const [ad, css] = EP_ETIKET[s.durum] || [s.durum, 'bg-slate-100 text-slate-700'];
-            return `<div class="px-3 py-2 rounded-lg ${css}">
+            // ⚠️ 'Sırada' ile 'gönderilemedi, tekrar denenecek' aynı şey değil.
+            // Hata metni olan satır sırf durumu 'bekliyor' diye sorunsuz
+            // görünüyordu; ilk deneme postasında bu yüzden hiçbir şey çıkmadı.
+            const h = Number(s.hatali || 0);
+            return `<div class="px-3 py-2 rounded-lg ${h > 0 ? 'bg-red-100 text-red-700' : css}">
                 <div class="text-lg font-black leading-none">${s.adet}</div>
-                <div class="text-[10px] font-bold mt-0.5">${admEscape(ad)}</div></div>`;
+                <div class="text-[10px] font-bold mt-0.5">${admEscape(ad)}</div>
+                ${h > 0 ? `<div class="text-[10px] font-bold mt-0.5">${h} hatalı</div>` : ''}</div>`;
         }).join('')}</div>`;
     }
 
     if (!hataKutu) return;
-    const hataVar = satirlar.some(s => s.durum === 'hata');
-    if (!hataVar) { hataKutu.innerHTML = ''; return; }
-
     const { data: hatalar } = await supabaseClient.rpc('eposta_son_hatalar', { p_limit: 10 });
+    if (!hatalar || !hatalar.length) { hataKutu.innerHTML = ''; return; }
     hataKutu.innerHTML = `<p class="text-xs font-bold text-slate-600 mb-1.5">Gönderilemeyenler</p>
         <div class="space-y-1.5">${(hatalar || []).map(h => `
             <div class="bg-red-50 border border-red-100 rounded-lg p-2.5">
                 <div class="text-xs font-bold text-red-800">${admEscape(h.alici)}</div>
                 <div class="text-[11px] text-red-600">${admEscape(h.konu)}</div>
                 <div class="text-[10px] text-red-500 mt-0.5 font-mono">HTTP ${h.http_kod == null ? '—' : h.http_kod} · ${admEscape(h.hata || '')}</div>
+                ${h.durum ? `<div class="text-[10px] text-red-400 mt-0.5">${admEscape(h.durum === 'hata' ? 'vazgeçildi' : 'tekrar denenecek')} · ${h.deneme || 0}. deneme</div>` : ''}
             </div>`).join('')}</div>`;
 }
 
