@@ -310,9 +310,18 @@
         if (submit) {
             const eksik = eksikAlanlar();
             if (eksik.length) { alert('Onaya göndermeden önce şunları tamamlayın:\n\n• ' + eksik.join('\n• ')); return; }
-            const { error: rpcErr } = await supabaseClient.rpc('supplier_submit_for_review');
+            const { data: yeniDurum, error: rpcErr } = await supabaseClient.rpc('supplier_submit_for_review');
             if (rpcErr) { alert('Onaya gönderilemedi: ' + rpcErr.message); return; }
             await reload();
+            // ⚠️ "Hata gelmedi" ile "oldu" aynı şey değil. Fonksiyon eskiden void
+            // dönüyordu ve suppliers_guard tetikleyicisi güncellemeyi sessizce geri
+            // alıyordu: ekran "✅ onaya gönderildi" diyor, kayıt 'draft' kalıyordu.
+            // Artık oluşan durum hem dönüş değerinden hem tablodan doğrulanıyor.
+            if (yeniDurum !== 'pending' && S.status !== 'pending') {
+                alert('Onaya GÖNDERİLEMEDİ. Kaydınız "' + (DURUM[S.status] || DURUM.draft).t
+                    + '" durumunda kaldı.\n\nBilgileriniz kaydedildi; lütfen tekrar deneyin.');
+                renderMenu(); return;
+            }
             alert('✅ Profiliniz onaya gönderildi.');
         } else {
             alert('Kaydedildi.');
