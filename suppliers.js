@@ -29,6 +29,24 @@
     let _email = '';
     let _view = 'menu';
 
+    // ÇİZİM JETONU — geciken ekranın yenisinin üstüne yazmasını engeller.
+    //
+    // Menüden bir karta basınca iki şey aynı anda oluyordu:
+    //   1) supplierGoto ilgili ekranı çiziyor (örn. renderProfil)
+    //   2) adres değiştiği için hashchange → yönlendirici → showSupplierPanel
+    //      → renderMenu()
+    // renderMenu async: dört sayaç sorgusunu BEKLEYİP sonra innerHTML yazıyor.
+    // Sonuç: ekran açılıyor, ~1 sn sonra menü üstüne biniyordu. Adres doğru
+    // ekranı gösteriyor, kullanıcı menüde kalıyordu. İkinci tıklamada adres
+    // değişmediği için hashchange olmuyor ve ekran açılıyordu — "bir basışta
+    // olmuyor, iki basışta oluyor" şikâyetinin kaynağı buydu.
+    //
+    // Her çizim isteği sıra numarası alır; beklemeden dönen istek kendi
+    // numarası hâlâ güncel mi diye bakar, değilse yazmadan çıkar.
+    let _cizim = 0;
+    const jetonAl    = (v) => { _view = v; return ++_cizim; };
+    const jetonGecti = (j) => j !== _cizim;   // true → araya yeni ekran girdi
+
     const KATEGORILER = ['Panel', 'İnverter', 'Batarya', 'Montaj Malzemesi', 'Kablo & Pano', 'Şarj İstasyonu', 'Diğer'];
 
     const DURUM = {
@@ -152,7 +170,7 @@
     }
 
     async function renderMenu() {
-        _view = 'menu';
+        const _j = jetonAl('menu');
         const el = root(); if (!el) return;
         const d = DURUM[S.status] || DURUM.draft;
 
@@ -167,6 +185,8 @@
             ]);
             urun = p.count || 0; ilan = a.count || 0; talep = r.count || 0; stok = k.count || 0;
         } catch (e) { /* tablolar yoksa 0 kalir */ }
+        // Sayaçlar gelene kadar kullanıcı bir karta basmış olabilir.
+        if (jetonGecti(_j)) return;
 
         el.innerHTML = `
             <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-5">
@@ -227,7 +247,7 @@
 
     // ---------------------------------------------------------------- profil
     function renderProfil() {
-        _view = 'profil';
+        jetonAl('profil');
         const el = root(); if (!el) return;
         const kats = KATEGORILER.map(k => {
             const on = (S.categories || []).includes(k);
@@ -302,7 +322,7 @@
 
     // --------------------------------------------------------------- katalog
     async function renderKatalog() {
-        _view = 'katalog';
+        const _j = jetonAl('katalog');
         const el = root(); if (!el) return;
         el.innerHTML = baslik('Ürün Kataloğu', 'Onaylanan ürünler donanım karşılaştırma tablosunda yayınlanır')
             + '<p class="text-sm text-slate-400">Yükleniyor...</p>';
@@ -311,6 +331,7 @@
             supabaseClient.from('hardware_categories').select('*').order('sort_order'),
             supabaseClient.from('supplier_products').select('*').eq('supplier_id', S.id).order('created_at', { ascending: false })
         ]);
+        if (jetonGecti(_j)) return;   // araya başka ekran girdi
         if (prods.error) {
             el.innerHTML = baslik('Ürün Kataloğu') + `<p class="text-sm text-red-500">Yüklenemedi: ${esc(prods.error.message)}</p>`;
             return;
@@ -433,10 +454,11 @@
 
     // ------------------------------------------------------------ bayi ilanı
     async function renderIlan() {
-        _view = 'ilan';
+        const _j = jetonAl('ilan');
         const el = root(); if (!el) return;
         const { data, error } = await supabaseClient.from('supplier_dealer_ads')
             .select('*').eq('supplier_id', S.id).order('created_at', { ascending: false });
+        if (jetonGecti(_j)) return;   // araya başka ekran girdi
         if (error) { el.innerHTML = baslik('Bayi İlanları') + `<p class="text-sm text-red-500">Yüklenemedi: ${esc(error.message)}</p>`; return; }
         window.__supAds = data || [];
 
@@ -520,13 +542,14 @@
     }
 
     async function renderTalep() {
-        _view = 'talep';
+        const _j = jetonAl('talep');
         const el = root(); if (!el) return;
         const [{ data, error }] = await Promise.all([
             supabaseClient.from('supplier_requests')
                 .select('*').eq('supplier_id', S.id).order('created_at', { ascending: false }),
             firmalariYukle()
         ]);
+        if (jetonGecti(_j)) return;   // araya başka ekran girdi
         if (error) { el.innerHTML = baslik('Gelen Talepler') + `<p class="text-sm text-red-500">Yüklenemedi: ${esc(error.message)}</p>`; return; }
         window.__supReqs = data || [];
 
@@ -679,7 +702,7 @@
     }
 
     async function renderStok() {
-        _view = 'stok';
+        const _j = jetonAl('stok');
         const el = root(); if (!el) return;
         el.innerHTML = baslik('Stok & Fiyat', 'Yükleniyor…');
         await stokAlanlariYukle();
@@ -691,6 +714,7 @@
             if (error) throw error;
             rows = data || [];
         } catch (e) { hata = e.message || String(e); }
+        if (jetonGecti(_j)) return;   // araya başka ekran girdi
         window.__supStok = rows;
         _stokKirli = {};
 

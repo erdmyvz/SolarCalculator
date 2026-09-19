@@ -70,6 +70,15 @@
         </div>`;
     }
 
+    // ÇİZİM JETONU — tedarikçi panelindeki hatanın aynısı burada da mümkün:
+    // renderInvestorHome async; veriyi beklerken kullanıcı "Teklifleri
+    // Karşılaştır" veya bir başvuruya geçmiş olabilir. Bekleyen çizim dönünce
+    // ya yeni ekranın üstüne yazıyor ya da aradığı kutuyu (invStats) bulamayıp
+    // hata fırlatıp kalan bölümleri hiç basmıyordu.
+    let _cizim = 0;
+    const jetonAl    = () => ++_cizim;
+    const jetonGecti = (j) => j !== _cizim;   // true → araya yeni ekran girdi
+
     async function whoAmI() {
         if (_me) return _me;
         try {
@@ -149,7 +158,9 @@
     // ---------------------------------------------------------------- ana ekran
     async function renderInvestorHome() {
         const root = document.getElementById('investorRoot'); if (!root) return;
+        const _j = jetonAl();
         const me = await whoAmI();
+        if (jetonGecti(_j)) return;
         const first = String(me.name).trim().split(' ')[0] || 'Yatırımcı';
         root.innerHTML = `
             <div class="mb-5">
@@ -163,6 +174,7 @@
         document.getElementById('invProjects').innerHTML = '<p class="text-sm text-slate-400">Yükleniyor...</p>';
 
         await loadData();
+        if (jetonGecti(_j)) return;   // araya başka ekran girdi
 
         // Gerçek RPC hatası varsa yumuşak uyarı (yanıltıcı "başvurunuz yok" yerine),
         // ve yalnız debug açıkken teknik tanılama kutusu.
@@ -563,6 +575,7 @@
     //   #yatirimci-panel/basvuru/<başvuru kimliği>
     window.investorCompareQuotes = function (_adrestenGeldi) {
         const root = document.getElementById('investorRoot'); if (!root || !_quotes.length) return;
+        jetonAl();   // bekleyen ana ekran çizimi bu ekranın üstüne yazmasın
         if (window.epcAdresYaz) window.epcAdresYaz('teklif-karsilastir', null, _adrestenGeldi);
         setPanelWide(true);
 
@@ -662,12 +675,14 @@
     window.investorOpenProject = async function (id, _adrestenGeldi) {
         const root = document.getElementById('investorRoot'); if (!root) return;
         const p = _projects.find(x => String(x.id) === String(id)); if (!p) return;
+        const _j = jetonAl();
         if (window.epcAdresYaz) window.epcAdresYaz('basvuru', id, _adrestenGeldi);
         setPanelWide(false);
         root.innerHTML = '<p class="text-sm text-slate-400 py-6">Süreç yükleniyor...</p>';
 
         let steps = [];
         try { const { data } = await supabaseClient.rpc('list_my_project_steps', { p_lead_id: id }); steps = data || []; } catch (e) {}
+        if (jetonGecti(_j)) return;   // araya başka ekran girdi
 
         const b = stBadge(p.status);
         const timeline = steps.length ? steps.map((s, i) => `
