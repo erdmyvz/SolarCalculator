@@ -213,6 +213,9 @@ async function fetchAdminData() {
     // 8) AYARLAR / PARAMETRELER (yalnız admin görür)
     await renderSettingsAdmin();
 
+    // 8b) E-POSTA BİLDİRİM KUYRUĞU
+    await renderEpostaAdmin();
+
     // 9) GENEL AŞAMA ETİKETLERİ (yalnız admin görür)
     await renderStageAdmin();
 
@@ -2702,3 +2705,98 @@ window.mvGuncSil = async function (id) {
         if (m && !m.classList.contains('hidden')) window.admYorumlariTazele();
     });
 })();
+
+
+// ============================================================================
+// E-POSTA BİLDİRİM KUYRUĞU (yalnız admin)
+// Boru hattı veritabanında çalışıyor; hiçbir ekranda izi olmazsa sessizce
+// tıkanır ve kimse fark etmez. Bu kutu tek soruyu cevaplıyor: bildirimler
+// gerçekten gidiyor mu?
+// eposta-bildirimleri.sql çalıştırılmış olmalıdır.
+// ============================================================================
+function epKok() {
+    if (document.getElementById('epRoot')) return document.getElementById('epRoot');
+    const admin = document.getElementById('adminPaneSettings') || document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'epRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <div class="flex items-start justify-between gap-3 flex-wrap mb-1">
+            <h3 class="text-lg font-black text-slate-800">📧 Bildirim E-postaları</h3>
+            <button onclick="epDeneme(this)" class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold px-3 py-1.5 rounded-lg">Bana deneme gönder</button>
+        </div>
+        <p class="text-xs text-slate-500 mb-3">Panele düşen her bildirim e-posta olarak da gidiyor. Gönderilemeyenler burada görünür.</p>
+        <div id="epOzet"></div>
+        <div id="epHatalar" class="mt-3"></div>`;
+    admin.appendChild(card);
+    return card;
+}
+
+const EP_ETIKET = {
+    bekliyor:     ['Sırada',       'bg-slate-100 text-slate-700'],
+    gonderiliyor: ['Gönderiliyor', 'bg-amber-100 text-amber-800'],
+    gonderildi:   ['Gönderildi',   'bg-emerald-100 text-emerald-800'],
+    hata:         ['Hata',         'bg-red-100 text-red-700'],
+    iptal:        ['İptal',        'bg-slate-100 text-slate-500']
+};
+
+async function renderEpostaAdmin() {
+    const wrap = epKok();
+    if (!wrap || !supabaseClient) return;
+    const ozet = document.getElementById('epOzet');
+    const hataKutu = document.getElementById('epHatalar');
+    if (!ozet) return;
+
+    const { data, error } = await supabaseClient.rpc('eposta_kuyruk_ozeti');
+    if (error) {
+        // ⚠️ "0 e-posta" YAZMIYORUZ: kurulmamış bir boru hattını "her şey yolunda"
+        // diye göstermek, bildirimlerin gittiğini sandırırdı.
+        ozet.innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p class="text-sm font-bold text-amber-800">E-posta bildirimleri kurulu değil</p>
+            <p class="text-xs text-amber-700 mt-1">eposta-bildirimleri.sql çalıştırılmamış. Bildirimler yalnız panel içinde görünüyor.</p>
+            <p class="text-[11px] text-amber-600 mt-1 font-mono">${admEscape(error.message)}</p></div>`;
+        if (hataKutu) hataKutu.innerHTML = '';
+        return;
+    }
+
+    const satirlar = data || [];
+    if (!satirlar.length) {
+        ozet.innerHTML = '<p class="text-xs text-slate-400 italic">Kuyruk boş — henüz e-posta üretilmemiş.</p>';
+    } else {
+        ozet.innerHTML = `<div class="flex flex-wrap gap-2">${satirlar.map(s => {
+            const [ad, css] = EP_ETIKET[s.durum] || [s.durum, 'bg-slate-100 text-slate-700'];
+            return `<div class="px-3 py-2 rounded-lg ${css}">
+                <div class="text-lg font-black leading-none">${s.adet}</div>
+                <div class="text-[10px] font-bold mt-0.5">${admEscape(ad)}</div></div>`;
+        }).join('')}</div>`;
+    }
+
+    if (!hataKutu) return;
+    const hataVar = satirlar.some(s => s.durum === 'hata');
+    if (!hataVar) { hataKutu.innerHTML = ''; return; }
+
+    const { data: hatalar } = await supabaseClient.rpc('eposta_son_hatalar', { p_limit: 10 });
+    hataKutu.innerHTML = `<p class="text-xs font-bold text-slate-600 mb-1.5">Gönderilemeyenler</p>
+        <div class="space-y-1.5">${(hatalar || []).map(h => `
+            <div class="bg-red-50 border border-red-100 rounded-lg p-2.5">
+                <div class="text-xs font-bold text-red-800">${admEscape(h.alici)}</div>
+                <div class="text-[11px] text-red-600">${admEscape(h.konu)}</div>
+                <div class="text-[10px] text-red-500 mt-0.5 font-mono">HTTP ${h.http_kod == null ? '—' : h.http_kod} · ${admEscape(h.hata || '')}</div>
+            </div>`).join('')}</div>`;
+}
+
+window.epDeneme = async function (btn) {
+    const eski = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Gönderiliyor…';
+    try {
+        const { data, error } = await supabaseClient.rpc('eposta_deneme');
+        if (error) throw error;
+        alert('Deneme postası kuyruğa alındı:\n' + data + '\n\nBirkaç dakika içinde gelmezse aşağıdaki "Gönderilemeyenler" listesine bakın.');
+    } catch (e) {
+        alert('Gönderilemedi: ' + (e.message || e));
+    } finally {
+        btn.disabled = false; btn.textContent = eski;
+        renderEpostaAdmin();
+    }
+};

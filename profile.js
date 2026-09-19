@@ -8,7 +8,7 @@
     const esc = (s) => String(s == null ? '' : s)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-    let _avatar = null, _ctx = null;
+    let _avatar = null, _ctx = null, _epostaTercih = null;
 
     function resize256(file, cb) {
         const r = new FileReader();
@@ -75,6 +75,15 @@
         if (!_ctx) { alert('Oturum bulunamadı.'); return; }
         _avatar = _ctx.avatar;
 
+        // Bildirim e-postası tercihi. Fonksiyon henüz kurulmadıysa (SQL
+        // çalıştırılmadıysa) kutu hiç çizilmiyor — olmayan bir ayarı varmış
+        // gibi göstermek, kapattığını sanan kullanıcı üretirdi.
+        _epostaTercih = null;
+        try {
+            const { data, error } = await supabaseClient.rpc('eposta_tercihim');
+            if (!error) _epostaTercih = (data !== false);
+        } catch (e) { /* kurulmamış: bölüm gizli kalır */ }
+
         const kok = document.getElementById('profileRoot');
         if (!kok) return;
         if (typeof window.epcTumModulleriGizle === 'function') window.epcTumModulleriGizle();
@@ -112,6 +121,19 @@
                     <p class="text-[11px] text-slate-400 mt-1">E-postayı değiştirirseniz <b>yeni adrese doğrulama linki</b> gönderilir; onaylamadan değişiklik geçerli olmaz.</p>
                 </div>
 
+                ${_epostaTercih === null ? '' : `
+                <div class="border border-slate-200 rounded-lg p-3">
+                    <label class="flex items-start gap-2.5 cursor-pointer">
+                        <input id="pfEposta" type="checkbox" ${_epostaTercih ? 'checked' : ''}
+                               onchange="epostaTercihKaydet(this)" class="mt-0.5 w-4 h-4 rounded">
+                        <span>
+                            <span class="block text-sm font-bold text-slate-700">Bildirim e-postaları</span>
+                            <span class="block text-[11px] text-slate-500 mt-0.5">Davet, teklif, talep ve onay bildirimleri e-posta olarak da gelsin. Kapatırsanız yalnız paneldeki zilden görürsünüz.</span>
+                            <span id="pfEpostaSonuc" class="block text-[11px] font-bold mt-1"></span>
+                        </span>
+                    </label>
+                </div>`}
+
                 <details class="border border-slate-200 rounded-lg">
                     <summary class="cursor-pointer px-3 py-2.5 text-sm font-bold text-slate-700">Şifre Değiştir</summary>
                     <div class="p-3 pt-0 space-y-2">
@@ -130,6 +152,30 @@
 
     // Geri: nereden gelindiyse oraya. Panel kullanıcısı menüye, ziyaretçi
     // vitrine döner.
+    // ⚠️ Kaydı BEKLEYİP sonucu yazıyoruz. Kutuyu işaretleyip "oldu" saymak,
+    // yazma başarısızken kullanıcıya kapattığını düşündürürdü.
+    window.epostaTercihKaydet = async function (kutu) {
+        const not = document.getElementById('pfEpostaSonuc');
+        const istenen = !!kutu.checked;
+        kutu.disabled = true;
+        if (not) { not.className = 'block text-[11px] font-bold mt-1 text-slate-400'; not.textContent = 'Kaydediliyor…'; }
+        try {
+            const { error } = await supabaseClient.rpc('eposta_tercihim_yaz', { p_aktif: istenen });
+            if (error) throw error;
+            _epostaTercih = istenen;
+            if (not) {
+                not.className = 'block text-[11px] font-bold mt-1 text-emerald-600';
+                not.textContent = istenen ? 'Açık — bildirimler e-posta olarak da gelecek.' : 'Kapalı — yalnız paneldeki zil.';
+            }
+        } catch (e) {
+            kutu.checked = !istenen;          // ekran gerçeği göstersin
+            if (not) {
+                not.className = 'block text-[11px] font-bold mt-1 text-red-600';
+                not.textContent = 'Kaydedilemedi: ' + (e.message || e);
+            }
+        } finally { kutu.disabled = false; }
+    };
+
     window.profilKapat = function () {
         document.getElementById('profileModule')?.classList.add('hidden');
         if (typeof window.closeAllAndShowMenu === 'function') { window.closeAllAndShowMenu(); return; }
