@@ -686,11 +686,25 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         }
         else if (data.user) {
             const info = await getAccountInfo(data.user);
-            const LBL = { installer: 'Kurulumcu Firma', consultant: 'Danışman', investor: 'Yatırımcı' };
-            const expected = { firma: 'installer', consultant: 'consultant', investor: 'investor' }[window.authRole || 'firma'] || 'installer';
-            if (info.type !== 'admin' && info.type !== expected) {
+            // ⚠️ Bu iki tablo yatırımcı fazında yazıldı; TEDARİKÇİ SONRA EKLENDİ
+            // ama buraya işlenmedi. Sonuç: authRole 'supplier' olunca expected
+            // 'installer'a düşüyor, tedarikçi KENDİ giriş ekranında bile geri
+            // çevriliyordu — "Bu hesap bir supplier hesabıdır" (ham anahtar,
+            // çünkü LBL'de de yoktu) + boş seçenek adı. Hiçbir ekrandan giremiyordu.
+            const LBL = { installer: 'Kurulumcu Firma', consultant: 'Danışman',
+                          investor: 'Yatırımcı', supplier: 'Tedarikçi' };
+            const ADRES = { installer: 'epcmerkezim.com/kurulumcu', consultant: 'epcmerkezim.com/danisman',
+                            supplier: 'epcmerkezim.com/tedarikci', investor: 'epcmerkezim.com/#yatirimci' };
+            const expected = { firma: 'installer', consultant: 'consultant',
+                               investor: 'investor', supplier: 'supplier' }[window.authRole || 'firma'] || 'installer';
+            // Yarım kalan kayıt (auth hesabı var, rol satırı yok) hangi ekrandan
+            // gelirse gelsin tamamlama ekranına gitmeli; eşleştirilecek rolü yok.
+            if (info.type !== 'admin' && info.type !== 'yarim-kayit' && info.type !== expected) {
                 await supabaseClient.auth.signOut();
-                alert('Bu hesap bir "' + (LBL[info.type] || info.type) + '" hesabıdır. Lütfen giriş ekranında "' + (LBL[info.type] || '') + '" seçeneğini seçin.');
+                const ad = LBL[info.type] || info.type;
+                alert('Bu hesap bir "' + ad + '" hesabıdır.\n\n'
+                    + (ADRES[info.type] ? ad + ' giriş ekranından girin:\n' + ADRES[info.type]
+                                        : 'Lütfen doğru giriş ekranını kullanın.'));
             } else {
                 applyRememberPreference(!!document.getElementById('rememberMe')?.checked);
                 const r = await routeByInfo(info, data.user);
