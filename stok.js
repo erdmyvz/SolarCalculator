@@ -25,6 +25,15 @@
     const sayi = (n, b) => (n == null || n === '' || isNaN(n)) ? '—'
         : Number(n).toLocaleString('tr-TR', { maximumFractionDigits: b == null ? 2 : b });
 
+    // BİRİM FİYAT — sayi() ile basılamaz, iki hane yetmiyor.
+    // Panel fiyatı Wp başına verilir: 0,099 USD/Wp. sayi() bunu "0,1" yazıyordu,
+    // yani tedarikçinin fiyatını %1 yukarı yuvarlayıp ekranda başka bir fiyat
+    // gösteriyordu. 500 kWp'lik bir işte tek başına ~500 USD fark demek.
+    // Kural: birden küçük fiyatlarda dört hane, büyüklerde iki hane.
+    // Hesaplar zaten ham değerle yapılıyor; burada yalnız gösterim düzeliyor.
+    const fiyat = (n) => (n == null || n === '' || isNaN(n)) ? '—'
+        : Number(n).toLocaleString('tr-TR', { maximumFractionDigits: Math.abs(Number(n)) < 1 ? 4 : 2 });
+
     // Beş ürün ailesiyle başlıyoruz — kullanıcının saydığı sırayla.
     const KAT = [
         ['panel',    'Güneş Paneli'],
@@ -154,7 +163,7 @@
                             <div class="flex items-center gap-4 shrink-0">
                                 <div class="text-right">
                                     <div class="text-sm font-black text-slate-800">${sayi(d.quantity)} <span class="text-[11px] font-normal text-slate-400">${esc(d.unit)}</span></div>
-                                    <div class="text-[11px] text-slate-400">${d.avg_cost != null ? 'ort. ' + sayi(d.avg_cost) + ' ' + esc(d.currency) : 'maliyet girilmemiş'}</div>
+                                    <div class="text-[11px] text-slate-400">${d.avg_cost != null ? 'ort. ' + fiyat(d.avg_cost) + ' ' + esc(d.currency) : 'maliyet girilmemiş'}</div>
                                 </div>
                                 <button onclick="stokDuzenle('${d.id}')" title="Düzenle" class="text-slate-400 hover:text-indigo-600 px-1.5">✏️</button>
                                 <button onclick="stokSil('${d.id}')" title="Sil" class="text-slate-400 hover:text-red-600 px-1.5">🗑️</button>
@@ -192,7 +201,7 @@
             const y = YAKINLIK[Math.min(3, Number(t.yakinlik) || 0)];
             const konum = [t.ilce, t.il].filter(Boolean).join(' / ');
             const fiyat = t.fiyat_acik
-                ? `<div class="text-sm font-black text-slate-800">${sayi(t.birim_fiyat)} ${esc(t.para_birimi)}<span class="text-[11px] font-normal text-slate-400">/${esc(t.fiyat_baz)}</span></div>
+                ? `<div class="text-sm font-black text-slate-800">${fiyat(t.birim_fiyat)} ${esc(t.para_birimi)}<span class="text-[11px] font-normal text-slate-400">/${esc(t.fiyat_baz)}</span></div>
                    ${t.gecerlilik ? `<div class="text-[10px] text-slate-400">geçerlilik ${new Date(t.gecerlilik).toLocaleDateString('tr-TR')}</div>` : ''}`
                 : `<button onclick="stokFiyatIste('${t.id}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs whitespace-nowrap">Fiyat teklifi iste</button>`;
             return `
@@ -278,7 +287,7 @@
             const tedHucre = eksik === 0
                 ? '<span class="text-slate-300">—</span>'
                 : (ted
-                    ? `<div class="text-xs font-bold text-slate-700">${sayi(tedFiyat)} $</div>
+                    ? `<div class="text-xs font-bold text-slate-700">${fiyat(tedFiyat)} $</div>
                        <div class="text-[10px] text-slate-400">${esc(ted.marka)} · ${esc([ted.ilce, ted.il].filter(Boolean).join(' / '))}</div>`
                     : `<div class="text-[10px] text-amber-700 font-bold">açık fiyat yok</div>
                        <button onclick="stokSekme('tedarik')" class="text-[10px] text-indigo-600 font-bold hover:underline">tedarikçi ara →</button>`);
@@ -292,7 +301,7 @@
                 <td class="p-2.5"><input class="fq w-20 border border-slate-200 rounded p-1 text-sm text-right" data-i="${i}" type="number" min="0" step="0.01" value="${s.ihtiyac}" oninput="stokFiyatLive()"></td>
                 <td class="p-2.5 text-right text-sm">
                     <div class="font-bold ${elden > 0 ? 'text-emerald-700' : 'text-slate-300'}">${sayi(elden)}</div>
-                    <div class="text-[10px] text-slate-400">${d.ortalama != null ? sayi(d.ortalama) + ' $' : (d.adet > 0 ? 'maliyet yok' : '')}</div>
+                    <div class="text-[10px] text-slate-400">${d.ortalama != null ? fiyat(d.ortalama) + ' $' : (d.adet > 0 ? 'maliyet yok' : '')}</div>
                 </td>
                 <td class="p-2.5 text-right text-sm font-bold ${eksik > 0 ? 'text-amber-700' : 'text-slate-300'}">${sayi(eksik)}</td>
                 <td class="p-2.5 text-right">${tedHucre}</td>
