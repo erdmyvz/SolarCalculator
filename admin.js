@@ -3061,6 +3061,15 @@ function ddKok() {
 const ddPara = (n) => (n == null || isNaN(n) || Number(n) === 0) ? '—'
     : '₺' + Math.round(Number(n)).toLocaleString('tr-TR');
 
+// Onay ve abonelik AYRI iki şey: abonelik parayı, onay yetkiyi anlatır.
+const DD_ONAY = {
+    approved: ['Onaylı',       'bg-emerald-100 text-emerald-700'],
+    pending:  ['Onay bekliyor','bg-amber-100 text-amber-800'],
+    rejected: ['Reddedildi',   'bg-red-100 text-red-700'],
+    askida:   ['Askıda',       'bg-red-100 text-red-700'],
+    draft:    ['Taslak',       'bg-slate-100 text-slate-600']
+};
+
 const DD_TUR = {
     yonlendirme:   ['Yönlendirme', 'bg-indigo-100 text-indigo-700'],
     degerlendirme: ['Değerlendirme', 'bg-sky-100 text-sky-700']
@@ -3132,10 +3141,16 @@ async function renderDanismanDeger() {
             const oneriS   = Number(d.oneri_sayisi) || 0;
             const oneriT   = Number(d.oneri_tutan) || 0;
             const abone    = d.abonelik === 'active' ? 'Abone' : 'Deneme';
+            // ⚠️ ONAY DURUMU ZORUNLU. Yalnız abonelik rozetini gösterdiğimde
+            // reddedilmiş bir danışman ekranda "Abone" diye görünüyordu —
+            // yönetici onu çalışan bir danışman sanırdı. İki ayrı şey: abonelik
+            // parayı, onay yetkiyi anlatır.
+            const [onayAd, onayCss] = DD_ONAY[d.onay] || [d.onay || '—', 'bg-slate-100 text-slate-600'];
             return `<div class="bg-white border border-slate-200 rounded-lg p-2.5">
                 <div class="flex items-center gap-2 flex-wrap">
                     <span class="text-xs font-black text-slate-800">${admEscape(d.danisman || '(isimsiz danışman)')}</span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${d.abonelik === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${abone}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${onayCss}">${admEscape(onayAd)}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${d.abonelik === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-500'}">${abone}</span>
                     ${d.eposta ? `<span class="text-[10px] text-slate-400">${admEscape(d.eposta)}</span>` : ''}
                 </div>
                 <div class="text-[11px] text-slate-600 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
@@ -3151,7 +3166,13 @@ async function renderDanismanDeger() {
                     : (getirdi ? '<div class="text-[11px] text-amber-700 mt-0.5">Getirdiği kayıtların hiçbiri henüz firmaya bağlanmadı — parasal karşılık yok.</div>' : '')}
             </div>`;
         }).join('')}</div>
-        ${atil ? `<p class="text-[11px] text-slate-400 mt-1.5">${atil} danışmanın henüz hiç hareketi yok (kayıt getirmemiş, değerlendirme yapmamış) — listede gösterilmiyor.</p>` : ''}`;
+        ${!atil ? ''
+            : hareketli.length
+                // Hareketlileri gösterdik, geri kalanı gizledik: doğru cümle bu.
+                ? `<p class="text-[11px] text-slate-400 mt-1.5">${atil} danışmanın henüz hiç hareketi yok (kayıt getirmemiş, değerlendirme yapmamış) — listede gösterilmiyor.</p>`
+                // ⚠️ Hiç hareketli yoksa HEPSİNİ gösteriyoruz; burada
+                // "gösterilmiyor" demek ekranın kendi gösterdiğini yalanlamaktı.
+                : `<p class="text-[11px] text-slate-400 mt-1.5">Hiçbir danışmanın henüz hareketi yok — kayıt getirdiklerinde ya da teklif değerlendirdiklerinde rakamlar burada dolar.</p>`}`;
 
     // --- Ham kayıtlar ---
     const { data: liste } = await supabaseClient.rpc('danisman_deger_listesi', { p_limit: 25 });
