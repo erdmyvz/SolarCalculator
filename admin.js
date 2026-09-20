@@ -225,6 +225,9 @@ async function fetchAdminData() {
     // 10b) ABONELİKLER
     await renderSubscriptions();
 
+    // 10c) İŞ DEĞERİ VE KOMİSYON KAYDI
+    await renderKomisyonAdmin();
+
     // 11) GENEL BAKIŞ ÖZET KPI'LARINI GÜNCELLE (sekmeli panel)
     renderAdminStats();
 
@@ -2872,5 +2875,156 @@ window.epEngelKaldir = async function (adres, btn) {
     } finally {
         btn.disabled = false;
         renderEpostaAdmin();
+    }
+};
+
+
+// ============================================================================
+// İŞ DEĞERİ VE KOMİSYON KAYDI (yalnız admin)
+// ⚠️ Bu ekran FATURA DEĞİL. Kimseden para istenmiyor, firmalara
+// gösterilmiyor. Amaç: ortalama iş büyüklüğü, kazanma oranı ve tamamlanma
+// oranı sorularını üç ay sonra veriyle cevaplayabilmek.
+// komisyon-kaydi.sql çalıştırılmış olmalıdır.
+// ============================================================================
+function komKok() {
+    if (document.getElementById('komRoot')) return document.getElementById('komRoot');
+    const admin = document.getElementById('adminPaneSubs') || document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'komRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <h3 class="text-lg font-black text-slate-800 mb-1">💰 İş Değeri ve Komisyon Kaydı</h3>
+        <p class="text-xs text-slate-500 mb-3">Platformdan geçen işlerin gerçek büyüklüğü. <strong>Bu bir kayıttır, fatura değildir</strong> — firmalardan tahsil edilmiyor ve firmalara gösterilmiyor.</p>
+        <div id="komOzet"></div>
+        <div id="komMetrik" class="mt-3"></div>
+        <div id="komListe" class="mt-3"></div>`;
+    admin.appendChild(card);
+    return card;
+}
+
+const KOM_ETIKET = {
+    beklemede: ['Devam eden', 'bg-amber-100 text-amber-800', 'Firma seçildi, iş henüz tamamlanmadı'],
+    hakedildi: ['Tamamlanan', 'bg-emerald-100 text-emerald-800', 'İş devreye alındı'],
+    iptal:     ['İptal',      'bg-slate-100 text-slate-500', 'Yönetici gerekçeyle düşürdü']
+};
+
+const komPara = (n) => (n == null || isNaN(n)) ? '—'
+    : '₺' + Math.round(Number(n)).toLocaleString('tr-TR');
+
+async function renderKomisyonAdmin() {
+    const wrap = komKok();
+    if (!wrap || !supabaseClient) return;
+    const ozetEl = document.getElementById('komOzet');
+    if (!ozetEl) return;
+
+    const { data: ozet, error } = await supabaseClient.rpc('komisyon_ozeti');
+    if (error) {
+        // ⚠️ "0 kayıt" YAZMIYORUZ: kurulmamış bir ölçümü "hiç iş yok" diye
+        // göstermek, platformun boş çalıştığını sandırırdı.
+        ozetEl.innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p class="text-sm font-bold text-amber-800">Komisyon kaydı kurulu değil</p>
+            <p class="text-xs text-amber-700 mt-1">komisyon-kaydi.sql çalıştırılmamış. İşlerin parasal büyüklüğü hiçbir yerde tutulmuyor.</p>
+            <p class="text-[11px] text-amber-600 mt-1 font-mono">${admEscape(error.message)}</p></div>`;
+        ['komMetrik', 'komListe'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
+        return;
+    }
+
+    const satirlar = ozet || [];
+    if (!satirlar.length) {
+        ozetEl.innerHTML = '<p class="text-xs text-slate-400 italic">Henüz kazanılmış iş yok — firma seçildiğinde kayıt buraya düşer.</p>';
+        ['komMetrik', 'komListe'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
+        return;
+    }
+
+    const toplamIs  = satirlar.filter(s => s.durum !== 'iptal')
+                              .reduce((a, s) => a + Number(s.toplam_is_try || 0), 0);
+    const toplamKom = satirlar.filter(s => s.durum !== 'iptal')
+                              .reduce((a, s) => a + Number(s.toplam_komisyon_try || 0), 0);
+
+    ozetEl.innerHTML = `
+        <div class="flex flex-wrap gap-2 mb-3">
+            <div class="px-4 py-3 rounded-lg bg-slate-800 text-white">
+                <div class="text-xl font-black leading-none">${komPara(toplamIs)}</div>
+                <div class="text-[10px] font-bold mt-1 opacity-80">Platformdan geçen iş</div>
+            </div>
+            <div class="px-4 py-3 rounded-lg bg-indigo-50 border border-indigo-100">
+                <div class="text-xl font-black leading-none text-indigo-700">${komPara(toplamKom)}</div>
+                <div class="text-[10px] font-bold mt-1 text-indigo-500">Hesaplanan komisyon · tahsil edilmiyor</div>
+            </div>
+        </div>
+        <div class="flex flex-wrap gap-2">${satirlar.map(s => {
+            const [ad, css, aciklama] = KOM_ETIKET[s.durum] || [s.durum, 'bg-slate-100 text-slate-700', ''];
+            return `<div class="px-3 py-2 rounded-lg ${css}" title="${admEscape(aciklama)}">
+                <div class="text-lg font-black leading-none">${s.adet}</div>
+                <div class="text-[10px] font-bold mt-0.5">${admEscape(ad)}</div>
+                <div class="text-[10px] mt-0.5 opacity-80">${komPara(s.toplam_is_try)}</div></div>`;
+        }).join('')}</div>`;
+
+    // --- Liste ve türetilen ölçüler ---
+    const { data: liste } = await supabaseClient.rpc('komisyon_listesi', { p_limit: 25 });
+    const kayitlar = liste || [];
+
+    const metrikEl = document.getElementById('komMetrik');
+    if (metrikEl) {
+        // ⚠️ Ortalama YALNIZ tutarı bilinen işler üzerinden. Teklifi olmayan
+        // işi 0 sayıp ortalamayı aşağı çekmek, tabloyu yalanlamak olurdu.
+        const tutarli = kayitlar.filter(k => k.tutar_try != null && k.durum !== 'iptal');
+        const ort = tutarli.length
+            ? tutarli.reduce((a, k) => a + Number(k.tutar_try), 0) / tutarli.length : null;
+        const yarismali = kayitlar.filter(k => k.kaynak === 'yarisma' && Number(k.rakip_sayisi) > 1);
+        const ortRakip = yarismali.length
+            ? yarismali.reduce((a, k) => a + Number(k.rakip_sayisi || 0), 0) / yarismali.length : null;
+        const eksikTutar = kayitlar.filter(k => k.tutar_try == null).length;
+
+        metrikEl.innerHTML = `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-600 space-y-1">
+            <div><strong>Ortalama iş:</strong> ${ort == null ? '—' : komPara(ort)}
+                 <span class="text-slate-400">(tutarı bilinen ${tutarli.length} iş üzerinden)</span></div>
+            ${ortRakip == null ? '' : `<div><strong>Yarışmalı işlerde kazanma şansı:</strong> ortalama ${ortRakip.toFixed(1)} firma davet ediliyor
+                 <span class="text-slate-400">→ ≈ %${Math.round(100 / ortRakip)} kazanma oranı</span></div>`}
+            ${eksikTutar ? `<div class="text-amber-700"><strong>${eksikTutar} işin tutarı bilinmiyor</strong> — firma seçildi ama sihirbazdan teklif geçmedi. Ortalamaya dâhil değil.</div>` : ''}
+        </div>`;
+    }
+
+    const listeEl = document.getElementById('komListe');
+    if (!listeEl) return;
+    if (!kayitlar.length) { listeEl.innerHTML = ''; return; }
+
+    listeEl.innerHTML = `<p class="text-xs font-bold text-slate-600 mb-1.5">Kayıtlar</p>
+        <div class="space-y-1.5">${kayitlar.map(k => {
+            const [ad, css] = KOM_ETIKET[k.durum] || [k.durum, 'bg-slate-100 text-slate-700'];
+            return `<div class="bg-white border border-slate-200 rounded-lg p-2.5 flex items-start justify-between gap-3 flex-wrap">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs font-black text-slate-800">${admEscape(k.firma)}</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${css}">${admEscape(ad)}</span>
+                        ${k.kaynak === 'yarisma'
+                            ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">${k.rakip_sayisi} firmalı yarışma</span>`
+                            : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-50 text-slate-500">doğrudan atama</span>'}
+                    </div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">${admEscape(k.musteri || '—')} · ${admEscape([k.ilce, k.il].filter(Boolean).join(' / ') || 'konum yok')}</div>
+                    ${k.teklif_var
+                        ? `<div class="text-[11px] text-slate-700 mt-0.5"><strong>${komPara(k.tutar_try)}</strong> <span class="text-slate-400">KDV hariç · %${k.oran} → ${komPara(k.komisyon_try)}</span></div>`
+                        : '<div class="text-[11px] text-amber-700 mt-0.5">Teklif yok — tutar bilinmiyor</div>'}
+                </div>
+                ${k.durum === 'iptal' ? '' : `<button onclick="komIptal('${window.epcAttrJs ? window.epcAttrJs(k.id) : k.id}', this)" class="text-[11px] bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 font-bold px-2.5 py-1 rounded-lg flex-shrink-0">Düş</button>`}
+            </div>`;
+        }).join('')}</div>
+        <p class="text-[10px] text-slate-400 mt-2">Tutarlar KDV hariç, teklifin gönderildiği andaki hâliyle dondurulmuştur. Oran her kayda ayrı yazılır; ayarı değiştirmek geçmişi etkilemez.</p>`;
+}
+
+window.komIptal = async function (id, btn) {
+    const sebep = window.prompt('İşi kayıttan düşme gerekçesi (zorunlu):\n\nÖrn. "iş iptal oldu", "yatırımcı vazgeçti", "platform dışında tamamlandı"');
+    if (sebep === null) return;
+    if (!String(sebep).trim()) { alert('Gerekçe zorunlu.'); return; }
+    btn.disabled = true;
+    try {
+        const { error } = await supabaseClient.rpc('komisyon_iptal', { p_id: id, p_sebep: sebep });
+        if (error) throw error;
+    } catch (e) {
+        alert('Düşülemedi: ' + (e.message || e));
+    } finally {
+        btn.disabled = false;
+        renderKomisyonAdmin();
     }
 };
