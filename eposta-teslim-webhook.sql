@@ -16,6 +16,7 @@
 --  /api/resend-webhook ucu imzayı doğrulayıp bu fonksiyonu çağırıyor:
 --
 --      email.sent              → kabul edildi (henüz teslim değil)
+--      email.failed            → Resend gönderemedi (bizi bu işe başlatan olay)
 --      email.delivered         → TESLİM EDİLDİ
 --      email.delivery_delayed  → gecikiyor, yeniden deneniyor
 --      email.bounced           → geri döndü (adres yok / kutu dolu / red)
@@ -126,6 +127,9 @@ begin
         when 'email.delivery_delayed' then 'gecikti'
         when 'email.bounced'          then 'dondu'
         when 'email.complained'       then 'sikayet'
+        -- Resend'in kendisi gönderemedi (alan adı doğrulanmamış, adres
+        -- biçimsiz…). Bizi bu işe başlatan olay tam olarak buydu.
+        when 'email.failed'           then 'basarisiz'
         else null
     end;
 

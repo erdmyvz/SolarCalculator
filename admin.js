@@ -2742,6 +2742,7 @@ const EP_TESLIM = {
     kabul:      ['Kabul edildi',  'bg-slate-100 text-slate-700', 'Resend aldı, teslim henüz doğrulanmadı'],
     teslim:     ['Teslim edildi', 'bg-emerald-100 text-emerald-800', 'Alıcı sunucusu kabul etti'],
     gecikti:    ['Gecikiyor',     'bg-amber-100 text-amber-800', 'Alıcı sunucusu erteledi, yeniden deneniyor'],
+    basarisiz:  ['Gönderilemedi', 'bg-red-100 text-red-700', 'Resend hiç gönderemedi (alan adı/adres sorunu)'],
     dondu:      ['Geri döndü',    'bg-red-100 text-red-700', 'Adres yok, kutu dolu veya reddedildi'],
     sikayet:    ['Spam denildi',  'bg-red-100 text-red-700', 'Alıcı "istenmeyen" işaretledi'],
     bilinmiyor: ['Bilinmiyor',    'bg-slate-100 text-slate-500', 'Webhook kurulu değil ya da olay gelmedi']
