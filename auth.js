@@ -332,11 +332,26 @@ function updateSubCounter() {
     const s = window.__subInfo;
     if (!s || !s.endsAt) { el.innerHTML = ''; return; }
     const days = Math.ceil((new Date(s.endsAt).getTime() - Date.now()) / 86400000);
-    if (days < 0) { el.innerHTML = ''; return; }
+    // ⚠️ ESKİDEN BURADA:  if (days < 0) { el.innerHTML = ''; return; }
+    // Abonelik bitince rozet KAYBOLUYORDU. Sonucu: 31. günde panel 29. günden
+    // daha sessiz hâle geliyor, ödemeyi hatırlatan tek işaret tam hatırlatması
+    // gereken anda ortadan kalkıyordu. Bitmiş abonelik, en çok görünmesi
+    // gereken hâldir.
     let cls = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-    if (days <= 7) cls = 'bg-amber-50 text-amber-700 border-amber-200';
-    const label = days === 0 ? 'Bugün son gün' : days + ' gün kaldı';
-    el.innerHTML = `<button onclick="showSubModal()" title="Abonelik / uzatma" class="border ${cls} font-bold text-xs px-3 py-1.5 rounded-full hover:opacity-80 whitespace-nowrap">⏳ ${label}</button>`;
+    let label = days + ' gün kaldı';
+    let ikon = '⏳';
+    if (days < 0) {
+        cls = 'bg-red-50 text-red-700 border-red-300';
+        const gecen = Math.abs(days);
+        label = gecen === 0 ? 'Abonelik bitti' : 'Abonelik bitti · ' + gecen + ' gün';
+        ikon = '⚠️';
+    } else if (days === 0) {
+        cls = 'bg-amber-50 text-amber-700 border-amber-200';
+        label = 'Bugün son gün';
+    } else if (days <= 7) {
+        cls = 'bg-amber-50 text-amber-700 border-amber-200';
+    }
+    el.innerHTML = `<button onclick="showSubModal()" title="Abonelik / uzatma" class="border ${cls} font-bold text-xs px-3 py-1.5 rounded-full hover:opacity-80 whitespace-nowrap">${ikon} ${label}</button>`;
 }
 
 // Abonelik bitişine ≤7 gün kala giriş sonrası uyarı şeridi göster.
@@ -346,19 +361,26 @@ function maybeShowSubExpiryBanner() {
     const s = window.__subInfo;
     if (!s || !s.endsAt) return;
     const days = Math.ceil((new Date(s.endsAt).getTime() - Date.now()) / 86400000);
-    if (days < 0 || days > 7) return;
+    if (days > 7) return;   // ⚠️ `days < 0` koşulu kaldırıldı: bitmiş abonelikte şerit susuyordu
     const today = new Date().toISOString().slice(0, 10);
     try { if (localStorage.getItem('subExpiryDismissed') === today) return; } catch (e) { /* depo yoksa her girişte göster */ }
     let b = document.getElementById('subExpiryBanner');
     if (!b) { b = document.createElement('div'); b.id = 'subExpiryBanner'; document.body.appendChild(b); }
-    const label = days === 0 ? 'Aboneliğinizin son günü!' : 'Aboneliğinizin bitmesine ' + days + ' gün kaldı.';
+    const bitti = days < 0;
+    const label = bitti
+        ? ('Aboneliğiniz ' + (Math.abs(days) || 'bugün') + (Math.abs(days) ? ' gün önce bitti.' : ' bitti.'))
+        : (days === 0 ? 'Aboneliğinizin son günü!' : 'Aboneliğinizin bitmesine ' + days + ' gün kaldı.');
+    const kutuCls = bitti ? 'bg-red-50 border-red-300' : 'bg-amber-50 border-amber-300';
+    const yaziCls = bitti ? 'text-red-800' : 'text-amber-800';
+    const dugmeCls = bitti ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-600 hover:bg-amber-700';
+    const kapatCls = bitti ? 'text-red-400 hover:text-red-600' : 'text-amber-400 hover:text-amber-600';
     b.innerHTML = `
         <div class="fixed top-16 left-1/2 -translate-x-1/2 z-[85] w-[calc(100%-2rem)] max-w-xl">
-            <div class="bg-amber-50 border border-amber-300 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 flex-wrap">
-                <span class="text-xl shrink-0">⏳</span>
-                <span class="text-sm font-bold text-amber-800 flex-1 min-w-[180px]">${label} Kesinti yaşamamak için süreyi şimdi uzatın.</span>
-                <button onclick="showSubModal()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-black px-3 py-1.5 rounded-lg whitespace-nowrap">Ödeme Bilgileri</button>
-                <button onclick="(function(){ try{localStorage.setItem('subExpiryDismissed','${today}')}catch(e){}; var el=document.getElementById('subExpiryBanner'); if(el) el.remove(); })()" title="Bugün için kapat" class="text-amber-400 hover:text-amber-600 text-lg leading-none px-1">✕</button>
+            <div class="${kutuCls} border rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 flex-wrap">
+                <span class="text-xl shrink-0">${bitti ? '⚠️' : '⏳'}</span>
+                <span class="text-sm font-bold ${yaziCls} flex-1 min-w-[180px]">${label} ${bitti ? 'Paneliniz açık kalmaya devam ediyor; kullanmaya devam etmek için aboneliğinizi yenileyin.' : 'Kesinti yaşamamak için süreyi şimdi uzatın.'}</span>
+                <button onclick="showSubModal()" class="${dugmeCls} text-white text-xs font-black px-3 py-1.5 rounded-lg whitespace-nowrap">Ödeme Bilgileri</button>
+                <button onclick="(function(){ try{localStorage.setItem('subExpiryDismissed','${today}')}catch(e){}; var el=document.getElementById('subExpiryBanner'); if(el) el.remove(); })()" title="Bugün için kapat" class="${kapatCls} text-lg leading-none px-1">✕</button>
             </div>
         </div>`;
 }
@@ -373,8 +395,8 @@ window.showSubModal = function () {
     m.innerHTML = `<div class="bg-white rounded-2xl max-w-md w-full p-7 my-8">
         <div class="flex items-center justify-between mb-4"><h3 class="font-black text-lg text-slate-800">Aboneliğim</h3><button onclick="document.getElementById('subModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button></div>
         <div class="text-center bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
-            <div class="text-4xl font-black ${days !== null && days <= 7 ? 'text-amber-600' : 'text-emerald-600'}">${days !== null ? days : '—'}</div>
-            <div class="text-sm text-slate-500">gün kaldı · Bitiş: ${endStr}</div>
+            <div class="text-4xl font-black ${days === null ? 'text-slate-400' : (days < 0 ? 'text-red-600' : (days <= 7 ? 'text-amber-600' : 'text-emerald-600'))}">${days === null ? '—' : Math.abs(days)}</div>
+            <div class="text-sm text-slate-500">${days === null ? 'süre bilgisi yok' : (days < 0 ? 'gün önce bitti' : 'gün kaldı')} · Bitiş: ${endStr}</div>
         </div>
         <p class="text-xs font-bold text-slate-600 mb-2">Aboneliği uzatmak için ödeme bilgileri:</p>
         ${paymentInfoHtml(s.email || '')}
