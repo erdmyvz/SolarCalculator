@@ -246,12 +246,62 @@
         _fiyat.satirlar = KAT.map(([k, ad]) => ({ kategori: k, ad, ihtiyac: 0, birim: k === 'cable' ? 'metre' : 'adet' }));
     }
 
-    function enUygunTedarik(kat) {
-        // Fiyatı AÇIK olanlar arasından en yakın, eşitlikte en ucuz.
-        const aday = _tedarik.filter(t => t.kategori === kat && t.fiyat_acik && usd(t.birim_fiyat, t.para_birimi) != null);
+    // ------------------------------------------------------------------
+    // TEDARİKÇİ FİYATINI SATIRIN BİRİMİNE ÇEVİR
+    //
+    // ⚠️ fiyat_baz eskiden YALNIZ EKRANDA gösteriliyor, hesapta yok
+    // sayılıyordu. Panel 0,099 USD/Wp ise 15 panelin maliyeti "1,49 $"
+    // çıkıyordu; 590 Wp'lik panelde gerçek rakam 876 $. Maliyet tablosu
+    // ~590 KAT yanılıyordu ve bu rakam tekliflere taşınacaktı.
+    //
+    // Çeviremiyorsak fiyatı KULLANMIYORUZ. Yanlış bir maliyet, eksik
+    // maliyetten beterdir: firma ona güvenip teklif verir.
+    // ------------------------------------------------------------------
+    function tedarikBirimFiyat(t, satirBirim) {
+        const ham = usd(t.birim_fiyat, t.para_birimi);
+        if (ham == null) return { usd: null, sebep: 'fiyat okunamadı' };
+        const baz = String(t.fiyat_baz || 'adet').toLowerCase();
+        const sp  = t.ozellikler || {};
+
+        if (baz === 'wp') {                       // panel: USD/Wp → USD/adet
+            const guc = Number(sp.guc) || 0;
+            if (!(guc > 0)) return { usd: null, sebep: 'Wp fiyatı ama panel gücü girilmemiş' };
+            return { usd: ham * guc, sebep: null };
+        }
+        if (baz === 'kwh') {                      // batarya: USD/kWh → USD/adet
+            const kap = Number(sp.kapasite) || 0;
+            if (!(kap > 0)) return { usd: null, sebep: 'kWh fiyatı ama kapasite girilmemiş' };
+            return { usd: ham * kap, sebep: null };
+        }
+        if (baz === 'metre') {
+            return satirBirim === 'metre'
+                ? { usd: ham, sebep: null }
+                : { usd: null, sebep: 'metre fiyatı, satır adet' };
+        }
+        // 'adet'
+        return satirBirim === 'metre'
+            ? { usd: null, sebep: 'adet fiyatı, satır metre' }
+            : { usd: ham, sebep: null };
+    }
+
+    function enUygunTedarik(kat, satirBirim) {
+        // Fiyatı AÇIK ve birime ÇEVRİLEBİLEN adaylar; en yakın, eşitlikte en ucuz.
+        const aday = _tedarik
+            .filter(t => t.kategori === kat && t.fiyat_acik)
+            .map(t => ({ t, f: tedarikBirimFiyat(t, satirBirim) }))
+            .filter(x => x.f.usd != null);
         if (!aday.length) return null;
-        aday.sort((a, b) => (a.yakinlik - b.yakinlik) || (usd(a.birim_fiyat, a.para_birimi) - usd(b.birim_fiyat, b.para_birimi)));
-        return aday[0];
+        aday.sort((a, b) => (a.t.yakinlik - b.t.yakinlik) || (a.f.usd - b.f.usd));
+        return Object.assign({}, aday[0].t, { _birimUsd: aday[0].f.usd });
+    }
+
+    // Kullanılabilir fiyat yoksa SEBEBİNİ söyle; "açık fiyat yok" demek
+    // fiyat varken yanıltıcı olurdu.
+    function tedarikSebep(kat, satirBirim) {
+        const acik = _tedarik.filter(t => t.kategori === kat && t.fiyat_acik);
+        if (!acik.length) return 'açık fiyat yok';
+        const sebepler = [...new Set(acik.map(t => tedarikBirimFiyat(t, satirBirim).sebep).filter(Boolean))];
+        return sebepler[0] || 'açık fiyat yok';
     }
 
     function depoToplam(kat) {
@@ -276,8 +326,8 @@
             const ihtiyac = Number(s.ihtiyac) || 0;
             const elden = Math.min(ihtiyac, d.adet);
             const eksik = Math.max(0, ihtiyac - d.adet);
-            const ted = enUygunTedarik(s.kategori);
-            const tedFiyat = ted ? usd(ted.birim_fiyat, ted.para_birimi) : null;
+            const ted = enUygunTedarik(s.kategori, s.birim);
+            const tedFiyat = ted ? ted._birimUsd : null;
 
             const eldenMaliyet = (d.ortalama != null) ? elden * d.ortalama : null;
             const eksikMaliyet = (tedFiyat != null) ? eksik * tedFiyat : null;
@@ -290,9 +340,11 @@
             const tedHucre = eksik === 0
                 ? '<span class="text-slate-300">—</span>'
                 : (ted
-                    ? `<div class="text-xs font-bold text-slate-700">${birimFiyat(tedFiyat)} $</div>
-                       <div class="text-[10px] text-slate-400">${esc(ted.marka)} · ${esc([ted.ilce, ted.il].filter(Boolean).join(' / '))}</div>`
-                    : `<div class="text-[10px] text-amber-700 font-bold">açık fiyat yok</div>
+                    ? `<div class="text-xs font-bold text-slate-700">${birimFiyat(tedFiyat)} $<span class="text-[10px] font-normal text-slate-400">/${esc(s.birim)}</span></div>
+                       <div class="text-[10px] text-slate-400">${esc(ted.marka)} · ${esc([ted.ilce, ted.il].filter(Boolean).join(' / '))}</div>
+                       ${String(ted.fiyat_baz || '').toLowerCase() === 'wp'
+                            ? `<div class="text-[10px] text-slate-400">${birimFiyat(usd(ted.birim_fiyat, ted.para_birimi))} $/Wp × ${esc((ted.ozellikler || {}).guc)} Wp</div>` : ''}`
+                    : `<div class="text-[10px] text-amber-700 font-bold">${esc(tedarikSebep(s.kategori, s.birim))}</div>
                        <button onclick="stokSekme('tedarik')" class="text-[10px] text-indigo-600 font-bold hover:underline">tedarikçi ara →</button>`);
 
             return `
@@ -402,7 +454,63 @@
         cizFiyat();
     };
 
+    // ------------------------------------------------------------------
+    // MALİYET TABLOSU → TEKLİF SİHİRBAZI
+    //
+    // Firma miktarları burada bir kez giriyor, sihirbazda TEKRAR giriyordu.
+    // Artık miktarlar ve GERÇEK birim maliyet (depodaki ortalama + eksik
+    // kısmın tedarikçi fiyatı, harmanlanmış) sihirbaza taşınıyor.
+    //
+    // ⚠️ Taşınamayan hiçbir şey uydurulmuyor: maliyeti bilinmeyen satır
+    // maliyetsiz gider, sihirbaz kendi katalog fiyatını kullanır ve bunu
+    // kullanıcıya AÇIKÇA söyler.
+    // ------------------------------------------------------------------
     window.stokTeklifeAktar = function () {
+        fiyatSatirlariKur();
+        const satirlar = [];
+        let eksikMaliyet = 0;
+
+        _fiyat.satirlar.forEach(s => {
+            const ihtiyac = Number(s.ihtiyac) || 0;
+            if (ihtiyac <= 0) return;                       // girilmemiş satırı taşıma
+
+            const d     = depoToplam(s.kategori);
+            const elden = Math.min(ihtiyac, d.adet);
+            const eksik = Math.max(0, ihtiyac - d.adet);
+            const ted   = enUygunTedarik(s.kategori, s.birim);
+            const tedF  = ted ? ted._birimUsd : null;
+
+            // Harmanlanmış birim maliyet — YALNIZ her iki parça da biliniyorsa.
+            let birimMaliyet = null, kaynak = null;
+            const eldenTutar = (d.ortalama != null) ? elden * d.ortalama : null;
+            const eksikTutar = (tedF != null)       ? eksik * tedF       : null;
+            if ((elden === 0 || eldenTutar != null) && (eksik === 0 || eksikTutar != null)) {
+                birimMaliyet = ((eldenTutar || 0) + (eksikTutar || 0)) / ihtiyac;
+                kaynak = elden > 0 && eksik > 0 ? 'depo+tedarik'
+                       : (elden > 0 ? 'depo' : 'tedarik');
+            } else {
+                eksikMaliyet++;
+            }
+
+            satirlar.push({
+                kategori: s.kategori, ad: s.ad, birim: s.birim,
+                miktar: ihtiyac, birimMaliyet, kaynak,
+                depodan: elden, tedarikten: eksik
+            });
+        });
+
+        if (!satirlar.length) {
+            alert('Taşınacak kalem yok.\n\nÖnce Fiyatlandırma tablosunda ihtiyaç miktarlarını girin.');
+            return;
+        }
+
+        window.__epcMaliyetAktarim = {
+            kwp: Number(_fiyat.kwp) || 0,
+            satirlar,
+            maliyetiBilinmeyen: eksikMaliyet,
+            olusturma: Date.now()
+        };
+
         const b = document.getElementById('btnGoQuotes');
         if (b) { b.click(); return; }
         alert('Teklif modülü bulunamadı.');

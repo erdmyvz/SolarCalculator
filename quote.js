@@ -466,8 +466,80 @@
         const totalUsd = Math.max(0, subtotal - discount), rate = Number(_qSettings.usd_rate) || 0, vat = Number(_qSettings.vat_pct) || 0;
         return { lines, subtotal, discount, totalUsd, rate, vat, totalTry: totalUsd * rate, totalTryVat: totalUsd * rate * (1 + vat / 100) };
     }
+    // ------------------------------------------------------------------
+    // MALİYET TABLOSUNDAN AKTARIM
+    //
+    // Stok & Maliyet → Fiyatlandırma ekranında girilen miktarlar ve oradan
+    // hesaplanan GERÇEK birim maliyet (depodaki ortalama + eksiğin tedarikçi
+    // fiyatı) buraya taşınır. Firma aynı listeyi iki kez girmesin.
+    //
+    // ⚠️ Sessizce uygulanmaz. Neyin taşındığı, neyin taşınamadığı ve hangi
+    // satırların hâlâ KATALOG fiyatıyla hesaplandığı ekranda yazar. Aksi
+    // hâlde firma, katalog fiyatını gerçek maliyeti sanarak teklif verirdi.
+    // ------------------------------------------------------------------
+    const AKT_KAT = { panel: 'panel', inverter: 'inverter', battery: 'battery',
+                      cable: 'cable', mounting: 'construction' };
+
+    function wzAktarimUygula() {
+        const a = window.__epcMaliyetAktarim;
+        if (!a || !Array.isArray(a.satirlar) || _wz.__aktarim) return;
+        // ⚠️ REVİZYONA UYGULANMAZ. quoteRevise mevcut teklifin kalemlerini
+        // yükleyip doğrudan 3. adımda açıyor; aktarım orada çalışsaydı
+        // firmanın yayımladığı teklifin miktarlarını sessizce değiştirirdi.
+        if (_wz.reviseFromId) return;
+
+        const tasinan = [], katalogFiyatli = [], tasinamayan = [];
+
+        a.satirlar.forEach(r => {
+            const cat = AKT_KAT[r.kategori] || r.kategori;
+            let satir = _wz.bom.find(l => l.category === cat);
+
+            if (!satir) {                            // sihirbaz bu aileyi açmamış
+                const it = wzCat(cat)[0];
+                if (!it) { tasinamayan.push(r.ad); return; }
+                satir = { id: it.id, category: it.category, name: it.name, brand: it.brand,
+                          unit: it.unit, qty: 0, cost: Number(it.cost_usd) || 0,
+                          margin: (it.margin_pct == null ? null : it.margin_pct) };
+                _wz.bom.push(satir);
+            }
+
+            satir.qty = Number(r.miktar) || 0;
+            if (r.birimMaliyet != null && isFinite(r.birimMaliyet) && r.birimMaliyet > 0) {
+                satir.cost = Number(r.birimMaliyet);
+                tasinan.push(`${r.ad} · ${r.miktar} ${r.birim} · $${(Math.round(r.birimMaliyet * 100) / 100).toLocaleString('tr-TR')}/${r.birim} (${r.kaynak})`);
+            } else {
+                katalogFiyatli.push(`${r.ad} · ${r.miktar} ${r.birim}`);
+            }
+        });
+
+        // Panel adedi ile sistem gücü çelişiyor mu? İkisi teklifin ayrı
+        // yerlerine basılıyor; sessiz kalırsak müşteri tutarsız belge görür.
+        const panelSatir = _wz.bom.find(l => l.category === 'panel');
+        const kwpPanel   = wzPanels();
+        const celiski = (panelSatir && kwpPanel > 0 && Math.abs(Number(panelSatir.qty) - kwpPanel) >= 1)
+            ? { tabloda: Number(panelSatir.qty), sistemde: kwpPanel } : null;
+
+        _wz.__aktarim = { tasinan, katalogFiyatli, tasinamayan, celiski };
+        window.__epcMaliyetAktarim = null;            // bir kez uygulanır
+    }
+
+    function wzAktarimKutusu() {
+        const a = _wz.__aktarim; if (!a) return '';
+        const sat = (b, r, e) => b.length
+            ? `<div class="${r}"><strong>${e}</strong> ${b.map(x => esc(x)).join(' · ')}</div>` : '';
+        return `<div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-3 text-[11px] leading-relaxed space-y-1">
+            <p class="font-black text-indigo-800 text-xs">📥 Maliyet tablosundan aktarıldı</p>
+            ${sat(a.tasinan, 'text-indigo-700', 'Gerçek maliyetle:')}
+            ${sat(a.katalogFiyatli, 'text-amber-700', '⚠️ Miktar taşındı, KATALOG fiyatı kullanılıyor:')}
+            ${sat(a.tasinamayan, 'text-red-700', '⚠️ Katalogda karşılığı yok, taşınamadı:')}
+            ${a.celiski ? `<div class="text-red-700"><strong>⚠️ Panel adedi çelişkisi:</strong> malzeme listesinde ${a.celiski.tabloda}, sistem özetinde ${a.celiski.sistemde} panel. Teklifte ikisi de görünür — 2. adımdaki sistem gücünü ya da buradaki adedi düzeltin.</div>` : ''}
+            <p class="text-slate-500">Katalog fiyatlı satırlarda maliyet, depo ortalamanız veya tedarikçi fiyatı bilinmediği için taşınamadı.</p>
+        </div>`;
+    }
+
     function wzStep3() {
         if (!_wz.bom || !_wz.bom.length) wzBuildBom();
+        wzAktarimUygula();
         const t = wzTotals(), fmt = n => (Math.round(n)).toLocaleString('tr-TR');
         const rows = _wz.bom.map((l, i) => `
             <tr class="border-b border-slate-100">
@@ -477,8 +549,10 @@
                 <td class="p-2 text-center"><button onclick="wzDelLine(${i})" class="text-red-400 hover:text-red-600 text-xs">✕</button></td>
             </tr>`).join('');
         const addOpts = (_qCatalog || []).filter(x => !x.hidden).map(x => `<option value="${x.id}">${esc((QCAT[x.category]||x.category)+' · '+x.name)}</option>`).join('');
+        const aktarimKutu = wzAktarimKutusu();
         return `
             <h3 class="font-black text-slate-800 mb-3">Malzeme Listesi & Fiyat</h3>
+            ${aktarimKutu}
             <div class="overflow-x-auto border border-slate-100 rounded-lg mb-3">
                 <table class="w-full text-sm"><thead class="bg-slate-50"><tr class="text-[11px] text-slate-500 text-left"><th class="p-2">Kalem</th><th class="p-2">Miktar</th><th class="p-2 text-right">Satış $</th><th class="p-2"></th></tr></thead><tbody id="wzBomBody">${rows}</tbody></table>
             </div>
