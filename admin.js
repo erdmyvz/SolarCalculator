@@ -2728,10 +2728,24 @@ function epKok() {
         </div>
         <p class="text-xs text-slate-500 mb-3">Panele düşen her bildirim e-posta olarak da gidiyor. Gönderilemeyenler burada görünür.</p>
         <div id="epOzet"></div>
-        <div id="epHatalar" class="mt-3"></div>`;
+        <div id="epTeslim" class="mt-3"></div>
+        <div id="epHatalar" class="mt-3"></div>
+        <div id="epEngelli" class="mt-3"></div>`;
     admin.appendChild(card);
     return card;
 }
+
+// Teslim durumu — kuyruk durumundan AYRI bir gerçek.
+// 'Gönderildi' yalnız "Resend isteği kabul etti" demek; postanın kutuya
+// düşüp düşmediğini webhook söylüyor. İki sayaç bilerek yan yana duruyor.
+const EP_TESLIM = {
+    kabul:      ['Kabul edildi',  'bg-slate-100 text-slate-700', 'Resend aldı, teslim henüz doğrulanmadı'],
+    teslim:     ['Teslim edildi', 'bg-emerald-100 text-emerald-800', 'Alıcı sunucusu kabul etti'],
+    gecikti:    ['Gecikiyor',     'bg-amber-100 text-amber-800', 'Alıcı sunucusu erteledi, yeniden deneniyor'],
+    dondu:      ['Geri döndü',    'bg-red-100 text-red-700', 'Adres yok, kutu dolu veya reddedildi'],
+    sikayet:    ['Spam denildi',  'bg-red-100 text-red-700', 'Alıcı "istenmeyen" işaretledi'],
+    bilinmiyor: ['Bilinmiyor',    'bg-slate-100 text-slate-500', 'Webhook kurulu değil ya da olay gelmedi']
+};
 
 const EP_ETIKET = {
     bekliyor:     ['Sırada',       'bg-slate-100 text-slate-700'],
@@ -2777,6 +2791,47 @@ async function renderEpostaAdmin() {
         }).join('')}</div>`;
     }
 
+    // --- TESLİM DURUMU (webhook'tan) ---
+    const teslimKutu = document.getElementById('epTeslim');
+    if (teslimKutu) {
+        const { data: tes, error: tErr } = await supabaseClient.rpc('eposta_teslim_ozeti');
+        if (tErr) {
+            teslimKutu.innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+                <p class="text-xs font-bold text-amber-800">Teslim doğrulaması kurulu değil</p>
+                <p class="text-[11px] text-amber-700 mt-0.5">eposta-teslim-webhook.sql çalıştırılmamış. Yukarıdaki “Gönderildi” sayısı yalnız <strong>Resend isteği kabul etti</strong> demek; postanın kutuya düştüğü anlamına gelmez.</p></div>`;
+        } else if (tes && tes.length) {
+            teslimKutu.innerHTML = `<p class="text-xs font-bold text-slate-600 mb-1.5">Teslim durumu <span class="font-normal text-slate-400">— gerçekte ne oldu</span></p>
+                <div class="flex flex-wrap gap-2">${tes.map(x => {
+                    const [ad, css, aciklama] = EP_TESLIM[x.teslim_durum] || [x.teslim_durum, 'bg-slate-100 text-slate-700', ''];
+                    return `<div class="px-3 py-2 rounded-lg ${css}" title="${admEscape(aciklama)}">
+                        <div class="text-lg font-black leading-none">${x.adet}</div>
+                        <div class="text-[10px] font-bold mt-0.5">${admEscape(ad)}</div></div>`;
+                }).join('')}</div>`;
+        } else {
+            teslimKutu.innerHTML = '';
+        }
+    }
+
+    // --- KARA LİSTE ---
+    const engelliKutu = document.getElementById('epEngelli');
+    if (engelliKutu) {
+        const { data: eng, error: eErr } = await supabaseClient.rpc('eposta_engelli_liste', { p_limit: 20 });
+        if (!eErr && eng && eng.length) {
+            engelliKutu.innerHTML = `<p class="text-xs font-bold text-slate-600 mb-1.5">Gönderim durdurulan adresler</p>
+                <div class="space-y-1.5">${eng.map(x => `
+                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 flex items-start justify-between gap-2 flex-wrap">
+                        <div class="min-w-0">
+                            <div class="text-xs font-bold text-slate-700">${admEscape(x.adres)}</div>
+                            <div class="text-[10px] text-slate-500">${x.sebep === 'complained' ? 'alıcı spam dedi' : 'posta geri döndü'}${x.detay ? ' · ' + admEscape(x.detay) : ''}</div>
+                        </div>
+                        <button onclick="epEngelKaldir('${window.epcAttrJs ? window.epcAttrJs(x.adres) : x.adres}', this)" class="text-[11px] bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 font-bold px-2.5 py-1 rounded-lg flex-shrink-0">Engeli kaldır</button>
+                    </div>`).join('')}</div>
+                <p class="text-[10px] text-slate-400 mt-1.5">Geri dönen ve şikâyet edilen adreslere göndermeye devam etmek gönderen itibarını düşürür; bu yüzden otomatik durduruluyor.</p>`;
+        } else {
+            engelliKutu.innerHTML = '';
+        }
+    }
+
     if (!hataKutu) return;
     const { data: hatalar } = await supabaseClient.rpc('eposta_son_hatalar', { p_limit: 10 });
     if (!hatalar || !hatalar.length) { hataKutu.innerHTML = ''; return; }
@@ -2801,6 +2856,20 @@ window.epDeneme = async function (btn) {
         alert('Gönderilemedi: ' + (e.message || e));
     } finally {
         btn.disabled = false; btn.textContent = eski;
+        renderEpostaAdmin();
+    }
+};
+
+window.epEngelKaldir = async function (adres, btn) {
+    if (!window.confirm(adres + ' adresine yeniden gönderilsin mi?\n\nAdres geri döndüğü veya şikâyet edildiği için durdurulmuştu. Sorun giderilmediyse tekrar duracak ve gönderen itibarınız düşer.')) return;
+    btn.disabled = true;
+    try {
+        const { error } = await supabaseClient.rpc('eposta_engeli_kaldir', { p_adres: adres });
+        if (error) throw error;
+    } catch (e) {
+        alert('Kaldırılamadı: ' + (e.message || e));
+    } finally {
+        btn.disabled = false;
         renderEpostaAdmin();
     }
 };
