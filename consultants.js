@@ -168,12 +168,21 @@
     };
 
     // ================================================================ DANIŞMAN ARAYÜZÜ
+    // ⚠️ BU KUTU BİR ZAMANLAR SADECE SÜSTÜ. Reddedilmiş danışman kırmızı kutuyu
+    // görüyor, altındaki bütün araçları SONUNA KADAR kullanabiliyordu: danışan
+    // ekleyip CRM'e aktarabiliyor, üç firma davet ediliyor, bildirim gidiyordu.
+    // Kapı danisman-onay-kapisi.sql ile sunucuya kondu; buradaki cümle o
+    // kuralın aynısını SÖYLÜYOR. İkisi birlikte değişmeli — biri değişip
+    // öteki kalırsa ekran yine yalan söyler.
+    const ONAYSIZ_KISIT = 'Onaylanana kadar <strong>danışan aktarımı</strong> ve <strong>teklif değerlendirme talepleri</strong> kapalıdır — danışanlarınızı kaydedip hazırlayabilirsiniz.';
+
     function statusBanner(c) {
         const s = c.status || 'draft';
+        if (c && c.banned) return `<div class="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm"><strong>⛔ Hesabınız askıya alındı.</strong>${c.ban_reason ? `<br>Gerekçe: ${esc(c.ban_reason)}` : ''}<br><span class="text-xs">Danışan aktarımı ve değerlendirme talepleri kapalıdır.</span></div>`;
         if (s === 'approved') return `<div class="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 text-sm font-bold">✅ Profiliniz onaylandı — ziyaretçi sayfasında listeleniyorsunuz.</div>`;
-        if (s === 'pending')  return `<div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-sm font-bold">⏳ Profiliniz onay bekliyor. Admin incelemesinden sonra yayınlanacak.</div>`;
-        if (s === 'rejected') return `<div class="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm"><strong>❌ Profiliniz reddedildi.</strong>${c.reject_reason ? `<br>Gerekçe: ${esc(c.reject_reason)}` : ''}<br><span class="text-xs">Düzenleyip tekrar onaya gönderebilirsiniz.</span></div>`;
-        return `<div class="bg-slate-100 border border-slate-200 text-slate-600 rounded-xl p-4 text-sm">📝 Taslak — profilinizi doldurup "Onaya Gönder" ile yayına başvurun.</div>`;
+        if (s === 'pending')  return `<div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-sm"><strong>⏳ Profiliniz onay bekliyor.</strong> Admin incelemesinden sonra yayınlanacak.<br><span class="text-xs font-normal">${ONAYSIZ_KISIT}</span></div>`;
+        if (s === 'rejected') return `<div class="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm"><strong>❌ Profiliniz reddedildi.</strong>${c.reject_reason ? `<br>Gerekçe: ${esc(c.reject_reason)}` : ''}<br><span class="text-xs">Düzenleyip tekrar onaya gönderebilirsiniz. ${ONAYSIZ_KISIT}</span></div>`;
+        return `<div class="bg-slate-100 border border-slate-200 text-slate-600 rounded-xl p-4 text-sm">📝 Taslak — profilinizi doldurup "Onaya Gönder" ile yayına başvurun.<br><span class="text-xs">${ONAYSIZ_KISIT}</span></div>`;
     }
 
     // 1. seviye: PANO (özet + dikkat gerektirenler + kısayollar)
@@ -737,9 +746,15 @@
                     await loadClients(); applyClientFilters();
                     return;
                 }
+                // ⚠️ "Tekrar denerseniz olur" cümlesi HER hataya uymaz. Engel
+                // profil onayıysa tekrar denemek hiçbir şey değiştirmez; o
+                // cümleyi göstermek danışmanı boşuna uğraştırmak olur.
+                const onayEngeli = /onay|reddedil|askıya/i.test(String(e.message || e));
                 res.innerHTML = `<p class="text-amber-600 text-sm font-bold">Danışan kaydedildi, CRM'e aktarılamadı.</p>
                                  <p class="text-xs text-slate-500 mt-1">${esc(e.message || e)}</p>
-                                 <p class="text-xs text-slate-400 mt-1">Kaydı açıp tekrar kaydederseniz aktarım yeniden denenir.</p>`;
+                                 <p class="text-xs text-slate-400 mt-1">${onayEngeli
+                                    ? 'Kaydınız duruyor; profiliniz onaylandıktan sonra bu danışanı açıp kaydederek firmalara iletebilirsiniz.'
+                                    : 'Kaydı açıp tekrar kaydederseniz aktarım yeniden denenir.'}</p>`;
                 await loadClients(); applyClientFilters();
                 return;
             }
