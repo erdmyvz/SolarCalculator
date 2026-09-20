@@ -1031,7 +1031,17 @@
             </div>`
             : '<div class="kart p-5 mb-4"><p class="text-sm text-slate-500">Bu başvuruya henüz teklif gelmemiş.</p></div>'}
 
-            <div class="kart p-4">
+            ${!_teklifler.length
+            // ⚠️ TEKLİF YOKKEN FORM AÇILMIYOR. Eskiden ekran "henüz teklif
+            // gelmemiş" derken formu açık bırakıyordu; gönderilen görüş
+            // consultant_credits'e "değerlendirme" olarak düşüyordu —
+            // değerlendirilmiş hiçbir teklif olmadan. Aynı kural sunucuda da
+            // var (danisman_gorus_yaz); ikisi birlikte değişmeli.
+            ? `<div class="kart p-4">
+                <p class="text-sm font-bold text-slate-700">Görüş yazmak için önce teklif gerekiyor</p>
+                <p class="text-xs text-slate-500 mt-1">Değerlendirilecek bir teklif olmadan görüş yazılamaz. Davet edilen firmalar tekliflerini gönderdiğinde bu sayfa açılır ve size bildirim gelir.</p>
+               </div>`
+            : `<div class="kart p-4">
                 <label class="block text-xs font-bold text-slate-600 mb-1">Görüşünüz</label>
                 <textarea id="consGorus" rows="5" placeholder="Teklifleri neye göre karşılaştırdınız? Yatırımcının dikkat etmesi gereken farklar neler?" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm">${esc(_acik.gorus || '')}</textarea>
                 <label class="block text-xs font-bold text-slate-600 mt-3 mb-1">Öne çıkardığınız firma (isteğe bağlı)</label>
@@ -1039,7 +1049,7 @@
                 <p class="text-[11px] text-slate-400 mt-1">Yatırımcıya "bu bir görüştür, karar sizindir" notuyla gösterilir.</p>
                 <button onclick="consultantReviewSave()" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-lg">Görüşü Gönder</button>
                 <div id="consGorusSonuc" class="mt-2"></div>
-            </div>`;
+               </div>`}`;
     }
 
     window.consultantReviewSave = async function () {
