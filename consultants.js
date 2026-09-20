@@ -546,11 +546,115 @@
                                <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${INSTALL_BADGE[c.install_status] || 'bg-slate-100 text-slate-500'}">${esc(instLabel(c.install_status) || 'Durum yok')}</span>
                                ${c.tracking_code ? `<span class="ml-auto text-[10px] font-mono text-slate-400 tracking-wider">${esc(c.tracking_code)}</span>` : ''}`
                             : `<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">⏳ Teklif bekleniyor</span>
-                               <span class="text-[11px] text-slate-400">firmalar davet edildi, yatırımcı seçecek</span>
+                               <span class="text-[11px] text-slate-400">firmalar davet edildi</span>
+                               <button onclick="consultantKazananAc('${c.id}')" class="text-xs font-bold text-indigo-600 hover:underline">Müşteri hangi firmayı seçti? →</button>
                                ${c.tracking_code ? `<span class="ml-auto text-[10px] font-mono text-slate-400 tracking-wider">${esc(c.tracking_code)}</span>` : ''}`)}
                 </div>
             </div>`).join('');
     }
+
+    // ======================================================== KAZANANI KAYDET
+    // ⚠️ DANIŞMAN FİRMA SEÇMİYOR. Müşterinin seçtiğini KAYDEDİYOR. Ayrım
+    // danisman-rolu.sql'deki kuralın ta kendisi: danışman firma seçebilseydi
+    // "en yakın 3 firma" kuralı danışman üzerinden delinirdi. Buradaki bütün
+    // metinler bu yüzden "siz seçin" değil "müşteri hangisini seçti" diyor.
+    //
+    // Sunucu tarafı (danisman-kazanan-kaydi.sql) dört koşul arıyor: kayıt
+    // danışmanın kendi danışanı, müşterinin platform hesabı yok, kazanan
+    // henüz yazılmamış, danışman profili onaylı. Buradaki kontroller yalnız
+    // kullanıcıya kolaylık — kural sunucuda.
+    function ensureKazananModal() {
+        let m = document.getElementById('consKazananModal');
+        if (m) return m;
+        m = document.createElement('div');
+        m.id = 'consKazananModal';
+        m.className = 'tema-koyu pencere-koyu fixed inset-0 bg-black/50 z-[70] hidden flex items-center justify-center p-4';
+        m.innerHTML = '<div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"><div id="consKazananBody" class="p-6"></div></div>';
+        document.body.appendChild(m);
+        m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
+        return m;
+    }
+
+    const _kzPara = (n) => (n == null || isNaN(n)) ? null
+        : '₺' + Math.round(Number(n)).toLocaleString('tr-TR');
+
+    window.consultantKazananAc = async function (clientId) {
+        const m = ensureKazananModal();
+        const kutu = document.getElementById('consKazananBody');
+        const kapat = `<button onclick="document.getElementById('consKazananModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>`;
+        kutu.innerHTML = `<div class="flex items-center justify-between mb-4"><h3 class="font-black text-lg text-slate-800">Müşteri hangi firmayı seçti?</h3>${kapat}</div>
+            <p class="text-xs text-slate-400">Yükleniyor...</p>`;
+        m.classList.remove('hidden');
+
+        const { data, error } = await supabaseClient.rpc('danisan_firma_secenekleri', { p_client_id: clientId });
+        if (error) {
+            // ⚠️ "Firma bulunamadı" demiyoruz: hata ile boşluk ayrı şeyler.
+            kutu.innerHTML = `<div class="flex items-center justify-between mb-4"><h3 class="font-black text-lg text-slate-800">Müşteri hangi firmayı seçti?</h3>${kapat}</div>
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p class="text-sm font-bold text-amber-800">Firma listesi alınamadı</p>
+                    <p class="text-xs text-amber-700 mt-1">${esc(error.message)}</p></div>`;
+            return;
+        }
+
+        const firmalar = data || [];
+        const teklifli = firmalar.filter(f => f.teklif_var);
+
+        kutu.innerHTML = `
+            <div class="flex items-center justify-between mb-1"><h3 class="font-black text-lg text-slate-800">Müşteri hangi firmayı seçti?</h3>${kapat}</div>
+            <p class="text-xs text-slate-500 mb-4">Seçimi yapan müşterinizdir; siz yalnız sonucu kaydediyorsunuz. <strong>Kayıt geri alınamaz</strong> — yanlışlıkla kaydederseniz yönetime bildirin.</p>
+            ${!firmalar.length
+                ? '<p class="text-sm text-slate-500">Bu kayda henüz firma davet edilmemiş.</p>'
+                : `<div class="space-y-2">${firmalar.map(f => {
+                    const yer = [f.ilce, f.il].filter(Boolean).join(' / ') || 'konum yok';
+                    const puan = (f.puan == null) ? 'puan yok' : `★ ${Number(f.puan).toFixed(1)} (${f.puan_adedi})`;
+                    const bedel = _kzPara(f.bedel_try);
+                    return `<div class="border ${f.teklif_var ? 'border-slate-200' : 'border-slate-100 bg-slate-50'} rounded-xl p-3 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-sm font-black text-slate-800">${esc(f.firma || '—')}</div>
+                            <div class="text-[11px] text-slate-500">${esc(yer)} · ${esc(puan)}</div>
+                            ${f.teklif_var
+                                ? `<div class="text-[11px] text-slate-700 mt-0.5"><strong>${bedel || 'bedel okunamadı'}</strong> <span class="text-slate-400">KDV hariç</span></div>`
+                                : '<div class="text-[11px] text-amber-700 mt-0.5">Bu firma teklif göndermedi</div>'}
+                        </div>
+                        ${f.teklif_var
+                            ? `<button onclick="consultantKazananKaydet('${esc(clientId)}','${esc(f.company_id)}',this)" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg">Bunu seçti</button>`
+                            // ⚠️ Teklif göndermemiş firma KAYDEDİLEMİYOR. Aynı kural
+                            // yatırımcı ekranında da var; danışman yolu o kuralın
+                            // etrafından dolaşmak için kullanılamaz.
+                            : '<span class="shrink-0 text-[10px] text-slate-400 text-right leading-tight">teklif<br>olmadan<br>kaydedilemez</span>'}
+                    </div>`; }).join('')}</div>
+                   ${teklifli.length ? '' : '<p class="text-[11px] text-amber-700 mt-3">Davet edilen firmaların hiçbiri henüz teklif göndermemiş. Teklif gelmeden kazanan kaydedilemez.</p>'}`}`;
+    };
+
+    window.consultantKazananKaydet = async function (clientId, companyId, btn) {
+        const c = (_clients || []).find(x => String(x.id) === String(clientId));
+        const lead = c ? c.lead_id : null;
+        if (!lead) { alert('Bu danışanın CRM kaydı bulunamadı.'); return; }
+        if (!window.confirm('Müşterinin bu firmayı seçtiğini kaydediyorsunuz.\n\nKayıt geri alınamaz ve firmalara bildirim gider. Devam edilsin mi?')) return;
+
+        const eski = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Kaydediliyor...';
+        try {
+            const { data, error } = await supabaseClient.rpc('lead_kazanan',
+                { p_lead_id: lead, p_company_id: companyId });
+            if (error) throw error;
+            // ⚠️ "Kaydedildi" demeden ÖNCE gerçekten yazıldı mı bakıyoruz.
+            // Bu projede en çok tekrar eden kusur, ekranın yazılmamış bir şeye
+            // "oldu" demesiydi.
+            await loadClients();
+            const y = (_clients || []).find(x => String(x.id) === String(clientId));
+            if (!y || !y.assigned_company_id) {
+                alert('Kayıt doğrulanamadı — firma yazılmamış görünüyor. Sayfayı yenileyip tekrar bakın.');
+            } else {
+                alert('✅ Kaydedildi: ' + ((data && data.kazanan) || y.assigned_company_name || 'firma'));
+            }
+            document.getElementById('consKazananModal').classList.add('hidden');
+            applyClientFilters();
+        } catch (e) {
+            alert('Kaydedilemedi: ' + (e.message || e));
+            btn.disabled = false; btn.textContent = eski;
+        }
+    };
 
     function ensureClientModal() {
         let m = document.getElementById('consClientModal');
