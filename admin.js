@@ -2935,7 +2935,20 @@ async function renderKomisyonAdmin() {
 
     const satirlar = ozet || [];
     if (!satirlar.length) {
-        ozetEl.innerHTML = '<p class="text-xs text-slate-400 italic">Henüz kazanılmış iş yok — firma seçildiğinde kayıt buraya düşer.</p>';
+        // ⚠️ BOŞ İKİ ANLAMA GELİR: hiç iş kazanılmadı, ya da kazanılan her iş
+        // TEST kaydı. İkisini aynı cümleyle geçiştirmek, üç ay sonra fiyat
+        // kararı verirken en pahalı yanlış anlama olurdu.
+        let testAdet = 0;
+        try {
+            const { count } = await supabaseClient.from('commissions')
+                .select('id', { count: 'exact', head: true }).eq('test_mi', true);
+            testAdet = count || 0;
+        } catch (e) { /* kolon yoksa 0 kalır */ }
+        ozetEl.innerHTML = testAdet
+            ? `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                 <p class="text-xs font-bold text-slate-600">Henüz gerçek iş yok</p>
+                 <p class="text-[11px] text-slate-500 mt-1">${testAdet} kayıt var ama hepsi <strong>test</strong> olarak işaretli ve ortalamalara girmiyor. Gerçek bir müşteri firmaya bağlandığında rakamlar burada birikmeye başlar.</p></div>`
+            : '<p class="text-xs text-slate-400 italic">Henüz kazanılmış iş yok — firma seçildiğinde kayıt buraya düşer.</p>';
         ['komMetrik', 'komListe'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
         return;
     }
@@ -3091,6 +3104,36 @@ async function renderDanismanDeger() {
         ['ddKarsilastirma', 'ddListe'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
         return;
     }
+
+    // --- Karar ölçeği ---
+    // ⚠️ "Veri biriksin" kararı, dönüp bakmayı gerektirir. Dönüp bakmayı
+    // hatırlatacak tek şey rakamın kendisi: ne gerekiyor, nerede duruyoruz.
+    try {
+        const { data: olcek } = await supabaseClient.rpc('danisman_karar_olcegi');
+        const o = (olcek || [])[0];
+        if (o) {
+            const y = Number(o.gercek_yonlendirme) || 0;
+            const g = Number(o.gercek_degerlendirme) || 0;
+            const gun = Number(o.gecen_gun) || 0;
+            const yeter = y >= 10 || gun >= 90;
+            // ⚠️ Her render'da yeniden ekleniyor; öncekini kaldırmazsak
+            // kutular üst üste birikir (fetchAdminData birden çok kez çalışır).
+            const varsa = document.getElementById('ddKararOlcegi');
+            if (varsa) varsa.remove();
+            const kutu = document.createElement('div');
+            kutu.id = 'ddKararOlcegi';
+            kutu.className = `rounded-lg p-3 mb-3 border ${yeter ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`;
+            kutu.innerHTML = `
+                <p class="text-xs font-bold ${yeter ? 'text-emerald-800' : 'text-slate-700'}">
+                    ${yeter ? '✅ Danışman fiyatı için yeterli veri birikti' : '⏳ Danışman fiyatı kararı veri bekliyor'}</p>
+                <p class="text-[11px] ${yeter ? 'text-emerald-700' : 'text-slate-500'} mt-1">
+                    Gerçek veri: <strong>${y}</strong> yönlendirme · <strong>${g}</strong> değerlendirme · <strong>${o.aktif_danisman || 0}</strong> onaylı danışman
+                    ${gun ? ` · ilk kayıttan bu yana <strong>${gun}</strong> gün` : ' · henüz gerçek kayıt yok'}</p>
+                <p class="text-[10px] ${yeter ? 'text-emerald-600' : 'text-slate-400'} mt-1">
+                    Eşik: 10 yönlendirme ya da 90 gün. Test kayıtları bu sayıma dâhil değil.</p>`;
+            ozetEl.parentElement.insertBefore(kutu, ozetEl.parentElement.querySelector('#ddKarsilastirma'));
+        }
+    } catch (e) { /* ölçek kurulmamışsa ekranın geri kalanı çalışsın */ }
 
     // --- Karşılaştırma: danışman yönlendirmesi vs doğrudan başvuru ---
     const { data: karsi } = await supabaseClient.rpc('danisman_karsilastirma');
