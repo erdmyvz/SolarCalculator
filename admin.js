@@ -228,6 +228,9 @@ async function fetchAdminData() {
     // 10c) İŞ DEĞERİ VE KOMİSYON KAYDI
     await renderKomisyonAdmin();
 
+    // 10d) DANIŞMAN DEĞER KAYDI
+    await renderDanismanDeger();
+
     // 11) GENEL BAKIŞ ÖZET KPI'LARINI GÜNCELLE (sekmeli panel)
     renderAdminStats();
 
@@ -3026,5 +3029,183 @@ window.komIptal = async function (id, btn) {
     } finally {
         btn.disabled = false;
         renderKomisyonAdmin();
+    }
+};
+
+
+// ============================================================================
+// DANIŞMAN DEĞER KAYDI (yalnız admin)
+// ⚠️ Bu ekran da HAKEDİŞ DEĞİL. Danışmana ödeme yapılmıyor, danışmana
+// gösterilmiyor. Cevaplamaya çalıştığı soru tek: danışman platformdan para
+// mı almalı, platforma para mı ödemeli? Bugün sistem ikincisini varsayıyor
+// (sub_status), ama bunu ölçen hiçbir şey yoktu.
+// danisman-deger-kaydi.sql çalıştırılmış olmalıdır.
+// ============================================================================
+function ddKok() {
+    if (document.getElementById('ddRoot')) return document.getElementById('ddRoot');
+    const admin = document.getElementById('adminPaneSubs') || document.getElementById('adminModule');
+    if (!admin) return null;
+    const card = document.createElement('div');
+    card.id = 'ddRoot';
+    card.className = 'mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm';
+    card.innerHTML = `
+        <h3 class="text-lg font-black text-slate-800 mb-1">🧭 Danışman Değer Kaydı</h3>
+        <p class="text-xs text-slate-500 mb-3">Danışmanın platforma getirdiği iş ve harcadığı emek. <strong>Ödeme yapılmıyor, danışmana gösterilmiyor</strong> — ücretlendirme kararı bu veriyle verilecek.</p>
+        <div id="ddKarsilastirma"></div>
+        <div id="ddOzet" class="mt-3"></div>
+        <div id="ddListe" class="mt-3"></div>`;
+    admin.appendChild(card);
+    return card;
+}
+
+const ddPara = (n) => (n == null || isNaN(n) || Number(n) === 0) ? '—'
+    : '₺' + Math.round(Number(n)).toLocaleString('tr-TR');
+
+const DD_TUR = {
+    yonlendirme:   ['Yönlendirme', 'bg-indigo-100 text-indigo-700'],
+    degerlendirme: ['Değerlendirme', 'bg-sky-100 text-sky-700']
+};
+
+async function renderDanismanDeger() {
+    const wrap = ddKok();
+    if (!wrap || !supabaseClient) return;
+    const ozetEl = document.getElementById('ddOzet');
+    if (!ozetEl) return;
+
+    const { data: ozet, error } = await supabaseClient.rpc('danisman_deger_ozeti');
+    if (error) {
+        // ⚠️ Kurulmamış ölçümü "danışman değer üretmiyor" gibi göstermiyoruz.
+        ozetEl.innerHTML = `<div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p class="text-sm font-bold text-amber-800">Danışman değer kaydı kurulu değil</p>
+            <p class="text-xs text-amber-700 mt-1">danisman-deger-kaydi.sql çalıştırılmamış. Danışmanın getirdiği iş ve harcadığı emek hiçbir yerde tutulmuyor.</p>
+            <p class="text-[11px] text-amber-600 mt-1 font-mono">${admEscape(error.message)}</p></div>`;
+        ['ddKarsilastirma', 'ddListe'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = ''; });
+        return;
+    }
+
+    // --- Karşılaştırma: danışman yönlendirmesi vs doğrudan başvuru ---
+    const { data: karsi } = await supabaseClient.rpc('danisman_karsilastirma');
+    const kEl = document.getElementById('ddKarsilastirma');
+    if (kEl) {
+        const dan = (karsi || []).find(k => k.kaynak === 'danisman');
+        const dog = (karsi || []).find(k => k.kaynak === 'dogrudan');
+        if (!dan && !dog) {
+            kEl.innerHTML = '';
+        } else {
+            const kutu = (etiket, k, vurgu) => {
+                if (!k) return `<div class="px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 flex-1 min-w-[180px]">
+                    <div class="text-[10px] font-bold text-slate-500">${etiket}</div>
+                    <div class="text-xs text-slate-400 italic mt-1">Henüz kazanılmış iş yok</div></div>`;
+                const oran = Number(k.adet) ? Math.round(Number(k.tamamlanan) / Number(k.adet) * 100) : null;
+                return `<div class="px-4 py-3 rounded-lg flex-1 min-w-[180px] ${vurgu ? 'bg-indigo-50 border border-indigo-200' : 'bg-slate-50 border border-slate-200'}">
+                    <div class="text-[10px] font-bold ${vurgu ? 'text-indigo-600' : 'text-slate-500'}">${etiket}</div>
+                    <div class="text-xl font-black leading-none mt-1 ${vurgu ? 'text-indigo-700' : 'text-slate-800'}">${k.adet} iş</div>
+                    <div class="text-[11px] mt-1 ${vurgu ? 'text-indigo-600' : 'text-slate-500'}">
+                        ${oran == null ? '' : `%${oran} tamamlandı · `}ort. ${ddPara(k.ortalama_is_try)}</div></div>`;
+            };
+            kEl.innerHTML = `<div class="flex flex-wrap gap-2">
+                ${kutu('Danışman yönlendirmesi', dan, true)}
+                ${kutu('Doğrudan başvuru', dog, false)}</div>
+            <p class="text-[10px] text-slate-400 mt-1.5">Ücretlendirme kararının dayanağı bu karşılaştırma: danışmanın getirdiği iş daha çok tamamlanıyor ya da daha büyükse, o danışmandan <strong>abonelik almak</strong> yanlış taraftan para istemek olur.</p>`;
+        }
+    }
+
+    // --- Danışman başına ---
+    const satirlar = ozet || [];
+    if (!satirlar.length) {
+        ozetEl.innerHTML = '<p class="text-xs text-slate-400 italic">Kayıtlı danışman yok.</p>';
+        const l = document.getElementById('ddListe'); if (l) l.innerHTML = '';
+        return;
+    }
+
+    // ⚠️ Hiç hareketi olmayan danışman gizlenmiyor, AYRI sayılıyor: "5 danışman
+    // var" deyip hepsini üretken göstermek tabloyu yalanlardı.
+    const hareketli = satirlar.filter(d => Number(d.getirdigi) || Number(d.degerlendirme));
+    const atil = satirlar.length - hareketli.length;
+
+    ozetEl.innerHTML = `
+        <p class="text-xs font-bold text-slate-600 mb-1.5">Danışman başına</p>
+        <div class="space-y-1.5">${(hareketli.length ? hareketli : satirlar).map(d => {
+            const getirdi  = Number(d.getirdigi) || 0;
+            const baglanan = Number(d.baglanan) || 0;
+            const donusum  = getirdi ? Math.round(baglanan / getirdi * 100) : null;
+            const oneriS   = Number(d.oneri_sayisi) || 0;
+            const oneriT   = Number(d.oneri_tutan) || 0;
+            const abone    = d.abonelik === 'active' ? 'Abone' : 'Deneme';
+            return `<div class="bg-white border border-slate-200 rounded-lg p-2.5">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-black text-slate-800">${admEscape(d.danisman || '(isimsiz danışman)')}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${d.abonelik === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${abone}</span>
+                    ${d.eposta ? `<span class="text-[10px] text-slate-400">${admEscape(d.eposta)}</span>` : ''}
+                </div>
+                <div class="text-[11px] text-slate-600 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                    <span><strong>${getirdi}</strong> kayıt getirdi${donusum == null ? '' : ` · <strong>${baglanan}</strong> firmaya bağlandı (%${donusum})`}</span>
+                    ${Number(d.tamamlanan) ? `<span class="text-emerald-700"><strong>${d.tamamlanan}</strong> tamamlandı</span>` : ''}
+                    ${Number(d.degerlendirme) ? `<span class="text-sky-700"><strong>${d.degerlendirme}</strong> teklif değerlendirdi${d.ort_cevap_saat == null ? '' : ` · ort. ${Number(d.ort_cevap_saat)} saatte cevap`}</span>` : ''}
+                    ${oneriS ? `<span>önerisi <strong>${oneriT}/${oneriS}</strong> tuttu</span>` : ''}
+                </div>
+                ${Number(d.is_hacmi_try)
+                    ? `<div class="text-[11px] text-slate-700 mt-0.5">Getirdiği iş: <strong>${ddPara(d.is_hacmi_try)}</strong>
+                        <span class="text-slate-400">· platform komisyonu ${ddPara(d.komisyon_try)}
+                        ${Number(d.pay_try) ? `· payı olsaydı ${ddPara(d.pay_try)}` : ''}</span></div>`
+                    : (getirdi ? '<div class="text-[11px] text-amber-700 mt-0.5">Getirdiği kayıtların hiçbiri henüz firmaya bağlanmadı — parasal karşılık yok.</div>' : '')}
+            </div>`;
+        }).join('')}</div>
+        ${atil ? `<p class="text-[11px] text-slate-400 mt-1.5">${atil} danışmanın henüz hiç hareketi yok (kayıt getirmemiş, değerlendirme yapmamış) — listede gösterilmiyor.</p>` : ''}`;
+
+    // --- Ham kayıtlar ---
+    const { data: liste } = await supabaseClient.rpc('danisman_deger_listesi', { p_limit: 25 });
+    const kayitlar = liste || [];
+    const listeEl = document.getElementById('ddListe');
+    if (!listeEl) return;
+    if (!kayitlar.length) {
+        listeEl.innerHTML = '<p class="text-[11px] text-slate-400 italic mt-2">Henüz kayıt yok — danışman bir danışan aktarıp o kayıt firmaya bağlandığında ya da bir teklife görüş yazdığında burada görünür.</p>';
+        return;
+    }
+
+    listeEl.innerHTML = `<p class="text-xs font-bold text-slate-600 mb-1.5">Kayıtlar</p>
+        <div class="space-y-1.5">${kayitlar.map(k => {
+            const [tad, tcss] = DD_TUR[k.tur] || [k.tur, 'bg-slate-100 text-slate-700'];
+            return `<div class="bg-white border border-slate-200 rounded-lg p-2.5 flex items-start justify-between gap-3 flex-wrap">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs font-black text-slate-800">${admEscape(k.danisman || '—')}</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${tcss}">${admEscape(tad)}</span>
+                        ${k.durum === 'iptal' ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">İptal</span>'
+                          : k.durum === 'hakedildi' ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Tamamlandı</span>'
+                          : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Devam eden</span>'}
+                    </div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">${admEscape(k.musteri || '—')}${k.firma ? ' · ' + admEscape(k.firma) : ''}</div>
+                    ${k.tur === 'yonlendirme'
+                        ? (k.is_tutari_try != null
+                            ? `<div class="text-[11px] text-slate-700 mt-0.5"><strong>${ddPara(k.is_tutari_try)}</strong>
+                                <span class="text-slate-400">KDV hariç · komisyon ${ddPara(k.komisyon_try)} · payı %${k.oran} → ${ddPara(k.pay_try)}</span></div>`
+                            : '<div class="text-[11px] text-amber-700 mt-0.5">Teklif yok — tutar bilinmiyor, pay hesaplanamıyor</div>')
+                        : `<div class="text-[11px] text-slate-500 mt-0.5">
+                            ${k.cevap_saat == null ? 'cevap süresi bilinmiyor' : `<strong>${Number(k.cevap_saat)} saatte</strong> cevapladı`}
+                            ${k.oneri_tuttu === true ? ' · <span class="text-emerald-700 font-bold">önerdiği firma seçildi</span>'
+                              : k.oneri_tuttu === false ? ' · <span class="text-slate-500">başka firma seçildi</span>'
+                              : ' · <span class="text-slate-400">firma önermedi ya da seçim yapılmadı</span>'}
+                            ${Number(k.pay_try) ? ` · ${ddPara(k.pay_try)}` : ' · <span class="text-slate-400">ücretlendirilmedi</span>'}</div>`}
+                </div>
+                ${k.durum === 'iptal' ? '' : `<button onclick="ddIptal('${window.epcAttrJs ? window.epcAttrJs(k.id) : k.id}', this)" class="text-[11px] bg-white border border-slate-300 hover:bg-slate-100 text-slate-600 font-bold px-2.5 py-1 rounded-lg flex-shrink-0">Düş</button>`}
+            </div>`;
+        }).join('')}</div>
+        <p class="text-[10px] text-slate-400 mt-2">Pay, iş bedelinin değil <strong>platform komisyonunun</strong> yüzdesidir: danışman müşterinin ya da firmanın cebinden değil, platformun kendi payından kazanır. Oran her kayda ayrı yazılır; ayarı değiştirmek geçmişi etkilemez.</p>`;
+}
+
+window.ddIptal = async function (id, btn) {
+    const sebep = window.prompt('Kaydı düşme gerekçesi (zorunlu):\n\nÖrn. "iş iptal oldu", "yönlendirme gerçek değil", "danışman katkısı yok"');
+    if (sebep === null) return;
+    if (!String(sebep).trim()) { alert('Gerekçe zorunlu.'); return; }
+    btn.disabled = true;
+    try {
+        const { error } = await supabaseClient.rpc('danisman_kaydi_iptal', { p_id: id, p_sebep: sebep });
+        if (error) throw error;
+    } catch (e) {
+        alert('Düşülemedi: ' + (e.message || e));
+    } finally {
+        btn.disabled = false;
+        renderDanismanDeger();
     }
 };
