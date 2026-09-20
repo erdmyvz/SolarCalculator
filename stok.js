@@ -66,6 +66,13 @@
     let _hata = null;
     let _tedarikHata = null;
     let _filtre = { kategori: 'panel', il: '', ilce: '', arama: '' };
+    // ⚠️ AYRI LİSTE. _tedarik, "Tedarikçi Stoğu" sekmesinin FİLTRELİ
+    // sonucudur (varsayılan kategori 'panel'). Fiyatlandırma tablosu onu
+    // kullanınca kablo/inverter/batarya satırları, fiyat VARKEN "açık fiyat
+    // yok" diyordu — firma maliyeti eksik görüyordu. Maliyet tablosu tüm
+    // kategorileri ve FİRMANIN KENDİ konumunu esas alır; tarayıcıdaki
+    // gezinme filtresi maliyeti etkilememeli.
+    let _tedarikTum = [], _firmaKonum = null;
     let _fiyat = { kwp: 10, satirlar: null };
     let _yuklendi = false;
 
@@ -104,6 +111,29 @@
             if (error) throw error;
             _depo = data || []; _hata = null;
         } catch (e) { _hata = e.message || String(e); _depo = []; }
+    }
+
+    async function yukleFirmaKonum() {
+        if (_firmaKonum) return _firmaKonum;
+        const cid = firmaId();
+        if (!cid) { _firmaKonum = { il: null, ilce: null }; return _firmaKonum; }
+        try {
+            const { data } = await supabaseClient.from('companies')
+                .select('city, district').eq('id', cid).maybeSingle();
+            _firmaKonum = { il: (data && data.city) || null, ilce: (data && data.district) || null };
+        } catch (e) { _firmaKonum = { il: null, ilce: null }; }
+        return _firmaKonum;
+    }
+
+    async function yukleTedarikTum() {
+        const k = await yukleFirmaKonum();
+        try {
+            const { data, error } = await supabaseClient.rpc('list_supplier_stock', {
+                p_kategori: null, p_il: k.il, p_ilce: k.ilce, p_arama: null
+            });
+            if (error) throw error;
+            _tedarikTum = data || [];
+        } catch (e) { _tedarikTum = []; }
     }
 
     async function yukleTedarik() {
@@ -286,7 +316,7 @@
 
     function enUygunTedarik(kat, satirBirim) {
         // Fiyatı AÇIK ve birime ÇEVRİLEBİLEN adaylar; en yakın, eşitlikte en ucuz.
-        const aday = _tedarik
+        const aday = _tedarikTum
             .filter(t => t.kategori === kat && t.fiyat_acik)
             .map(t => ({ t, f: tedarikBirimFiyat(t, satirBirim) }))
             .filter(x => x.f.usd != null);
@@ -298,7 +328,7 @@
     // Kullanılabilir fiyat yoksa SEBEBİNİ söyle; "açık fiyat yok" demek
     // fiyat varken yanıltıcı olurdu.
     function tedarikSebep(kat, satirBirim) {
-        const acik = _tedarik.filter(t => t.kategori === kat && t.fiyat_acik);
+        const acik = _tedarikTum.filter(t => t.kategori === kat && t.fiyat_acik);
         if (!acik.length) return 'açık fiyat yok';
         const sebepler = [...new Set(acik.map(t => tedarikBirimFiyat(t, satirBirim).sebep).filter(Boolean))];
         return sebepler[0] || 'açık fiyat yok';
@@ -409,7 +439,7 @@
     window.stokSekme = async function (s) {
         _sekme = s;
         if (s === 'tedarik') { await yukleTedarik(); cizTedarik(); }
-        else if (s === 'fiyat') { if (!_tedarik.length) await yukleTedarik(); cizFiyat(); }
+        else if (s === 'fiyat') { await yukleTedarikTum(); cizFiyat(); }
         else cizDepo();
     };
 
