@@ -239,6 +239,11 @@ grant execute on function public.danisman_yetkim() to authenticated;
 -- Ama yukarıda görüldüğü gibi reddedilmiş danışmanın geçmişte iş getirmiş
 -- olması mümkün. Onu gizlemek, "kaybolan gerçek" kusurunun ölçüm aletinin
 -- İÇİNDE tekrarı olurdu. Artık herkes görünüyor; durum ayrı kolonda.
+--
+-- ⚠️ DROP şart: dönüş tablosuna `onay` kolonu eklendiği için `create or
+-- replace` "cannot change return type of existing function" veriyor.
+drop function if exists public.danisman_deger_ozeti();
+
 create or replace function public.danisman_deger_ozeti()
 returns table (
     consultant_id uuid, danisman text, eposta text,
