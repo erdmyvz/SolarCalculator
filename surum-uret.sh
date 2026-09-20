@@ -23,6 +23,10 @@ TARIH=$(git log -1 --format=%cI)
 # izlenmeyen klasörler "kirli" saydırıyordu — yanlış pozitifti.
 if git diff --quiet HEAD -- . ':!surum.js' 2>/dev/null; then KIRLI=false; else KIRLI=true; fi
 
+# ⚠️ 20.09.2026: site yayına açıldı, "TASLAK SÜRÜM" şeridi kaldırıldı.
+# Geliştirme kopyasında şeridi geri istemek için:  TASLAK=true ./surum-uret.sh
+TASLAK="${TASLAK:-false}"
+
 cat > surum.js <<EOF
 /* ============================================================================
    surum.js — SÜRÜM BİLGİSİ VE "TASLAK SÜRÜM" ŞERİDİ
@@ -34,7 +38,7 @@ window.EPC_SURUM = {
     commit: '$SHA',
     tarih:  '$TARIH',
     kirli:  $KIRLI,        // true = commit'lenmemiş değişiklikle üretildi
-    taslak: true           // 1.0'a geçince false yapın, şerit kalkar
+    taslak: $TASLAK        // yayına açıldı; TASLAK=true ile şerit geri gelir
 };
 EOF
 cat surum-serit.js >> surum.js

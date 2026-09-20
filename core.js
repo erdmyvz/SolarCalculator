@@ -223,6 +223,18 @@ window.epcBildir = function (mesaj, tur) {
 // DİKKAT: /kurulumcu, /danisman ve /tedarikci statik sayfaları core.js
 // yüklemiyor; oradaki fiyatlar HTML'de sabit. Burayı değiştirirseniz o üç
 // sayfayı ve schema.org Offer bloklarını da elle güncelleyin.
+// --- ÖLÇÜM (Plausible) ------------------------------------------------------
+// ⚠️ Plausible yüklenmemişse (reklam engelleyici, ağ hatası, hesap kapalı)
+// sessizce hiçbir şey yapmaz. Ölçüm kodu yüzünden akış kırılamaz — bu
+// projede en pahalı hatalar hep "yan iş ana işi düşürdü" biçiminde çıktı.
+window.epcOlay = function (ad, ozellikler) {
+    try {
+        if (typeof window.plausible === 'function') {
+            window.plausible(ad, ozellikler ? { props: ozellikler } : undefined);
+        }
+    } catch (e) { /* ölçüm hatası kullanıcıya yansımaz */ }
+};
+
 const EPC_PRICING = {
     firma:      { usd: 400, ad: 'Kurulumcu Firma' },
     consultant: { usd: 200, ad: 'Danışman' },
