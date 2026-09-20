@@ -519,7 +519,21 @@
         const celiski = (panelSatir && kwpPanel > 0 && Math.abs(Number(panelSatir.qty) - kwpPanel) >= 1)
             ? { tabloda: Number(panelSatir.qty), sistemde: kwpPanel } : null;
 
-        _wz.__aktarim = { tasinan, katalogFiyatli, tasinamayan, celiski };
+        // ⚠️ KUR ÇELİŞKİSİ. Maliyet tablosu tedarikçinin TRY fiyatını bir
+        // kurla USD'ye çevirdi; teklif başka bir kurla TRY'ye geri çeviriyor.
+        // Örn. 28,50 TRY'lik kablo 48,43 ile $0,5885 oluyor, teklif 40 ile
+        // ₺23,54'e dönüyor — firma ₺28,50'ye alacağı malı ₺23,54 fiyatlıyor.
+        // Hangi kurun doğru olduğu firmanın ticari kararı; biz sessiz kalmayız.
+        const kurTeklif  = Number(_qSettings.usd_rate) || 0;
+        const kurMaliyet = Number(a.kur) || 0;
+        const kurFarki = (kurTeklif > 0 && kurMaliyet > 0
+                          && Math.abs(kurTeklif - kurMaliyet) / kurMaliyet > 0.02)
+            ? { maliyet: kurMaliyet, teklif: kurTeklif,
+                yuzde: Math.round(Math.abs(kurTeklif - kurMaliyet) / kurMaliyet * 100),
+                dusuk: kurTeklif < kurMaliyet }
+            : null;
+
+        _wz.__aktarim = { tasinan, katalogFiyatli, tasinamayan, celiski, kurFarki };
         window.__epcMaliyetAktarim = null;            // bir kez uygulanır
     }
 
@@ -533,6 +547,11 @@
             ${sat(a.katalogFiyatli, 'text-amber-700', '⚠️ Miktar taşındı, KATALOG fiyatı kullanılıyor:')}
             ${sat(a.tasinamayan, 'text-red-700', '⚠️ Katalogda karşılığı yok, taşınamadı:')}
             ${a.celiski ? `<div class="text-red-700"><strong>⚠️ Panel adedi çelişkisi:</strong> malzeme listesinde ${a.celiski.tabloda}, sistem özetinde ${a.celiski.sistemde} panel. Teklifte ikisi de görünür — 2. adımdaki sistem gücünü ya da buradaki adedi düzeltin.</div>` : ''}
+            ${a.kurFarki ? `<div class="text-red-700"><strong>⚠️ Kur çelişkisi:</strong> maliyet ${a.kurFarki.maliyet} kuruyla hesaplandı, teklif ${a.kurFarki.teklif} kullanıyor.
+                ${a.kurFarki.dusuk
+                    ? `Tedarikçinin <strong>TRY fiyat verdiği</strong> kalemler teklifte yaklaşık <strong>%${a.kurFarki.yuzde} düşük</strong> görünür; aradaki fark kârınızdan çıkar.`
+                    : `TRY fiyatlı kalemler teklifte yaklaşık %${a.kurFarki.yuzde} yüksek görünür.`}
+                Teklif kurunu ⚙️ Ayarlar'dan güncelleyin ya da bilerek böyle bırakın.</div>` : ''}
             <p class="text-slate-500">Katalog fiyatlı satırlarda maliyet, depo ortalamanız veya tedarikçi fiyatı bilinmediği için taşınamadı.</p>
         </div>`;
     }

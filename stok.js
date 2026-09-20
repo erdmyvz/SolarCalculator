@@ -536,6 +536,11 @@
 
         window.__epcMaliyetAktarim = {
             kwp: Number(_fiyat.kwp) || 0,
+            // ⚠️ Maliyetin hesaplandığı kur da taşınıyor. Tedarikçi TRY
+            // fiyat verdiyse o fiyat BU kurla USD'ye çevrildi; teklif başka
+            // bir kurla TRY'ye geri çevirirse firma kendi maliyetini yanlış
+            // fiyatlar. Sihirbaz iki kuru karşılaştırıp uyarıyor.
+            kur: kur(),
             satirlar,
             maliyetiBilinmeyen: eksikMaliyet,
             olusturma: Date.now()
