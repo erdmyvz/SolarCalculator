@@ -244,7 +244,7 @@
                                     ${p.tracking_code ? 'Takip: <b class="text-slate-600">' + esc(p.tracking_code) + '</b> · ' : ''}
                                     ${new Date(p.created_at).toLocaleDateString('tr-TR')}
                                 </div>
-                                <div class="text-[11px] mt-1 ${p.company_name ? 'text-emerald-700 font-bold' : 'text-slate-400 italic'}">
+                                <div class="text-[11px] mt-1 ${p.company_name ? 'text-emerald-700 font-bold' : 'text-slate-400 italic'}"${p.company_name ? '' : ` id="invDavetNot_${esc(p.id)}"`}>
                                     ${p.company_name ? '🏢 ' + esc(p.company_name) : 'Firma ataması bekleniyor'}
                                 </div>
                                 ${p.facility_code ? `<div class="text-[11px] mt-1 text-amber-700 font-bold">🏭 Tesisiniz: ${esc(p.facility_code)}${p.install_date ? ' · Kuruldu ' + new Date(p.install_date).toLocaleDateString('tr-TR') : ''}${p.system_kwp ? ' · ' + esc(p.system_kwp) + ' kWp' : ''}</div>` : ''}
@@ -438,6 +438,21 @@
                 firmalar = data || [];
             } catch (e) { continue; }   // SQL yoksa bölüm hiç çıkmaz
             if (!firmalar.length) continue;
+
+            // ⚠️ Kart "Firma ataması bekleniyor" diyordu — oysa hemen altında
+            // üç firma yarışıyor olabiliyor. Yatırımcı hiçbir şey olmamış
+            // sanıyordu. Gerçek sayıyı ancak burada, davetli_firmalar
+            // döndükten sonra biliyoruz; kartı o anda düzeltiyoruz.
+            try {
+                const not = document.getElementById('invDavetNot_' + pr.id);
+                if (not) {
+                    const teklifli = firmalar.filter(f => f.teklif_var).length;
+                    not.className = 'text-[11px] mt-1 text-indigo-600 font-bold';
+                    not.textContent = teklifli
+                        ? `${firmalar.length} firma davet edildi · ${teklifli} teklif geldi`
+                        : `${firmalar.length} firma davet edildi · teklifler bekleniyor`;
+                }
+            } catch (e) { /* kart henüz çizilmediyse etiket eski hâlinde kalır */ }
 
             // Teklif değerlendirme danışmanlığı — görüş varsa göster, yoksa iste.
             let danismanBlok = '';
