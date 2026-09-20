@@ -3157,6 +3157,11 @@ async function renderDanismanDeger() {
                     <span><strong>${getirdi}</strong> kayıt getirdi${donusum == null ? '' : ` · <strong>${baglanan}</strong> firmaya bağlandı (%${donusum})`}</span>
                     ${Number(d.tamamlanan) ? `<span class="text-emerald-700"><strong>${d.tamamlanan}</strong> tamamlandı</span>` : ''}
                     ${Number(d.degerlendirme) ? `<span class="text-sky-700"><strong>${d.degerlendirme}</strong> teklif değerlendirdi${d.ort_cevap_saat == null ? '' : ` · ort. ${Number(d.ort_cevap_saat)} saatte cevap`}</span>` : ''}
+                    ${/* ⚠️ Teklifsiz görüş AYRI sayılır. Danışmanlık olarak
+                          geçerli ("henüz teklif yok, bekleyin") ama
+                          "kaç teklif değerlendirdi" sorusunun cevabı değil;
+                          ortalamaya da girmiyor. */
+                      Number(d.teklifsiz_gorus) ? `<span class="text-slate-500"><strong>${d.teklifsiz_gorus}</strong> teklifsiz görüş</span>` : ''}
                     ${oneriS ? `<span>önerisi <strong>${oneriT}/${oneriS}</strong> tuttu</span>` : ''}
                 </div>
                 ${Number(d.is_hacmi_try)
