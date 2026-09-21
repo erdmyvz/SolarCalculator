@@ -332,11 +332,13 @@ function updateSubCounter() {
     const s = window.__subInfo;
     if (!s || !s.endsAt) { el.innerHTML = ''; return; }
     const days = Math.ceil((new Date(s.endsAt).getTime() - Date.now()) / 86400000);
-    // ⚠️ ESKİDEN BURADA:  if (days < 0) { el.innerHTML = ''; return; }
-    // Abonelik bitince rozet KAYBOLUYORDU. Sonucu: 31. günde panel 29. günden
-    // daha sessiz hâle geliyor, ödemeyi hatırlatan tek işaret tam hatırlatması
-    // gereken anda ortadan kalkıyordu. Bitmiş abonelik, en çok görünmesi
-    // gereken hâldir.
+    // ⚠️ DÜZELTME (21.09.2026): Buradaki `if (days < 0) return;` kaldırıldı ama
+    // GEREKÇESİ YANLIŞ YAZILMIŞTI. "Süre bitince panel açık kalıyor" demiştim;
+    // doğru değil — routeByInfo süre dolmuşsa showRenewalScreen'i açıp panel
+    // yüklenmeden `return 'expired'` ile çıkıyor. Yani bitmiş abonelikte bu
+    // rozet normal akışta zaten GÖRÜNMEZ; kilit ekranı önce geliyor.
+    // Aşağıdaki kırmızı hâl savunma amaçlı duruyor: rozet başka bir yerden
+    // (örn. yönetici süre uzattıktan sonra) tazelenirse doğru şeyi göstersin.
     let cls = 'bg-emerald-50 text-emerald-700 border-emerald-200';
     let label = days + ' gün kaldı';
     let ikon = '⏳';
@@ -361,7 +363,7 @@ function maybeShowSubExpiryBanner() {
     const s = window.__subInfo;
     if (!s || !s.endsAt) return;
     const days = Math.ceil((new Date(s.endsAt).getTime() - Date.now()) / 86400000);
-    if (days > 7) return;   // ⚠️ `days < 0` koşulu kaldırıldı: bitmiş abonelikte şerit susuyordu
+    if (days > 7) return;   // `days < 0` koşulu kaldırıldı — ama bitmiş abonelikte normal akışta buraya hiç gelinmez (kilit ekranı önce çıkar)
     const today = new Date().toISOString().slice(0, 10);
     try { if (localStorage.getItem('subExpiryDismissed') === today) return; } catch (e) { /* depo yoksa her girişte göster */ }
     let b = document.getElementById('subExpiryBanner');
