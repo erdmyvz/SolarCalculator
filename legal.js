@@ -6,13 +6,17 @@
    ============================================================================ */
 (function () {
     // [anahtar, başlık, hash]
+    // 4. eleman: belgenin GERÇEK son güncelleme tarihi (YYYY-AA-GG).
+    // ⚠️ Metni değiştirdiğinizde bu tarihi de elle güncelleyin. Eskiden burada
+    // new Date() vardı: belge hiç değişmese bile her gün "bugün güncellendi"
+    // yazıyordu. Yasal metinde okuyucunun hangi sürüme uyduğunu bilmesi gerekir.
     const LEGAL_DOCS = [
-        ['legal_kvkk',         'KVKK Aydınlatma Metni',                 'kvkk'],
-        ['legal_privacy',      'Gizlilik Politikası',                   'gizlilik'],
-        ['legal_cookies',      'Çerez Politikası',                      'cerez'],
-        ['legal_terms',        'Kullanım Şartları',                     'kullanim-sartlari'],
-        ['legal_subscription', 'Abonelik ve Mesafeli Satış Sözleşmesi', 'abonelik-sozlesmesi'],
-        ['legal_consent',      'Ticari İleti Açık Rıza Metni',          'acik-riza']
+        ['legal_kvkk',         'KVKK Aydınlatma Metni',                 'kvkk',                '2026-07-24'],
+        ['legal_privacy',      'Gizlilik Politikası',                   'gizlilik',            '2026-07-24'],
+        ['legal_cookies',      'Çerez Politikası',                      'cerez',               '2026-07-24'],
+        ['legal_terms',        'Kullanım Şartları',                     'kullanim-sartlari',   '2026-07-24'],
+        ['legal_subscription', 'Abonelik ve Mesafeli Satış Sözleşmesi', 'abonelik-sozlesmesi', '2026-09-21'],
+        ['legal_consent',      'Ticari İleti Açık Rıza Metni',          'acik-riza',           '2026-07-24']
     ];
     window.LEGAL_DOCS = LEGAL_DOCS;
 
@@ -143,7 +147,7 @@ ${Object.values(window.EPC_PRICING || {}).map(f => '- ' + f.ad + ': **' + f.usd 
 Ödeme, fatura tarihindeki kur üzerinden **Türk Lirası** olarak tahsil edilir. Ödemeler banka havalesi/EFT ile yapılır.
 
 ## 5. Deneme Süresi
-Yeni kayıtlarda **30 (otuz) gün ücretsiz deneme** süresi tanınır. Deneme süresi boyunca ücret alınmaz. Süre sonunda ödeme yapılmaması hâlinde hesap erişimi kısıtlanır.
+Yeni kayıtlarda **7 (yedi) gün ücretsiz deneme** süresi tanınır. Deneme süresi boyunca ücret alınmaz. Süre sonunda ödeme yapılmaması hâlinde hesap erişimi kısıtlanır.
 
 ## 6. Süre ve Yenileme
 Abonelik aylık dönemler hâlindedir. Ödeme yapıldıkça dönem uzar. Taahhüt yoktur.
@@ -222,7 +226,7 @@ Bu iznimi dilediğim zaman, gönderilen iletideki ayrılma (ret) hakkını kulla
                 <div class="lg:col-span-3">
                     <div class="bg-white border border-slate-200 rounded-2xl p-7 md:p-10 shadow-sm">
                         <h2 class="text-2xl md:text-3xl font-black text-slate-800 mb-1">${esc(doc[1])}</h2>
-                        <p class="text-xs text-slate-400 mb-6">Son güncelleme: ${new Date().toLocaleDateString('tr-TR')}</p>
+                        <p class="text-xs text-slate-400 mb-6">Son güncelleme: ${doc[3] ? new Date(doc[3] + 'T00:00:00').toLocaleDateString('tr-TR') : '—'}</p>
                         <div class="text-sm md:text-base">${fmt(L(doc[0]))}</div>
                     </div>
                 </div>

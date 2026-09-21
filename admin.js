@@ -1935,7 +1935,7 @@ async function renderSubscriptions() {
                     <span class="bg-red-50 text-red-700 border border-red-200 rounded-full px-3 py-1">${expiredN} Süresi Doldu</span>
                 </div>
             </div>
-            <p class="text-xs text-slate-400 mb-4">Havale/EFT geldikçe hesabı <b>+1 Ay</b> ile aktifleştir/uzat. Deneme 30 gündür. (En yakın biten üstte.)</p>
+            <p class="text-xs text-slate-400 mb-4">Havale/EFT geldikçe hesabı <b>+1 Ay</b> ile aktifleştir/uzat. Deneme 7 gündür. (En yakın biten üstte.)</p>
             ${_allSubs.length ? _allSubs.map(s => { const i = info(s); return `
                 <div class="border border-slate-100 rounded-lg p-3 mb-2 flex items-center justify-between gap-3 flex-wrap">
                     <div class="min-w-0">

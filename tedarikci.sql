@@ -34,7 +34,7 @@ create table if not exists public.suppliers (
 
     -- abonelik (kurulumcu 400$, danışman 200$, tedarikçi 600$/ay)
     sub_status     text default 'trial',
-    sub_ends_at    timestamptz default (now() + interval '30 days'),
+    sub_ends_at    timestamptz default (now() + interval '7 days'),   -- 21.09.2026: 30 → 7
     banned         boolean not null default false,
     ban_reason     text,
 
