@@ -439,6 +439,15 @@
         _wz.kwp = parseFloat(g('wzKwp').value) || 0; _wz.panelId = g('wzPanel').value || _wz.panelId;
         _wz.inverterId = g('wzInv').value || null; _wz.batteryKwh = parseFloat(g('wzBat').value) || 0; _wz.batteryId = g('wzBatP').value || null;
     }
+    // -- ARAYUZDEN CAGRILIYOR --------------------------------------------------
+    // Satir ici onchange GLOBAL kapsamda cozumlenir, bu closure'da degil.
+    // wzPanel acilir listesindeki onchange="wzCaptureStep2();renderWizard()"
+    // bu yuzden "wzCaptureStep2 is not defined" firlatiyordu ve ARKASINDAN
+    // GELEN renderWizard() da hic calismiyordu: panel secimi kaydedilmiyor,
+    // ekran tazelenmiyordu. Hata error_logs'a dusmustu (15.09.2026).
+    // Dosyadaki diger satir ici cagrilarin hepsi window uzerinden acik;
+    // eksik olan tek isim buydu.
+    window.wzCaptureStep2 = wzCaptureStep2;
 
     // -------- ADIM 3: MALZEME & FİYAT
     function wzBuildBom() {
