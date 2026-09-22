@@ -43,6 +43,34 @@
          script.hash.js: site # ile yönlendiriyor, düz sürüm panel içi
          gezinmeyi saymaz. -->
     <script defer data-domain="epcmerkezim.com" src="https://plausible.io/js/script.hash.js"></script>
+<!-- Vercel Web Analytics — bu sayfalar kampanyanın indiği yer; ölçümsüz
+     kalırsa reklamın işe yarayıp yaramadığı görülemez. -->
+<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
+<!-- ⚠️ UTM AKTARIMI: bu sayfalar statik, core.js yüklemiyor. Kayıt ekranı
+     ana uygulamada (/#...auth) ve oraya giden bağlantı sorgu dizesini
+     taşımazsa kayıt olayı hangi reklamdan geldiğini kaybeder. Aşağıdaki
+     betik, sayfadaki iç bağlantılara mevcut UTM'i ekliyor. -->
+<script>
+(function () {
+  try {
+    var q = window.location.search;
+    if (!q || q.indexOf('utm_') === -1) return;
+    var ek = q.replace(/^\?/, '');
+    document.addEventListener('DOMContentLoaded', function () {
+      var bag = document.querySelectorAll('a[href^="/"]');
+      for (var i = 0; i < bag.length; i++) {
+        var h = bag[i].getAttribute('href');
+        if (!h || h.indexOf('utm_') !== -1) continue;
+        var diyez = h.indexOf('#');
+        var yol = diyez === -1 ? h : h.slice(0, diyez);
+        var parca = diyez === -1 ? '' : h.slice(diyez);
+        bag[i].setAttribute('href', yol + (yol.indexOf('?') === -1 ? '?' : '&') + ek + parca);
+      }
+    });
+  } catch (e) { /* ölçüm kullanıcının yolunu kesmez */ }
+})();
+</script>
 </head>
 <body style="--rol-accent:#818cf8">
 
