@@ -139,6 +139,69 @@ window.epcLoadPanel = function () {
 };
 
 
+// --- ZİYARETÇİ MODÜLLERİ: İLK BOYAMADAN SONRA --------------------------------
+// ⚠️ NEDEN: reklam trafiğinin neredeyse tamamı mobil olacak ve bu dosyaların
+// hepsi ilk boyamayı bekletiyordu. 3D simülasyonu hiç açmayacak kişiye de
+// 93 KB iniyordu. Panel paketi zaten böyle çalışıyor; aynı yöntem ziyaretçi
+// tarafına da uygulandı.
+//
+// ⚠️ NEDEN "MODÜL BAŞINA" DEĞİL DE TEK PAKET: modül kimliğini dosyaya
+// eşlemek elle kurulan ve kolayca yanlış kurulan bir harita gerektiriyordu;
+// yanlış eşleşen tek bir satır, reklam yayındayken bir özelliği SESSİZCE
+// kırardı. Tek paket + openPublicModule'ün beklemesi aynı ilk boyama
+// kazancını veriyor, o riski taşımadan.
+//
+// ⚠️ sim3d.js BU LİSTEDE YOK: en büyük dosya (93 KB) ve en az açılan modül.
+// Yalnız simülasyon açıldığında iniyor (router.js).
+const EPC_ZIYARETCI_SCRIPTS = [
+    'calculators.js', 'battery.js', 'education.js', 'process.js', 'mevzuat.js',
+    'amortization.js', 'hardware.js', 'consultants.js', 'supplier_directory.js',
+    'about.js', 'legal.js', 'bill_analyzer.js'
+];
+let _epcZiyaretciPromise = null;
+window.epcZiyaretciHazir = false;
+window.epcLoadZiyaretci = function () {
+    if (_epcZiyaretciPromise) return _epcZiyaretciPromise;
+    _epcZiyaretciPromise = (async () => {
+        for (const d of EPC_ZIYARETCI_SCRIPTS) await window.epcLoadScript('/' + d);
+        window.epcZiyaretciHazir = true;
+    })().catch(err => { _epcZiyaretciPromise = null; throw err; });
+    return _epcZiyaretciPromise;
+};
+
+// --- VEKİL FONKSİYONLAR ------------------------------------------------------
+// ⚠️ Bu dört ad, satır içi onclick'lerden DOĞRUDAN çağrılıyor (altbilgideki
+// yasal bağlantılar, hakkımızda, tedarikçi dizini) — openPublicModule'den
+// geçmiyorlar. Betikleri tembelleştirince paket inmeden önceki tıklama
+// hiçbir şey yapmazdı: hata da vermeyen, sessiz bir kırılma.
+//
+// Vekil, paketi yükleyip gerçek fonksiyona devrediyor. Gerçek dosya yüklenince
+// window üzerindeki adı kendisi eziyor; vekil referansıyla karşılaştırma
+// sonsuz döngüyü engelliyor (dosya o adı tanımlamazsa çağrı sessizce düşer,
+// kendini tekrar çağırmaz).
+(function () {
+    const vekilKur = (ad) => {
+        if (typeof window[ad] === 'function') return;
+        const vekil = function () {
+            const args = arguments;
+            window.epcLoadZiyaretci().then(() => {
+                const f = window[ad];
+                if (typeof f === 'function' && f !== vekil) f.apply(null, args);
+            }).catch(() => { /* tıklama yeniden denenebilir */ });
+        };
+        window[ad] = vekil;
+    };
+    ['openAboutPage', 'openLegalPage', 'openLegalTab', 'showSupplierDirectory'].forEach(vekilKur);
+})();
+
+// İlk boyama biter bitmez arka planda indirmeye başla: kullanıcı bir modüle
+// tıkladığında çoğu zaman paket çoktan hazır olur, beklemez.
+(function () {
+    const basla = () => window.epcLoadZiyaretci().catch(() => { /* tıklamada yeniden denenir */ });
+    if (document.readyState === 'complete') setTimeout(basla, 1);
+    else window.addEventListener('load', () => setTimeout(basla, 1));
+})();
+
 // --- GÜVENLİ DIŞ BAĞLANTI ----------------------------------------------------
 // Kullanıcı/tedarikçi tarafından girilen adresler doğrudan href'e basılıyordu.
 // Kaçış yapmak yetmez: "javascript:..." şeması kaçıştan geçer ama tıklanınca

@@ -397,6 +397,17 @@ window.epcTumModulleriGizle = epcTumModulleriGizle;
 
 // _adresGuncelleme: router kendi çağırdığında true geçer; o zaman hash'e
 // dokunulmaz (zaten hash yüzünden buradayız, yoksa sonsuz döngü olur).
+// Modülün kendi giriş fonksiyonu varsa BURADAN çağrılıyor. Eskiden satır içi
+// onclick'lerde "if(window.openBillAnalyzer) openBillAnalyzer()" biçimindeydi;
+// betikler tembel yüklendiği için o kontrol ilk tıklamada false dönerdi ve
+// modül BOŞ açılırdı — hata da vermeden. Giriş çağrısı artık yüklemeyi
+// bekleyen tek yerde.
+const EPC_MODUL_GIRIS = {
+    billAnalyzerModule: 'openBillAnalyzer',
+    consultantsModule:  'renderConsultantsList',
+    hardwareModule:     'openHardwareCompare'
+};
+
 window.openPublicModule = function(moduleId, _adrestenGeldi) {
     window.openedFromPublic = true; // YENİ: Kullanıcının vitrinden (ziyaretçi olarak) girdiğini hafızaya aldık
 
@@ -426,10 +437,36 @@ window.openPublicModule = function(moduleId, _adrestenGeldi) {
 
     document.getElementById(moduleId).classList.remove('hidden');
     
-    if(moduleId === 'simulationModule' && !window.isApp3DInitialized && typeof initApp3DScene === 'function') {
-        initApp3DScene(); 
-        window.isApp3DInitialized = true;
-    }
+    // --- BETİK YÜKLEME ---------------------------------------------------
+    // Modül kabuğu YUKARIDA zaten gösterildi: kullanıcı tıklar tıklamaz ekran
+    // değişiyor, içerik betik inince doluyor. Önce yükleyip sonra göstermek
+    // tıklamayı cevapsız bırakırdı.
+    (async () => {
+        try {
+            // sim3d.js paketin dışında: 93 KB ve en az açılan modül.
+            if (moduleId === 'simulationModule') await window.epcLoadScript('/sim3d.js');
+            await window.epcLoadZiyaretci();
+        } catch (e) {
+            const kok = document.getElementById(moduleId);
+            if (kok && !kok.dataset.yuklemeHatasi) {
+                kok.dataset.yuklemeHatasi = '1';
+                kok.insertAdjacentHTML('afterbegin',
+                    '<p style="margin:16px;padding:12px;border-radius:8px;background:#fef2f2;' +
+                    'border:1px solid #fecaca;color:#b91c1c;font-size:14px">Bu bölüm yüklenemedi. ' +
+                    'Bağlantınızı kontrol edip sayfayı yenileyin.</p>');
+            }
+            return;   // ⚠️ yükleme başarısızsa giriş fonksiyonunu çağırma
+        }
+
+        const giris = EPC_MODUL_GIRIS[moduleId];
+        if (giris && typeof window[giris] === 'function') window[giris]();
+
+        if (moduleId === 'simulationModule' && !window.isApp3DInitialized
+            && typeof window.initApp3DScene === 'function') {
+            window.initApp3DScene();
+            window.isApp3DInitialized = true;
+        }
+    })();
 }
 
 

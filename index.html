@@ -1548,7 +1548,7 @@
                 </div>
 
                 <!-- BAYRAK ARAÇ: FATURA ANALİZİ -->
-                <button onclick="openPublicModule('billAnalyzerModule'); if(window.openBillAnalyzer) openBillAnalyzer();" class="w-full glass-panel ring-2 ring-emerald-400/60 hover:-translate-y-1 transition text-left cursor-pointer group relative overflow-hidden" style="border-radius:var(--r-lg);padding:clamp(var(--s4),3vw,var(--s5));margin-bottom:var(--s4)">
+                <button onclick="openPublicModule('billAnalyzerModule');" class="w-full glass-panel ring-2 ring-emerald-400/60 hover:-translate-y-1 transition text-left cursor-pointer group relative overflow-hidden" style="border-radius:var(--r-lg);padding:clamp(var(--s4),3vw,var(--s5));margin-bottom:var(--s4)">
                     <span class="absolute font-black tracking-wider bg-emerald-500/20 text-emerald-300" style="top:var(--s4);right:var(--s4);font-size:var(--fs-xs);padding:var(--s1) var(--s3);border-radius:999px">EN HIZLI YOL</span>
                     <div class="flex flex-col md:flex-row md:items-center gap-5">
                         <div class="text-5xl md:text-6xl group-hover:scale-110 transition origin-left shrink-0">🧾</div>
@@ -1601,7 +1601,7 @@
                         <span class="text-2xl shrink-0 group-hover:scale-110 transition">🚗</span>
                         <span><span class="block text-sm font-bold text-white leading-tight">Elektrikli Araç</span><span class="block text-xs text-slate-400 leading-tight mt-0.5">Güneşten şarj planlaması</span></span>
                     </button>
-                    <button id="hwLauncher" onclick="openPublicModule('hardwareModule'); if(window.openHardwareCompare) openHardwareCompare();" class="glass-panel hover:-translate-y-1 transition text-left cursor-pointer group flex items-center" style="gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r-md);min-height:var(--s7)">
+                    <button id="hwLauncher" onclick="openPublicModule('hardwareModule');" class="glass-panel hover:-translate-y-1 transition text-left cursor-pointer group flex items-center" style="gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r-md);min-height:var(--s7)">
                         <span class="text-2xl shrink-0 group-hover:scale-110 transition">⚖️</span>
                         <span><span class="block text-sm font-bold text-white leading-tight">Donanım Karşılaştırma</span><span class="block text-xs text-slate-400 leading-tight mt-0.5">Panel, inverter, batarya kıyası</span></span>
                     </button>
@@ -1688,7 +1688,7 @@
                         <span class="phi-card-cta inline-flex items-center gap-1 font-black text-red-700" style="font-size:var(--fs-sm)">Servis talebi aç →</span>
                     </button>
 
-                    <button type="button" id="supportConsultant" onclick="openPublicModule('consultantsModule'); if(window.renderConsultantsList) renderConsultantsList();" class="phi-card text-left bg-slate-50 border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1 transition">
+                    <button type="button" id="supportConsultant" onclick="openPublicModule('consultantsModule');" class="phi-card text-left bg-slate-50 border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1 transition">
                         <div class="phi-card-body">
                             <div style="font-size:var(--fs-2xl);line-height:1;margin-bottom:var(--s3)">🎯</div>
                             <h3 class="font-black text-slate-800" style="font-size:var(--fs-lg);letter-spacing:-.025em;margin-bottom:var(--s2)">Danışmanlık Al</h3>
@@ -1747,7 +1747,7 @@
                 </div>
                 <!-- CTA çifti: birincil / ikincil genişlik oranı φ : 1 -->
                 <div class="cta-pair" style="max-width:38rem;margin-inline:auto;margin-bottom:var(--s7)">
-                    <button onclick="openPublicModule('billAnalyzerModule'); if(window.openBillAnalyzer) openBillAnalyzer();" class="btn-sun btn-phi btn-phi-lg">🧾 Faturamı Yükle</button>
+                    <button onclick="openPublicModule('billAnalyzerModule');" class="btn-sun btn-phi btn-phi-lg">🧾 Faturamı Yükle</button>
                     <button onclick="openLeadModal('kurulum')" class="btn-phi btn-phi-lg border border-white/25 hover:border-white/60 hover:bg-white/5 text-white transition" style="font-weight:800">Ücretsiz Keşif</button>
                 </div>
 
@@ -1790,10 +1790,10 @@
                             </div>
                             <div>
                                 <p class="footer-title">Araçlar</p>
-                                <a href="/fatura-analizi" onclick="openPublicModule('billAnalyzerModule'); if(window.openBillAnalyzer) openBillAnalyzer(); return false" class="footer-link">Fatura Analizi</a>
+                                <a href="/fatura-analizi" onclick="openPublicModule('billAnalyzerModule'); return false" class="footer-link">Fatura Analizi</a>
                                 <a href="/hesaplayici" onclick="openPublicModule('calculatorModule');return false" class="footer-link">GES Hesaplayıcı</a>
                                 <a href="/kurulum-sureci" onclick="openPublicModule('regulationsModule');return false" class="footer-link">Kurulum Süreci</a>
-                                <a href="/danismanlar" onclick="openPublicModule('consultantsModule'); if(window.renderConsultantsList) renderConsultantsList(); return false" class="footer-link">Danışmanlar</a>
+                                <a href="/danismanlar" onclick="openPublicModule('consultantsModule'); return false" class="footer-link">Danışmanlar</a>
                             </div>
                             <div>
                                 <p class="footer-title">Platform</p>
@@ -3159,22 +3159,18 @@
          yapmış kullanıcının panelinde çalışıyor; core.js'teki epcLoadPanel()
          rol tespitinden sonra sırayla yüklüyor. Geri eklemeyin; yeni bir panel
          dosyasını core.js'teki EPC_PANEL_SCRIPTS listesine ekleyin. -->
+    <!-- ZİYARETÇİ MODÜLLERİ buradan KALDIRILDI (hesaplayıcılar, 3D simülasyon,
+         batarya, akademi, süreç, mevzuat, amortisman, donanım, danışmanlar,
+         tedarikçi dizini, hakkımızda, yasal metinler, fatura analizi —
+         toplam ~430 KB). İlk boyamayı bekletiyorlardı; reklam trafiğinin
+         neredeyse tamamı mobil olacağı için bu doğrudan dönüşüme yansıyor.
+         core.js'teki epcLoadZiyaretci() ilk boyamadan sonra arka planda
+         indiriyor, openPublicModule() gerekirse bekliyor.
+         Yeni bir ziyaretçi modülü eklerken listeyi core.js'te güncelleyin.
+         ⚠️ sim3d.js listede DEĞİL: yalnız simülasyon açılınca iniyor. -->
     <script src="ai.js"></script>
-    <script src="calculators.js"></script>
-    <script src="sim3d.js"></script>
-    <script src="battery.js"></script>
-    <script src="education.js"></script>
-    <script src="process.js"></script>
-    <script src="mevzuat.js"></script>
-    <script src="amortization.js"></script>
-    <script src="hardware.js"></script>
-    <script src="consultants.js"></script>
-    <script src="supplier_directory.js"></script>
     <script src="notifications.js"></script>
-    <script src="about.js"></script>
-    <script src="legal.js"></script>
     <script src="profile.js"></script>
-    <script src="bill_analyzer.js"></script>
     
 </body>
 </html>
