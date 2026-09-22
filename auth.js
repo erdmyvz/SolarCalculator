@@ -601,6 +601,8 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
         try {
             const { error: signUpErr } = await supabaseClient.auth.signUp({ email, password, options: { data: { role: 'consultant', full_name: (firstName + ' ' + lastName).trim(), phone: phone } } });
             if (signUpErr) throw signUpErr;
+            // ⚠️ Yalnız ROL gönderiliyor; ad, e-posta, telefon değil.
+            if (window.epcOlay) epcOlay('kayit_tamamlandi', { rol: window.authRole || 'firma' });
             let { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) {
                 const { data: si, error: siErr } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -649,6 +651,8 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
                 options: { data: { role: 'supplier', full_name: (firstName + ' ' + lastName).trim(), phone: phone, company_name: supCompany } }
             });
             if (signUpErr) throw signUpErr;
+            // ⚠️ Yalnız ROL gönderiliyor; ad, e-posta, telefon değil.
+            if (window.epcOlay) epcOlay('kayit_tamamlandi', { rol: window.authRole || 'firma' });
             let { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) {
                 const { data: si, error: siErr } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -683,6 +687,8 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
                 options: { data: { role: 'investor', full_name: (firstName + ' ' + lastName).trim(), phone: phone } }
             });
             if (signUpErr) throw signUpErr;
+            // ⚠️ Yalnız ROL gönderiliyor; ad, e-posta, telefon değil.
+            if (window.epcOlay) epcOlay('kayit_tamamlandi', { rol: window.authRole || 'firma' });
             try { await supabaseClient.auth.signOut(); } catch (e) {}
             alert("✅ Kaydınız oluşturuldu! Sizlere mail doğrulama linki gönderdik. Lütfen e-postanızı doğrulayın, sonra giriş yapın.");
             document.getElementById('registerForm').reset(); document.getElementById('tabLogin').click();
@@ -709,6 +715,8 @@ document.getElementById('registerForm')?.addEventListener('submit', async (e) =>
     try {
         const { error: signUpErr } = await supabaseClient.auth.signUp({ email, password });
         if (signUpErr) throw signUpErr;
+            // ⚠️ Yalnız ROL gönderiliyor; ad, e-posta, telefon değil.
+            if (window.epcOlay) epcOlay('kayit_tamamlandi', { rol: window.authRole || 'firma' });
         let { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) {
             const { data: signInData, error: signInErr } = await supabaseClient.auth.signInWithPassword({ email, password });

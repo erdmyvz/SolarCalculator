@@ -223,14 +223,22 @@ window.epcBildir = function (mesaj, tur) {
 // DİKKAT: /kurulumcu, /danisman ve /tedarikci statik sayfaları core.js
 // yüklemiyor; oradaki fiyatlar HTML'de sabit. Burayı değiştirirseniz o üç
 // sayfayı ve schema.org Offer bloklarını da elle güncelleyin.
-// --- ÖLÇÜM (Plausible) ------------------------------------------------------
-// ⚠️ Plausible yüklenmemişse (reklam engelleyici, ağ hatası, hesap kapalı)
-// sessizce hiçbir şey yapmaz. Ölçüm kodu yüzünden akış kırılamaz — bu
-// projede en pahalı hatalar hep "yan iş ana işi düşürdü" biçiminde çıktı.
+// --- ÖLÇÜM (Vercel Web Analytics) -------------------------------------------
+// ⚠️ Ölçüm yüklenmemişse (reklam engelleyici, ağ hatası, Vercel'de Analytics
+// kapalı) sessizce hiçbir şey yapmaz. Ölçüm kodu yüzünden akış kırılamaz —
+// bu projede en pahalı hatalar hep "yan iş ana işi düşürdü" biçiminde çıktı.
+//
+// va() kuyruğu index.html'de betikten ÖNCE tanımlanıyor, bu yüzden betik
+// henüz yüklenmemişken gönderilen olaylar da kaybolmuyor.
+//
+// ⚠️ OLAY ADI VE ÖZELLİKLERİNE KİŞİSEL VERİ YAZILMAZ. Ad, telefon, e-posta,
+// adres, takip kodu — hiçbiri. Ölçüm "kaç kişi" sorusunu yanıtlar, "kim"
+// sorusunu değil; ikisini karıştırmak KVKK tarafında gereksiz yük doğurur.
+// Kim sorusunun cevabı zaten veritabanında, rızasıyla duruyor.
 window.epcOlay = function (ad, ozellikler) {
     try {
-        if (typeof window.plausible === 'function') {
-            window.plausible(ad, ozellikler ? { props: ozellikler } : undefined);
+        if (typeof window.va === 'function') {
+            window.va('event', ozellikler ? { name: ad, data: ozellikler } : { name: ad });
         }
     } catch (e) { /* ölçüm hatası kullanıcıya yansımaz */ }
 };

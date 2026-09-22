@@ -11,6 +11,10 @@
 window.openLeadModal = function(type) {
     const modal = document.getElementById('leadModal');
     if (!modal) return;
+
+    // Form bir pencere; adres değişmiyor, yani sayfa görüntülemesi bunu
+    // görmez. Huninin "açtı ama göndermedi" adımı ancak böyle ölçülüyor.
+    if (window.epcOlay) epcOlay('basvuru_formu_acildi', { tur: type });
     
     document.getElementById('leadType').value = type;
     document.getElementById('leadModalTitle').innerText = type === 'kurulum' ? 'Ücretsiz Çatı Keşfi Başvurusu' : 'Teknik Servis Müdahale Başvurusu';
@@ -100,6 +104,10 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
             });
             if (error) throw error;
 
+            if (window.epcOlay) epcOlay('servis_talebi_gonderildi', {
+                tur: document.getElementById('srvRequestType')?.value || 'ariza'
+            });
+
             alert(`🔧 Servis talebiniz iletildi!\n\nTakip Kodunuz: ${code}\nBu kod ile anasayfadan durumu izleyebilirsiniz.`);
             closeLeadModal();
             document.getElementById('srvTrackBox')?.setAttribute('open', '');
@@ -165,6 +173,10 @@ document.getElementById('leadPublicForm')?.addEventListener('submit', async (e) 
             try { await epcFirmaEslestir(String(code), _lIl, _lIlce); }
             catch (e) { console.warn('firma eşleştirme', e); }
         }
+        // ⚠️ Takip kodu, ad, telefon, e-posta GÖNDERİLMİYOR — yalnız tür ve il.
+        // Ölçüm "kaç kişi" sorusunu yanıtlar, "kim" sorusunu değil.
+        if (window.epcOlay) epcOlay('basvuru_gonderildi', { tur: 'kurulum', il: _lIl || 'bilinmiyor' });
+
         let _mail = { ok: false, error: '' };
         try { _mail = await sendInvestorMagicLink(_lEmail, _lName, _lPhone); } catch (e) { _mail = { ok: false, error: String(e && e.message || e) }; }
         if (_mail.ok) {

@@ -97,6 +97,13 @@ Bu politika güncellenebilir. Güncel sürüm her zaman bu sayfada yayımlanır.
 
 Reklam veya profilleme amaçlı üçüncü taraf takip çerezi kullanılmamaktadır.
 
+## Ziyaret İstatistikleri
+Sitenin kaç kişi tarafından ziyaret edildiğini ve hangi sayfaların kullanıldığını
+görmek için Vercel Web Analytics kullanıyoruz. Bu ölçüm **çerez kullanmaz**,
+cihazınıza kalıcı bir tanımlayıcı yazmaz ve sizi siteler arasında takip etmez.
+Toplanan veriler toplu istatistiklerdir; kimliğinizi gösteren bir bilgi
+(ad, e-posta, telefon, takip kodu) ölçüme gönderilmez.
+
 ## Çerezleri Yönetme
 Tarayıcı ayarlarınızdan çerezleri silebilir veya engelleyebilirsiniz. Zorunlu çerezleri engellemeniz hâlinde oturum açma gibi temel işlevler çalışmayabilir.
 

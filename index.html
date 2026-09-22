@@ -1435,7 +1435,13 @@
     <!-- Plausible — çerezsiz ölçüm, KVKK için onay bandı gerektirmez.
          script.hash.js: site # ile yönlendiriyor, düz sürüm panel içi
          gezinmeyi saymaz. -->
-    <script defer data-domain="epcmerkezim.com" src="https://plausible.io/js/script.hash.js"></script>
+    <!-- Vercel Web Analytics — çerezsiz, kalıcı tanımlayıcı kullanmıyor.
+         ⚠️ Vercel panelinde projenin Analytics ayarı AÇIK olmalı; kapalıyken
+         /_vercel/insights/script.js 404 döner ve hiçbir şey kaydedilmez.
+         va() kuyruğu betikten ÖNCE tanımlanıyor: betik yüklenmeden önce
+         gönderilen olaylar kaybolmasın, yüklenince kuyruk boşalsın. -->
+    <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+    <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen font-sans">
 
