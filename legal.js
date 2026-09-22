@@ -136,7 +136,12 @@ Bu şartlara Türkiye Cumhuriyeti hukuku uygulanır. Uyuşmazlıklarda [YETKİL�
 
 [Bu metin taslaktır; yayın öncesi hukuk danışmanınıza inceletiniz.]`,
 
-        legal_subscription: `## 1. Taraflar
+        legal_subscription: `> ⚠️ **YAYIN ÖNCESİ ÜCRETSİZ DÖNEM — 15.11.2026'ya kadar**
+> Platform yayına hazırlanıyor. Bu dönemde **hiçbir ücret tahsil edilmemektedir**;
+> aşağıdaki bedel ve ödeme hükümleri ücretlendirme başladığında uygulanacaktır.
+> Ücretlendirmeye geçilmeden önce kayıtlı kullanıcılar ayrıca bilgilendirilecektir.
+
+## 1. Taraflar
 SATICI: [ŞİRKET ÜNVANI] · Adres: [ADRES] · MERSİS: [MERSİS NO] · E-posta: [İLETİŞİM E-POSTASI]
 ALICI: Platforma kayıt olan kurulumcu firma, bağımsız danışman veya tedarikçi.
 
@@ -153,8 +158,10 @@ ${Object.values(window.EPC_PRICING || {}).map(f => '- ' + f.ad + ': **' + f.usd 
 
 Ödeme, fatura tarihindeki kur üzerinden **Türk Lirası** olarak tahsil edilir. Ödemeler banka havalesi/EFT ile yapılır.
 
-## 5. Deneme Süresi
-Yeni kayıtlarda **7 (yedi) gün ücretsiz deneme** süresi tanınır. Deneme süresi boyunca ücret alınmaz. Süre sonunda ödeme yapılmaması hâlinde hesap erişimi kısıtlanır.
+## 5. Ücretsiz Dönem ve Deneme Süresi
+**Yayın öncesi dönemde (15.11.2026 tarihine kadar) platform tamamen ücretsizdir**; bu süre boyunca hiçbir ödeme talep edilmez ve hesap erişimi ücret sebebiyle kısıtlanmaz.
+
+Ücretlendirme başladıktan sonra yeni kayıtlarda **7 (yedi) gün ücretsiz deneme** süresi tanınır. Deneme süresi boyunca ücret alınmaz. Süre sonunda ödeme yapılmaması hâlinde hesap erişimi kısıtlanır.
 
 ## 6. Süre ve Yenileme
 Abonelik aylık dönemler hâlindedir. Ödeme yapıldıkça dönem uzar. Taahhüt yoktur.

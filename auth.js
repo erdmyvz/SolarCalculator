@@ -286,6 +286,9 @@ window.epcKaydiTamamla = async function (rol) {
 // rolAnahtari: routeByInfo bu ekranı currentConsultant/currentSupplier
 // atanmadan ÖNCE çağırıyor, o yüzden rol dışarıdan geliyor.
 function showRenewalScreen(email, sub, rolAnahtari) {
+    // ⚠️ Savunma: ücretsiz dönemde routeByInfo buraya hiç gelmemeli. Yine de
+    // başka bir yol bu ekranı açarsa, para isteyen bir ekran göstermeyelim.
+    if (window.epcUcretsizMi()) return;
     let m = document.getElementById('subRenewalScreen');
     if (!m) { m = document.createElement('div'); m.id = 'subRenewalScreen'; document.body.appendChild(m); }
     m.className = 'fixed inset-0 z-[100] bg-slate-900/95 flex items-center justify-center p-4 overflow-y-auto';
@@ -358,6 +361,9 @@ window.odemeBildir = async function (dugme) {
 };
 
 function odemeBildirHtml() {
+    // Ödeme istemediğimiz dönemde "ödemeyi yaptım" düğmesi göstermek,
+    // olmayan bir yükümlülüğü varmış gibi gösterir.
+    if (window.epcUcretsizMi()) return '';
     return `<button type="button" onclick="odemeBildir(this)"
                 class="w-full mt-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold py-2.5 rounded-lg text-sm">
                 Ödemeyi yaptım, bildir
@@ -366,7 +372,24 @@ function odemeBildirHtml() {
             <div id="odemeBildirimSonuc"></div>`;
 }
 
+function ucretsizDonemKutusu() {
+    const b = window.epcUcretsizBitisMetni();
+    return `<div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-1"><span class="text-xl">🎁</span>
+            <p class="font-black text-emerald-800 text-sm">Yayın öncesi ücretsiz dönem</p></div>
+        <p class="text-xs text-emerald-900 leading-relaxed">Platform yayına hazırlanıyor; bu dönemde
+        tüm paneller <strong>ücretsiz</strong>. Sizden ödeme istenmiyor, ödeme bilgisi de göstermiyoruz.${b ? `
+        Ücretsiz dönemin son günü <strong>${b}</strong>; sonrasında ücretlendirme başlamadan önce
+        ayrıca bilgilendirileceksiniz.` : ''}</p>
+    </div>`;
+}
+
 function paymentInfoHtml(email) {
+    // ⚠️ Ücretsiz dönemde IBAN GÖSTERİLMEZ. Fatura kesemediğimiz bir hizmet
+    // için kişisel hesaba havale istemek, firmayı gider yazamayacağı bir
+    // ödemeye sokar. Ekranda para istemiyorsak numarasını da göstermeyelim.
+    if (window.epcUcretsizMi()) return ucretsizDonemKutusu();
+
     const safe = String(email || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `<div class="bg-white border border-slate-200 rounded-xl p-4">
         <div class="flex items-end justify-between mb-3"><div><div class="text-2xl font-black text-slate-800">${window.epcPriceLabel()}<span class="text-sm font-bold text-slate-400">/ay</span></div><div class="text-[11px] text-slate-500">KDV hariç · USD'ye endeksli TL (güncel kur)</div></div><span class="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full">AYLIK</span></div>
@@ -381,6 +404,12 @@ function paymentInfoHtml(email) {
 function updateSubCounter() {
     const el = document.getElementById('subCounter');
     if (!el) return;
+    // Ücretsiz dönemde "3 gün kaldı" demek yanlış: kalan bir şey yok.
+    if (window.epcUcretsizMi()) {
+        el.innerHTML = `<button onclick="showSubModal()" title="Abonelik"
+            class="border bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-xs px-3 py-1.5 rounded-full hover:opacity-80 whitespace-nowrap">🎁 Ücretsiz dönem</button>`;
+        return;
+    }
     const s = window.__subInfo;
     if (!s || !s.endsAt) { el.innerHTML = ''; return; }
     const days = Math.ceil((new Date(s.endsAt).getTime() - Date.now()) / 86400000);
@@ -412,6 +441,7 @@ function updateSubCounter() {
 // ✕ ile kapatılınca aynı gün tekrar çıkmaz; ertesi gün yeniden görünür.
 // (pg_cron olmadığı için "bitiş bildirimi" girişte istemci tarafında üretilir.)
 function maybeShowSubExpiryBanner() {
+    if (window.epcUcretsizMi()) return;   // ücretsiz dönemde bitecek bir şey yok
     const s = window.__subInfo;
     if (!s || !s.endsAt) return;
     const days = Math.ceil((new Date(s.endsAt).getTime() - Date.now()) / 86400000);
@@ -449,12 +479,16 @@ window.showSubModal = function () {
     m.innerHTML = `<div class="bg-white rounded-2xl max-w-md w-full p-7 my-8">
         <div class="flex items-center justify-between mb-4"><h3 class="font-black text-lg text-slate-800">Aboneliğim</h3><button onclick="document.getElementById('subModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button></div>
         <div class="text-center bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
-            <div class="text-4xl font-black ${days === null ? 'text-slate-400' : (days < 0 ? 'text-red-600' : (days <= 7 ? 'text-amber-600' : 'text-emerald-600'))}">${days === null ? '—' : Math.abs(days)}</div>
-            <div class="text-sm text-slate-500">${days === null ? 'süre bilgisi yok' : (days < 0 ? 'gün önce bitti' : 'gün kaldı')} · Bitiş: ${endStr}</div>
+            ${window.epcUcretsizMi()
+                ? `<div class="text-3xl mb-1">🎁</div>
+                   <div class="text-sm font-black text-emerald-700">Yayın öncesi ücretsiz dönem</div>
+                   <div class="text-xs text-slate-500 mt-0.5">Sizden ödeme istenmiyor${window.epcUcretsizBitisMetni() ? ' · ' + window.epcUcretsizBitisMetni() + ' tarihine kadar' : ''}</div>`
+                : `<div class="text-4xl font-black ${days === null ? 'text-slate-400' : (days < 0 ? 'text-red-600' : (days <= 7 ? 'text-amber-600' : 'text-emerald-600'))}">${days === null ? '—' : Math.abs(days)}</div>
+                   <div class="text-sm text-slate-500">${days === null ? 'süre bilgisi yok' : (days < 0 ? 'gün önce bitti' : 'gün kaldı')} · Bitiş: ${endStr}</div>`}
         </div>
-        <p class="text-xs font-bold text-slate-600 mb-2">Aboneliği uzatmak için ödeme bilgileri:</p>
+        <p class="text-xs font-bold text-slate-600 mb-2">${window.epcUcretsizMi() ? 'Durum:' : 'Aboneliği uzatmak için ödeme bilgileri:'}</p>
         ${paymentInfoHtml(s.email || '')}
-        <p class="text-xs text-slate-600 mt-3 bg-amber-50 border border-amber-100 rounded-lg p-3">💡 Havale/EFT açıklamasına <strong>e-posta adresinizi</strong> yazın. Ödemeniz onaylanınca süreniz uzatılır.</p>
+        ${window.epcUcretsizMi() ? '' : `<p class="text-xs text-slate-600 mt-3 bg-amber-50 border border-amber-100 rounded-lg p-3">💡 Havale/EFT açıklamasına <strong>e-posta adresinizi</strong> yazın. Ödemeniz onaylanınca süreniz uzatılır.</p>`}
         ${odemeBildirHtml()}
     </div>`;
     m.classList.remove('hidden');
@@ -508,7 +542,20 @@ async function routeByInfo(info, user) {
         const sub = await getSubscription(info, user);
         if (sub && sub.banned) { showBanScreen(user.email, sub.banReason); return 'banned'; }
         window.__subInfo = sub ? { endsAt: sub.endsAt, status: sub.status, email: user.email } : null;
-        if (sub && sub.endsAt && new Date(sub.endsAt).getTime() < Date.now()) { showRenewalScreen(user.email, sub, info.type); return 'expired'; }
+
+        // ⚠️ BAN ÖNCE, ÜCRETSİZ DÖNEM SONRA. Ücretsiz dönem "ödeme
+        // istenmiyor" demek; "yasak kalktı" demek değil. Yukarıdaki ban
+        // kontrolü bilerek bu satırın üstünde duruyor.
+        await window.epcUcretsizDonemYukle();
+
+        // Yayın öncesi ücretsiz dönemde kimse kilit ekranı görmez. Aynı kural
+        // veri katmanında da var (firma_abonelik_engeli); iki katman aynı
+        // fonksiyonu soruyor ki bir gün ayrışmasınlar.
+        if (window.epcUcretsizMi()) {
+            /* kapı açık */
+        } else if (sub && sub.endsAt && new Date(sub.endsAt).getTime() < Date.now()) {
+            showRenewalScreen(user.email, sub, info.type); return 'expired';
+        }
     }
     if (info.type === 'consultant') {
         window.currentConsultant = info.consultant;

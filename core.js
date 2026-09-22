@@ -263,7 +263,52 @@ window.epcPrice = function (rol) {
     return EPC_PRICING[window.epcRoleKey(rol)] || EPC_PRICING.firma;
 };
 // "400$" gibi tek parça metin isteyen yerler için
-window.epcPriceLabel = function (rol) { return '$' + window.epcPrice(rol).usd; };
+// --- YAYIN ÖNCESİ ÜCRETSİZ DÖNEM --------------------------------------------
+// Tek doğru kaynak sunucudaki public.ucretsiz_donem(). Burada yalnız
+// ÖNBELLEKLENİYOR; kural iki yerde ayrı yorumlanırsa bir gün ayrışır.
+//
+// ⚠️ Sunucuya ulaşılamazsa varsayılan "ücretsiz DEĞİL" olmalı, çünkü yanlış
+// tarafa düşmenin bedeli asimetrik: ücretsizken fiyat göstermek yalnız
+// utandırır, ücretli dönemde "ücretsiz" demek tutulamayan bir söz olur.
+window.__ucretsizDonem = { aktif: false, bitis: null, yuklendi: false };
+
+window.epcUcretsizDonemYukle = async function () {
+    if (!window.supabaseClient) return window.__ucretsizDonem;
+    try {
+        const { data, error } = await supabaseClient.rpc('ucretsiz_donem');
+        if (error) throw error;
+        const r = Array.isArray(data) ? data[0] : data;
+        if (r) window.__ucretsizDonem = { aktif: !!r.aktif, bitis: r.bitis, yuklendi: true };
+    } catch (e) { /* sessiz: varsayılan "ücretli" kalır */ }
+    return window.__ucretsizDonem;
+};
+
+window.epcUcretsizMi = function () { return !!(window.__ucretsizDonem && window.__ucretsizDonem.aktif); };
+
+// Açılışta bir kez oku: rozet, fiyat penceresi ve abonelik ekranı senkron
+// çalıştıkları için değeri beklemek yerine hazır bulmaları gerekiyor.
+(function () {
+    let deneme = 0;
+    const go = () => {
+        if (window.supabaseClient) { window.epcUcretsizDonemYukle(); return; }
+        if (++deneme < 30) setTimeout(go, 200);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(go, 200));
+    else setTimeout(go, 200);
+})();
+
+window.epcUcretsizBitisMetni = function () {
+    const b = window.__ucretsizDonem && window.__ucretsizDonem.bitis;
+    if (!b) return '';
+    try { return new Date(b).toLocaleDateString('tr-TR'); } catch (e) { return String(b); }
+};
+
+// Fiyat etiketi: ücretsiz dönemde rakam göstermek yanlış olur — ekranda
+// yazan şey ile tahsil edilen şey aynı olmalı.
+window.epcPriceLabel = function (rol) {
+    if (window.epcUcretsizMi()) return 'Ücretsiz';
+    return '$' + window.epcPrice(rol).usd;
+};
 
 // --- ŞEHİR VE GERİ ÖDEME — İKİ ARACIN ORTAK TEMELİ ---------------------------
 // Fatura Analizi ile Amortisman Hesaplayıcı aynı girdiye farklı cevap
