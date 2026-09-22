@@ -235,11 +235,47 @@ window.epcBildir = function (mesaj, tur) {
 // adres, takip kodu — hiçbiri. Ölçüm "kaç kişi" sorusunu yanıtlar, "kim"
 // sorusunu değil; ikisini karıştırmak KVKK tarafında gereksiz yük doğurur.
 // Kim sorusunun cevabı zaten veritabanında, rızasıyla duruyor.
+// --- KAMPANYA KAYNAĞI (UTM) -------------------------------------------------
+// ⚠️ NEDEN GEREKTİ: Vercel sayfa görüntülemesinde adres çubuğundaki UTM
+// parametreleri duruyor, ama DÖNÜŞÜM OLAYI ayrı bir olay ve sorgu dizesini
+// taşımıyor. Üstelik kullanıcı ilk sayfadan sonra gezindiğinde UTM adresten
+// düşüyor. Bu hâliyle "Instagram'dan trafik geldi" görülür ama "HANGİ VİDEO
+// kayıt getirdi" görülemez — oysa 12 videoyu karşılaştırmanın tek yolu bu.
+//
+// Çözüm: ilk girişte UTM'i oturum deposuna al, sonraki her olaya iliştir.
+// Meta Pixel yerine UTM seçildiği için ölçümün omurgası burası.
+//
+// ⚠️ sessionStorage bilerek: sekme kapanınca silinir. Kalıcı depoda tutmak
+// kullanıcıyı ziyaretler arası izlemek olurdu; çerezsiz kalma sözümüz
+// (Çerez Politikası'nda yazılı) bunu dışlıyor.
+const EPC_UTM_ANAHTAR = 'epcUtm';
+
+window.epcUtmYakala = function () {
+    try {
+        const q = new URLSearchParams(window.location.search);
+        const al = {};
+        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].forEach(k => {
+            const v = q.get(k);
+            if (v) al[k.replace('utm_', '')] = String(v).slice(0, 40);
+        });
+        if (Object.keys(al).length) {
+            sessionStorage.setItem(EPC_UTM_ANAHTAR, JSON.stringify(al));
+        }
+    } catch (e) { /* depo kapalıysa ölçüm kaynaksız devam eder */ }
+};
+
+window.epcUtmOku = function () {
+    try {
+        const h = sessionStorage.getItem(EPC_UTM_ANAHTAR);
+        return h ? JSON.parse(h) : {};
+    } catch (e) { return {}; }
+};
+
 window.epcOlay = function (ad, ozellikler) {
     try {
-        if (typeof window.va === 'function') {
-            window.va('event', ozellikler ? { name: ad, data: ozellikler } : { name: ad });
-        }
+        if (typeof window.va !== 'function') return;
+        const veri = Object.assign({}, window.epcUtmOku(), ozellikler || {});
+        window.va('event', Object.keys(veri).length ? { name: ad, data: veri } : { name: ad });
     } catch (e) { /* ölçüm hatası kullanıcıya yansımaz */ }
 };
 
@@ -284,6 +320,9 @@ window.epcUcretsizDonemYukle = async function () {
 };
 
 window.epcUcretsizMi = function () { return !!(window.__ucretsizDonem && window.__ucretsizDonem.aktif); };
+
+// UTM'i mümkün olan en erken anda yakala: kullanıcı gezinmeye başlamadan.
+window.epcUtmYakala();
 
 // Açılışta bir kez oku: rozet, fiyat penceresi ve abonelik ekranı senkron
 // çalıştıkları için değeri beklemek yerine hazır bulmaları gerekiyor.
