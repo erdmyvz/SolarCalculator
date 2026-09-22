@@ -692,6 +692,12 @@
                                -webkit-box-orient: vertical; overflow: hidden; }
         body .adim-sayac-no  { font-size: var(--fs-md); font-weight: 800; color: #0f172a;
                                line-height: 1.1; font-variant-numeric: tabular-nums; }
+        /* Danışman kartı: uzun özgeçmiş katlanır. Metin KIRPILMIYOR, yalnız
+           gizleniyor — "Devamını oku" ile açılıyor, arama motoru tam metni
+           görüyor. line-clamp `white-space:pre-line` ile birlikte çalışır. */
+        body .cons-bio-katli { display: -webkit-box; -webkit-line-clamp: 5;
+                               -webkit-box-orient: vertical; overflow: hidden; }
+
         body .tablo-sar thead th.sag { text-align: right; }
 
         /* --- Boş durum ------------------------------------------------------- */

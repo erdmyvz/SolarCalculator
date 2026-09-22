@@ -65,6 +65,33 @@
         }
         _approvedConsultants = list;
 
+        // ====================================================================
+        // KART OKUNABİLİRLİĞİ
+        //
+        // ⚠️ ÖZGEÇMİŞ PARAGRAFLARI: danışman metnini paragraflar hâlinde
+        // yazıyor ama HTML `\n`'i boşluk sayar — dört paragraf tek bloğa
+        // dönüşüyordu. `white-space:pre-line` satır sonlarını koruyor ve
+        // bunu HTML ENJEKTE ETMEDEN yapıyor: <br> basmak yerine CSS ile
+        // çözmek, esc()'in sağladığı güvenliği bozmuyor.
+        //
+        // ⚠️ KIRPMA: kartlar üç sütunlu ızgarada; 1.100+ karakterlik bir
+        // özgeçmiş dar sütunda 860 pikselik yazı duvarı oluyor ve kimse
+        // okumuyor. İlk paragraf görünüyor, isteyen açıyor. Metin KIRPILMIYOR,
+        // yalnız katlanıyor — danışmanın yazdığı her şey erişilebilir.
+        const BIO_KISA = 260;
+
+        // ⚠️ ETİKETLER: yalnız virgülle bölünüyordu. Danışman virgül koymayı
+        // unutursa ya da satır başıyla ayırırsa, birkaç uzmanlık tek bir
+        // uzun etikete yapışıp baloncuğu iki satıra taşırıyor ve kart bozuk
+        // görünüyordu. Noktalı virgül ve satır sonu da ayraç sayılıyor;
+        // yine de uzun kalan etiket köşeli ve çok satıra uygun basılıyor —
+        // yani kırılmış değil, bilerek öyle duruyor gibi.
+        //
+        // Danışmanın YAZDIĞI metne dokunulmuyor: kısaltmak ya da yeniden
+        // yazmak, beyanını değiştirmek olurdu.
+        const consEtiketler = (ham) => String(ham || '')
+            .split(/[,;\n]+/).map(t => t.trim().replace(/\s+/g, ' ')).filter(Boolean);
+
         const card = (c) => `
             <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col">
                 <div class="flex items-center gap-3 mb-3">
@@ -74,9 +101,12 @@
                         <p class="text-[11px] text-slate-500 truncate">${esc(c.title || '')}</p>
                     </div>
                 </div>
-                ${c.completed_jobs ? `<div class="text-xs text-slate-500 mb-2">✅ ${c.completed_jobs} tamamlanan iş</div>` : ''}
-                ${c.bio ? `<p class="text-sm text-slate-600 mb-3">${esc(c.bio)}</p>` : ''}
-                ${c.expertise ? `<div class="flex flex-wrap gap-1.5 mb-4">${String(c.expertise).split(',').map(t => t.trim()).filter(Boolean).map(t => `<span class="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded-full">${esc(t)}</span>`).join('')}</div>` : ''}
+                ${c.completed_jobs ? `<div class="text-xs text-slate-500 mb-2">📋 ${c.completed_jobs} tamamlanan iş <span class="text-slate-400">(danışman beyanı)</span></div>` : ''}
+                ${c.bio ? `<div class="mb-3">
+                    <p class="text-sm text-slate-600${String(c.bio).length > BIO_KISA ? ' cons-bio-katli' : ''}" style="white-space:pre-line">${esc(c.bio)}</p>
+                    ${String(c.bio).length > BIO_KISA ? `<button type="button" onclick="consBioAc(this)" class="text-indigo-600 font-bold text-xs mt-1 hover:underline">Devamını oku ›</button>` : ''}
+                </div>` : ''}
+                ${c.expertise ? `<div class="flex flex-wrap gap-1.5 mb-4">${consEtiketler(c.expertise).map(t => `<span class="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2.5 py-1 ${t.length > 24 ? 'rounded-xl leading-snug' : 'rounded-full'}">${esc(t)}</span>`).join('')}</div>` : ''}
                 <button onclick="consultantContact('${c.id}')" class="mt-auto w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg">📞 İletişim Bilgilerini Al</button>
             </div>`;
 
@@ -95,6 +125,16 @@
                 <a href="#auth" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-lg text-sm">Kurumsal Giriş ›</a>
             </div>`;
     }
+    // Katlanmış özgeçmişi açar/kapatır. Metin hiç kırpılmıyor — yalnız
+    // CSS ile katlanıyor — bu yüzden açmak için sunucuya gitmek gerekmiyor
+    // ve arama motoru da tam metni görüyor.
+    window.consBioAc = function (dugme) {
+        const p = dugme.parentElement.querySelector('p');
+        if (!p) return;
+        const katli = p.classList.toggle('cons-bio-katli');
+        dugme.textContent = katli ? 'Devamını oku ›' : 'Daha az göster ‹';
+    };
+
     window.renderConsultantsList = renderConsultantsList;
 
     // ================================================================ İLETİŞİM BİLGİSİ AL (lead capture)
@@ -366,7 +406,7 @@
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">Ad Soyad</label><input id="consName" value="${esc(c.full_name || '')}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500"></div>
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">Unvan</label><input id="consTitle" value="${esc(c.title || '')}" placeholder="örn. Elektrik Y. Müh. · GES Uzmanı" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500"></div>
                         <div><label class="block text-xs font-bold text-slate-600 mb-1">Baş Harfler (avatar)</label><input id="consInitials" maxlength="2" value="${esc(c.avatar_initials || '')}" placeholder="örn. MA" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500"></div>
-                        <div><label class="block text-xs font-bold text-slate-600 mb-1">Tamamlanan İş Sayısı</label><input id="consJobs" type="number" value="${c.completed_jobs || 0}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500"></div>
+                        <div><label class="block text-xs font-bold text-slate-600 mb-1">Tamamlanan İş Sayısı</label><input id="consJobs" type="number" value="${c.completed_jobs || 0}" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500"><p class="text-[10px] text-slate-400 mt-1">Profilinizde "danışman beyanı" notuyla görünür; platform doğrulamaz.</p></div>
                         <div class="md:col-span-2"><label class="block text-xs font-bold text-slate-600 mb-1">Uzmanlık Etiketleri (virgülle)</label><input id="consExpertise" value="${esc(c.expertise || '')}" placeholder="Çatı GES, Batarya, TEDAŞ Süreci" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500"></div>
                         <div class="md:col-span-2"><label class="block text-xs font-bold text-slate-600 mb-1">Özgeçmiş / Hakkında</label><textarea id="consBio" rows="3" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500">${esc(c.bio || '')}</textarea></div>
                         <div class="md:col-span-2"><label class="block text-xs font-bold text-slate-600 mb-1">Motivasyon</label><textarea id="consMotivation" rows="2" class="w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-indigo-500">${esc(c.motivation || '')}</textarea></div>
