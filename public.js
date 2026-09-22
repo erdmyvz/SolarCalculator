@@ -564,7 +564,13 @@ window.heroFocusCalc = function () {
         document.getElementById('stepConsultant')?.classList.add('hidden');
         adimlariYenidenNumarala();
 
-        // 2) "Profesyonel Destek" içindeki danışman kartı (3 sütun → 2)
+        // 2) Hero güven şeridindeki "Onaylı bağımsız danışmanlar" rozeti
+        //    ⚠️ Rozet BİR SAYI değil, BİR VAAT. Adım ve kart gizlenip rozet
+        //    kalınca ziyaretçi ilk ekranda onaylı danışman olduğunu okuyor,
+        //    aşağıda izini bulamıyor — gizlenen şeyi rozet ele veriyor.
+        document.getElementById('trustConsultant')?.classList.add('hidden');
+
+        // 3) "Profesyonel Destek" içindeki danışman kartı (3 sütun → 2)
         const kart = document.getElementById('supportConsultant');
         if (kart) {
             kart.classList.add('hidden');
@@ -572,7 +578,7 @@ window.heroFocusCalc = function () {
             if (izgara) izgara.classList.replace('md:grid-cols-3', 'md:grid-cols-2');
         }
 
-        // 3) Bölüm açıklamaları adım/kart sayısıyla tutarlı kalsın
+        // 4) Bölüm açıklamaları adım/kart sayısıyla tutarlı kalsın
         const lede = document.getElementById('stepsLede');
         if (lede) lede.textContent = 'İlk hesaptan kurulum sonrası bakıma kadar üç adım — hepsi tek platformda.';
         const sLede = document.getElementById('supportLede');
