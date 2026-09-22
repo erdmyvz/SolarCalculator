@@ -51,7 +51,11 @@
                 <span class="text-xl shrink-0">${esc(n.icon || '🔔')}</span>
                 <span class="min-w-0 flex-1">
                     <span class="block text-sm font-bold text-slate-800 ${n.is_read ? '' : 'flex items-center gap-1.5'}">${esc(n.title)}${n.is_read ? '' : '<span class="w-1.5 h-1.5 bg-indigo-500 rounded-full shrink-0"></span>'}</span>
-                    ${n.body ? `<span class="block text-xs text-slate-500 mt-0.5">${esc(n.body)}</span>` : ''}
+                    ${/* Satır sonları korunsun: bildirim gövdesi tek cümleden uzun
+                          olabiliyor (örn. yayın öncesi bilgilendirme). esc() HTML'i
+                          kaçırdığı için <br> basamayız — ve basmamalıyız da; CSS ile
+                          çözmek gövdeye HTML enjekte etme kapısını kapalı tutuyor. */''}
+                    ${n.body ? `<span class="block text-xs text-slate-500 mt-0.5" style="white-space:pre-line">${esc(n.body)}</span>` : ''}
                     <span class="block text-[10px] text-slate-400 mt-1">${timeAgo(n.created_at)}</span>
                 </span>
             </button>`).join('')
