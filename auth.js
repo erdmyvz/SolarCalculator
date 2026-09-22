@@ -308,10 +308,62 @@ function showRenewalScreen(email, sub, rolAnahtari) {
                 <div class="flex justify-between gap-3"><span class="text-slate-500">Açıklama</span><span class="font-bold text-indigo-600 text-right break-all">${safe}</span></div>
             </div>
         </div>
-        <p class="text-xs text-slate-600 mb-4 bg-amber-50 border border-amber-100 rounded-lg p-3">💡 Havale/EFT açıklamasına mutlaka <strong>e-posta adresinizi</strong> yazın. Ödemeniz onaylandığında hesabınız aktifleştirilecek ve tekrar giriş yapabileceksiniz.</p>
+        <p class="text-xs text-slate-600 mb-1 bg-amber-50 border border-amber-100 rounded-lg p-3">💡 Havale/EFT açıklamasına mutlaka <strong>e-posta adresinizi</strong> yazın. Ödemeniz onaylandığında hesabınız aktifleştirilecek ve tekrar giriş yapabileceksiniz.</p>
+        ${odemeBildirHtml()}
+        <div class="mb-4"></div>
         <button onclick="(async()=>{ try{ if(supabaseClient) await supabaseClient.auth.signOut(); }catch(e){} window.currentConsultant=null; window.location.hash='#home'; window.location.reload(); })()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-lg">Çıkış Yap</button>
     </div>`;
     m.classList.remove('hidden');
+}
+
+// ============================================================================
+// "ÖDEMEYİ YAPTIM" — yöneticiye haber ver
+//
+// ⚠️ BU DÜĞME ABONELİĞİ AÇMIYOR, AÇMAMALI DA. Ödemeyi doğrulayan tek şey banka
+// hesabı; "ödedim" demekle açılan bir kapı, ödemeden açılan bir kapıdır.
+// Düğme yalnız yöneticiye bildirim + e-posta gönderiyor, süreyi yönetici uzatıyor.
+//
+// Metin de bunu söylüyor: "iletildi", "hesabınız açıldı" değil. Kullanıcının
+// ekranda okuduğu şey ile sistemin yaptığı şey aynı olmalı.
+//
+// Sunucu tarafı 12 saatte bir bildirime izin veriyor; bekleyen biri düğmeye
+// arka arkaya basar ve yöneticinin gelen kutusunu doldurmak bildirimi işe
+// yaramaz hâle getirir. Aynı cevabı burada da dürüstçe gösteriyoruz.
+window.odemeBildir = async function (dugme) {
+    if (!window.supabaseClient) return;
+    const kutu = document.getElementById('odemeBildirimSonuc');
+    const eskiMetin = dugme.textContent;
+    dugme.disabled = true;
+    dugme.textContent = 'Gönderiliyor…';
+    try {
+        const { data, error } = await supabaseClient.rpc('odeme_bildirdim', { p_not: null });
+        if (error) throw error;
+        const r = Array.isArray(data) ? data[0] : data;
+        if (kutu) {
+            kutu.className = (r && r.gonderildi)
+                ? 'text-xs mt-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg p-3'
+                : 'text-xs mt-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg p-3';
+            kutu.textContent = (r && r.mesaj) || 'Bildiriminiz iletildi.';
+        }
+        dugme.textContent = 'Bildirildi ✓';
+        // Tekrar basılmasın: sunucu zaten engelliyor, düğme de sussun.
+    } catch (e) {
+        if (kutu) {
+            kutu.className = 'text-xs mt-2 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3';
+            kutu.textContent = 'Bildirim gönderilemedi: ' + (e.message || e);
+        }
+        dugme.disabled = false;
+        dugme.textContent = eskiMetin;
+    }
+};
+
+function odemeBildirHtml() {
+    return `<button type="button" onclick="odemeBildir(this)"
+                class="w-full mt-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold py-2.5 rounded-lg text-sm">
+                Ödemeyi yaptım, bildir
+            </button>
+            <p class="text-[11px] text-slate-400 mt-1.5 text-center">Bu bildirim aboneliği açmaz; ödeme kontrol edildikten sonra yönetici uzatır.</p>
+            <div id="odemeBildirimSonuc"></div>`;
 }
 
 function paymentInfoHtml(email) {
@@ -403,6 +455,7 @@ window.showSubModal = function () {
         <p class="text-xs font-bold text-slate-600 mb-2">Aboneliği uzatmak için ödeme bilgileri:</p>
         ${paymentInfoHtml(s.email || '')}
         <p class="text-xs text-slate-600 mt-3 bg-amber-50 border border-amber-100 rounded-lg p-3">💡 Havale/EFT açıklamasına <strong>e-posta adresinizi</strong> yazın. Ödemeniz onaylanınca süreniz uzatılır.</p>
+        ${odemeBildirHtml()}
     </div>`;
     m.classList.remove('hidden');
 };
