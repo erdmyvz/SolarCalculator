@@ -1736,7 +1736,8 @@ const ADMIN_GRUPLAR = [
     { id: 'gunluk', ad: 'Günlük İş', ikon: '⚡', sekmeler: [
         { id: 'overview',    ad: '📊 Genel Bakış' },
         { id: 'ops',         ad: '📥 Operasyon' },
-        { id: 'search',      ad: '🔍 Ara', init: 'adminSearchInit' }
+        { id: 'search',      ad: '🔍 Ara', init: 'adminSearchInit' },
+        { id: 'erisim',      ad: '📣 Erişim', init: 'adminErisimInit' }
     ] },
     { id: 'uyeler', ad: 'Üyeler', ikon: '👥', sekmeler: [
         { id: 'companies',   ad: '🏢 Firmalar' },
