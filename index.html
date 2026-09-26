@@ -1679,14 +1679,18 @@
                         <span class="phi-card-cta inline-flex items-center gap-1 font-black text-emerald-700" style="font-size:var(--fs-sm)">Keşif talebi oluştur →</span>
                     </button>
 
-                    <button type="button" onclick="openLeadModal('servis')" class="phi-card text-left bg-slate-50 border border-slate-200 shadow-sm hover:shadow-xl hover:border-red-300 hover:-translate-y-1 transition">
+                    <!-- Modal yerine /teknik-servis sayfasına gidiyor: başvuru artık orada
+                         alınıyor ve sayfa kapsamı, uyarıları ve SSS'yi de gösteriyor.
+                         <button> değil <a>: yeni sekmede açılabilsin ve iç bağlantı
+                         olarak taranabilsin. (Modal duruyor; maintenance.js kullanıyor.) -->
+                    <a href="/teknik-servis" class="phi-card text-left bg-slate-50 border border-slate-200 shadow-sm hover:shadow-xl hover:border-red-300 hover:-translate-y-1 transition">
                         <div class="phi-card-body">
                             <div style="font-size:var(--fs-2xl);line-height:1;margin-bottom:var(--s3)">🔧</div>
                             <h3 class="font-black text-slate-800" style="font-size:var(--fs-lg);letter-spacing:-.025em;margin-bottom:var(--s2)">Teknik Servis &amp; Arıza</h3>
                             <p class="text-slate-500" style="font-size:var(--fs-sm);line-height:1.55">Mevcut inverter/batarya arızaları için destek talebi oluşturun.</p>
                         </div>
                         <span class="phi-card-cta inline-flex items-center gap-1 font-black text-red-700" style="font-size:var(--fs-sm)">Servis talebi aç →</span>
-                    </button>
+                    </a>
 
                     <button type="button" id="supportConsultant" onclick="openPublicModule('consultantsModule');" class="phi-card text-left bg-slate-50 border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1 transition">
                         <div class="phi-card-body">
