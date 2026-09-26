@@ -35,7 +35,7 @@
 
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Service","name":"GES Teknik Servis ve Arıza Desteği","serviceType":"Güneş enerjisi sistemi arıza, bakım ve temizlik talebi toplama","url":"https://epcmerkezim.com/teknik-servis","areaServed":{"@type":"Country","name":"Türkiye"},"inLanguage":"tr-TR","provider":{"@type":"Organization","name":"epcmerkezim","url":"https://epcmerkezim.com"},"description":"Çatı veya arazi GES sistemlerinde üretim düşüşü, inverter arızası, panel kirliliği ve periyodik bakım talepleri alınır. Talepler epcmerkezim tarafından kaydedilir ve değerlendirilir."}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ana Sayfa","item":"https://epcmerkezim.com/"},{"@type":"ListItem","position":2,"name":"Teknik Servis","item":"https://epcmerkezim.com/teknik-servis"}]}</script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Servis talebi oluşturmak ücretli mi?","acceptedAnswer":{"@type":"Answer","text":"Hayır. Talep oluşturmak ücretsizdir ve hiçbir taahhüt doğurmaz. Bir çözüm için anlaşmanız hâlinde işin bedeli doğrudan sizinle hizmeti veren taraf arasında belirlenir; epcmerkezim bu tutardan pay almaz."}},{"@type":"Question","name":"Sistemimi başka bir firma kurdu, yine de başvurabilir miyim?","acceptedAnswer":{"@type":"Answer","text":"Evet. Sistemi kimin kurduğu fark etmez. Kurucu firmanıza ulaşamıyorsanız veya farklı bir firma ile çalışmak istiyorsanız talebinizi iletebilirsiniz."}},{"@type":"Question","name":"Ne kadar sürede dönüş yapılır?","acceptedAnswer":{"@type":"Answer","text":"Açık olalım: bu hizmet yeni başlıyor ve şu an talepleri topluyoruz. Talebiniz doğrudan bir firmaya otomatik olarak iletilmiyor; epcmerkezim tarafından tek tek değerlendiriliyor. Garanti bir dönüş süresi taahhüt etmiyoruz. Talebinizi aldığımızda takip kodunuzu veriyoruz ve sürecin neresinde olduğunu açıkça söylüyoruz."}},{"@type":"Question","name":"Hangi işler kapsam içinde?","acceptedAnswer":{"@type":"Answer","text":"Üretim düşüşü ve verim kaybı incelemesi, inverter arıza ve hata kodları, panel temizliği, periyodik bakım, kablo ve bağlantı kontrolü, izleme sistemi kurulumu ve sigorta/hasar tespiti için teknik rapor talepleri."}},{"@type":"Question","name":"Acil arıza durumunda ne yapmalıyım?","acceptedAnswer":{"@type":"Answer","text":"Yangın, duman, koku veya su teması gibi can güvenliği riski taşıyan durumlarda önce sistemin AC ve DC şalterlerini kapatın ve gerekirse 112'yi arayın. Bu form acil müdahale hattı değildir."}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Servis talebi oluşturmak ücretli mi?","acceptedAnswer":{"@type":"Answer","text":"Hayır. Talep oluşturmak ücretsizdir ve hiçbir taahhüt doğurmaz. Bir çözüm için anlaşmanız hâlinde işin bedeli doğrudan sizinle hizmeti veren taraf arasında belirlenir; epcmerkezim bu tutardan pay almaz."}},{"@type":"Question","name":"Sistemimi başka bir firma kurdu, yine de başvurabilir miyim?","acceptedAnswer":{"@type":"Answer","text":"Evet. Sistemi kimin kurduğu fark etmez. Kurucu firmanıza ulaşamıyorsanız veya farklı bir firma ile çalışmak istiyorsanız talebinizi iletebilirsiniz."}},{"@type":"Question","name":"Ne kadar sürede dönüş yapılır?","acceptedAnswer":{"@type":"Answer","text":"Açık olalım: bu hizmet yeni başlıyor ve şu an talepleri topluyoruz. Talebiniz doğrudan bir firmaya otomatik olarak iletilmiyor; epcmerkezim tarafından tek tek değerlendiriliyor. Garanti bir dönüş süresi taahhüt etmiyoruz. Talebinizi aldığımızda takip kodunuzu veriyoruz ve sürecin neresinde olduğunu açıkça söylüyoruz."}},{"@type":"Question","name":"Hangi işler kapsam içinde?","acceptedAnswer":{"@type":"Answer","text":"Üretim düşüşü ve verim kaybı incelemesi, inverter arıza ve hata kodları, panel temizliği, periyodik bakım, kablo ve bağlantı kontrolü ile izleme sistemi kurulumu."}},{"@type":"Question","name":"Acil arıza durumunda ne yapmalıyım?","acceptedAnswer":{"@type":"Answer","text":"Yangın, duman, koku veya su teması gibi can güvenliği riski taşıyan durumlarda önce sistemin AC ve DC şalterlerini kapatın ve gerekirse 112'yi arayın. Bu form acil müdahale hattı değildir."}}]}</script>
 
 <script defer data-domain="epcmerkezim.com" src="https://plausible.io/js/script.hash.js"></script>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
@@ -66,8 +66,25 @@
 <style>
 /* Form, rol sayfalarında olmayan tek bileşen; role-page.css'i kirletmemek
    için yalnız bu sayfada duruyor. */
+/* Form ortalanıyor: sayfanın tek amacı bu, kenara yaslanması yanlıştı. */
 .ts-form { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.10);
-           border-radius: 18px; padding: 22px; max-width: 620px; }
+           border-radius: 18px; padding: 24px; max-width: 680px; margin: 0 auto; }
+.ts-bolum { font-size: 11px; font-weight: 800; letter-spacing: .10em; text-transform: uppercase;
+           color: #7D8FA8; margin: 22px 0 10px; padding-bottom: 7px;
+           border-bottom: 1px solid rgba(255,255,255,.08); }
+.ts-bolum:first-child { margin-top: 0; }
+.ts-bolum .ts-ipucu { text-transform: none; letter-spacing: 0; font-weight: 600;
+           color: #5F7086; margin-left: 6px; }
+.ts-form input[type=file] { padding: 8px 10px; font-size: 12.5px; color: #93A4BC; }
+.ts-form input[type=file]::file-selector-button {
+           background: rgba(255,255,255,.08); color: #D6E2F2; border: 0; border-radius: 7px;
+           padding: 6px 11px; margin-right: 10px; font: inherit; font-size: 12px;
+           font-weight: 700; cursor: pointer; }
+.ts-uyari-kutu { background: rgba(248,113,113,.10); border-left: 3px solid #f87171;
+           border-radius: 0 12px 12px 0; padding: 13px 16px; margin: 20px 0 4px; }
+.ts-uyari-kutu h3 { margin: 0 0 7px; font-size: 13px; font-weight: 800; color: #fca5a5; }
+.ts-uyari-kutu ul { margin: 0; padding-left: 18px; }
+.ts-uyari-kutu li { font-size: 12.5px; color: #F0C4C4; line-height: 1.55; margin-bottom: 3px; }
 .ts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 560px) { .ts-row { grid-template-columns: 1fr; } }
 .ts-form label { display: block; margin-bottom: 12px; }
@@ -111,11 +128,6 @@
 <main>
     <section class="hero">
         <div class="wrap">
-            <nav class="roleswitch" aria-label="Rol seçimi">
-                <a href="/kurulumcu">Kurulumcu</a>
-                <a href="/danisman">Danışman</a>
-                <a href="/tedarikci">Tedarikçi</a>
-            </nav>
             <p class="kicker">GES sahipleri için</p>
             <h1>Güneş sisteminiz <span>üretmiyor mu?</span></h1>
             <p class="lede measure">Üretim düştü, inverter hata veriyor, paneller kirlendi ya da
@@ -148,16 +160,12 @@
                        Periyodik temizlik en ucuz verim iyileştirmesidir.</p></div></div>
                 <div class="feat-item"><span class="ic" aria-hidden="true">🔧</span><div>
                     <h3>Periyodik bakım</h3>
-                    <p>Bağlantı ve kablo kontrolü, konstrüksiyon sıkılığı, termal kontrol,
-                       koruma elemanlarının testi.</p></div></div>
+                    <p>Bağlantı ve kablo kontrolü, konstrüksiyon sıkılığı ve koruma
+                       elemanlarının testi.</p></div></div>
                 <div class="feat-item"><span class="ic" aria-hidden="true">📡</span><div>
                     <h3>İzleme sistemi kurulumu</h3>
                     <p>Üretimi telefonunuzdan göremiyorsanız arızayı da fark edemezsiniz.
-                       İzleme kurulumu ve devreye alma talebi oluşturabilirsiniz.</p></div></div>
-                <div class="feat-item"><span class="ic" aria-hidden="true">📋</span><div>
-                    <h3>Hasar tespiti ve teknik rapor</h3>
-                    <p>Dolu, fırtına veya yangın sonrası sigorta süreçleri için teknik inceleme
-                       ve rapor talebi.</p></div></div>
+                       Talep türünü <b>Arıza / Teknik Servis</b> seçip açıklamaya yazmanız yeterli.</p></div></div>
             </div>
         </div>
     </section>
@@ -188,7 +196,7 @@
     <!-- ================= BAŞVURU FORMU ================= -->
     <section class="section" id="basvuru">
         <div class="wrap">
-            <div class="section-head">
+            <div class="section-head" style="text-align:center">
                 <p class="kicker">Başvuru</p>
                 <h2>Servis talebi oluşturun</h2>
                 <p class="measure">Yıldızlı alanlar zorunludur. Bilgileriniz talebinizi
@@ -196,32 +204,78 @@
             </div>
 
             <form class="ts-form" id="tsForm" novalidate>
+                <p class="ts-bolum">İletişim</p>
                 <div class="ts-row">
                     <label><span>Ad Soyad <i class="req">*</i></span>
-                        <input type="text" id="tsAd" name="ad" required autocomplete="name" maxlength="120"></label>
+                        <input type="text" id="tsAd" required autocomplete="name" maxlength="120"></label>
                     <label><span>Telefon <i class="req">*</i></span>
-                        <input type="tel" id="tsTel" name="tel" required autocomplete="tel" maxlength="30" placeholder="05xx xxx xx xx"></label>
+                        <input type="tel" id="tsTel" required autocomplete="tel" maxlength="30" placeholder="05xx xxx xx xx"></label>
                 </div>
                 <label><span>E-posta <i class="req">*</i></span>
-                    <input type="email" id="tsPosta" name="posta" required autocomplete="email" maxlength="160"></label>
-                <label><span>Sistemin adresi (il / ilçe yeterli) <i class="req">*</i></span>
-                    <input type="text" id="tsAdres" name="adres" required maxlength="220" placeholder="İstanbul / Kartal"></label>
+                    <input type="email" id="tsPosta" required autocomplete="email" maxlength="160"></label>
+
+                <p class="ts-bolum">Tesis konumu</p>
+                <div class="ts-row">
+                    <label><span>İl <i class="req">*</i></span>
+                        <select id="tsIl" required><option value="">Seçiniz…</option></select></label>
+                    <label><span>İlçe</span>
+                        <input type="text" id="tsIlce" maxlength="60" placeholder="Örn. Pendik"></label>
+                </div>
+                <label><span>Açık adres <i class="req">*</i></span>
+                    <input type="text" id="tsAdres" required maxlength="220"></label>
+
+                <div class="ts-uyari-kutu">
+                    <h3>⚠️ Talep oluşturmadan önce okuyun</h3>
+                    <ul>
+                        <li>10 kW altındaki şebeke bağlantısız hobi tesislerine hizmet verilmemektedir.</li>
+                        <li>Sadece <b>Victron, Fronius, Pylontech, Deye ve Solax</b> sistemleri desteklenir.</li>
+                    </ul>
+                </div>
+
+                <p class="ts-bolum">Sistem bilgileri</p>
                 <div class="ts-row">
                     <label><span>Talep türü</span>
-                        <select id="tsTur" name="tur">
-                            <option value="ariza">Arıza / üretim düşüklüğü</option>
-                            <option value="bakim">Periyodik bakım</option>
-                            <option value="temizlik">Panel temizliği</option>
-                            <option value="izleme">İzleme sistemi kurulumu</option>
-                            <option value="rapor">Hasar tespiti / teknik rapor</option>
-                            <option value="diger">Diğer</option>
+                        <select id="tsTur">
+                            <option value="ariza">Arıza / Teknik Servis</option>
+                            <option value="bakim">Periyodik Bakım</option>
+                            <option value="temizlik">Panel Temizliği</option>
                         </select></label>
-                    <label><span>İnverter marka / model</span>
-                        <input type="text" id="tsInverter" name="inverter" maxlength="120" placeholder="Bilmiyorsanız boş bırakın"></label>
+                    <label><span>Tesis kodu (varsa)</span>
+                        <input type="text" id="tsTesisKod" maxlength="60" placeholder="Örn: GES-2026-1234"></label>
                 </div>
-                <label><span>Sorunu anlatın</span>
-                    <textarea id="tsAciklama" name="aciklama" maxlength="1500"
-                        placeholder="Ne zaman başladı, ekranda bir hata kodu var mı, sistem kaç kWp ve ne zaman kuruldu?"></textarea></label>
+                <div class="ts-row">
+                    <label><span>İnverter marka / model</span>
+                        <input type="text" id="tsInverter" maxlength="120" placeholder="Örn: Victron Quattro 10kVA"></label>
+                    <label><span>Batarya marka / model</span>
+                        <input type="text" id="tsBatarya" maxlength="120" placeholder="Örn: Pylontech US3000C"></label>
+                </div>
+                <div class="ts-row">
+                    <label><span>Kurulumu yapan firma</span>
+                        <input type="text" id="tsKurulumcu" maxlength="120" placeholder="Bilmiyorsanız boş bırakın"></label>
+                    <label><span>Kurulum tarihi</span>
+                        <input type="date" id="tsKurulumTarih"></label>
+                </div>
+                <label><span>Sorun ne zaman başladı?</span>
+                    <input type="date" id="tsSorunTarih"></label>
+
+                <p class="ts-bolum">Görseller <span class="ts-ipucu">isteğe bağlı — ama teşhisi hızlandırır</span></p>
+                <div class="ts-row">
+                    <label><span>Sistem görüntüsü</span>
+                        <input type="file" id="tsImgSistem" accept="image/*"></label>
+                    <label><span>Elektrik panosu</span>
+                        <input type="file" id="tsImgPano" accept="image/*"></label>
+                </div>
+                <div class="ts-row">
+                    <label><span>GES panosu</span>
+                        <input type="file" id="tsImgGes" accept="image/*"></label>
+                    <label><span>Arıza kodları</span>
+                        <input type="file" id="tsImgKod" accept="image/*"></label>
+                </div>
+
+                <p class="ts-bolum">Sorun</p>
+                <label><span>Yaşadığınız sorunun detaylı özeti <i class="req">*</i></span>
+                    <textarea id="tsAciklama" required maxlength="2000"
+                        placeholder="Ne zaman başladı, ekranda bir hata kodu var mı, sistem kaç kWp, daha önce müdahale edildi mi?"></textarea></label>
 
                 <div class="ts-kvkk">
                     <input type="checkbox" id="tsKvkk" required>
@@ -312,39 +366,74 @@ document.getElementById('y').textContent = new Date().getFullYear();
     var sb = null;
     try { sb = window.supabase.createClient(SB_URL, SB_KEY); } catch (e) {}
 
+    // İl listesi sayfa içinde: bu sayfa core.js yüklemiyor, EPC_IL_VERIM yok.
+    var ILLER = ["Adana", "Adıyaman", "Afyonkarahisar", "Aksaray", "Amasya", "Ankara", "Antalya", "Ardahan", "Artvin", "Aydın", "Ağrı", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Isparta", "Iğdır", "İstanbul", "İzmir", "Kahramanmaraş", "Karabük", "Karaman", "Kars", "Kastamonu", "Kayseri", "Kilis", "Kocaeli", "Konya", "Kütahya", "Kırklareli", "Kırıkkale", "Kırşehir", "Malatya", "Manisa", "Mardin", "Mersin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Osmaniye", "Rize", "Sakarya", "Samsun", "Siirt", "Sinop", "Sivas", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak", "Çanakkale", "Çankırı", "Çorum", "Şanlıurfa", "Şırnak"];
+    var ilSec = document.getElementById('tsIl');
+    ILLER.forEach(function (il) {
+        var o = document.createElement('option'); o.value = il; o.textContent = il; ilSec.appendChild(o);
+    });
+
     var form = document.getElementById('tsForm');
     var btn  = document.getElementById('tsGonder');
     var msg  = document.getElementById('tsMesaj');
-
+    var deger = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
     function yaz(metin, sinif) { msg.innerHTML = metin; msg.className = 'ts-msg ' + (sinif || ''); }
+
+    // Görseli support-images kovasına yükler; başarısızsa null döner ve
+    // BAŞVURUYU DÜŞÜRMEZ — fotoğraf yüklenemedi diye talep kaybolmamalı.
+    async function gorselYukle(id, onek) {
+        var g = document.getElementById(id);
+        if (!g || !g.files || !g.files.length) return null;
+        var dosya = g.files[0];
+        if (dosya.size > 8 * 1024 * 1024) return null;          // 8 MB üstünü atla
+        var ad = onek + '_' + Date.now() + '.' + (dosya.name.split('.').pop() || 'jpg');
+        try {
+            var r = await sb.storage.from('support-images').upload(ad, dosya);
+            return r.error ? null : ad;
+        } catch (e) { return null; }
+    }
 
     form.addEventListener('submit', async function (ev) {
         ev.preventDefault();
-        var ad    = document.getElementById('tsAd').value.trim();
-        var tel   = document.getElementById('tsTel').value.trim();
-        var posta = document.getElementById('tsPosta').value.trim();
-        var adres = document.getElementById('tsAdres').value.trim();
+        var ad = deger('tsAd'), tel = deger('tsTel'), posta = deger('tsPosta');
+        var il = deger('tsIl'), ilce = deger('tsIlce'), adres = deger('tsAdres');
+        var aciklama = deger('tsAciklama');
 
-        if (!ad || !tel || !posta || !adres) { yaz('Yıldızlı alanların tamamını doldurun.', 'ts-err'); return; }
+        if (!ad || !tel || !posta || !il || !adres) { yaz('Yıldızlı alanların tamamını doldurun.', 'ts-err'); return; }
         if (posta.indexOf('@') === -1 || posta.indexOf('.') === -1) { yaz('Geçerli bir e-posta adresi girin.', 'ts-err'); return; }
+        if (!aciklama) { yaz('Sorunun kısa bir özetini yazın — teşhis için gerekli.', 'ts-err'); return; }
         if (!document.getElementById('tsKvkk').checked) { yaz('Devam etmek için KVKK onayı gerekiyor.', 'ts-err'); return; }
         if (!sb) { yaz('Bağlantı kurulamadı. Sayfayı yenileyip tekrar deneyin.', 'ts-err'); return; }
 
         btn.disabled = true; btn.textContent = 'Gönderiliyor...';
-        yaz('', '');
+        yaz('Görseller yükleniyor...', '');
         try {
-            var r = await sb.rpc('teknik_servis_talebi', {
+            var g = await Promise.all([
+                gorselYukle('tsImgSistem', 'sistem'), gorselYukle('tsImgPano', 'pano'),
+                gorselYukle('tsImgGes', 'ges'),       gorselYukle('tsImgKod', 'hata')
+            ]);
+            yaz('Talep kaydediliyor...', '');
+
+            // Panelin kendi akışıyla AYNI RPC: alanlar ve admin görünümü birebir
+            // aynı olsun diye ayrı bir yol açılmadı.
+            var r = await sb.rpc('submit_service_request', {
+                p_request_type:   deger('tsTur') || 'ariza',
                 p_full_name:      ad,
                 p_phone:          tel,
                 p_email:          posta,
-                p_address:        adres,
-                p_request_type:   document.getElementById('tsTur').value,
-                p_inverter_model: document.getElementById('tsInverter').value.trim() || null,
-                p_problem_desc:   document.getElementById('tsAciklama').value.trim() || null
+                p_address:        [adres, ilce, il].filter(Boolean).join(' / '),
+                p_inverter_model: deger('tsInverter') || null,
+                p_battery_model:  deger('tsBatarya') || null,
+                p_installer_name: deger('tsKurulumcu') || null,
+                p_install_date:   deger('tsKurulumTarih') || null,
+                p_problem_date:   deger('tsSorunTarih') || null,
+                p_problem_desc:   aciklama,
+                p_img_system: g[0], p_img_pano: g[1], p_img_ges: g[2], p_img_code: g[3],
+                p_facility_code:  deger('tsTesisKod') || null,
+                p_company_id:     null
             });
             if (r.error) throw r.error;
 
-            // KVKK onay kaydı — ispat yükü bizde. Başarısız olsa bile başvuruyu düşürmez.
             try {
                 await sb.rpc('log_consent', {
                     p_context: 'servis', p_full_name: ad, p_phone: tel, p_email: posta,
@@ -363,7 +452,6 @@ document.getElementById('y').textContent = new Date().getFullYear();
                 'değerlendirip sizinle iletişime geçeceğiz.</span>', 'ts-ok');
             msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } catch (e) {
-            // Hız sınırı tetikleyicisi buraya kendi açıklayıcı mesajıyla düşer.
             yaz('Gönderilemedi: ' + (e.message || e), 'ts-err');
             btn.disabled = false; btn.textContent = 'Servis Talebini Gönder';
         }

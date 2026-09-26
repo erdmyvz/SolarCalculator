@@ -170,7 +170,23 @@
             <div id="invDiag"></div>
             <div id="invStats" class="mb-5"></div>
             <div id="invProjects" class="mb-6"></div>
-            <div id="invQuotes"></div>`;
+            <div id="invQuotes"></div>
+
+            <!-- Kurulu sistemi olan yatırımcı için ayrı giriş: panelde teklif ve
+                 süreç takibi var ama "sistemim arızalandı" için bir yer yoktu. -->
+            <a href="/teknik-servis" class="mt-6 flex items-center justify-between gap-3 flex-wrap
+                bg-white border border-slate-200 hover:border-red-300 rounded-2xl p-4 transition group">
+                <span class="flex items-center gap-3 min-w-0">
+                    <span class="text-2xl shrink-0" aria-hidden="true">🔧</span>
+                    <span class="min-w-0">
+                        <span class="block font-black text-slate-800 text-sm">Kurulu sisteminizde sorun mu var?</span>
+                        <span class="block text-[11px] text-slate-500 mt-0.5">Üretim düşüklüğü, inverter arızası,
+                            panel temizliği ve periyodik bakım talepleri</span>
+                    </span>
+                </span>
+                <span class="text-xs font-black text-red-600 group-hover:text-red-700 whitespace-nowrap shrink-0">
+                    Servis talebi oluştur →</span>
+            </a>`;
         document.getElementById('invProjects').innerHTML = '<p class="text-sm text-slate-400">Yükleniyor...</p>';
 
         await loadData();
