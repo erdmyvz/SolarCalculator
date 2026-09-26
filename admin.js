@@ -145,6 +145,9 @@ async function fetchAdminData() {
                             <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">İletişim</strong>📞 ${admEscape(t.phone)} <br>✉️ ${admEscape(t.email)}</p>
                             <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Donanım</strong>${admEscape(t.inverter_model) || 'Belirtilmedi'}<br>${admEscape(t.battery_model) || 'Batarya Yok'}</p>
                             <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Kurulum Firması</strong>${admEscape(t.installer_name) || 'Bilinmiyor'}</p>
+                            <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Tesis Kodu</strong>${t.facility_code
+                                ? `<span class="font-mono">${admEscape(t.facility_code)}</span>${t.project_id ? ' <span class="text-emerald-600 font-bold">✓ tesis eşleşti</span>' : ' <span class="text-amber-600">⚠ eşleşmedi</span>'}`
+                                : 'Belirtilmedi'}</p>
                             <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Tarihler</strong>Kurulum: ${t.install_date || '-'}<br>Arıza: ${t.problem_date || '-'}</p>
                             <p class="col-span-2"><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Açık Adres</strong>${admEscape(t.address) || 'Belirtilmedi'}</p>
                         </div>
