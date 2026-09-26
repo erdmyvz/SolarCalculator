@@ -97,6 +97,10 @@
       "destination": "/tedarikci/index.html"
     },
     {
+      "source": "/teknik-servis",
+      "destination": "/teknik-servis/index.html"
+    },
+    {
       "source": "/fatura-analizi",
       "destination": "/"
     },

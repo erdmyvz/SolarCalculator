@@ -2439,17 +2439,11 @@
 
             <!-- SEKME: FİRMALAR (firmalar + dağıtım şirketleri) -->
             <div id="adminPaneCompanies" class="admin-pane hidden space-y-6">
-                <div class="bg-white border border-slate-200 rounded-xl p-5">
-                    <h3 class="font-black text-lg text-slate-800 mb-3">🏢 Firmalar</h3>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-xs text-left min-w-[640px]">
-                            <thead class="text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-200">
-                                <tr><th class="p-3 pl-6">Ad Soyad</th><th class="p-3">Firma</th><th class="p-3">Telefon</th><th class="p-3">Plan</th><th class="p-3">Durum</th><th class="p-3">Rol</th><th class="p-3">İşlem</th></tr>
-                            </thead>
-                            <tbody id="usersTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
+                <!-- Firmalar + abonelikleri tek listede: uye-yonetimi.js çiziyor.
+                     Eski tablo kaldırıldı; Plan/Durum sütunları SABİT METİNDİ
+                     ("Deneme"/"Aktif"), engelli hesabı bile Aktif gösteriyordu.
+                     "Düzenle" düğmesinin onclick'i hiç yoktu. -->
+                <div id="admFirmalarRoot"></div>
                 <!-- 🔌 Dağıtım Şirketleri buraya JS ile eklenir -->
             </div>
 
@@ -2465,10 +2459,14 @@
             </div>
 
             <div id="adminPaneConsultants" class="admin-pane hidden space-y-6">
-                <div id="admConsultantsRoot"></div>
+                <div id="admConsultantsRoot"></div>   <!-- üye + abonelik -->
+                <div id="admConsultantsOnay"></div>   <!-- başvuru onay akışı -->
             </div>
 
-            <div id="adminPaneSuppliers" class="admin-pane hidden space-y-6"></div>
+            <div id="adminPaneSuppliers" class="admin-pane hidden space-y-6">
+                <div id="admSuppliersRoot"></div>     <!-- üye + abonelik -->
+                <div id="admSuppliersOnay"></div>     <!-- profil/ürün/ilan onayları -->
+            </div>
 
             <div id="adminPaneSubs" class="admin-pane hidden space-y-6">
                 <div id="admSubsRoot"></div>

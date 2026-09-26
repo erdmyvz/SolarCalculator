@@ -123,7 +123,7 @@ const EPC_PANEL_SCRIPTS = [
     'panel.js', 'crm.js', 'admin.js', 'sales.js', 'projects.js', 'maintenance.js',
     'services.js', 'quote.js', 'dashboard.js', 'suppliers.js', 'messaging.js',
     'investor.js', 'documents.js', 'campaigns.js', 'evrak.js', 'stok.js',
-    'erisim.js'
+    'erisim.js', 'uye-yonetimi.js'
 ];
 let _epcPanelPromise = null;
 window.epcPanelReady = false;

@@ -29,7 +29,6 @@ function srStatusOptions(cur) {
 // admEscape yardımcısı core.js'te tanımlıdır.
 
 async function fetchAdminData() {
-    const usersBody = document.getElementById('usersTableBody');
     const leadsBox = document.getElementById('adminLeadsList');
     const ticketsBox = document.getElementById('adminTicketsList');
     if (!supabaseClient) return;
@@ -43,25 +42,10 @@ async function fetchAdminData() {
     const companyOptions = companies.map(c => `<option value="${c.id}">${admEscape(c.name)}</option>`).join('');
     window.__admCompanyCount = companies.length; // Genel Bakis KPI icin gercek firma sayisi
 
-    // 1) FİRMALAR  (profiles + companies join)
-    if (usersBody) {
-        usersBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-xs text-slate-400">Yükleniyor...</td></tr>';
-        const { data } = await supabaseClient.from('profiles').select('*, companies(name, is_active)');
-        usersBody.innerHTML = '';
-        (data || []).forEach(u => {
-            const compName = (u.companies && u.companies.name) || u.company_name || '-';
-            usersBody.innerHTML += `
-                <tr class="hover:bg-slate-50 text-xs">
-                    <td class="p-3 pl-6 font-bold text-slate-800">${admEscape(u.first_name)} ${admEscape(u.last_name)}</td>
-                    <td class="p-3 font-black text-emerald-700">${admEscape(compName)}</td>
-                    <td class="p-3 font-mono text-slate-500">${admEscape(u.phone) || '-'}</td>
-                    <td class="p-3 font-bold text-slate-700">Deneme</td>
-                    <td class="p-3"><span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Aktif</span></td>
-                    <td class="p-3"><span class="bg-slate-900 text-white font-mono text-[10px] px-2 py-0.5 rounded">${admEscape(u.role)}</span></td>
-                    <td class="p-3"><button class="bg-slate-200 px-2 py-1 rounded text-[10px] font-bold">Düzenle</button></td>
-                </tr>`;
-        });
-    }
+    // 1) FİRMALAR — artık uye-yonetimi.js'teki adminFirmalarCiz() çiziyor.
+    //    Buradaki tablo kaldırıldı: Plan/Durum sütunları veriye bakmadan sabit
+    //    "Deneme"/"Aktif" basıyordu (engelli hesap bile Aktif görünüyordu),
+    //    e-posta hiç yoktu ve "Düzenle" düğmesinin onclick'i tanımsızdı.
 
     // 2) GENEL HAVUZ = atanmamış başvurular (leads.company_id IS NULL)
     if (leadsBox) {
@@ -224,6 +208,11 @@ async function fetchAdminData() {
 
     // 10b) ABONELİKLER
     await renderSubscriptions();
+
+    // 10b-2) ÜYELER: firma/danışman/tedarikçi + abonelikleri tek listede
+    if (typeof window.adminFirmalarCiz === 'function')     await window.adminFirmalarCiz();
+    if (typeof window.adminDanismanlarCiz === 'function')  await window.adminDanismanlarCiz();
+    if (typeof window.adminTedarikcilerCiz === 'function') await window.adminTedarikcilerCiz();
 
     // 10c) İŞ DEĞERİ VE KOMİSYON KAYDI
     await renderKomisyonAdmin();
@@ -812,7 +801,9 @@ window.psDelete = async (id) => {
 let _supList = [], _supProds = [], _supAds = [], _supStock = [];
 
 async function renderSuppliersAdmin() {
-    const pane = document.getElementById('adminPaneSuppliers');
+    // Artık pane'in TAMAMINI değil, yalnız onay bölümünü çiziyor; üye+abonelik
+    // listesi aynı sekmede admSuppliersRoot'ta duruyor (uye-yonetimi.js).
+    const pane = document.getElementById('admSuppliersOnay');
     if (!pane || !supabaseClient) return;
     pane.innerHTML = '<p class="text-xs text-slate-400 italic">Yükleniyor...</p>';
 
@@ -1816,7 +1807,7 @@ function renderAdminStats() {
     const countCards = (id) => { const b = document.getElementById(id); return b ? b.querySelectorAll(':scope > div').length : 0; };
     const companies = (typeof window.__admCompanyCount === 'number')
         ? window.__admCompanyCount
-        : document.querySelectorAll('#usersTableBody tr').length;
+        : 0;   // eski #usersTableBody kaldırıldı; sayı __admCompanyCount'tan gelir
     setTxt('admStatCompanies', companies);
     setTxt('admStatLeads', countCards('adminLeadsList'));
     setTxt('admStatTickets', countCards('adminTicketsList'));
@@ -1831,7 +1822,7 @@ function renderAdminStats() {
 // DANIŞMAN BAŞVURULARI — admin onay akışı (adminPaneConsultants)
 // ============================================================================
 async function renderConsultantsAdmin() {
-    const root = document.getElementById('admConsultantsRoot');
+    const root = document.getElementById('admConsultantsOnay');
     if (!root || !supabaseClient) return;
     root.innerHTML = '<p class="text-slate-400 text-sm">Yükleniyor...</p>';
     let list = [];

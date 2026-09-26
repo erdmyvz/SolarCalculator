@@ -96,6 +96,25 @@
         }
         .gw-card-lead .gw-lead-body h3{ margin:0; }
 
+        /* Teknik servis şeridi — rol kartlarından AYRI duruyor: ilk dört kart
+           "kimsiniz" sorusudur, bu ise "sisteminiz var ve sorun yaşıyorsunuz".
+           Beşinci kart yapılsaydı rol seçimi bulanıklaşırdı. */
+        .gw-servis { display:flex; align-items:center; justify-content:space-between; gap:var(--s4);
+            flex-wrap:wrap; margin-top:var(--s5); padding:var(--s4) var(--s5); text-align:left;
+            border:1px solid rgba(255,255,255,.12); border-radius:16px;
+            background:rgba(248,113,113,.07); text-decoration:none; transition:border-color .18s, background .18s; }
+        .gw-servis:hover { border-color:rgba(248,113,113,.45); background:rgba(248,113,113,.12); }
+        .gw-servis .gw-servis-ic { font-size:1.6rem; line-height:1; }
+        .gw-servis .gw-servis-metin { color:#E8EEF7; font-weight:800; font-size:var(--fs-base);
+            flex:1 1 260px; min-width:0; line-height:1.35; }
+        .gw-servis .gw-servis-alt { display:block; color:#93A4BC; font-weight:600;
+            font-size:var(--fs-sm); margin-top:2px; }
+        .gw-servis .gw-servis-cta { color:#fca5a5; font-weight:900; font-size:var(--fs-sm); white-space:nowrap; }
+        @media (max-width:560px){
+            .gw-servis { text-align:center; flex-direction:column; gap:var(--s2); justify-content:center; }
+            .gw-servis .gw-servis-metin { flex:none; }
+        }
+
         /* Funnel sayfaları */
         .gw-funnel { max-width:1152px; margin:0 auto; width:100%;
             padding:var(--s6) var(--s4) var(--s7); }
@@ -204,6 +223,14 @@
                         <span class="gw-cta">Tedarikçi panelini keşfet →</span>
                     </a>
                 </div>
+
+                <a href="/teknik-servis" class="gw-servis">
+                    <span class="gw-servis-ic" aria-hidden="true">\u{1F527}</span>
+                    <span class="gw-servis-metin">Sisteminiz kurulu ama sorun mu yaşıyorsunuz?
+                        <span class="gw-servis-alt">Üretim düşüklüğü, inverter arızası, panel temizliği ve bakım talepleri</span>
+                    </span>
+                    <span class="gw-servis-cta">Teknik servis talebi \u2192</span>
+                </a>
             </div>
         </div>`;
         window.scrollTo({ top: 0 });
