@@ -78,3 +78,18 @@ select p.proname || ' | güvenlik=' ||
        ' | yetkiler=' || coalesce(array_to_string(p.proacl::text[], ' '), '(varsayılan)') as kontrol
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
  where n.nspname = 'public' and p.proname = 'teknik_servis_talebi';
+
+-- ============================================================================
+--  ADMIN SİLME POLİTİKASI
+--
+--  service_requests'te INSERT/SELECT/UPDATE politikaları vardı ama DELETE YOKTU.
+--  RLS açıkken politikası olmayan işlem SESSİZCE 0 satır etkiler: panelden
+--  silmeye çalışınca hata gelmez, kayıt da gitmez. Reklamla birlikte spam ve
+--  yinelenen talepler gelecek; yöneticinin bunları temizleyebilmesi gerekiyor.
+-- ============================================================================
+drop policy if exists sr_delete on public.service_requests;
+create policy sr_delete on public.service_requests
+    for delete to authenticated
+    using (public.is_admin());
+
+notify pgrst, 'reload schema';
