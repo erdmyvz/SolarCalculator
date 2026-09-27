@@ -203,6 +203,18 @@
         }
 
         /* --- Kart: iç ritim φ, eylem bağlantısı hep alta hizalanır --- */
+        /* Marka yazısı: ana sayfa (gateway .gw-logo) ve rol sayfaları
+           (role-page.css .brand) ile BİREBİR aynı olsun diye tek yerde.
+           Panel başlığında eskiden "EPC Merkezim" yazıyordu — iki kelime,
+           farklı renk, farklı harf aralığı. */
+        body .epc-marka {
+            font-weight: 800; letter-spacing: -.03em;
+            background: linear-gradient(90deg, #fcd34d, #34d399);
+            -webkit-background-clip: text; background-clip: text;
+            color: transparent; text-decoration: none;
+        }
+        body .epc-marka:hover { text-decoration: none; }
+
         body .phi-card:not(.hidden) { display: flex; }
         body .phi-card {
             flex-direction: column;
@@ -1971,7 +1983,7 @@
     <div id="appContainer" class="hidden w-full px-4 md:px-8 pb-10 bg-slate-50 min-h-screen">
         
         <div id="dashboardHeader" class="tema-koyu w-full max-w-7xl mx-auto mt-4 mb-8 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <a href="#home" class="text-xl font-extrabold text-slate-800"> EPC <span class="text-emerald-600">Merkezim</span></a>
+            <a href="#home" class="epc-marka text-xl">epcmerkezim</a>
             
             <div class="flex items-center gap-4">
                 

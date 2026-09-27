@@ -46,8 +46,23 @@ async function handleSPA_Routing() {
         // Genel giriş ekranı (yedek) — rol seçici görünür
         auth.classList.remove('hidden');
         if (typeof authUnlockRole === 'function') authUnlockRole();
-    } else if (typeof legalOpenByHash === 'function' && legalOpenByHash(hash)) {
-        // yasal metin sayfaları: #kvkk #gizlilik #cerez #kullanim-sartlari #abonelik-sozlesmesi #acik-riza
+    } else if (EPC_YASAL_HASHLER.has(hash)) {
+        // Yasal metin sayfaları: #kvkk #gizlilik #cerez #kullanim-sartlari
+        // #abonelik-sozlesmesi #acik-riza
+        //
+        // ⚠️ ESKİDEN "typeof legalOpenByHash === 'function' && legalOpenByHash(hash)"
+        // yazıyordu. legal.js TEMBEL yükleniyor; doğrudan /#kvkk adresine gelen
+        // ziyaretçide router, legal.js inmeden çalışıyor, fonksiyon henüz yok,
+        // koşul düşüyor ve sayfa BOMBOŞ kalıyordu — hata da vermeden.
+        //
+        // core.js'teki vekil mekanizması burada çözmez: legalOpenByHash koşulun
+        // içinde EŞZAMANLI boolean döndürmek zorunda, vekil ise undefined döner.
+        // Bu yüzden adres listesi router'da tutuluyor ve paket beklendikten
+        // sonra çağrılıyor.
+        if (typeof window.epcLoadZiyaretci === 'function') {
+            try { await window.epcLoadZiyaretci(); } catch (e) { /* aşağıda kontrol var */ }
+        }
+        if (typeof legalOpenByHash === 'function') legalOpenByHash(hash);
     } else if (EPC_HASH_MODULES[hash]) {
         // Ziyaretçi modülleri artık kendi adreslerinde. Hem doğrudan paylaşılan
         // bağlantı hem tarayıcı GERİ/İLERİ tuşu buradan geçiyor.
@@ -322,6 +337,13 @@ const EPC_MODULE_INIT = {
     hardwareModule:     'openHardwareCompare',
     evCalcModule:       'calculateEVSolar'
 };
+
+// Yasal metin adresleri. legal.js TEMBEL indiği için router bu listeyi
+// kendisi bilmek zorunda; fonksiyonun varlığına bakmak yeterli değildi.
+const EPC_YASAL_HASHLER = new Set([
+    '#kvkk', '#gizlilik', '#cerez',
+    '#kullanim-sartlari', '#abonelik-sozlesmesi', '#acik-riza'
+]);
 
 const EPC_PATH_VIEWS = {
     '/fatura-analizi':      { module: 'billAnalyzerModule', init: 'openBillAnalyzer' },
