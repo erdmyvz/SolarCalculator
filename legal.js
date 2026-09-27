@@ -27,10 +27,9 @@
         legal_kvkk: `## Veri Sorumlusu
 Bu aydınlatma metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") 10. maddesi uyarınca hazırlanmıştır.
 
-Veri Sorumlusu: [ŞİRKET ÜNVANI]
-Adres: [ADRES]
-MERSİS No: [MERSİS NO]
-E-posta: [İLETİŞİM E-POSTASI]
+Veri Sorumlusu: Erdem Yavuz
+Adres: Pendik / İstanbul
+E-posta: erdem.yvz@hotmail.com
 
 ## İşlenen Kişisel Veriler
 Platform üzerinden aşağıdaki veriler işlenebilmektedir:
@@ -57,9 +56,7 @@ Veriler; web sitesi formları, hesaplama araçları, hesap oluşturma ve platfor
 ## Haklarınız (KVKK m.11)
 Kişisel verilerinizin işlenip işlenmediğini öğrenme, işlenmişse buna ilişkin bilgi talep etme, işlenme amacını öğrenme, aktarıldığı üçüncü kişileri bilme, eksik/yanlış işlenmişse düzeltilmesini isteme, silinmesini veya yok edilmesini isteme, işlemenin sınırlandırılmasını talep etme, otomatik sistemlerle analiz sonucu aleyhinize bir sonuç doğmasına itiraz etme ve zarara uğramanız hâlinde giderilmesini talep etme haklarına sahipsiniz.
 
-Taleplerinizi [İLETİŞİM E-POSTASI] adresine iletebilirsiniz.
-
-[Bu metin taslaktır; yayın öncesi hukuk danışmanınıza inceletiniz.]`,
+Taleplerinizi erdem.yvz@hotmail.com adresine iletebilirsiniz.`,
 
         legal_privacy: `## Genel
 Bu Gizlilik Politikası, platformu kullanırken verilerinizin nasıl toplandığını, kullanıldığını ve korunduğunu açıklar.
@@ -81,12 +78,10 @@ Veriler, işleme amacının gerektirdiği süre ve ilgili mevzuatta öngörülen
 Veriler şifreli bağlantı üzerinden iletilir ve yetkilendirme kuralları ile korunur. Hesap şifrenizin gizliliğinden siz sorumlusunuz.
 
 ## Haklarınız
-KVKK kapsamındaki haklarınız için KVKK Aydınlatma Metni'ne bakabilir, taleplerinizi [İLETİŞİM E-POSTASI] adresine iletebilirsiniz.
+KVKK kapsamındaki haklarınız için KVKK Aydınlatma Metni'ne bakabilir, taleplerinizi erdem.yvz@hotmail.com adresine iletebilirsiniz.
 
 ## Değişiklikler
-Bu politika güncellenebilir. Güncel sürüm her zaman bu sayfada yayımlanır.
-
-[Bu metin taslaktır; yayın öncesi hukuk danışmanınıza inceletiniz.]`,
+Bu politika güncellenebilir. Güncel sürüm her zaman bu sayfada yayımlanır.`,
 
         legal_cookies: `## Çerez Nedir?
 Çerezler, ziyaret ettiğiniz web siteleri tarafından cihazınıza kaydedilen küçük metin dosyalarıdır.
@@ -105,12 +100,10 @@ Toplanan veriler toplu istatistiklerdir; kimliğinizi gösteren bir bilgi
 (ad, e-posta, telefon, takip kodu) ölçüme gönderilmez.
 
 ## Çerezleri Yönetme
-Tarayıcı ayarlarınızdan çerezleri silebilir veya engelleyebilirsiniz. Zorunlu çerezleri engellemeniz hâlinde oturum açma gibi temel işlevler çalışmayabilir.
-
-[Bu metin taslaktır; yayın öncesi hukuk danışmanınıza inceletiniz.]`,
+Tarayıcı ayarlarınızdan çerezleri silebilir veya engelleyebilirsiniz. Zorunlu çerezleri engellemeniz hâlinde oturum açma gibi temel işlevler çalışmayabilir.`,
 
         legal_terms: `## Taraflar ve Konu
-Bu Kullanım Şartları, [ŞİRKET ÜNVANI] tarafından işletilen platformun kullanımına ilişkin kuralları düzenler. Platformu kullanarak bu şartları kabul etmiş sayılırsınız.
+Bu Kullanım Şartları, Erdem Yavuz tarafından işletilen platformun kullanımına ilişkin kuralları düzenler. Platformu kullanarak bu şartları kabul etmiş sayılırsınız.
 
 ## Hizmetin Kapsamı
 Platform; yatırımcıları, kurulumcu firmaları ve bağımsız danışmanları buluşturan dijital bir aracı hizmet sunar. Kurulum, montaj ve satış sonrası hizmetler ilgili kurulumcu firma tarafından sağlanır.
@@ -126,15 +119,13 @@ Kurulumcu firma ile yatırımcı arasında kurulan sözleşmenin tarafı platfor
 - Platformu hukuka aykırı amaçlarla veya diğer kullanıcıların haklarını ihlal edecek şekilde kullanamazsınız.
 
 ## Fikri Mülkiyet
-Platform üzerindeki tasarım, yazılım ve içerikler [ŞİRKET ÜNVANI]'na aittir; izinsiz kopyalanamaz veya çoğaltılamaz.
+Platform üzerindeki tasarım, yazılım ve içerikler Erdem Yavuz'a aittir; izinsiz kopyalanamaz veya çoğaltılamaz.
 
 ## Hesabın Askıya Alınması
 Bu şartların ihlali hâlinde hesabınız uyarı yapılmaksızın askıya alınabilir veya kapatılabilir.
 
 ## Uygulanacak Hukuk
-Bu şartlara Türkiye Cumhuriyeti hukuku uygulanır. Uyuşmazlıklarda [YETKİLİ MAHKEME/İCRA DAİRESİ] yetkilidir.
-
-[Bu metin taslaktır; yayın öncesi hukuk danışmanınıza inceletiniz.]`,
+Bu şartlara Türkiye Cumhuriyeti hukuku uygulanır. Tüketici sıfatını taşıyan kullanıcılar bakımından, parasal sınırlara göre ilgili Tüketici Hakem Heyetleri ile Tüketici Mahkemeleri yetkilidir; bu yetki sözleşmeyle sınırlandırılamaz. Diğer hâllerde İstanbul Anadolu Mahkemeleri ve İcra Daireleri yetkilidir.`,
 
         legal_subscription: `> ⚠️ **YAYIN ÖNCESİ ÜCRETSİZ DÖNEM — 15.11.2026'ya kadar**
 > Platform yayına hazırlanıyor. Bu dönemde **hiçbir ücret tahsil edilmemektedir**;
@@ -142,7 +133,7 @@ Bu şartlara Türkiye Cumhuriyeti hukuku uygulanır. Uyuşmazlıklarda [YETKİL�
 > Ücretlendirmeye geçilmeden önce kayıtlı kullanıcılar ayrıca bilgilendirilecektir.
 
 ## 1. Taraflar
-SATICI: [ŞİRKET ÜNVANI] · Adres: [ADRES] · MERSİS: [MERSİS NO] · E-posta: [İLETİŞİM E-POSTASI]
+SATICI: Erdem Yavuz · Adres: Pendik / İstanbul · E-posta: erdem.yvz@hotmail.com
 ALICI: Platforma kayıt olan kurulumcu firma, bağımsız danışman veya tedarikçi.
 
 ## 2. Sözleşmenin Konusu
@@ -179,18 +170,14 @@ Tarafların veri işleme yükümlülükleri KVKK Aydınlatma Metni ve Gizlilik P
 SATICI, hizmetin kesintisiz ve hatasız olacağını taahhüt etmez; makul çabayı gösterir. Dolaylı zararlardan sorumluluk, ilgili dönemde ödenen abonelik bedeli ile sınırlıdır.
 
 ## 11. Uyuşmazlık
-Bu sözleşmeye Türkiye Cumhuriyeti hukuku uygulanır. Uyuşmazlıklarda [YETKİLİ MAHKEME/İCRA DAİRESİ] yetkilidir.
-
-[Bu metin taslaktır; mesafeli satış mevzuatına uygunluğu için mutlaka hukuk danışmanınıza inceletiniz.]`,
+Bu sözleşmeye Türkiye Cumhuriyeti hukuku uygulanır. ALICI ticari faaliyeti kapsamında taraf olduğundan, uyuşmazlıklarda İstanbul Anadolu Mahkemeleri ve İcra Daireleri yetkilidir.`,
 
         legal_consent: `## Ticari İleti ve Pazarlama İzni
 Tarafıma; güneş enerjisi yatırımı, teklif ve kampanyalar hakkında bilgilendirme yapılması amacıyla telefon, SMS, e-posta ve benzeri elektronik iletişim kanalları üzerinden ticari elektronik ileti gönderilmesini kabul ediyorum.
 
 Bu kapsamda iletişim bilgilerimin, talebimin karşılanabilmesi için platformda kayıtlı kurulumcu firmalar ve bağımsız danışmanlar ile paylaşılmasına açık rıza gösteriyorum.
 
-Bu iznimi dilediğim zaman, gönderilen iletideki ayrılma (ret) hakkını kullanarak veya [İLETİŞİM E-POSTASI] adresine başvurarak geri alabileceğimi biliyorum. İznin geri alınması, geçmişe dönük işlemleri etkilemez.
-
-[Bu metin taslaktır; yayın öncesi hukuk danışmanınıza inceletiniz.]`
+Bu iznimi dilediğim zaman, gönderilen iletideki ayrılma (ret) hakkını kullanarak veya erdem.yvz@hotmail.com adresine başvurarak geri alabileceğimi biliyorum. İznin geri alınması, geçmişe dönük işlemleri etkilemez.`
     };
     window.LEGAL_DEFAULTS = LEGAL_DEFAULTS;
 
@@ -290,7 +277,7 @@ Bu iznimi dilediğim zaman, gönderilen iletideki ayrılma (ret) hakkını kulla
                 <button onclick="openLegalPage()" class="text-xs font-bold text-indigo-600 hover:underline">Sayfayı gör →</button>
             </div>
             <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                ⚠️ Buradaki metinler <b>taslaktır</b>. Yayına almadan önce hukuk danışmanınıza inceletin. Köşeli parantezli alanları ([ŞİRKET ÜNVANI] gibi) şirket bilgilerinizle doldurun.
+                ⚠️ Buradaki metinler <b>taslaktır</b>. Yayına almadan önce hukuk danışmanınıza inceletin. Köşeli parantezli alanları (Erdem Yavuz gibi) şirket bilgilerinizle doldurun.
                 Biçimlendirme: <code>## </code> ile başlık, <code>- </code> ile madde, boş satır ile paragraf.
             </p>
             <div id="legalAdminFields" class="space-y-3"></div>
