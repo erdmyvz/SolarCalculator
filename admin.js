@@ -1893,7 +1893,7 @@ function servisBiletiGovde(t) {
 
         <div class="px-5 py-3 border-t border-slate-200 text-[10px] text-slate-400 flex justify-between gap-3 flex-wrap">
             <span>epcmerkezim · Teknik Servis Bileti</span>
-            <span>Belge tarihi: <span data-srv-basim>—</span></span>
+            <span>Belge tarihi: <span data-srv-basim>${new Date().toLocaleString('tr-TR')}</span></span>
         </div>
     </div>`;
 }
@@ -1970,6 +1970,8 @@ window.adminServisBiletiPdf = async function (id, btn) {
     // margin değeri değişirse bu sayı da değişmeli.
     kap.style.cssText = 'width:717px;background:#fff;padding:24px';
     kap.innerHTML = servisBiletiGovde(t);
+    // Gövde zaten çizim anının tarihini basıyor; burada dışa aktarım anıyla
+    // tazeliyoruz (kart sabahtan beri açıksa PDF'e eski saat düşmesin).
     const bt = kap.querySelector('[data-srv-basim]');
     if (bt) bt.textContent = new Date().toLocaleString('tr-TR');
     sarmal.appendChild(kap);
