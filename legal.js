@@ -215,19 +215,21 @@ Bu iznimi dilediğim zaman, gönderilen iletideki ayrılma (ret) hakkını kulla
         if (!root) return;
         const doc = LEGAL_DOCS.find(d => d[0] === _activeDoc) || LEGAL_DOCS[0];
         root.innerHTML = `
-            <button onclick="window.location.hash='#home'" class="text-slate-500 hover:text-indigo-600 font-bold mb-4">← Ana Sayfaya Dön</button>
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <div class="lg:col-span-1">
-                    <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2">Yasal Metinler</p>
+            <button onclick="window.location.hash='#home'"
+                class="inline-flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold
+                       text-sm mb-6 px-3 py-2 -ml-3 rounded-lg transition">← Ana Sayfaya Dön</button>
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8 items-start">
+                <div class="lg:col-span-1 legal-yan">
+                    <p class="text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-3">Yasal Metinler</p>
                     <div class="space-y-1">
                         ${LEGAL_DOCS.map(d => `
                             <button onclick="openLegalPage('${d[0]}')" class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-bold transition ${d[0] === doc[0] ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}">${d[1]}</button>`).join('')}
                     </div>
                 </div>
                 <div class="lg:col-span-3">
-                    <div class="bg-white border border-slate-200 rounded-2xl p-7 md:p-10 shadow-sm">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-9 md:p-12 shadow-sm">
                         <h2 class="text-2xl md:text-3xl font-black text-slate-800 mb-1">${esc(doc[1])}</h2>
-                        <p class="text-xs text-slate-400 mb-6">Son güncelleme: ${doc[3] ? new Date(doc[3] + 'T00:00:00').toLocaleDateString('tr-TR') : '—'}</p>
+                        <p class="text-xs text-slate-400 mb-7 pb-5 border-b border-slate-100">Son güncelleme: ${doc[3] ? new Date(doc[3] + 'T00:00:00').toLocaleDateString('tr-TR') : '—'}</p>
                         <div class="text-sm md:text-base">${fmt(L(doc[0]))}</div>
                     </div>
                 </div>

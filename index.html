@@ -215,6 +215,13 @@
         }
         body .epc-marka:hover { text-decoration: none; }
 
+        /* Yasal metin kenar çubuğu: uzun sözleşmelerde kaydırırken
+           kaybolmasın. Tailwind'in lg:sticky sınıfı işe yaramadı — CDN,
+           JS ile sonradan basılan sınıfı üretmiyor; bu yüzden gerçek kural. */
+        @media (min-width: 1024px) {
+            body #legalRoot .legal-yan { position: sticky; top: 24px; }
+        }
+
         body .phi-card:not(.hidden) { display: flex; }
         body .phi-card {
             flex-direction: column;
@@ -2095,7 +2102,11 @@
             </div>
         </div>
         
-        <div id="legalModule" class="hidden modul-koyu w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+        <!-- Yasal metinler: eskiden yalnız mt-4 vardı, yatay/dikey dolgu yoktu.
+             "Ana Sayfaya Dön" ekranın en tepesine 17px kalıyor, kapsayıcının
+             yuvarlak kenarına yapışıyordu. max-w-6xl (1152px) da geniş
+             ekranda dar kalıyordu — uzun hukuki metin için 7xl daha rahat. -->
+        <div id="legalModule" class="hidden modul-koyu w-full max-w-7xl mx-auto mt-6 md:mt-10 mb-10 px-4 sm:px-6 animate-fade-in">
             <div id="legalRoot"></div>
         </div>
 
