@@ -121,6 +121,7 @@ async function fetchAdminData() {
             ticketsBox.innerHTML = '<p class="text-xs text-slate-400 italic">Sistemde servis talebi bulunmuyor.</p>';
         } else {
             ticketsBox.innerHTML = '';
+            _servisBiletleri = {};
             data.forEach(t => {
                 const dateStr = new Date(t.created_at).toLocaleString('tr-TR');
                 const imgBtn = (path, label) => path
@@ -131,46 +132,8 @@ async function fetchAdminData() {
                         ${imgBtn(t.img_system, '📸 Sistem')}${imgBtn(t.img_pano, '⚡ Pano')}${imgBtn(t.img_ges, '☀️ GES Pano')}${imgBtn(t.img_code, '⚠️ Hata Kodu')}
                     </div>`;
 
-                ticketsBox.innerHTML += `
-                    <div class="p-5 border border-slate-200 rounded-xl bg-white shadow-sm text-xs mb-4">
-                        <div class="flex justify-between items-center border-b pb-3 mb-3 flex-wrap gap-2">
-                            <div class="flex items-center gap-3 flex-wrap">
-                                <span class="bg-slate-900 text-white font-mono px-2 py-1 rounded">${admEscape(t.tracking_code)}</span>
-                                <strong class="text-slate-800 text-base">${admEscape(t.full_name)}</strong>
-                                <span class="text-[10px] text-slate-400 font-normal">🕒 ${dateStr}</span>
-                            </div>
-                            <span class="bg-red-100 text-red-800 font-bold px-3 py-1 rounded-full text-[10px] tracking-widest uppercase">DURUM: ${admEscape(t.status)}</span>
-                        </div>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4 bg-slate-50 p-4 rounded-lg border border-slate-100 text-[11px] text-slate-700">
-                            <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">İletişim</strong>📞 ${admEscape(t.phone)} <br>✉️ ${admEscape(t.email)}</p>
-                            <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Donanım</strong>${admEscape(t.inverter_model) || 'Belirtilmedi'}<br>${admEscape(t.battery_model) || 'Batarya Yok'}</p>
-                            <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Kurulum Firması</strong>${admEscape(t.installer_name) || 'Bilinmiyor'}</p>
-                            <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Tesis Kodu</strong>${t.facility_code
-                                ? `<span class="font-mono">${admEscape(t.facility_code)}</span>${t.project_id ? ' <span class="text-emerald-600 font-bold">✓ tesis eşleşti</span>' : ' <span class="text-amber-600">⚠ eşleşmedi</span>'}`
-                                : 'Belirtilmedi'}</p>
-                            <p><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Tarihler</strong>Kurulum: ${t.install_date || '-'}<br>Arıza: ${t.problem_date || '-'}</p>
-                            <p class="col-span-2"><strong class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Açık Adres</strong>${admEscape(t.address) || 'Belirtilmedi'}</p>
-                        </div>
-                        <p class="text-slate-700 mb-4 border-l-4 border-red-400 pl-3 py-1 bg-red-50/50 rounded-r font-medium whitespace-pre-line">${admEscape(t.problem_desc)}</p>
-                        ${mediaButtons}
-                        ${!t.company_id ? `
-                        <div class="flex gap-2 mt-4 pt-3 border-t border-slate-100 items-center">
-                            <span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Havuzda</span>
-                            <select id="srassign_${t.id}" class="flex-1 border border-slate-300 p-2 rounded-lg text-xs">
-                                <option value="">Firmaya ata...</option>${companyOptions}
-                            </select>
-                            <button onclick="adminAssignService('${t.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg text-xs">Ata</button>
-                        </div>` : ''}
-                        <div class="flex gap-2 mt-3 items-center">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Durum</span>
-                            <select id="srstatus_${t.id}" class="border border-slate-300 p-2 rounded-lg text-xs">${srStatusOptions(t.status)}</select>
-                            <button onclick="updateServiceStatus('${t.id}','srstatus_${t.id}')" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-lg text-xs">Durumu Güncelle</button>
-                        </div>
-                        <div class="flex gap-2 mt-3">
-                            <input type="text" id="adm_resp_${t.id}" placeholder="Firmaya/Müşteriye yanıt..." value="${admEscape(t.admin_response)}" class="flex-1 p-3 border border-slate-300 rounded-lg text-sm outline-none shadow-inner">
-                            <button onclick="adminRespondTicket('${t.id}')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-6 rounded-lg text-sm transition shadow-lg">Yanıtı Kaydet</button>
-                        </div>
-                    </div>`;
+                _servisBiletleri[t.id] = t;
+                ticketsBox.innerHTML += servisBiletiKarti(t, companyOptions);
             });
         }
     }
@@ -1819,6 +1782,208 @@ function renderAdminStats() {
     if (c) { const m = (c.textContent || '').match(/\d+/); if (m) prospects = +m[0]; }
     setTxt('admStatProspects', prospects);
 }
+
+
+
+// ============================================================================
+// TEKNİK SERVİS BİLETİ — ekran kartı + tek sayfalık PDF
+// ----------------------------------------------------------------------------
+// ⚠️ Eskiden sorun açıklaması "bg-red-50/50" sınıfıyla basılıyordu. Koyu tema
+// index.html'de .bg-red-50'yi kapsıyor ama OPAKLIK EKLİ sürümü (/50) ayrı bir
+// sınıf adı ve kapsanmıyordu; bu yüzden koyu ekranda açık gri bir şerit olarak
+// görünüyordu. Artık yalnız temanın tanıdığı sınıflar kullanılıyor.
+//
+// Bilgi gövdesi (servisBiletiGovde) ekranda ve PDF'te AYNI: iki ayrı düzen
+// tutulsaydı biri güncellenip diğeri unutulurdu. Yönetim kontrolleri
+// (atama, durum, yanıt) gövdenin dışında; PDF'e girmiyorlar.
+// ============================================================================
+let _servisBiletleri = {};
+
+const SRV_DURUM = {
+    basvuru_iletildi: ['Başvuru İletildi', 'bg-amber-100 text-amber-800'],
+    inceleniyor:      ['İnceleniyor',      'bg-blue-100 text-blue-800'],
+    planlandi:        ['Planlandı',        'bg-indigo-100 text-indigo-800'],
+    tamamlandi:       ['Tamamlandı',       'bg-emerald-100 text-emerald-800']
+};
+const SRV_TUR = { ariza: 'Arıza / Teknik Servis', bakim: 'Periyodik Bakım',
+                  temizlik: 'Panel Temizliği', test: 'Test Kaydı' };
+
+function srvTarih(d) {
+    if (!d) return '—';
+    const t = new Date(d);
+    return isNaN(t) ? '—' : t.toLocaleDateString('tr-TR');
+}
+function srvSatir(etiket, deger, genis) {
+    return `<div class="${genis ? 'sm:col-span-2' : ''}">
+        <p class="text-[9px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">${etiket}</p>
+        <p class="text-slate-700 font-medium">${deger || '<span class="text-slate-400">Belirtilmedi</span>'}</p>
+    </div>`;
+}
+
+// Ekranda ve PDF'te kullanılan bilgi gövdesi.
+function servisBiletiGovde(t) {
+    const d = SRV_DURUM[t.status] || [t.status || '—', 'bg-slate-100 text-slate-700'];
+    const gorseller = [['img_system','Sistem'],['img_pano','Elektrik panosu'],
+                       ['img_ges','GES panosu'],['img_code','Arıza kodu']]
+        .filter(([k]) => t[k]).map(([, ad]) => ad);
+    const olusturma = t.created_at ? new Date(t.created_at).toLocaleString('tr-TR') : '—';
+
+    return `
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div class="flex items-start justify-between gap-3 flex-wrap p-5 border-b border-slate-200">
+            <div>
+                <p class="text-[10px] uppercase tracking-[.18em] text-slate-400 font-bold">Teknik Servis Bileti</p>
+                <p class="text-xl font-black text-slate-800 mt-0.5 font-mono">${admEscape(t.tracking_code)}</p>
+                <p class="text-[11px] text-slate-500 mt-1">Oluşturma: ${olusturma}</p>
+            </div>
+            <div class="text-right">
+                <span class="inline-block text-[10px] font-black px-3 py-1 rounded-full ${d[1]}">${d[0]}</span>
+                <p class="text-[11px] text-slate-500 mt-1.5">${SRV_TUR[t.request_type] || admEscape(t.request_type || '—')}</p>
+            </div>
+        </div>
+
+        <div class="p-5 space-y-5">
+            <section>
+                <p class="text-[10px] uppercase tracking-wider text-slate-500 font-black mb-2 pb-1 border-b border-slate-100">Talep Sahibi</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
+                    ${srvSatir('Ad Soyad', admEscape(t.full_name))}
+                    ${srvSatir('Telefon', t.phone ? `<a href="tel:${admEscape(t.phone)}" class="hover:underline">${admEscape(t.phone)}</a>` : '')}
+                    ${srvSatir('E-posta', t.email ? `<a href="mailto:${admEscape(t.email)}" class="hover:underline break-all">${admEscape(t.email)}</a>` : '')}
+                    ${srvSatir('Tesis Kodu', t.facility_code
+                        ? `<span class="font-mono">${admEscape(t.facility_code)}</span>` +
+                          (t.project_id ? ' <span class="text-emerald-600 font-bold">✓ tesis eşleşti</span>'
+                                        : ' <span class="text-amber-600">⚠ eşleşmedi</span>')
+                        : '')}
+                    ${srvSatir('Tesis Adresi', admEscape(t.address), true)}
+                </div>
+            </section>
+
+            <section>
+                <p class="text-[10px] uppercase tracking-wider text-slate-500 font-black mb-2 pb-1 border-b border-slate-100">Sistem Bilgileri</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
+                    ${srvSatir('İnverter', admEscape(t.inverter_model))}
+                    ${srvSatir('Batarya', admEscape(t.battery_model))}
+                    ${srvSatir('Kurulumu Yapan Firma', admEscape(t.installer_name))}
+                    ${srvSatir('Kurulum Tarihi', srvTarih(t.install_date))}
+                    ${srvSatir('Sorunun Başlangıcı', srvTarih(t.problem_date))}
+                    ${srvSatir('Atanan Firma', t.company_id
+                        ? '<span class="text-emerald-700 font-bold">Atandı</span>'
+                        : '<span class="text-amber-600 font-bold">Havuzda — atanmadı</span>')}
+                </div>
+            </section>
+
+            <section>
+                <p class="text-[10px] uppercase tracking-wider text-slate-500 font-black mb-2 pb-1 border-b border-slate-100">Bildirilen Sorun</p>
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-slate-700 leading-relaxed whitespace-pre-line">${admEscape(t.problem_desc) || '<span class="text-slate-400">Açıklama girilmemiş.</span>'}</div>
+            </section>
+
+            ${gorseller.length ? `
+            <section>
+                <p class="text-[10px] uppercase tracking-wider text-slate-500 font-black mb-2 pb-1 border-b border-slate-100">Ekli Görseller</p>
+                <p class="text-xs text-slate-600">${gorseller.length} görsel: ${gorseller.join(' · ')}
+                    <span class="text-slate-400">(panelden görüntülenir)</span></p>
+            </section>` : ''}
+
+            ${t.admin_response ? `
+            <section>
+                <p class="text-[10px] uppercase tracking-wider text-slate-500 font-black mb-2 pb-1 border-b border-slate-100">Yönetici Yanıtı</p>
+                <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-xs text-slate-700 leading-relaxed whitespace-pre-line">${admEscape(t.admin_response)}</div>
+            </section>` : ''}
+        </div>
+
+        <div class="px-5 py-3 border-t border-slate-200 text-[10px] text-slate-400 flex justify-between gap-3 flex-wrap">
+            <span>epcmerkezim · Teknik Servis Bileti</span>
+            <span>Belge tarihi: <span data-srv-basim>—</span></span>
+        </div>
+    </div>`;
+}
+
+// Ekran kartı = bilgi gövdesi + yönetim kontrolleri (PDF'e girmez).
+function servisBiletiKarti(t, companyOptions) {
+    const imgBtn = (path, label) => path
+        ? `<button onclick="openStorageImage('${window.epcAttrJs(path)}')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-[10px] font-bold">${label}</button>`
+        : '';
+    return `
+    <div class="mb-5" data-srv-kart="${t.id}">
+        <div data-srv-govde="${t.id}">${servisBiletiGovde(t)}</div>
+
+        <div class="mt-3 p-4 border border-slate-200 rounded-xl bg-white" data-pdf-gizle>
+            <div class="flex items-center justify-between gap-2 flex-wrap mb-3">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Yönetim</span>
+                <button onclick="adminServisBiletiPdf('${t.id}', this)"
+                    class="bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg">⬇ PDF indir</button>
+            </div>
+            <div class="flex gap-2 flex-wrap mb-3">
+                ${imgBtn(t.img_system, '📸 Sistem')}${imgBtn(t.img_pano, '⚡ Pano')}${imgBtn(t.img_ges, '☀️ GES Pano')}${imgBtn(t.img_code, '⚠️ Hata Kodu')}
+            </div>
+            ${!t.company_id ? `
+            <div class="flex gap-2 mb-3 items-center flex-wrap">
+                <span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Havuzda</span>
+                <select id="srassign_${t.id}" class="flex-1 min-w-[180px] border border-slate-300 p-2 rounded-lg text-xs">
+                    <option value="">Firmaya ata...</option>${companyOptions}
+                </select>
+                <button onclick="adminAssignService('${t.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg text-xs">Ata</button>
+            </div>` : ''}
+            <div class="flex gap-2 mb-3 items-center flex-wrap">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Durum</span>
+                <select id="srstatus_${t.id}" class="border border-slate-300 p-2 rounded-lg text-xs">${srStatusOptions(t.status)}</select>
+                <button onclick="updateServiceStatus('${t.id}','srstatus_${t.id}')" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-lg text-xs">Durumu Güncelle</button>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+                <input type="text" id="adm_resp_${t.id}" placeholder="Firmaya/Müşteriye yanıt..." value="${admEscape(t.admin_response)}" class="flex-1 min-w-[200px] border border-slate-300 p-2.5 rounded-lg text-sm">
+                <button onclick="adminRespondTicket('${t.id}')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-6 rounded-lg text-sm transition">Yanıtı Kaydet</button>
+            </div>
+        </div>
+    </div>`;
+}
+
+// Tek sayfalık PDF. Gövde ekrandakiyle aynı; yönetim kutusu dışarıda kalıyor.
+window.adminServisBiletiPdf = async function (id, btn) {
+    const t = _servisBiletleri[id];
+    if (!t) { alert('Bilet bulunamadı. Sayfayı yenileyip tekrar deneyin.'); return; }
+    const eskiMetin = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Hazırlanıyor...'; }
+    try {
+        await window.epcLoadPdf();
+    } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = eskiMetin; }
+        alert('PDF kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edin.');
+        return;
+    }
+    // Ekrandaki düğümü değil, TEMİZ bir kopyayı basıyoruz: ekran kartı koyu
+    // tema sınıfları taşıyor ve genişliği panele bağlı.
+    //
+    // ⚠️ KAPSAYICI NORMAL AKIŞTA OLMALI. İlk sürümde
+    // "position:fixed;left:-10000px" kullanılmıştı; html2canvas ekran dışına
+    // taşınmış öğeyi yakalayamıyor ve YÜKSEKLİĞİ 0 tuval üretiyordu. PDF
+    // sorunsuz "kaydedildi", 1 sayfaydı, A4'tü — ama BOMBOŞTU (3 KB).
+    // Ölçüldü: fixed/-10000px → 0px tuval, akış içi → 730px tuval.
+    // Bu yüzden sarmalayıcı gizliyor (height:0), basılan düğüm akışta kalıyor.
+    const sarmal = document.createElement('div');
+    sarmal.style.cssText = 'height:0;overflow:hidden';
+    const kap = document.createElement('div');
+    kap.style.cssText = 'width:820px;background:#fff;padding:24px';
+    kap.innerHTML = servisBiletiGovde(t);
+    const bt = kap.querySelector('[data-srv-basim]');
+    if (bt) bt.textContent = new Date().toLocaleString('tr-TR');
+    sarmal.appendChild(kap);
+    document.body.appendChild(sarmal);
+    try {
+        await window.epcTemasiz(() => html2pdf().set({
+            margin: 0.4,
+            filename: 'Servis-Bileti-' + (t.tracking_code || id) + '.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all'] }
+        }).from(kap).save());
+    } catch (e) {
+        alert('PDF oluşturulamadı: ' + (e.message || e));
+    } finally {
+        sarmal.remove();
+        if (btn) { btn.disabled = false; btn.textContent = eskiMetin; }
+    }
+};
 
 
 // ============================================================================
