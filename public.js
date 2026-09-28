@@ -266,44 +266,35 @@ document.getElementById('btnTrackQuery')?.addEventListener('click', async () => 
 // ============================================================================
 // ANA MENÜ BUTONLARI VE SAYFA GEÇİŞLERİ YÖNETİMİ
 // ============================================================================
-const menuMap = {
-    'btnGoEducation': 'educationModule',
-    'btnGoRegulations': 'regulationsModule',
-    'btnGoCRM': 'crmModule',
-    'btnGoCalculator': 'calculatorModule',
-    'btnGoSimulation': 'simulationModule',
-    'btnGoEVCalc': 'evCalcModule',
-    'btnGoTechSupport': 'techSupportModule'
-};
-
-for (const [btnId, modId] of Object.entries(menuMap)) {
-    const btn = document.getElementById(btnId);
-    if(btn) {
-        btn.addEventListener('click', () => {
-            window.openedFromPublic = false; // YENİ: Kullanıcının yönetim panelinden girdiğini belirttik
-            
-            document.getElementById('mainMenu').classList.add('hidden');
-            document.getElementById(modId).classList.remove('hidden');
-            
-            if(modId === 'simulationModule' && !window.isApp3DInitialized && typeof initApp3DScene === 'function') {
-                initApp3DScene(); window.isApp3DInitialized = true;
-            }
-            if(modId === 'evCalcModule' && typeof calculateEVSolar === 'function') calculateEVSolar();
-            if(modId === 'techSupportModule' && currentUserProfile) {
-                document.getElementById('tsName').value = `${currentUserProfile.first_name} ${currentUserProfile.last_name}`;
-                document.getElementById('tsPhone').value = currentUserProfile.phone;
-            }
-            if(modId === 'crmModule' && typeof crmLoadLeads === 'function') {
-                crmLoadLeads();
-            }
-        });
-    }
-}
+// ⚠️ BURADA ESKİDEN 7 DÜĞMELİK BİR menuMap VARDI ve ALTISI ÖLÜYDÜ:
+// btnGoEducation, btnGoRegulations, btnGoCalculator, btnGoSimulation,
+// btnGoEVCalc, btnGoTechSupport — hiçbirinin DOM'da karşılığı kalmamıştı,
+// bu yüzden if(btn) yüzünden dinleyici zaten bağlanmıyordu.
+//
+// Ölü dallar yalnız yer kaplamıyordu, YANILTIYORDU: içlerinde initApp3DScene
+// ve calculateEVSolar çağrıları vardı; ikisi de TEMBEL dosyada tanımlı ve bu
+// yol paketi BEKLEMİYORDU. Düğmelerden biri geri eklenseydi modül açılır,
+// içi boş kalırdı — sim3d.js hiçbir pakette değil, yalnız router.js'teki
+// openPublicModule onu indiriyor. techSupportModule ise hem düğmesi hem
+// modülü olmayan bir kalıntıydı (tsName/tsPhone alanları da yok).
+//
+// Ziyaretçi modülleri artık router.js'teki openPublicModule üzerinden
+// açılıyor; o yol sim3d.js'i ve ziyaretçi paketini AWAIT ile bekliyor.
+// Yeni modül eklerken buraya değil, router.js'teki EPC_MODULE_HASHES /
+// EPC_MODUL_GIRIS listelerine ekleyin.
+//
+// Geriye tek canlı düğme kaldı: panel menüsündeki CRM kartı.
+document.getElementById('btnGoCRM')?.addEventListener('click', () => {
+    window.openedFromPublic = false;               // panelden girildi
+    document.getElementById('mainMenu')?.classList.add('hidden');
+    document.getElementById('crmModule')?.classList.remove('hidden');
+    if (typeof crmLoadLeads === 'function') crmLoadLeads();
+});
 
 // Geri dön butonlarının id listesi
 const backButtons = [
     'btnBackFromCalc', 'btnBackFromSim', 'btnBackFromEV', 'btnBackFromEdu',
-    'btnBackToMenuFromSupport', 'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin',
+    'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin',
     'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt', 'btnBackToMenuFromReg'
 ];
 backButtons.forEach(id => { 
