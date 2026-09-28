@@ -1962,7 +1962,13 @@ window.adminServisBiletiPdf = async function (id, btn) {
     const sarmal = document.createElement('div');
     sarmal.style.cssText = 'height:0;overflow:hidden';
     const kap = document.createElement('div');
-    kap.style.cssText = 'width:820px;background:#fff;padding:24px';
+    // ⚠️ GENİŞLİK 717px, keyfi değil: A4 eni 8.27in, margin 0.4in → yazdırılabilir
+    // alan 7.47in = 717 CSS px. html2pdf öğeyi bu genişlikte basıyor ve daha
+    // geniş içeriği ÖLÇEKLEMİYOR, KIRPIYOR. 820 ve 794 denendi; ikisinde de
+    // kartın sağ dolgusu, durum rozeti ve künye kesiliyordu.
+    // Ölçüldü (sağ boşluk, CSS px): 794 → 0 ❌ · 717 → 24 ✅ · 700 → 41
+    // margin değeri değişirse bu sayı da değişmeli.
+    kap.style.cssText = 'width:717px;background:#fff;padding:24px';
     kap.innerHTML = servisBiletiGovde(t);
     const bt = kap.querySelector('[data-srv-basim]');
     if (bt) bt.textContent = new Date().toLocaleString('tr-TR');
@@ -1973,7 +1979,18 @@ window.adminServisBiletiPdf = async function (id, btn) {
             margin: 0.4,
             filename: 'Servis-Bileti-' + (t.tracking_code || id) + '.pdf',
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, backgroundColor: '#ffffff' },
+            // ⚠️ scrollX/scrollY: 0 ŞART. Verilmezse, uzun admin sayfası aşağı
+            // kaydırılmışken html2canvas öğeyi belge konumuna göre yakalıyor:
+            // PDF'in üstü kocaman boşluk oluyor, bilet en alta itiliyor. Dosya
+            // dolu görünüyor ama okunmuyor.
+            // Ölçüldü (sayfa 600px kaydırılmışken, içeriğin başladığı satır):
+            //   ayarsız        → 624  ❌
+            //   scrollX/Y: 0   →  24  ✅
+            //
+            // ⚠️ windowWidth/windowHeight EKLEMEYİN. Denendi; dikey sorunu
+            // çözüyor ama içeriği yatayda sıkıştırıyor: kartın 24px sağ dolgusu
+            // 7px'e iniyor, durum rozeti ve künye kırpılıyordu.
+            html2canvas: { scale: 2, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
             jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
             pagebreak: { mode: ['avoid-all'] }
         }).from(kap).save());
