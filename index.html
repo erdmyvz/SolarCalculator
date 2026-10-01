@@ -1580,7 +1580,17 @@
                 </button>
 
                 <!-- ÖNE ÇIKANLAR -->
-                <div class="grid grid-cols-1 md:grid-cols-2" style="gap:var(--s4);margin-bottom:var(--s4)">
+                <div class="grid grid-cols-1 md:grid-cols-3" style="gap:var(--s4);margin-bottom:var(--s4)">
+                    <button onclick="openPublicModule('tuketimUretimModule')" class="phi-card glass-panel ring-1 ring-amber-400/40 hover:-translate-y-2 transition text-left cursor-pointer group relative">
+                        <span class="absolute font-black tracking-wider bg-emerald-500/20 text-emerald-300" style="top:var(--s4);right:var(--s4);font-size:var(--fs-xs);padding:var(--s1) var(--s3);border-radius:999px">YENİ</span>
+                        <div class="phi-card-body">
+                            <div class="group-hover:scale-110 transition origin-left" style="font-size:var(--fs-2xl);line-height:1;margin-bottom:var(--s3)">⚡</div>
+                            <h3 class="font-black text-white" style="font-size:var(--fs-lg);letter-spacing:-.025em;margin-bottom:var(--s2)">Tüketim & Üretim Analizi</h3>
+                            <p class="text-slate-300" style="font-size:var(--fs-sm);line-height:1.6">Konumunuzdaki üretimi ve saat saat tüketiminizi çakıştırıp optimum panel, inverter ve kesinti bataryasını bulun.</p>
+                        </div>
+                        <span class="phi-card-cta inline-flex items-center gap-1 text-amber-300 font-black" style="font-size:var(--fs-sm)">Analize başla →</span>
+                    </button>
+
                     <button onclick="openPublicModule('simulationModule')" class="phi-card glass-panel ring-1 ring-emerald-400/40 hover:-translate-y-2 transition text-left cursor-pointer group relative">
                         <span class="absolute font-black tracking-wider bg-emerald-500/20 text-emerald-300" style="top:var(--s4);right:var(--s4);font-size:var(--fs-xs);padding:var(--s1) var(--s3);border-radius:999px">3B GÖRSELLEŞTİRME</span>
                         <div class="phi-card-body">
@@ -1815,6 +1825,7 @@
                                 <p class="footer-title">Araçlar</p>
                                 <a href="/fatura-analizi" onclick="openPublicModule('billAnalyzerModule'); return false" class="footer-link">Fatura Analizi</a>
                                 <a href="/hesaplayici" onclick="openPublicModule('calculatorModule');return false" class="footer-link">GES Hesaplayıcı</a>
+                                <a href="/tuketim-uretim" onclick="openPublicModule('tuketimUretimModule');return false" class="footer-link">Tüketim & Üretim Analizi</a>
                                 <a href="/kurulum-sureci" onclick="openPublicModule('regulationsModule');return false" class="footer-link">Kurulum Süreci</a>
                                 <a href="/danismanlar" onclick="openPublicModule('consultantsModule'); return false" class="footer-link">Danışmanlar</a>
                             </div>
@@ -2201,6 +2212,14 @@
                 <button id="btnBackFromBattery" class="text-slate-500 hover:text-slate-700 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
             </div>
             <div id="batteryRoot"></div>
+        </div>
+
+        <!-- TÜKETİM & ÜRETİM ANALİZİ — tuketim-uretim.js modül açılınca iner (router.js) -->
+        <div id="tuketimUretimModule" class="hidden modul-koyu bg-white p-4 md:p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-6xl mx-auto mt-4 animate-fade-in">
+            <div class="mb-2 flex justify-between items-center">
+                <button id="btnBackFromTuketimUretim" class="text-slate-500 hover:text-slate-700 font-bold flex items-center transition">← Ziyaretçi Sayfasına Dön</button>
+            </div>
+            <div id="tuketimUretimRoot"></div>
         </div>
 
         <div id="crmModule" class="hidden tema-koyu w-full max-w-7xl mx-auto mt-4 animate-fade-in">

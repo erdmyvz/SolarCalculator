@@ -294,6 +294,7 @@ document.getElementById('btnGoCRM')?.addEventListener('click', () => {
 // Geri dön butonlarının id listesi
 const backButtons = [
     'btnBackFromCalc', 'btnBackFromSim', 'btnBackFromEV', 'btnBackFromEdu',
+    'btnBackFromTuketimUretim',
     'btnBackToMenuFromSales', 'btnBackToMenuFromAdmin',
     'btnBackToMenuFromCRM', 'btnBackToMenuFromCompanyMgmt', 'btnBackToMenuFromReg'
 ];

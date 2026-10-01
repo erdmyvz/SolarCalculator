@@ -323,7 +323,8 @@ const EPC_MODULE_HASHES = {
     hardwareModule:     '#donanim',
     consultantsModule:  '#danismanlar',
     supplierDirModule:  '#tedarikci-rehberi',
-    aboutModule:        '#hakkimda'
+    aboutModule:        '#hakkimda',
+    tuketimUretimModule: '#tuketim-uretim'
 };
 // Ters harita: hash → modül
 const EPC_HASH_MODULES = Object.fromEntries(
@@ -348,6 +349,7 @@ const EPC_YASAL_HASHLER = new Set([
 const EPC_PATH_VIEWS = {
     '/fatura-analizi':      { module: 'billAnalyzerModule', init: 'openBillAnalyzer' },
     '/hesaplayici':         { module: 'calculatorModule' },
+    '/tuketim-uretim':      { module: 'tuketimUretimModule' },
     '/akademi':             { module: 'educationModule' },
     '/kurulum-sureci':      { module: 'regulationsModule' },
     '/danismanlar':         { module: 'consultantsModule', init: 'renderConsultantsList' },
@@ -424,6 +426,12 @@ window.epcTumModulleriGizle = epcTumModulleriGizle;
 // betikler tembel yüklendiği için o kontrol ilk tıklamada false dönerdi ve
 // modül BOŞ açılırdı — hata da vermeden. Giriş çağrısı artık yüklemeyi
 // bekleyen tek yerde.
+// Ziyaretçi paketinde OLMAYAN, kendi dosyası modül açılınca inen modüller.
+const EPC_AYRI_BETIK = {
+    simulationModule:    '/sim3d.js',
+    tuketimUretimModule: '/tuketim-uretim.js'
+};
+
 const EPC_MODUL_GIRIS = {
     billAnalyzerModule: 'openBillAnalyzer',
     consultantsModule:  'renderConsultantsList',
@@ -465,8 +473,12 @@ window.openPublicModule = function(moduleId, _adrestenGeldi) {
     // tıklamayı cevapsız bırakırdı.
     (async () => {
         try {
-            // sim3d.js paketin dışında: 93 KB ve en az açılan modül.
-            if (moduleId === 'simulationModule') await window.epcLoadScript('/sim3d.js');
+            // Paketin dışında tutulan büyük modüller: yalnız açılınca iner.
+            //   sim3d.js          93 KB, en az açılan modül
+            //   tuketim-uretim.js 131 KB (sıkıştırılmış 42 KB) — 81 ilin aylık
+            //                     PVGIS verisi + saatlik simülasyon motoru
+            const _ayriBetik = EPC_AYRI_BETIK[moduleId];
+            if (_ayriBetik) await window.epcLoadScript(_ayriBetik);
             await window.epcLoadZiyaretci();
         } catch (e) {
             const kok = document.getElementById(moduleId);

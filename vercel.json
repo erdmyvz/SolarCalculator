@@ -109,6 +109,10 @@
       "destination": "/"
     },
     {
+      "source": "/tuketim-uretim",
+      "destination": "/"
+    },
+    {
       "source": "/akademi",
       "destination": "/"
     },
