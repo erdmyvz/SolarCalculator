@@ -312,10 +312,12 @@
     // ⚠️ SAAT DİLİMİ: Türkiye yıl boyu UTC+3 (standart boylam 45°D). İstanbul'da
     // güneş öğlesi 13:00 civarı, Van'da 12:00 civarı. Bu kayma tüketimle
     // çakışmayı (öz tüketimi) doğrudan etkiliyor, o yüzden hesaba katılıyor.
-    const _sekilOnbellek = {};
+    let _sekilOnbellek = {}, _sekilSayisi = 0;
     function gunesSekli(lat, lon, egim, az) {
         const anahtar = [lat, lon, egim, az].join('|');
         if (_sekilOnbellek[anahtar]) return _sekilOnbellek[anahtar];
+        // Pusula sürüklenirken her açı ayrı anahtar üretiyor; sınırsız büyümesin.
+        if (++_sekilSayisi > 300) { _sekilOnbellek = {}; _sekilSayisi = 1; }
         const R = Math.PI / 180, phi = lat * R, beta = egim * R, gam = az * R;
         const sonuc = [];
         for (let m = 0; m < 12; m++) {
@@ -760,19 +762,33 @@
         };
     }
 
+    // Yön/eğimin optimuma oranı (yıllık, ilin aylık üretimiyle ağırlıklı).
+    // Pusula ve eğim göstergesi sürüklenirken HER KAREDE çağrılıyor; bu yüzden
+    // saatlik şekil hesaplamıyor, yalnız aylık katsayıları topluyor.
+    function yonOrani(il, egim, yuzeyler) {
+        const em = (TU_IL[il] || TU_IL['Ankara'])[8];
+        let pay = 0, top = 0;
+        const f = new Array(12).fill(0);
+        yuzeyler.forEach(y => { const k = yonKatsayi(egim, y.az); for (let m = 0; m < 12; m++) f[m] += k[m] * y.pay; });
+        for (let m = 0; m < 12; m++) { pay += em[m] * f[m]; top += em[m]; }
+        return top > 0 ? pay / top : 0;
+    }
+
     const motor = { TU_IL, AY_AD, AY_GUN, SISTEM_KAYIP, GOLGE, YASAM, PENCERE_AD, TARIFE_AD,
-                    yonKatsayi, gunesSekli, uretim, tuketim, simule, faturaEtkisi, yedek,
-                    inverterSec, tarifeSec, analiz, cihazYillik };
+                    yonKatsayi, yonOrani, gunesSekli, uretim, tuketim, simule, faturaEtkisi, yedek,
+                    inverterSec, tarifeSec, analiz, cihazYillik, yasamProfili, MEVSIM_DESEN };
     if (typeof window !== 'undefined') window.epcTuMotor = motor;
     if (typeof module !== 'undefined' && module.exports) module.exports = motor;
 
     // ============================================================================
     //  ARAYÜZ
+    //  Görsel ağırlıklı: pusula, eğim kesiti, çatı alanı ızgarası, cihaz
+    //  kartları, batarya modülleri ve canlı sonuç çubuğu. Her seçim sonucu
+    //  anında değiştirir; animasyonlar "hareketi azalt" tercihinde kapanır.
     // ============================================================================
     if (typeof document === 'undefined') return;
     const root = document.getElementById('tuketimUretimRoot');
     if (!root) return;
-
     // Geri düğmesi public.js'teki ortak listede bağlı (backButtons). Burada
     // ikinci kez bağlanırsa closeAllAndShowMenu iki kez çalışır: ilki vitrine
     // döner, ikincisi yönetim menüsünü açar.
@@ -789,78 +805,204 @@
     // Grafik renkleri — dataviz doğrulayıcısından geçti (koyu yüzey #1b2e46,
     // bitişik çiftlerde renk körlüğü ΔE ≥ 8,4, kontrast ≥ 3:1). Metin hiçbir
     // zaman seri renginde yazılmıyor; kimliği yanındaki işaret taşıyor.
+    // Enerji akışında: güneş (sarı) · batarya (su yeşili) · şebeke (mor).
     const RENK = { uretim: '#c98500', tuketim: '#3987e5', batarya: '#199e70', kayip: '#d95926',
-                   izgara: 'rgba(255,255,255,0.08)', eksen: '#A3B5CA', yuzey: '#1b2e46' };
+                   sebeke: '#9085e9', izgara: 'rgba(255,255,255,0.08)', eksen: '#A3B5CA', yuzey: '#1b2e46' };
 
-    // --- HAZIR LİSTELER -----------------------------------------------------------
+    // --- HAREKET -------------------------------------------------------------------
+    // "Hareketi azalt" açıksa yaylar anında hedefe oturur, giriş animasyonları
+    // kapanır. Bilgi kaybolmaz; yalnız hareket kalkar.
+    const azHareket = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
+
+    // Yay: değeri hedefe fiziksel bir yayla taşır. Sabit süreli geçiş yerine
+    // yay, çünkü yarıda yeni hedef gelirse (kullanıcı hızlıca başka yöne
+    // tıklarsa) hareket o anki konumundan ve hızından devam eder, sıçramaz.
+    // tepki: hedefe varış hızı (sn), sonum: 1 = taşmasız, <1 = hafif salınım.
+    function Yay(deger, cb, tepki, sonum) {
+        const T = tepki || 0.4, z = sonum == null ? 1 : sonum;
+        const k = Math.pow(2 * Math.PI / T, 2), c = 4 * Math.PI * z / T;
+        let x = deger, v = 0, hedef = deger, raf = 0, son = 0;
+        const adim = (t) => {
+            const dt = Math.min(0.032, (t - son) / 1000 || 0.016); son = t;
+            v += (-k * (x - hedef) - c * v) * dt; x += v * dt;
+            if (Math.abs(x - hedef) < 0.01 && Math.abs(v) < 0.05) { x = hedef; v = 0; raf = 0; cb(x); return; }
+            cb(x); raf = requestAnimationFrame(adim);
+        };
+        return {
+            hedefle(h) {
+                hedef = h;
+                if (azHareket) { x = h; v = 0; cb(x); return; }
+                if (!raf) { son = performance.now(); raf = requestAnimationFrame(adim); }
+            },
+            ayarla(h) { if (raf) cancelAnimationFrame(raf); raf = 0; x = hedef = h; v = 0; cb(x); },  // 1:1 sürükleme
+            get deger() { return x; }
+        };
+    }
+    // Sayı göstergeleri: yeni değere yayla sayarak gider (taşmasız).
+    const _sayiYay = new WeakMap();
+    function sayiYaz(el, hedef, bicim) {
+        if (!el) return;
+        if (!(isFinite(hedef))) { el.textContent = '—'; _sayiYay.delete(el); return; }
+        let y = _sayiYay.get(el);
+        if (!y) {
+            const bas = Number(el.dataset.sayi);
+            y = Yay(isFinite(bas) ? bas : hedef, (x) => { el.textContent = y.bicim(x); }, 0.45, 1);
+            _sayiYay.set(el, y);
+        }
+        y.bicim = bicim;
+        el.dataset.sayi = hedef;
+        y.hedefle(hedef);
+    }
+
+    // --- STİL ----------------------------------------------------------------------
+    // Modüle özgü görsel bileşenler. Seçiciler #tuketimUretimRoot ile başlıyor:
+    // index.html'deki koyu tema kuralları (body .modul-koyu input …) daha
+    // özgül olduğu için kimlik seçicisi olmadan kaydırıcı ve büyük giriş
+    // stilleri eziliyordu.
+    if (!document.getElementById('tuStil')) {
+        const st = document.createElement('style');
+        st.id = 'tuStil';
+        st.textContent = `
+#tuketimUretimRoot{--tu-altin:#FBBF24;--tu-metin:#E8EEF7;--tu-ikincil:#B6C4D7;--tu-soluk:#A3B5CA}
+#tuketimUretimRoot .tu-secim{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);border-radius:14px;padding:12px 14px;cursor:pointer;color:var(--tu-metin);transition:border-color .2s,background-color .2s,box-shadow .2s,transform .1s ease-out;-webkit-tap-highlight-color:transparent}
+#tuketimUretimRoot .tu-secim:hover{border-color:rgba(251,191,36,.35)}
+#tuketimUretimRoot .tu-secim:active{transform:scale(.97)}
+#tuketimUretimRoot .tu-secim[aria-pressed="true"]{border-color:var(--tu-altin);background:rgba(251,191,36,.10);box-shadow:inset 0 0 0 1px var(--tu-altin),0 12px 30px -20px rgba(245,158,11,.8)}
+#tuketimUretimRoot .tu-secim .tu-tik{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--tu-altin);color:#0B1B2E;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;transform:scale(0);opacity:0;transition:transform .2s ease-out,opacity .2s}
+#tuketimUretimRoot .tu-secim[aria-pressed="true"] .tu-tik{transform:scale(1);opacity:1}
+#tuketimUretimRoot .tu-secim .tu-ikon{font-size:22px;line-height:1}
+#tuketimUretimRoot .tu-secim .tu-baslik{font-size:13px;font-weight:800;line-height:1.25}
+#tuketimUretimRoot .tu-secim .tu-alt{font-size:11px;color:var(--tu-soluk);line-height:1.3}
+#tuketimUretimRoot .tu-seg{position:relative;display:inline-flex;padding:4px;border-radius:12px;background:rgba(255,255,255,.06);max-width:100%;overflow-x:auto}
+#tuketimUretimRoot .tu-seg button{position:relative;z-index:1;padding:8px 14px;font-weight:800;font-size:13px;color:var(--tu-ikincil);border-radius:9px;white-space:nowrap;transition:color .2s}
+#tuketimUretimRoot .tu-seg button[aria-pressed="true"]{color:#0B1B2E}
+#tuketimUretimRoot .tu-seg .tu-seg-zemin{position:absolute;top:4px;bottom:4px;left:4px;width:0;border-radius:9px;background:linear-gradient(100deg,#F59E0B,#FBBF24);transition:left .35s cubic-bezier(.2,.8,.2,1),width .35s cubic-bezier(.2,.8,.2,1)}
+#tuketimUretimRoot input.tu-kaydir[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:6px;padding:0;border:0;border-radius:999px;background:linear-gradient(90deg,#FBBF24 var(--dolu,0%),rgba(255,255,255,.14) var(--dolu,0%));outline:none;cursor:pointer;touch-action:pan-y}
+#tuketimUretimRoot input.tu-kaydir[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid #F59E0B;box-shadow:0 4px 12px rgba(0,0,0,.45);transition:transform .1s ease-out}
+#tuketimUretimRoot input.tu-kaydir[type="range"]:active::-webkit-slider-thumb{transform:scale(1.15)}
+#tuketimUretimRoot input.tu-kaydir[type="range"]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid #F59E0B;box-shadow:0 4px 12px rgba(0,0,0,.45)}
+#tuketimUretimRoot input.tu-kaydir[type="range"]:focus-visible{box-shadow:0 0 0 3px rgba(251,191,36,.45)}
+#tuketimUretimRoot .tu-buyuk{font-size:26px;font-weight:800;padding:10px 14px;border-radius:12px;width:100%;letter-spacing:-.01em}
+#tuketimUretimRoot .tu-neden{font-size:12px;line-height:1.5;color:var(--tu-soluk);margin-top:6px}
+#tuketimUretimRoot .tu-neden b{color:var(--tu-ikincil)}
+#tuketimUretimRoot .tu-etiket{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--tu-soluk);font-weight:800;margin-bottom:8px}
+#tuketimUretimRoot .tu-pusula,#tuketimUretimRoot .tu-kesit{width:100%;height:auto;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
+#tuketimUretimRoot .tu-pusula .tu-nokta{cursor:pointer}
+#tuketimUretimRoot .tu-pusula .tu-nokta circle{transition:r .2s ease-out,fill .2s}
+#tuketimUretimRoot .tu-pusula:active{cursor:grabbing}
+#tuketimUretimRoot .tu-oku{font-variant-numeric:tabular-nums}
+#tuketimUretimRoot .tu-panel-izgara{display:flex;flex-wrap:wrap;gap:3px}
+#tuketimUretimRoot .tu-panel-izgara i{display:block;width:12px;height:18px;border-radius:2px;background:linear-gradient(160deg,#4f7cc4,#1e3a6b);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+#tuketimUretimRoot .tu-pop{animation:tuPop .32s ease-out both}
+#tuketimUretimRoot .tu-yuksel{transform-box:fill-box;transform-origin:50% 100%;animation:tuYuksel .5s cubic-bezier(.2,.8,.2,1) both}
+#tuketimUretimRoot .tu-belir{animation:tuBelir .35s ease-out both}
+#tuketimUretimRoot .tu-parla{animation:tuParla .6s ease-out}
+#tuketimUretimRoot .tu-modul{position:relative;width:34px;height:52px;border-radius:6px;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.05);overflow:hidden}
+#tuketimUretimRoot .tu-modul:before{content:"";position:absolute;top:-6px;left:10px;width:10px;height:4px;border-radius:2px 2px 0 0;background:rgba(255,255,255,.35)}
+#tuketimUretimRoot .tu-modul i{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(0deg,#199e70,#34d399);transition:height .5s cubic-bezier(.2,.8,.2,1)}
+#tuketimUretimRoot .tu-cubuk{position:sticky;bottom:12px;z-index:30}
+#tuketimUretimRoot .tu-cubuk-ic{background:rgba(9,22,38,.86);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(251,191,36,.28);border-radius:16px;box-shadow:0 18px 40px -18px rgba(0,0,0,.9);padding:10px 12px}
+#tuketimUretimRoot .tu-akis{display:flex;height:14px;border-radius:999px;overflow:hidden;gap:2px;background:transparent}
+#tuketimUretimRoot .tu-akis span{display:block;height:100%;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+#tuketimUretimRoot details.tu-acilir>summary{list-style:none;cursor:pointer}
+#tuketimUretimRoot details.tu-acilir>summary::-webkit-details-marker{display:none}
+#tuketimUretimRoot details.tu-acilir>summary .tu-ok{display:inline-block;transition:transform .25s ease-out}
+#tuketimUretimRoot details.tu-acilir[open]>summary .tu-ok{transform:rotate(90deg)}
+@keyframes tuPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@keyframes tuYuksel{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes tuBelir{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes tuParla{0%{color:#FDE68A;text-shadow:0 0 18px rgba(251,191,36,.7)}100%{text-shadow:none}}
+@media (prefers-reduced-motion: reduce){
+  #tuketimUretimRoot .tu-pop,#tuketimUretimRoot .tu-yuksel,#tuketimUretimRoot .tu-belir,#tuketimUretimRoot .tu-parla{animation:none}
+  #tuketimUretimRoot *{transition-duration:0s !important}
+}
+@media (prefers-reduced-transparency: reduce){
+  #tuketimUretimRoot .tu-cubuk-ic{background:#0B1B2E;backdrop-filter:none;-webkit-backdrop-filter:none}
+}`;
+        document.head.appendChild(st);
+    }
+
+    // --- HAZIR LİSTELER -------------------------------------------------------------
     // Saat/gün = cihazın TAM GÜÇTE çalıştığı süre (buzdolabı kompresörü
     // günde ~8 saat çalışır; 24 yazılırsa tüketim 3 kat çıkar).
     const CIHAZ_HAZIR = [
-        ['Buzdolabı', 1, 120, 8, 'gunboyu', 'tum'],
-        ['Aydınlatma (LED, toplam)', 1, 120, 5, 'aksam', 'tum'],
-        ['Televizyon', 1, 100, 5, 'aksam', 'tum'],
-        ['Modem / internet', 1, 15, 24, 'gunboyu', 'tum'],
-        ['Çamaşır makinesi', 1, 1000, 0.7, 'gunduz', 'tum'],
-        ['Bulaşık makinesi', 1, 1100, 0.8, 'aksam', 'tum'],
-        ['Elektrikli fırın', 1, 2000, 0.4, 'aksam', 'tum'],
-        ['Kettle / su ısıtıcı', 1, 2000, 0.2, 'sabah', 'tum'],
-        ['Bilgisayar / laptop', 1, 80, 4, 'aksam', 'tum'],
-        ['Ütü', 1, 2000, 0.15, 'aksam', 'tum'],
-        ['Elektrikli süpürge', 1, 1400, 0.2, 'gunduz', 'tum'],
-        ['Klima', 0, 1200, 6, 'gunduz', 'yaz'],
-        ['Elektrikli termosifon', 0, 2500, 1.5, 'sabah', 'tum'],
-        ['Isı pompası / elektrikli ısıtıcı', 0, 2000, 6, 'aksam', 'kis'],
-        ['Kurutma makinesi', 0, 2500, 0.6, 'aksam', 'tum'],
-        ['Elektrikli ocak / indüksiyon', 0, 2000, 0.8, 'aksam', 'tum'],
-        ['Hidrofor', 0, 750, 1, 'gunduz', 'tum'],
-        ['Derin dondurucu', 0, 100, 8, 'gunboyu', 'tum']
-    ].map(([ad, adet, w, saat, zaman, mevsim]) => ({ ad, adet, w, saat, zaman, mevsim }));
+        ['🧊', 'Buzdolabı', 1, 120, 8, 'gunboyu', 'tum'],
+        ['💡', 'Aydınlatma (LED, toplam)', 1, 120, 5, 'aksam', 'tum'],
+        ['📺', 'Televizyon', 1, 100, 5, 'aksam', 'tum'],
+        ['📶', 'Modem / internet', 1, 15, 24, 'gunboyu', 'tum'],
+        ['🧺', 'Çamaşır makinesi', 1, 1000, 0.7, 'gunduz', 'tum'],
+        ['🍽️', 'Bulaşık makinesi', 1, 1100, 0.8, 'aksam', 'tum'],
+        ['♨️', 'Elektrikli fırın', 1, 2000, 0.4, 'aksam', 'tum'],
+        ['☕', 'Kettle / su ısıtıcı', 1, 2000, 0.2, 'sabah', 'tum'],
+        ['💻', 'Bilgisayar / laptop', 1, 80, 4, 'aksam', 'tum'],
+        ['👔', 'Ütü', 1, 2000, 0.15, 'aksam', 'tum'],
+        ['🧹', 'Elektrikli süpürge', 1, 1400, 0.2, 'gunduz', 'tum'],
+        ['❄️', 'Klima', 0, 1200, 6, 'gunduz', 'yaz'],
+        ['🚿', 'Elektrikli termosifon', 0, 2500, 1.5, 'sabah', 'tum'],
+        ['🌡️', 'Isı pompası / elektrikli ısıtıcı', 0, 2000, 6, 'aksam', 'kis'],
+        ['🌀', 'Kurutma makinesi', 0, 2500, 0.6, 'aksam', 'tum'],
+        ['🍳', 'Elektrikli ocak / indüksiyon', 0, 2000, 0.8, 'aksam', 'tum'],
+        ['💧', 'Hidrofor', 0, 750, 1, 'gunduz', 'tum'],
+        ['🥶', 'Derin dondurucu', 0, 100, 8, 'gunboyu', 'tum']
+    ].map(([ikon, ad, adet, w, saat, zaman, mevsim]) => ({ ikon, ad, adet, w, saat, zaman, mevsim }));
 
     // Kesintide çalışacak yükler. Oran = kesinti boyunca ortalama çalışma
     // yüzdesi (buzdolabı kompresörü zamanın ~%40'ında çalışır). Motorlu
     // yükler kalkışta çalışma gücünün ~3 katını çeker; inverter buna göre seçilir.
     const KRITIK_HAZIR = [
-        ['Buzdolabı', true, 1, 150, 40, true],
-        ['Aydınlatma (LED)', true, 1, 60, 100, false],
-        ['Modem / internet', true, 1, 15, 100, false],
-        ['Kombi (doğalgaz) elektroniği ve pompası', true, 1, 120, 50, true],
-        ['Televizyon', true, 1, 100, 100, false],
-        ['Telefon / laptop şarjı', true, 1, 60, 50, false],
-        ['Derin dondurucu', false, 1, 100, 40, true],
-        ['Hidrofor', false, 1, 750, 15, true],
-        ['Güvenlik kamerası / alarm', false, 1, 25, 100, false],
-        ['Klima', false, 1, 1200, 70, true],
-        ['Medikal cihaz (ör. oksijen konsantratörü)', false, 1, 350, 100, true],
-        ['Garaj / bahçe kapısı motoru', false, 1, 400, 5, true]
-    ].map(([ad, secili, adet, w, oran, motor]) => ({ ad, secili, adet, w, oran, motor }));
+        ['🧊', 'Buzdolabı', true, 1, 150, 40, true],
+        ['💡', 'Aydınlatma (LED)', true, 1, 60, 100, false],
+        ['📶', 'Modem / internet', true, 1, 15, 100, false],
+        ['🔥', 'Kombi elektroniği ve pompası', true, 1, 120, 50, true],
+        ['📺', 'Televizyon', true, 1, 100, 100, false],
+        ['🔌', 'Telefon / laptop şarjı', true, 1, 60, 50, false],
+        ['🥶', 'Derin dondurucu', false, 1, 100, 40, true],
+        ['💧', 'Hidrofor', false, 1, 750, 15, true],
+        ['📹', 'Kamera / alarm', false, 1, 25, 100, false],
+        ['❄️', 'Klima', false, 1, 1200, 70, true],
+        ['🩺', 'Medikal cihaz', false, 1, 350, 100, true],
+        ['🚪', 'Garaj kapısı motoru', false, 1, 400, 5, true]
+    ].map(([ikon, ad, secili, adet, w, oran, motor]) => ({ ikon, ad, secili, adet, w, oran, motor }));
+    const IKON_TAHMIN = (ad) => { const h = [...CIHAZ_HAZIR, ...KRITIK_HAZIR].find(x => x.ad === ad || ad.indexOf(x.ad.split(' ')[0]) === 0); return h ? h.ikon : '🔌'; };
 
-    const YONLER = [
-        { k: 'G', ad: 'Güney', az: 0 }, { k: 'GD', ad: 'Güneydoğu', az: -45 }, { k: 'GB', ad: 'Güneybatı', az: 45 },
-        { k: 'D', ad: 'Doğu', az: -90 }, { k: 'B', ad: 'Batı', az: 90 },
-        { k: 'DB', ad: 'Doğu + Batı (iki yüzey)', iki: true }, { k: 'K', ad: 'Kuzey', az: 180 },
-        { k: 'OPT', ad: 'Sehpa / arazi (optimum)', opt: true }
-    ];
-    const EGIM_SECENEK = [0, 10, 20, 30, 40];
+    // Pusula: 8 ana yön (azimut: 0 güney, −90 doğu, +90 batı — PVGIS kuralı)
+    const YON8 = [[0, 'Güney'], [45, 'Güneybatı'], [90, 'Batı'], [135, 'Kuzeybatı'], [180, 'Kuzey'], [-135, 'Kuzeydoğu'], [-90, 'Doğu'], [-45, 'Güneydoğu']];
+    const yonAdi = (az) => { let en = YON8[0], f = 999; YON8.forEach(y => { let d = Math.abs(((az - y[0]) % 360 + 540) % 360 - 180); if (d < f) { f = d; en = y; } }); return en[1]; };
 
-    // --- DURUM ----------------------------------------------------------------------
+    // --- DURUM ------------------------------------------------------------------------
     const kopya = (x) => JSON.parse(JSON.stringify(x));
     const VARSAYILAN = {
         il: '', gpsLat: null, gpsLon: null,
-        yon: 'G', egim: 30, uzman: false, azU: 0, egimU: 30,
-        golge: 'yok', alan: '',
-        tmod: 'fatura', aylikOrt: '', ayAy: false, aylar: new Array(12).fill(''),
-        desen: 'dengeli', yasam: 'calisan', cihazlar: kopya(CIHAZ_HAZIR), faturaEsas: true,
-        grup: 'mesken', sozlesme: '', evKm: '', evZaman: 'gece',
-        hedef: 'yedek', yukler: kopya(KRITIK_HAZIR), saat: 4, pasifAcik: false,
+        yonMod: 'tek', az: 0, egim: 30,       // yonMod: tek | db (doğu+batı) | opt (sehpa/arazi)
+        golge: 'yok', alan: 0,
+        tmod: 'fatura', birim: 'tl', faturaDeger: '', ayAy: false, aylar: new Array(12).fill(''),
+        desen: 'dengeli', yasam: 'calisan', cihazlar: kopya(CIHAZ_HAZIR), faturaEsas: true, pasifAcik: false,
+        grup: 'mesken', sozlesme: '', evVar: false, evKm: 15000, evZaman: 'gece',
+        hedef: 'yedek', yukler: kopya(KRITIK_HAZIR), saat: 4,
         mahsup: 'aylik', kayiplar: {}, batVerim: 92, tarifeTl: '', satisTl: '',
         gunAy: 5
     };
-    const SAKLA = 'epcTuGirdi.v1';
+    const SAKLA = 'epcTuGirdi.v2';
     let D = kopya(VARSAYILAN);
     // Kullanıcının girdileri bu tarayıcıda hatırlanıyor (yalnız kolaylık;
-    // depolama kapalıysa sessizce varsayılanla açılır).
+    // depolama kapalıysa sessizce varsayılanla açılır). v1 kaydı varsa yeni
+    // modele taşınıyor: yön çipleri → azimut, aylık kWh → fatura değeri.
     try {
-        const k = JSON.parse(localStorage.getItem(SAKLA) || 'null');
+        let k = JSON.parse(localStorage.getItem(SAKLA) || 'null');
+        if (!k) {
+            const e = JSON.parse(localStorage.getItem('epcTuGirdi.v1') || 'null');
+            if (e && typeof e === 'object') {
+                const YON_ESKI = { G: 0, GD: -45, GB: 45, D: -90, B: 90, K: 180 };
+                k = Object.assign({}, e);
+                if (e.uzman) { k.yonMod = 'tek'; k.az = Number(e.azU) || 0; k.egim = Number(e.egimU) || 0; }
+                else if (e.yon === 'DB') k.yonMod = 'db';
+                else if (e.yon === 'OPT') k.yonMod = 'opt';
+                else { k.yonMod = 'tek'; k.az = YON_ESKI[e.yon] != null ? YON_ESKI[e.yon] : 0; }
+                if (Number(e.aylikOrt) > 0) { k.birim = 'kwh'; k.faturaDeger = e.aylikOrt; }
+                if (Number(e.evKm) > 0) { k.evVar = true; k.evKm = Number(e.evKm); }
+                k.alan = Number(e.alan) || 0;
+            }
+        }
         if (k && typeof k === 'object') {
             Object.keys(VARSAYILAN).forEach(a => {
                 if (k[a] === undefined) return;
@@ -869,46 +1011,72 @@
             });
             if (!Array.isArray(D.aylar) || D.aylar.length !== 12) D.aylar = new Array(12).fill('');
             if (D.il && !TU_IL[D.il]) D.il = '';
+            // Eski kayıtta km boş olabiliyordu: kart açılınca "0 km" görünüyordu
+            if (!(Number(D.evKm) >= 5000 && Number(D.evKm) <= 40000)) D.evKm = VARSAYILAN.evKm;
+            if (!(Number(D.saat) >= 1)) D.saat = VARSAYILAN.saat;
+            if (!(Number(D.alan) >= 0)) D.alan = 0;
+            D.cihazlar.forEach(c => { if (!c.ikon) c.ikon = IKON_TAHMIN(c.ad || ''); });
+            D.yukler.forEach(y => { if (!y.ikon) y.ikon = IKON_TAHMIN(y.ad || ''); });
         }
     } catch (e) { /* özel pencere / kapalı depolama */ }
     function sakla() { try { localStorage.setItem(SAKLA, JSON.stringify(D)); } catch (e) { } }
 
     // --- GİRDİ → MOTOR ---------------------------------------------------------------
+    const yuzeyler = () => D.yonMod === 'db' ? [{ az: -90, pay: 0.5 }, { az: 90, pay: 0.5 }] : [{ az: Number(D.az) || 0, pay: 1 }];
     function konumGirdisi() {
-        const o = { il: D.il, golge: motor.GOLGE[D.golge] || 0, kayiplar: D.kayiplar,
-                    lat: D.gpsLat, lon: D.gpsLon };
-        if (D.uzman) { o.egim = Number(D.egimU) || 0; o.az = Number(D.azU) || 0; return o; }
-        const y = YONLER.find(x => x.k === D.yon) || YONLER[0];
-        if (y.opt) { o.egim = 'opt'; o.az = 'opt'; return o; }
-        o.egim = Number(D.egim) || 0;
-        if (y.iki) o.yuzeyler = [{ az: -90, pay: 0.5 }, { az: 90, pay: 0.5 }];
-        else o.az = y.az;
+        const o = { il: D.il, golge: motor.GOLGE[D.golge] || 0, kayiplar: D.kayiplar, lat: D.gpsLat, lon: D.gpsLon };
+        if (D.yonMod === 'opt') { o.egim = 'opt'; o.az = 'opt'; return o; }
+        o.egim = Math.round(Number(D.egim) || 0);
+        if (D.yonMod === 'db') o.yuzeyler = yuzeyler();
+        else o.az = Math.round(Number(D.az) || 0);
         return o;
+    }
+    // Fatura: ₺ girildiyse kWh'ye çevrilir. Mesken iki kademeli (günde 8 kWh):
+    // önce üst kademeyle hesaplanır; sonuç alt kademeye düşüyorsa alt
+    // kademenin fiyatıyla yeniden hesaplanır.
+    function aylikKwh() {
+        const v = Number(D.faturaDeger);
+        if (!(v > 0)) return 0;
+        if (D.birim !== 'tl') return v;
+        const t = (k) => (window.epcTarife ? window.epcTarife(k) : 5.32);
+        if (D.grup === 'ticarethane') { const u = v / t('tariffTicarethaneUst'); return u / 30 > 30 ? u : v / t('tariffTicarethane'); }
+        if (D.grup === 'sanayi') return v / t('tariffSanayi');
+        if (D.grup === 'tarimsal') return v / t('tariffTarimsal');
+        const ust = v / t('tariffMesken');
+        return ust * 12 / 365 > 8 ? ust : Math.min(v / t('tariffMeskenDusuk'), 8 * 365 / 12);
     }
     function girdi() {
         return {
             konum: konumGirdisi(),
-            tuketim: { mod: D.tmod, aylikOrt: D.aylikOrt, aylar: D.ayAy ? D.aylar : null,
+            tuketim: { mod: D.tmod, aylikOrt: aylikKwh(), aylar: D.ayAy ? D.aylar : null,
                        desen: D.desen, yasam: D.yasam, cihazlar: D.cihazlar,
-                       faturaEsas: D.faturaEsas, evKm: D.evKm, evZaman: D.evZaman },
+                       faturaEsas: D.faturaEsas, evKm: D.evVar ? D.evKm : 0, evZaman: D.evZaman },
             grup: D.grup, alan: D.alan, sozlesme: D.sozlesme,
             hedef: D.hedef, yukler: D.yukler, saat: D.saat,
             mahsup: D.mahsup, tarifeTl: D.tarifeTl, satisTl: D.satisTl, batVerim: D.batVerim
         };
     }
 
-    // --- KÜÇÜK PARÇALAR ---------------------------------------------------------------
-    const CHIP_ACIK = 'bg-amber-500 text-white border-amber-500';
-    const CHIP_KAPALI = 'bg-slate-100 text-slate-600 border-slate-200';
-    function chip(alan, deger, etiket, secili) {
-        return `<button type="button" data-tu-chip="${alan}" data-deger="${esc(deger)}" aria-pressed="${secili}"
-            class="tu-chip border px-3 py-2 rounded-lg text-xs font-bold transition ${secili ? CHIP_ACIK : CHIP_KAPALI}">${etiket}</button>`;
-    }
-    const etiket = (metin, ek = '') => `<label class="block text-[11px] uppercase tracking-wider text-slate-400 font-bold mb-2 ${ek}">${metin}</label>`;
+    // --- BİLEŞENLER ------------------------------------------------------------------
+    const neden = (m) => `<p class="tu-neden">💡 <b>Neden soruyoruz?</b> ${m}</p>`;
+    const etiket = (m) => `<span class="tu-etiket">${m}</span>`;
+    // Seçim kartı (tek seçimli gruplar). aria-pressed durumu taşır; görsel
+    // vurgu ve onay işareti CSS'te, basma anında küçülme :active'de.
+    const secim = (alan, deger, ikon, baslik, alt, secili) => `
+        <button type="button" class="tu-secim" data-tu-sec="${alan}" data-deger="${esc(deger)}" aria-pressed="${!!secili}">
+            <span class="tu-tik" aria-hidden="true">✓</span>${ikon ? `<span class="tu-ikon" aria-hidden="true">${ikon}</span>` : ''}
+            <span class="tu-baslik">${baslik}</span>${alt ? `<span class="tu-alt">${alt}</span>` : ''}
+        </button>`;
+    // Kayan zeminli bölmeli seçici
+    const seg = (alan, secenekler, deger) => `
+        <div class="tu-seg" role="group" data-seg="${alan}"><span class="tu-seg-zemin" aria-hidden="true"></span>${secenekler.map(([v, e]) =>
+            `<button type="button" data-tu-sec="${alan}" data-deger="${v}" aria-pressed="${String(deger) === v}">${e}</button>`).join('')}</div>`;
+    const kaydirici = (alan, min, max, adim, deger, etiketMetni) =>
+        `<input type="range" class="tu-kaydir" data-tu="${alan}" min="${min}" max="${max}" step="${adim}" value="${esc(deger)}" aria-label="${esc(etiketMetni)}" style="--dolu:${((deger - min) / (max - min) * 100).toFixed(1)}%">`;
     const GIRIS = 'w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500';
     const KUCUK = 'border border-slate-300 px-2 py-1.5 rounded-md text-sm outline-none focus:border-amber-500';
-    const kart = (no, baslik, alt, icerik, id) => `
-        <section ${id ? `id="${id}"` : ''} class="bg-white border border-slate-200 rounded-xl p-4 md:p-6 mb-5 scroll-mt-4">
+    const adimKarti = (no, baslik, alt, icerik, id) => `
+        <section ${id ? `id="${id}"` : ''} class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 mb-5 scroll-mt-4">
             <div class="flex items-start gap-3 mb-5">
                 <span class="shrink-0 w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-black text-sm flex items-center justify-center">${no}</span>
                 <div class="min-w-0"><h3 class="text-lg font-black text-slate-800 leading-tight">${baslik}</h3>
@@ -917,216 +1085,806 @@
             ${icerik}
         </section>`;
 
-    // --- İSKELET ------------------------------------------------------------------------
+    const MEVSIM_AD = { tum: 'Tüm yıl', yaz: 'Yaz', kis: 'Kış' };
+    const ZAMAN_IKON = { sabah: '🌅 Sabah', gunduz: '☀️ Gündüz', aksam: '🌆 Akşam', gece: '🌙 Gece', gunboyu: '🔁 Gün boyu' };
+
+    // --- İSKELET ----------------------------------------------------------------------
     function iskelet() {
         const iller = Object.keys(TU_IL).sort((a, b) => a.localeCompare(b, 'tr'));
         root.innerHTML = `
-        <div class="mb-6 flex items-center gap-2">
+        <div class="mb-3 flex items-center gap-2">
             <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">⚡ Tüketim & Üretim Analizi</span>
         </div>
+        <p class="text-sm text-slate-600 mb-4 max-w-3xl leading-relaxed">İki bilgiyle sonucu hemen görün; aşağıdaki adımlar çatınızı, gün içi kullanımınızı ve kesinti ihtiyacınızı ekleyerek sonucu hassaslaştırır. Her seçim alttaki çubukta anında yansır.</p>
 
-        <div class="mb-5 bg-amber-50 border border-amber-200 rounded-xl p-5 md:p-6">
-            <h2 class="text-lg md:text-xl font-black text-slate-800 mb-2">Sisteminizi tahminle değil, hesapla boyutlandırın</h2>
-            <p class="text-sm text-slate-600 leading-relaxed">Konumunuzdaki gerçek güneş verisiyle 1 kWp panelin ay ay ne üreteceğini, evinizin günün hangi saatinde ne tükettiğini çıkarıp ikisini saat saat çakıştırıyoruz. Sonuçta size uygun panel, inverter ve kesinti süresine göre batarya kapasitesi; üretimden prize kadar her kaybın dökümüyle birlikte. Kayıt gerekmez.</p>
-            <div id="tuCanli" class="mt-4 text-sm font-bold text-slate-700"></div>
-        </div>
-
-        ${kart(1, 'Konum ve çatı', '1 kWp güneş panelinin bulunduğunuz yerde ne kadar üreteceğini belirler.', `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+        <div id="tuGirdiler">
+        <section class="bg-amber-50 border border-amber-200 rounded-2xl p-4 md:p-5 mb-5" aria-label="Hızlı başlangıç">
+            <p class="text-xs font-black uppercase tracking-wider text-amber-700 mb-3">⚡ Hızlı başlangıç · 2 bilgi yeterli</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    ${etiket('İl')}
-                    <select data-tu="il" class="${GIRIS}">
+                    ${etiket('İliniz')}
+                    <select data-tu="il" class="${GIRIS} tu-buyuk" style="font-size:18px" aria-label="İl">
                         <option value="">İlinizi seçin…</option>
                         ${iller.map(i => `<option value="${esc(i)}" ${D.il === i ? 'selected' : ''}>${esc(i)}</option>`).join('')}
                     </select>
-                    <button type="button" data-tu-eylem="gps" class="mt-2 text-xs font-bold text-amber-700 hover:underline">📍 Konumumu kullan</button>
-                    <span id="tuGpsDurum" class="text-xs text-slate-500 ml-1"></span>
+                    <div class="flex items-center gap-2 mt-2"><button type="button" data-tu-eylem="gps" class="text-xs font-bold text-amber-700 hover:underline">📍 Konumumu kullan</button><span id="tuGpsDurum" class="text-xs text-slate-500"></span></div>
                 </div>
                 <div>
-                    ${etiket('Kullanılabilir çatı alanı (m², isteğe bağlı)')}
-                    <input data-tu="alan" type="number" min="0" step="1" inputmode="decimal" placeholder="Örn. 40" value="${esc(D.alan)}" class="${GIRIS}">
-                    <p class="text-[11px] text-slate-400 mt-1">Girerseniz sistem çatınıza sığacak şekilde sınırlanır.</p>
-                </div>
-            </div>
-            <div class="mb-4">
-                ${etiket('Panellerin bakacağı yön')}
-                <div class="flex flex-wrap gap-2" data-grup="yon">${YONLER.map(y => chip('yon', y.k, y.ad, D.yon === y.k && !D.uzman)).join('')}</div>
-            </div>
-            <div class="mb-4" id="tuEgimKutu">
-                ${etiket('Çatı / panel eğimi')}
-                <div class="flex flex-wrap gap-2" data-grup="egim">${EGIM_SECENEK.map(e => chip('egim', e, e === 0 ? 'Yatay (0°)' : e + '°', Number(D.egim) === e && !D.uzman)).join('')}</div>
-                <p class="text-[11px] text-slate-400 mt-2">Kiremit çatılar genelde 25–35°'dir. Düz çatı ve teraslarda paneller sehpayla güneye 15–25° eğilir: <b>Güney + 20°</b> seçin.</p>
-            </div>
-            <details class="mb-4" ${D.uzman ? 'open' : ''}>
-                <summary class="text-xs font-bold text-slate-500 cursor-pointer">Açıyı tam biliyorum (uzman)</summary>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 items-end">
-                    <label class="text-xs font-bold text-slate-600">Eğim (°)<input data-tu="egimU" type="number" min="0" max="90" step="1" value="${esc(D.egimU)}" class="${GIRIS} mt-1"></label>
-                    <label class="text-xs font-bold text-slate-600">Azimut (°) <span class="font-normal text-slate-400">0 güney, −90 doğu, +90 batı</span><input data-tu="azU" type="number" min="-180" max="180" step="1" value="${esc(D.azU)}" class="${GIRIS} mt-1"></label>
-                    <label class="flex items-center gap-2 text-xs font-bold text-slate-600 pb-3"><input data-tu="uzman" type="checkbox" ${D.uzman ? 'checked' : ''} class="w-4 h-4"> Bu açıları kullan</label>
-                </div>
-            </details>
-            <div class="mb-1">
-                ${etiket('Gölgelenme (ağaç, komşu bina, baca)')}
-                <div class="flex flex-wrap gap-2" data-grup="golge">
-                    ${chip('golge', 'yok', 'Yok', D.golge === 'yok')}${chip('golge', 'az', 'Az — sabah/akşam (%3)', D.golge === 'az')}${chip('golge', 'orta', 'Orta (%7)', D.golge === 'orta')}${chip('golge', 'fazla', 'Fazla (%12)', D.golge === 'fazla')}
-                </div>
-            </div>
-            <div id="tuOzetKonum" class="mt-5"></div>
-        `, 'tuAdim1')}
-
-        ${kart(2, 'Tüketiminiz', 'Ne kadar ve günün hangi saatinde elektrik kullandığınız — öz tüketimi ve bataryayı belirler.', `
-            <div class="flex flex-wrap gap-2 mb-5" data-grup="tmod">
-                ${chip('tmod', 'fatura', '🧾 Faturamdan (hızlı)', D.tmod === 'fatura')}${chip('tmod', 'cihaz', '🔌 Cihaz cihaz (detaylı)', D.tmod === 'cihaz')}
-            </div>
-            <div id="tuFaturaKutu" class="${D.tmod === 'fatura' ? '' : 'hidden'}">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                    <div>
-                        ${etiket('Aylık ortalama tüketim (kWh)')}
-                        <input data-tu="aylikOrt" type="number" min="0" step="1" inputmode="decimal" placeholder="Faturada 'Tüketim (kWh)' satırı" value="${esc(D.aylikOrt)}" class="${GIRIS}">
-                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 mt-2"><input data-tu="ayAy" type="checkbox" ${D.ayAy ? 'checked' : ''} class="w-4 h-4"> Son 12 ayı ay ay gireceğim (daha hassas)</label>
+                    <div class="flex items-center justify-between gap-2 mb-2">${etiket('Aylık elektrik faturanız')} ${seg('birim', [['tl', '₺ tutar'], ['kwh', 'kWh']], D.birim)}</div>
+                    <div class="relative">
+                        <input data-tu="faturaDeger" type="number" min="0" step="1" inputmode="decimal" placeholder="${D.birim === 'tl' ? 'Örn. 1500' : 'Örn. 300'}" value="${esc(D.faturaDeger)}" class="${GIRIS} tu-buyuk pr-16" aria-label="Aylık ortalama fatura">
+                        <span data-birim-etiket class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">${D.birim === 'tl' ? '₺/ay' : 'kWh/ay'}</span>
                     </div>
-                    <div id="tuDesenKutu" class="${D.ayAy ? 'hidden' : ''}">
-                        ${etiket('Yıl içindeki değişim')}
-                        <div class="flex flex-wrap gap-2" data-grup="desen">
-                            ${chip('desen', 'dengeli', 'Dengeli', D.desen === 'dengeli')}${chip('desen', 'yaz', 'Yazın klima', D.desen === 'yaz')}${chip('desen', 'kis', 'Kışın elektrikle ısınma', D.desen === 'kis')}
+                    <p id="tuDonusum" class="text-sm text-slate-600 mt-2 tu-oku"></p>
+                </div>
+            </div>
+        </section>
+        ${adimKarti(1, 'Nerede ve nasıl bir çatı?', 'Panelin yılda ne kadar üreteceğini belirler. Bilmediğiniz yeri olduğu gibi bırakın.', `
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+                <div>
+                    ${etiket('İlinizin güneşi')}
+                    <div id="tuIlGosterge"></div>
+                    ${neden('<span id="tuIlNeden">Güneşlenme ilden ile neredeyse iki kat değişir.</span> Üretimi ilinizin 15 yıllık uydu ışınım verisiyle (PVGIS) hesaplıyoruz.')}
+                </div>
+                <div id="tuOzetKonum"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                    ${etiket('Panellerin baktığı yön')}
+                    <div class="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-4 items-center">
+                        <div class="w-56 max-w-full shrink-0">${pusulaSvg()}</div>
+                        <div class="flex-1 min-w-0 w-full">
+                            <p class="text-sm text-slate-600 mb-1">Pusulada çatınızın baktığı yöne dokunun ya da evi sürükleyip çevirin.</p>
+                            <p class="tu-oku text-slate-800"><b id="tuYonAd" class="text-xl font-black">Güney</b><span class="text-slate-500 text-sm"> · en iyi yönün </span><b id="tuYonOran" class="text-xl font-black text-amber-700">%100</b><span class="text-slate-500 text-sm">'ü</span></p>
+                            <div class="flex flex-wrap gap-2 mt-3">
+                                ${secim('yonMod', 'db', '↔️', 'Doğu + Batı', 'İki yöne bakan çatı', D.yonMod === 'db')}
+                                ${secim('yonMod', 'opt', '📐', 'Düz çatı / arazi', 'Sehpayla en iyi açı', D.yonMod === 'opt')}
+                            </div>
                         </div>
                     </div>
+                    ${neden('Panel en çok güneye bakarken üretir. Doğu ve batı ~%15–20 daha az üretir ama sabah ya da akşam güçlüdür; akşam tüketimi yüksek evlerde bu bir avantaj olabilir.')}
                 </div>
-                <div id="tuAyAyKutu" class="${D.ayAy ? '' : 'hidden'} grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mb-3">
-                    ${motor.AY_AD.map((a, m) => `<label class="text-[11px] font-bold text-slate-500">${a}<input data-tu-ay="${m}" type="number" min="0" step="1" inputmode="decimal" value="${esc(D.aylar[m])}" class="${KUCUK} w-full mt-1"></label>`).join('')}
+                <div>
+                    ${etiket('Çatı / panel eğimi')}
+                    ${kesitSvg()}
+                    <div class="flex items-center gap-3 mt-2">
+                        <div class="flex-1 relative pt-3">
+                            <span id="tuOptIsaret" class="absolute top-0 text-[10px] font-black text-amber-700" style="transform:translateX(-50%)" title="İliniz için en iyi açı">▼</span>
+                            ${kaydirici('egim', 0, 60, 1, D.yonMod === 'opt' ? 32 : D.egim, 'Eğim, derece')}
+                        </div>
+                        <p class="tu-oku text-slate-800 shrink-0 w-28 text-right"><b id="tuEgimDeg" class="text-xl font-black">30°</b><br><span class="text-xs text-slate-500">en iyinin </span><b id="tuEgimOran" class="text-sm font-black text-amber-700">%100</b><span class="text-xs text-slate-500">'ü</span></p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-2" id="tuEgimHizli">
+                        ${[[0, 'Düz'], [15, '15°'], [30, '30°'], [45, '45°']].map(([e, a]) => `<button type="button" data-tu-egim="${e}" class="text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-600 active:scale-95 transition">${a}</button>`).join('')}
+                    </div>
+                    ${neden('Panel güneşi ne kadar dik görürse o kadar üretir. Türkiye’de en iyi açı çoğu ilde 30–34°; kiremit çatılar genelde buna yakındır. ▼ işareti ilinizin en iyi açısı.')}
                 </div>
-                ${etiket('Gündüz kimler evde?', 'mt-2')}
-                <div class="flex flex-wrap gap-2" data-grup="yasam">${Object.keys(motor.YASAM).map(k => chip('yasam', k, motor.YASAM[k].ad, D.yasam === k)).join('')}</div>
-                <p class="text-[11px] text-slate-400 mt-2">Gündüz tüketimi panelden doğrudan karşılanır; akşam tüketimi şebekeden ya da bataryadan gelir.</p>
             </div>
-            <div id="tuCihazKutu" class="${D.tmod === 'cihaz' ? '' : 'hidden'}">
-                <p class="text-xs text-slate-500 mb-3"><b>Saat/gün</b>, cihazın tam güçte çalıştığı süredir (buzdolabı kompresörü ~8 saat). Kullanmadığınız cihazın adedini 0 yapın.</p>
-                <div id="tuCihazListe" class="space-y-2"></div>
-                <button type="button" data-tu-eylem="cihazEkle" class="mt-3 text-xs font-bold text-amber-700 hover:underline">+ Cihaz ekle</button>
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div class="mb-6">
+                ${etiket('Çatıya gölge düşüyor mu?')}
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    ${secim('golge', 'yok', '☀️', 'Hayır', 'Gün boyu açık', D.golge === 'yok')}
+                    ${secim('golge', 'az', '🌤️', 'Biraz', 'Sabah / akşam · −%3', D.golge === 'az')}
+                    ${secim('golge', 'orta', '⛅', 'Orta', 'Günün bir kısmı · −%7', D.golge === 'orta')}
+                    ${secim('golge', 'fazla', '🌥️', 'Çok', 'Uzun süre · −%12', D.golge === 'fazla')}
+                </div>
+                ${neden('Ağaç, komşu bina ya da baca gölgesi yalnız gölgede kalan paneli değil, aynı dizideki diğer panelleri de düşürebilir. Kesin değer keşifte ölçülür.')}
+            </div>
+
+            <div>
+                ${etiket('Kullanılabilir çatı alanı')}
+                <div class="flex items-center gap-3">
+                    <div class="flex-1">${kaydirici('alan', 0, 200, 5, D.alan, 'Çatı alanı, metrekare')}</div>
+                    <b id="tuAlanDeg" class="tu-oku text-slate-800 w-28 text-right shrink-0">Bilmiyorum</b>
+                </div>
+                <div id="tuAlanGorsel" class="mt-3"></div>
+                ${neden('Önerilen sistemin çatınıza sığmasını sağlar. Panel başına yürüme payıyla ~3 m² gerekir. Bilmiyorsanız en solda bırakın.')}
+            </div>
+        `, 'tuAdim1')}
+
+        ${adimKarti(2, 'Ne kadar elektrik kullanıyorsunuz?', 'Sistemi tüketiminize göre boyutlandırırız: küçüğü faturayı sıfırlamaz, gereğinden büyüğün fazlası düşük bedelle satılır.', `
+            <div class="mb-5">${seg('tmod', [['fatura', '🧾 Faturamdan'], ['cihaz', '🔌 Cihaz cihaz']], D.tmod)}</div>
+
+            <div id="tuFaturaKutu" class="${D.tmod === 'fatura' ? '' : 'hidden'}">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
                     <div>
-                        ${etiket('Faturanızdaki aylık ortalama (isteğe bağlı)')}
-                        <input data-tu="aylikOrt" type="number" min="0" step="1" inputmode="decimal" placeholder="Listeyi faturayla karşılaştırmak için" value="${esc(D.aylikOrt)}" class="${GIRIS}">
+                        ${etiket('Aylık tüketiminiz')}
+                        <p class="text-sm text-slate-600">Yukarıdaki <b>hızlı başlangıçta</b> girdiğiniz fatura kullanılıyor. Daha hassas sonuç için son 12 ayı tek tek girebilirsiniz.</p>
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 mt-2"><input data-tu="ayAy" type="checkbox" ${D.ayAy ? 'checked' : ''} class="w-4 h-4"> Son 12 ayın kWh değerlerini tek tek gireceğim (en hassası)</label>
+                        <div id="tuAyAyKutu" class="${D.ayAy ? '' : 'hidden'} grid grid-cols-4 sm:grid-cols-6 gap-2 mt-3">
+                            ${motor.AY_AD.map((a, m) => `<label class="text-[11px] font-bold text-slate-500">${a.slice(0, 3)}<input data-tu-ay="${m}" type="number" min="0" step="1" inputmode="decimal" value="${esc(D.aylar[m])}" class="${KUCUK} w-full mt-1"></label>`).join('')}
+                        </div>
                     </div>
-                    <label class="flex items-start gap-2 text-xs font-bold text-slate-600 md:pt-7"><input data-tu="faturaEsas" type="checkbox" ${D.faturaEsas ? 'checked' : ''} class="w-4 h-4 mt-0.5"> <span>Toplamı faturamdan al; cihaz listesini yalnız saatlik dağılım için kullan</span></label>
-                </div>
-            </div>
-            <div class="mt-5 pt-5 border-t border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    ${etiket('Abone grubu')}
-                    <select data-tu="grup" class="${GIRIS}">
-                        <option value="mesken" ${D.grup === 'mesken' ? 'selected' : ''}>Mesken (konut)</option>
-                        <option value="ticarethane" ${D.grup === 'ticarethane' ? 'selected' : ''}>Ticarethane / iş yeri</option>
-                        <option value="sanayi" ${D.grup === 'sanayi' ? 'selected' : ''}>Sanayi</option>
-                        <option value="tarimsal" ${D.grup === 'tarimsal' ? 'selected' : ''}>Tarımsal sulama</option>
-                    </select>
-                </div>
-                <div>
-                    ${etiket('Sözleşme gücü (kW, isteğe bağlı)')}
-                    <input data-tu="sozlesme" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Faturada yazar" value="${esc(D.sozlesme)}" class="${GIRIS}">
-                </div>
-                <div>
-                    ${etiket('Elektrikli araç (yıllık km)')}
-                    <div class="flex gap-2">
-                        <input data-tu="evKm" type="number" min="0" step="1000" inputmode="decimal" placeholder="Yoksa boş" value="${esc(D.evKm)}" class="${GIRIS}">
-                        <select data-tu="evZaman" class="${KUCUK}" aria-label="Şarj zamanı">
-                            <option value="gece" ${D.evZaman === 'gece' ? 'selected' : ''}>Gece şarj</option>
-                            <option value="gunduz" ${D.evZaman === 'gunduz' ? 'selected' : ''}>Gündüz şarj</option>
-                            <option value="aksam" ${D.evZaman === 'aksam' ? 'selected' : ''}>Akşam şarj</option>
-                        </select>
+                    <div id="tuDesenKutu" class="${D.ayAy ? 'hidden' : ''}">
+                        ${etiket('Yıl içinde nasıl değişiyor?')}
+                        <div class="grid grid-cols-3 gap-2">
+                            ${secim('desen', 'dengeli', '', 'Dengeli', mevsimMini('dengeli'), D.desen === 'dengeli')}
+                            ${secim('desen', 'yaz', '', 'Yazın klima', mevsimMini('yaz'), D.desen === 'yaz')}
+                            ${secim('desen', 'kis', '', 'Kışın ısınma', mevsimMini('kis'), D.desen === 'kis')}
+                        </div>
+                        ${neden('Güneş yazın çok, kışın az üretir. Tüketiminizin hangi mevsimde arttığı, yaz fazlasını ve kış açığını belirler.')}
                     </div>
                 </div>
+                ${etiket('Gündüz evde kim var?')}
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                    ${secim('yasam', 'calisan', '💼', 'Kimse yok', yasamMini('calisan'), D.yasam === 'calisan')}
+                    ${secim('yasam', 'evde', '🏠', 'Evde biri var', yasamMini('evde'), D.yasam === 'evde')}
+                    ${secim('yasam', 'evofis', '💻', 'Evden çalışıyorum', yasamMini('evofis'), D.yasam === 'evofis')}
+                    ${secim('yasam', 'isyeri', '🏪', 'İş yeri (gündüz)', yasamMini('isyeri'), D.yasam === 'isyeri')}
+                </div>
+                ${neden('Panel gündüz üretir. Gündüz kullandığınız elektrik doğrudan güneşten gelir ve en çok tasarrufu sağlar; küçük grafiklerde sarı güneşi, mavi tüketimi gösteriyor.')}
             </div>
-            <div id="tuOzetTuketim" class="mt-5"></div>
+
+            <div id="tuCihazKutu" class="${D.tmod === 'cihaz' ? '' : 'hidden'}">
+                <p class="text-sm text-slate-600 mb-3">Kullandığınız cihazlara dokunun; <b>⚙</b> ile adet, güç ve kullanım saatini ayarlayın.</p>
+                <div id="tuCihazKartlar" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"></div>
+                <div id="tuCihazDuzen" class="mt-3"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+                    <div id="tuCihazGrafik"></div>
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">${etiket('Faturanızla karşılaştırın (isteğe bağlı)')}</div>
+                        <div class="relative">
+                            <input data-tu="faturaDeger" type="number" min="0" step="1" inputmode="decimal" placeholder="Aylık ortalama" value="${esc(D.faturaDeger)}" class="${GIRIS} pr-16" aria-label="Aylık ortalama fatura">
+                            <span data-birim-etiket class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">${D.birim === 'tl' ? '₺/ay' : 'kWh/ay'}</span>
+                        </div>
+                        <label class="flex items-start gap-2 text-xs font-bold text-slate-600 mt-3"><input data-tu="faturaEsas" type="checkbox" ${D.faturaEsas ? 'checked' : ''} class="w-4 h-4 mt-0.5"> <span>Toplamı faturamdan al; cihaz listesini yalnız saatlik dağılım için kullan</span></label>
+                        <div id="tuNetlestirme"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <button type="button" class="tu-secim w-full sm:w-auto" data-tu-sec="evVar" data-deger="${D.evVar ? '0' : '1'}" aria-pressed="${!!D.evVar}">
+                    <span class="tu-tik" aria-hidden="true">✓</span><span class="tu-ikon" aria-hidden="true">🚗</span>
+                    <span class="tu-baslik">Elektrikli aracım var ya da alacağım</span><span class="tu-alt">Şarj tüketimini sisteme ekleriz</span>
+                </button>
+                <div id="tuEvKutu" class="${D.evVar ? '' : 'hidden'} mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <div class="flex-1">${kaydirici('evKm', 5000, 40000, 1000, D.evKm, 'Yıllık kilometre')}</div>
+                            <b id="tuEvDeg" class="tu-oku text-slate-800 w-40 text-right shrink-0"></b>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        ${secim('evZaman', 'gece', '🌙', 'Gece şarj', '', D.evZaman === 'gece')}
+                        ${secim('evZaman', 'gunduz', '☀️', 'Gündüz şarj', 'Güneşle en uyumlu', D.evZaman === 'gunduz')}
+                        ${secim('evZaman', 'aksam', '🌆', 'Akşam şarj', '', D.evZaman === 'aksam')}
+                    </div>
+                </div>
+            </div>
+
+            <details class="tu-acilir mt-5">
+                <summary class="text-sm font-bold text-slate-600"><span class="tu-ok">▸</span> Daha fazla ayrıntı (isteğe bağlı): abone grubu, sözleşme gücü</summary>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-4">
+                    <div>
+                        ${etiket('Abone grubu')}
+                        <div class="grid grid-cols-2 gap-2">
+                            ${secim('grup', 'mesken', '🏠', 'Mesken', 'Konut', D.grup === 'mesken')}
+                            ${secim('grup', 'ticarethane', '🏪', 'Ticarethane', 'İş yeri', D.grup === 'ticarethane')}
+                            ${secim('grup', 'sanayi', '🏭', 'Sanayi', '', D.grup === 'sanayi')}
+                            ${secim('grup', 'tarimsal', '🌾', 'Tarımsal', 'Sulama', D.grup === 'tarimsal')}
+                        </div>
+                        ${neden('Elektrik tarifesi ve ihtiyaç fazlası satış bedeli abone grubuna göre değişir.')}
+                    </div>
+                    <div>
+                        ${etiket('Sözleşme gücü (kW)')}
+                        <input data-tu="sozlesme" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Faturanızda yazar" value="${esc(D.sozlesme)}" class="${GIRIS}">
+                        ${neden('Kurulu güç bu sınırı aşamaz. Daha büyük sistem için dağıtım şirketinden güç artırımı gerekir.')}
+                    </div>
+                </div>
+            </details>
+
+            <div id="tuOzetTuketim" class="mt-6"></div>
         `, 'tuAdim2')}
 
-        ${kart(3, 'Kesinti ve depolama', 'Elektrik kesildiğinde hangi cihazların kaç saat çalışacağını seçin; batarya buna göre boyutlanır.', `
-            <div class="flex flex-wrap gap-2 mb-5" data-grup="hedef">
-                ${chip('hedef', 'yok', 'Batarya istemiyorum', D.hedef === 'yok')}${chip('hedef', 'yedek', 'Kesintide yedekleme', D.hedef === 'yedek')}${chip('hedef', 'bagimsiz', 'Yedekleme + şebekeden bağımsızlık', D.hedef === 'bagimsiz')}
+        ${adimKarti(3, 'Elektrik kesilince ne çalışsın?', 'Bataryayı yalnız gerçekten ihtiyacınız olan cihazlara ve süreye göre boyutlandırırız.', `
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-5">
+                ${secim('hedef', 'yok', '🔌', 'Batarya istemiyorum', 'En düşük yatırım; kesintide sistem kapanır', D.hedef === 'yok')}
+                ${secim('hedef', 'yedek', '🔋', 'Kesintide yedek', 'Seçtiğiniz cihazlar kesintide çalışır', D.hedef === 'yedek')}
+                ${secim('hedef', 'bagimsiz', '🏝️', 'Yedek + bağımsızlık', 'Gündüz fazlası akşama da taşınır', D.hedef === 'bagimsiz')}
             </div>
             <div id="tuYukKutu" class="${D.hedef === 'yok' ? 'hidden' : ''}">
-                <div class="mb-4">
-                    ${etiket('Kesinti kaç saat sürse dayanmalı?')}
-                    <div class="flex flex-wrap items-center gap-2" data-grup="saat">
-                        ${[2, 4, 8, 12, 24].map(s => chip('saat', s, s + ' saat', Number(D.saat) === s)).join('')}
-                        <input data-tu="saat" type="number" min="0" max="168" step="1" value="${esc(D.saat)}" class="${KUCUK} w-20" aria-label="Saat">
-                    </div>
+                ${etiket('Kesinti kaç saat sürse dayanmalı?')}
+                <div class="flex items-center gap-3">
+                    <div class="flex-1">${kaydirici('saat', 1, 48, 1, D.saat, 'Kesinti süresi, saat')}</div>
+                    <b id="tuSaatDeg" class="tu-oku text-slate-800 w-20 text-right shrink-0">${D.saat} saat</b>
                 </div>
-                ${etiket('Kesintide çalışacak cihazlar')}
-                <p class="text-xs text-slate-500 mb-3"><b>Oran</b>, kesinti boyunca cihazın ortalama ne kadar çalıştığıdır (buzdolabı %40). <b>Motorlu</b> cihazlar kalkışta 3 kat güç çeker.</p>
-                <div id="tuYukListe" class="space-y-2"></div>
-                <button type="button" data-tu-eylem="yukEkle" class="mt-3 text-xs font-bold text-amber-700 hover:underline">+ Yük ekle</button>
+                ${neden('Süre, batarya kapasitesini doğrudan belirler: süreyi ikiye katlamak kapasiteyi de ikiye katlar.')}
+                <div class="mt-5">${etiket('Kesintide çalışacak cihazlar')}</div>
+                <div id="tuYukKartlar" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"></div>
+                <div id="tuYukDuzen" class="mt-3"></div>
+                ${neden('Yalnız kesintide gerçekten gerekenleri seçin; her cihaz bataryayı büyütür. Motorlu cihazlar (buzdolabı, pompa) kalkışta 3 kat güç çeker, inverter buna göre seçilir.')}
             </div>
-            <p id="tuBataryaYokNot" class="${D.hedef === 'yok' ? '' : 'hidden'} text-sm text-slate-500">Bataryasız (on-grid) sistemde kesinti anında inverter güvenlik gereği kapanır; paneller güneş olsa bile evi beslemez. Kesintide çalışmak için hibrit inverter ve batarya gerekir.</p>
+            <p id="tuBataryaYokNot" class="${D.hedef === 'yok' ? '' : 'hidden'} text-sm text-slate-500">Bataryasız (on-grid) sistem kesintide güvenlik gereği kapanır; güneş olsa bile evi beslemez. Kesintide çalışmak için hibrit inverter ve batarya gerekir.</p>
             <div id="tuOzetYedek" class="mt-5"></div>
         `, 'tuAdim3')}
 
-        <section id="tuAdim4" class="bg-white border border-slate-200 rounded-xl p-4 md:p-6 mb-5 scroll-mt-4">
+        <div class="tu-cubuk" id="tuCubuk" aria-live="polite"><div class="tu-cubuk-ic flex items-center gap-2 sm:gap-3">
+            <div id="tuCubukIc" class="flex-1 min-w-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"></div>
+            <button type="button" data-tu-eylem="sonuca" class="shrink-0 bg-amber-500 hover:bg-amber-600 font-black px-3 sm:px-4 py-2.5 rounded-xl text-sm active:scale-95 transition" aria-label="Sonuca git"><span class="hidden sm:inline">Sonuç </span>↓</button>
+        </div></div>
+        </div>
+
+        <section id="tuAdim4" class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 mb-5 mt-5 scroll-mt-4">
             <div class="flex items-start gap-3 mb-5">
                 <span class="shrink-0 w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-black text-sm flex items-center justify-center">4</span>
-                <div class="min-w-0"><h3 class="text-lg font-black text-slate-800 leading-tight">Önerilen sistem</h3>
-                <p class="text-sm text-slate-500 mt-1">Tüketim ve üretimin saat saat çakıştırılmasıyla bulunan optimum boyut.</p></div>
+                <div class="min-w-0"><h3 class="text-lg font-black text-slate-800 leading-tight">Size önerdiğimiz sistem</h3>
+                <p class="text-sm text-slate-500 mt-1">Tüketiminiz ve güneş, bir yılın her ayı için saat saat çakıştırıldı.</p></div>
             </div>
             <div id="tuSonuc"></div>
             <div id="tuGunKutu" class="mt-6"></div>
             <div id="tuSonucAlt"></div>
         </section>
 
-        <details class="bg-white border border-slate-200 rounded-xl p-4 md:p-6 mb-5">
-            <summary class="font-black text-slate-800 cursor-pointer">⚙️ Varsayımlar ve gelişmiş ayarlar</summary>
+        <details class="tu-acilir bg-white border border-slate-200 rounded-2xl p-4 md:p-6 mb-5">
+            <summary class="font-black text-slate-800"><span class="tu-ok">▸</span> ⚙️ Varsayımlar ve gelişmiş ayarlar</summary>
             <div id="tuGelismis" class="mt-4"></div>
-        </details>
-        `;
-        cihazListesiCiz();
-        yukListesiCiz();
+        </details>`;
+        cubukIskelet();
+        cihazKartlariCiz();
+        yukKartlariCiz();
         gelismisCiz();
+        pusulaKur();
+        kesitKur();
+        segZeminleri();
     }
 
-    // --- CİHAZ VE YÜK LİSTELERİ ----------------------------------------------------------
-    const secenek = (nesne, secili) => Object.keys(nesne).map(k => `<option value="${k}" ${secili === k ? 'selected' : ''}>${nesne[k]}</option>`).join('');
-    const MEVSIM_AD = { tum: 'Tüm yıl', yaz: 'Yaz', kis: 'Kış' };
-    // Satırlar mobilde 4 sütunlu ızgara (ad + sil / sayılar / zaman), md'den
-    // itibaren tek satır. ⚠️ Tek satırlık esnek düzen 375 px'te her cihazı 4
-    // satıra bölüyordu; 18 cihazlık liste telefonda ~5.000 px tutuyordu.
-    const SATIR = 'tu-satir border border-slate-200 rounded-lg p-2 grid grid-cols-4 gap-x-2 gap-y-1.5 items-end md:flex md:flex-wrap';
-    const ALAN = 'min-w-0 text-[10px] font-bold text-slate-400 uppercase';
-    function cihazListesiCiz() {
-        const kutu = document.getElementById('tuCihazListe');
+    // --- PUSULA ---------------------------------------------------------------------
+    // Kuzey yukarıda. Ev yukarıdan görünüyor; paneller evin baktığı yarıda.
+    // Azimut (PVGIS): 0 güney, −90 doğu, +90 batı. Ekranda ev rotate(az) ile
+    // döner: yerelde panelli yarı aşağı (güneye) bakıyor.
+    const PC = 130, PR = 100, PV = 260;   // merkez, halka yarıçapı, görünüm kutusu
+    const pusulaNokta = (az, r) => { const b = (az + 180) * Math.PI / 180; return [PC + r * Math.sin(b), PC - r * Math.cos(b)]; };
+    function evIcerik(mod) {
+        const panel = (x, y) => `<rect x="${x}" y="${y}" width="13" height="9" rx="1.5" fill="#2f5ea8" stroke="rgba(255,255,255,.35)" stroke-width=".8"/>`;
+        let p = '';
+        if (mod === 'opt') {
+            // Düz çatı: güneye eğik sehpa sıraları
+            for (let s = 0; s < 3; s++) for (let i = 0; i < 4; i++) p += panel(-29 + i * 15, -22 + s * 15);
+            return `<rect x="-36" y="-30" width="72" height="60" rx="4" fill="#24384f" stroke="rgba(255,255,255,.25)"/>${p}`;
+        }
+        const yari = (ust) => { let q = ''; for (let s = 0; s < 2; s++) for (let i = 0; i < 4; i++) q += panel(-29 + i * 15, (ust ? -25 : 4) + s * 11); return q; };
+        return `<rect x="-36" y="-30" width="72" height="60" rx="3" fill="#3a2a22" stroke="rgba(255,255,255,.25)"/>
+            <line x1="-36" y1="0" x2="36" y2="0" stroke="rgba(255,255,255,.45)" stroke-width="1.5"/>
+            ${mod === 'db' ? yari(true) + yari(false) : yari(false)}
+            ${mod === 'db' ? '' : '<path d="M0 34 L-6 44 L6 44 Z" fill="#FBBF24"/>'}`;
+    }
+    function pusulaSvg() {
+        let s = `<svg class="tu-pusula" id="tuPusula" viewBox="0 0 ${PV} ${PV}" role="slider" tabindex="0" aria-label="Panellerin baktığı yön" aria-valuemin="-180" aria-valuemax="180">`;
+        s += `<circle cx="${PC}" cy="${PC}" r="${PR}" fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>`;
+        // Güneşin gün içi yolu: doğudan doğar, güneyden geçer, batıda batar
+        s += `<path d="M ${PC + PR} ${PC} A ${PR} ${PR} 0 0 1 ${PC - PR} ${PC}" fill="none" stroke="#FBBF24" stroke-opacity=".45" stroke-width="2.5" stroke-dasharray="3 6" stroke-linecap="round"/>`;
+        const GY = PC + 76;   // öğle güneşi: halkanın içinde, güneyde (halkadaki imleçle çakışmasın)
+        s += `<g aria-hidden="true"><circle cx="${PC}" cy="${GY}" r="8" fill="#FBBF24"/>${[0, 45, 90, 135, 180, 225, 270, 315].map(a => { const r1 = 11, r2 = 14, x = Math.sin(a * Math.PI / 180), y = Math.cos(a * Math.PI / 180); return `<line x1="${PC + x * r1}" y1="${GY + y * r1}" x2="${PC + x * r2}" y2="${GY + y * r2}" stroke="#FBBF24" stroke-width="2" stroke-linecap="round"/>`; }).join('')}</g>`;
+        s += [['K', 0], ['D', 90], ['G', 180], ['B', 270]].map(([h, b]) => { const x = PC + 117 * Math.sin(b * Math.PI / 180), y = PC - 117 * Math.cos(b * Math.PI / 180) + 4.5; return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#A3B5CA">${h}</text>`; }).join('');
+        s += `<g id="tuEv" transform="rotate(0 ${PC} ${PC})"><g transform="translate(${PC} ${PC}) scale(1.3)">${evIcerik('tek')}</g></g>`;
+        s += YON8.map(([az, ad]) => { const [x, y] = pusulaNokta(az, PR); return `<g class="tu-nokta" data-az="${az}"><title>${ad}</title><circle cx="${x}" cy="${y}" r="5" fill="rgba(255,255,255,.35)"/></g>`; }).join('');
+        s += `<circle id="tuYonImlec" cx="${PC}" cy="${PC + PR}" r="7" fill="none" stroke="#FBBF24" stroke-width="2.5"/>`;
+        return s + '</svg>';
+    }
+    let _pusulaYay = null, _evMod = null;
+    const enKisaAci = (simdi, hedef) => simdi + ((((hedef - simdi) % 360) + 540) % 360 - 180);
+    function pusulaGoster(az, mod, anlik) {
+        const ev = document.getElementById('tuEv');
+        if (!ev) return;
+        if (_evMod !== mod) { ev.firstElementChild.innerHTML = evIcerik(mod); _evMod = mod; }
+        const hedef = mod === 'db' ? 90 : mod === 'opt' ? 0 : az;
+        if (anlik) _pusulaYay.ayarla(enKisaAci(_pusulaYay.deger, hedef)); else _pusulaYay.hedefle(enKisaAci(_pusulaYay.deger, hedef));
+        const [x, y] = pusulaNokta(mod === 'tek' ? az : 0, PR);
+        const im = document.getElementById('tuYonImlec');
+        if (im) { im.setAttribute('cx', x); im.setAttribute('cy', y); im.style.opacity = mod === 'tek' ? 1 : 0; }
+        document.querySelectorAll('#tuPusula .tu-nokta circle').forEach(c => {
+            const aktif = mod === 'tek' && Number(c.parentNode.dataset.az) === Math.round(az);
+            c.setAttribute('r', aktif ? 6.5 : 5); c.setAttribute('fill', aktif ? '#FBBF24' : 'rgba(255,255,255,.35)');
+        });
+        const svg = document.getElementById('tuPusula');
+        if (svg) { svg.setAttribute('aria-valuenow', Math.round(az)); svg.setAttribute('aria-valuetext', mod === 'db' ? 'Doğu ve batı' : mod === 'opt' ? 'Düz çatı, en iyi açı' : yonAdi(az)); }
+        yonOkuTazele(az, mod);
+    }
+    function yonOkuTazele(az, mod) {
+        const ad = document.getElementById('tuYonAd'), or = document.getElementById('tuYonOran');
+        if (ad) ad.textContent = mod === 'db' ? 'Doğu + Batı' : mod === 'opt' ? 'Sehpa (en iyi açı)' : yonAdi(az);
+        const egim = mod === 'opt' ? (TU_IL[D.il] || TU_IL['Ankara'])[2] : Number(D.egim) || 0;
+        const ys = mod === 'db' ? [{ az: -90, pay: .5 }, { az: 90, pay: .5 }] : [{ az: mod === 'opt' ? 0 : az, pay: 1 }];
+        const oran = mod === 'opt' ? 1 : motor.yonOrani(D.il, egim, ys);
+        sayiYaz(or, oran * 100, (x) => '%' + tr(x));
+    }
+    function pusulaKur() {
+        const ev = document.getElementById('tuEv');
+        _evMod = null;
+        // Döndürme için hafif salınımlı yay (Apple'ın döndürme değeri: sönüm 0,8)
+        _pusulaYay = Yay(D.yonMod === 'tek' ? Number(D.az) || 0 : D.yonMod === 'db' ? 90 : 0,
+            (x) => ev && ev.setAttribute('transform', `rotate(${x.toFixed(2)} ${PC} ${PC})`), 0.4, 0.8);
+        pusulaGoster(Number(D.az) || 0, D.yonMod, true);
+        const svg = document.getElementById('tuPusula');
+        if (!svg) return;
+        let surukle = false;
+        const acidan = (e) => {
+            const r = svg.getBoundingClientRect();
+            const dx = (e.clientX - r.left) / r.width * PV - PC, dy = (e.clientY - r.top) / r.height * PV - PC;
+            if (Math.hypot(dx, dy) < 18) return null;           // merkezde yön belirsiz
+            let b = Math.atan2(dx, -dy) * 180 / Math.PI;         // kuzeyden saat yönünde
+            let az = ((b - 180) % 360 + 540) % 360 - 180;
+            az = Math.round(az / 5) * 5;
+            const s45 = Math.round(az / 45) * 45;                 // ana yönlere mıknatıs
+            if (Math.abs(az - s45) <= 7) az = s45;
+            return az === -180 ? 180 : az;
+        };
+        const uygula = (az, anlik) => {
+            if (az == null) return;
+            const degisti = D.yonMod !== 'tek' || Number(D.az) !== az;
+            D.yonMod = 'tek'; D.az = az;
+            secimleriTazele();
+            pusulaGoster(az, 'tek', anlik);
+            kesitGoster(Number(D.egim) || 0, true);
+            if (degisti && !surukle) planla(0);
+        };
+        // Basma anında yanıt: dokunulan yöne hemen döner; sürüklerken 1:1 izler
+        svg.addEventListener('pointerdown', (e) => { surukle = true; svg.setPointerCapture(e.pointerId); uygula(acidan(e), false); });
+        svg.addEventListener('pointermove', (e) => { if (surukle) uygula(acidan(e), true); });
+        const birak = () => { if (!surukle) return; surukle = false; planla(0); };
+        svg.addEventListener('pointerup', birak);
+        svg.addEventListener('pointercancel', birak);
+        svg.addEventListener('keydown', (e) => {
+            const adim = e.shiftKey ? 5 : 45;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); uygula(((Number(D.az) + adim + 540) % 360) - 180); }
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); uygula(((Number(D.az) - adim + 540) % 360) - 180); }
+        });
+    }
+
+    // --- EĞİM KESİTİ ------------------------------------------------------------------
+    // Yandan görünüş, güney sağda. Panel GÜNEY kenarından (sağdaki pivot)
+    // yükselir; yüzeyi güneye ve güneşe bakar. Ayak çatıya iner. Güneş,
+    // ~32°'lik en iyi açıda panel normaline denk gelecek yerde; ışınlar
+    // panele ne kadar dik geliyorsa o kadar parlak.
+    // ⚠️ İlk çizimde pivot soldaydı: panel kuzeye, güneşin TERSİNE bakıyordu.
+    const KX = 212, KY = 128, KL = 130;   // pivot (güney kenarı) ve panel boyu
+    const GUNES = [196, 28];
+    function kesitSvg() {
+        return `<svg class="tu-kesit" id="tuKesit" viewBox="0 0 260 168" aria-hidden="true">
+            <defs><linearGradient id="tuGok" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FBBF24" stop-opacity=".10"/><stop offset="1" stop-color="#FBBF24" stop-opacity="0"/></linearGradient></defs>
+            <rect x="0" y="0" width="260" height="168" fill="url(#tuGok)" rx="12"/>
+            <text x="250" y="${KY + 26}" text-anchor="end" font-size="10" font-weight="800" fill="#A3B5CA">G</text>
+            <text x="10" y="${KY + 26}" font-size="10" font-weight="800" fill="#A3B5CA">K</text>
+            <g id="tuIsinlar" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 5"></g>
+            <circle cx="${GUNES[0]}" cy="${GUNES[1]}" r="13" fill="#FBBF24"/>
+            <rect x="28" y="${KY}" width="196" height="30" rx="3" fill="#24384f" stroke="rgba(255,255,255,.2)"/>
+            <rect x="56" y="${KY + 10}" width="16" height="12" rx="1" fill="rgba(251,191,36,.35)"/><rect x="170" y="${KY + 10}" width="16" height="12" rx="1" fill="rgba(251,191,36,.35)"/>
+            <line x1="6" y1="${KY + 30}" x2="254" y2="${KY + 30}" stroke="rgba(255,255,255,.25)"/>
+            <line id="tuOptCizgi" x1="${KX}" y1="${KY}" x2="${KX - KL}" y2="${KY}" stroke="#FBBF24" stroke-opacity=".55" stroke-width="1.5" stroke-dasharray="3 4"/>
+            <line id="tuAyak" x1="${KX - KL}" y1="${KY}" x2="${KX - KL}" y2="${KY}" stroke="#A3B5CA" stroke-width="3" stroke-linecap="round"/>
+            <path id="tuAciYay" fill="none" stroke="#FBBF24" stroke-width="1.5"/>
+            <text id="tuAciYazi" font-size="12" font-weight="800" fill="#E8EEF7" text-anchor="middle"></text>
+            <g id="tuPanelG"><rect x="${KX - KL}" y="${KY - 7}" width="${KL}" height="7" rx="2" fill="#2f5ea8" stroke="rgba(255,255,255,.45)" stroke-width="1"/>
+                <rect id="tuPanelParla" x="${KX - KL}" y="${KY - 7}" width="${KL}" height="7" rx="2" fill="#FBBF24" opacity="0"/></g>
+            <circle cx="${KX}" cy="${KY}" r="3.5" fill="#E8EEF7"/>
+        </svg>`;
+    }
+    let _kesitYay = null;
+    function kesitCiz(t) {
+        const g = document.getElementById('tuPanelG');
+        if (!g) return;
+        const r = t * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+        g.setAttribute('transform', `rotate(${t.toFixed(2)} ${KX} ${KY})`);
+        const ex = KX - KL * c, ey = KY - KL * s;
+        const ayak = document.getElementById('tuAyak');
+        ayak.setAttribute('x1', ex.toFixed(1)); ayak.setAttribute('y1', ey.toFixed(1)); ayak.setAttribute('x2', ex.toFixed(1));
+        ayak.style.opacity = t > 1 ? 1 : 0;
+        const ar = 30;
+        document.getElementById('tuAciYay').setAttribute('d', `M ${KX - ar} ${KY} A ${ar} ${ar} 0 0 1 ${(KX - ar * c).toFixed(1)} ${(KY - ar * s).toFixed(1)}`);
+        const yazi = document.getElementById('tuAciYazi');
+        yazi.setAttribute('x', (KX - 46 * Math.cos(r / 2)).toFixed(1)); yazi.setAttribute('y', (KY - 46 * Math.sin(r / 2) + 4).toFixed(1));
+        yazi.textContent = Math.round(t) + '°';
+        const mx = KX - KL / 2 * c, my = KY - KL / 2 * s;
+        const nx = s, ny = -c;                                   // panel normali (güneye-yukarı)
+        let gx = GUNES[0] - mx, gy = GUNES[1] - my; const gu = Math.hypot(gx, gy); gx /= gu; gy /= gu;
+        const dik = Math.max(0, nx * gx + ny * gy);
+        const isin = document.getElementById('tuIsinlar');
+        isin.innerHTML = [-0.3, 0, 0.3].map(o => {
+            return `<line x1="${GUNES[0] - 8}" y1="${GUNES[1] + 10}" x2="${(mx + o * KL * c).toFixed(1)}" y2="${(my + o * KL * s).toFixed(1)}"/>`;
+        }).join('');
+        isin.setAttribute('stroke-opacity', (0.15 + 0.7 * Math.pow(dik, 3)).toFixed(2));
+        document.getElementById('tuPanelParla').setAttribute('opacity', (0.45 * Math.pow(dik, 6)).toFixed(2));
+    }
+    function kesitGoster(egim, anlik) {
+        if (!_kesitYay) return;
+        if (anlik) _kesitYay.ayarla(egim); else _kesitYay.hedefle(egim);
+        const opt = (TU_IL[D.il] || TU_IL['Ankara'])[2];
+        const o = document.getElementById('tuOptCizgi'), r = opt * Math.PI / 180;
+        if (o) { o.setAttribute('x2', (KX - KL * Math.cos(r)).toFixed(1)); o.setAttribute('y2', (KY - KL * Math.sin(r)).toFixed(1)); }
+        const isaret = document.getElementById('tuOptIsaret');
+        if (isaret) { isaret.style.left = (opt / 60 * 100) + '%'; isaret.title = 'İliniz için en iyi açı: ' + opt + '°'; }
+        const deg = document.getElementById('tuEgimDeg');
+        if (deg) deg.textContent = Math.round(egim) + '°';
+        const ys = D.yonMod === 'db' ? [{ az: -90, pay: .5 }, { az: 90, pay: .5 }] : [{ az: D.yonMod === 'opt' ? 0 : Number(D.az) || 0, pay: 1 }];
+        sayiYaz(document.getElementById('tuEgimOran'), (D.yonMod === 'opt' ? 1 : motor.yonOrani(D.il, egim, ys)) * 100, (x) => '%' + tr(x));
+        const k = root.querySelector('input[data-tu="egim"]');
+        if (k) { k.value = Math.round(egim); k.style.setProperty('--dolu', (egim / 60 * 100).toFixed(1) + '%'); }
+    }
+    function kesitKur() {
+        const bas = D.yonMod === 'opt' ? (TU_IL[D.il] || TU_IL['Ankara'])[2] : Number(D.egim) || 0;
+        _kesitYay = Yay(bas, kesitCiz, 0.4, 1);
+        kesitGoster(bas, true);
+    }
+
+    // --- MİNİ GRAFİKLER ------------------------------------------------------------------
+    // Kart içi küçük çizimler: tüketimin yıl içi şekli ve günün saatlerine
+    // dağılımı. Sayısal okuma için değil, seçenekleri GÖZLE ayırt etmek için.
+    function mevsimMini(desen) {
+        const f = motor.MEVSIM_DESEN[desen];
+        const v = Array.from({ length: 12 }, (_, m) => f(m)), mx = Math.max(...v);
+        return `<svg viewBox="0 0 72 24" width="72" height="24" aria-hidden="true" style="display:block;margin-top:2px">${v.map((x, m) => { const h = 4 + x / mx * 18; return `<rect x="${m * 6}" y="${24 - h}" width="4.5" height="${h}" rx="1" fill="${RENK.tuketim}"/>`; }).join('')}</svg>`;
+    }
+    let _gunesSekliOrt = null;
+    function gunesOrt() {
+        // Yıllık ortalama güneş şekli (seçili ilin konumuyla; il yoksa Ankara)
+        const il = TU_IL[D.il] || TU_IL['Ankara'];
+        const anahtar = il[0] + '|' + il[1];
+        if (_gunesSekliOrt && _gunesSekliOrt.k === anahtar) return _gunesSekliOrt.v;
+        const s = motor.gunesSekli(il[0], il[1], 30, 0), w = new Array(24).fill(0);
+        s.forEach((ay, m) => ay.forEach((x, h) => { w[h] += x * il[8][m]; }));
+        _gunesSekliOrt = { k: anahtar, v: w };
+        return w;
+    }
+    function egriYolu(v, W, H, ust) {
+        const mx = Math.max(...v) || 1;
+        return v.map((x, h) => (h ? 'L' : 'M') + (h / 23 * W).toFixed(1) + ',' + (H - x / mx * (H - (ust || 2))).toFixed(1)).join('');
+    }
+    function yasamMini(k) {
+        const p = motor.yasamProfili(k), g = gunesOrt(), W = 96, H = 26;
+        return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true" style="display:block;margin-top:2px">
+            <path d="${egriYolu(g, W, H)}L${W},${H}L0,${H}Z" fill="${RENK.uretim}" fill-opacity=".28"/>
+            <path d="${egriYolu(p, W, H)}" fill="none" stroke="${RENK.tuketim}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+    }
+
+    // İl göstergesi: ilin güneşliliği Türkiye aralığında nerede?
+    let _ilSira = null;
+    function ilSira() {
+        if (_ilSira) return _ilSira;
+        const liste = Object.keys(TU_IL).map(il => ({ il, top: TU_IL[il][8].reduce((a, b) => a + b, 0) })).sort((a, b) => b.top - a.top);
+        const enAz = liste[liste.length - 1], enCok = liste[0];
+        const net = (il) => { const u = motor.uretim({ il, egim: 'opt', az: 'opt' }); return u ? u.yillik : 0; };
+        _ilSira = { liste, enAz: { il: enAz.il, kwh: net(enAz.il) }, enCok: { il: enCok.il, kwh: net(enCok.il) }, min: enAz.top, max: enCok.top };
+        return _ilSira;
+    }
+    function ilGostergeCiz() {
+        const s = ilSira();
+        const nd = document.getElementById('tuIlNeden');
+        if (nd) nd.textContent = `Aynı panel ${s.enAz.il}'da yılda ~${tr(Math.round(s.enAz.kwh / 10) * 10)} kWh, ${s.enCok.il}'da ~${tr(Math.round(s.enCok.kwh / 10) * 10)} kWh üretir.`;
+        const kutu = document.getElementById('tuIlGosterge');
         if (!kutu) return;
-        const pasif = D.cihazlar.filter(c => !(Number(c.adet) > 0)).length;
-        kutu.innerHTML = D.cihazlar.map((c, i) => {
-            const kullanilmiyor = !(Number(c.adet) > 0);
-            return `
-            <div class="${SATIR} ${kullanilmiyor ? 'opacity-60' : ''} ${kullanilmiyor && !D.pasifAcik ? 'hidden' : ''}" data-satir="${i}">
-                <label class="${ALAN} col-span-3 md:flex-1 md:min-w-[150px]">Cihaz<input data-tu-cihaz="${i}" data-f="ad" value="${esc(c.ad)}" class="${KUCUK} w-full mt-0.5 normal-case font-normal"></label>
-                <label class="${ALAN}">Adet<input data-tu-cihaz="${i}" data-f="adet" type="number" min="0" step="1" value="${esc(c.adet)}" class="${KUCUK} w-full md:w-16 block mt-0.5"></label>
-                <label class="${ALAN}">Watt<input data-tu-cihaz="${i}" data-f="w" type="number" min="0" step="10" value="${esc(c.w)}" class="${KUCUK} w-full md:w-20 block mt-0.5"></label>
-                <label class="${ALAN}">Saat/gün<input data-tu-cihaz="${i}" data-f="saat" type="number" min="0" max="24" step="0.1" value="${esc(c.saat)}" class="${KUCUK} w-full md:w-20 block mt-0.5"></label>
-                <label class="${ALAN} col-span-2">Ne zaman<select data-tu-cihaz="${i}" data-f="zaman" class="${KUCUK} w-full block mt-0.5">${secenek(motor.PENCERE_AD, c.zaman)}</select></label>
-                <label class="${ALAN} col-span-2">Mevsim<select data-tu-cihaz="${i}" data-f="mevsim" class="${KUCUK} w-full block mt-0.5">${secenek(MEVSIM_AD, c.mevsim)}</select></label>
-                <div class="col-start-4 row-start-2 text-right md:min-w-[78px]"><span class="block text-[10px] font-bold text-slate-400 uppercase">kWh/yıl</span><span data-cihaz-yil="${i}" class="text-sm font-black text-slate-700">${tr(motor.cihazYillik(c))}</span></div>
-                <button type="button" data-tu-eylem="cihazSil" data-i="${i}" class="col-start-4 row-start-1 justify-self-end text-slate-400 hover:text-red-600 text-xl leading-none px-1 pb-1.5" aria-label="${esc(c.ad)} satırını sil">×</button>
+        if (!D.il) { kutu.innerHTML = '<p class="text-sm text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-xl p-3">Yukarıda ilinizi seçince, güneşlilikte Türkiye’nin neresinde olduğunu burada gösteririz.</p>'; return; }
+        const i = s.liste.findIndex(x => x.il === D.il);
+        const oran = (s.liste[i].top - s.min) / (s.max - s.min);
+        kutu.innerHTML = `
+            <div class="flex items-baseline justify-between text-xs text-slate-500 mb-1"><span>${esc(s.enAz.il)}</span><span class="font-black text-slate-700">${esc(D.il)}: güneşte 81 il içinde ${i + 1}.</span><span>${esc(s.enCok.il)}</span></div>
+            <div style="position:relative;height:10px;border-radius:999px;background:linear-gradient(90deg,#3b5578,#c98500 60%,#FBBF24)">
+                <span class="tu-belir" style="position:absolute;top:50%;left:${(oran * 100).toFixed(1)}%;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #F59E0B;transform:translate(-50%,-50%);box-shadow:0 2px 8px rgba(0,0,0,.5);transition:left .5s cubic-bezier(.2,.8,.2,1)"></span>
             </div>`;
-        }).join('') + (pasif ? `
-            <button type="button" data-tu-eylem="pasifGoster" class="text-xs font-bold text-slate-500 hover:text-slate-700">${D.pasifAcik ? '▴ Kullanmadığım cihazları gizle' : `▾ Listedeki diğer cihazlar (${pasif}) — klima, termosifon, ısıtıcı…`}</button>` : '');
-    }
-    function yukListesiCiz() {
-        const kutu = document.getElementById('tuYukListe');
-        if (!kutu) return;
-        kutu.innerHTML = D.yukler.map((y, i) => `
-            <div class="${SATIR} ${y.secili ? '' : 'opacity-60'}" data-yuk-satir="${i}">
-                <div class="col-span-3 md:flex-1 md:min-w-[170px] flex items-end gap-2 min-w-0">
-                    <input data-tu-yuk="${i}" data-f="secili" type="checkbox" ${y.secili ? 'checked' : ''} class="w-4 h-4 mb-2 shrink-0" aria-label="${esc(y.ad)}: kesintide çalışsın">
-                    <label class="${ALAN} flex-1">Cihaz<input data-tu-yuk="${i}" data-f="ad" value="${esc(y.ad)}" class="${KUCUK} w-full mt-0.5 normal-case font-normal"></label>
-                </div>
-                <label class="${ALAN}">Adet<input data-tu-yuk="${i}" data-f="adet" type="number" min="0" step="1" value="${esc(y.adet)}" class="${KUCUK} w-full md:w-16 block mt-0.5"></label>
-                <label class="${ALAN}">Watt<input data-tu-yuk="${i}" data-f="w" type="number" min="0" step="10" value="${esc(y.w)}" class="${KUCUK} w-full md:w-20 block mt-0.5"></label>
-                <label class="${ALAN}">Oran %<input data-tu-yuk="${i}" data-f="oran" type="number" min="0" max="100" step="5" value="${esc(y.oran)}" class="${KUCUK} w-full md:w-20 block mt-0.5"></label>
-                <label class="flex items-center gap-1.5 text-xs font-bold text-slate-500 pb-2 col-start-4 row-start-2"><input data-tu-yuk="${i}" data-f="motor" type="checkbox" ${y.motor ? 'checked' : ''} class="w-4 h-4"> Motorlu</label>
-                <button type="button" data-tu-eylem="yukSil" data-i="${i}" class="col-start-4 row-start-1 justify-self-end text-slate-400 hover:text-red-600 text-xl leading-none px-1 pb-1.5" aria-label="${esc(y.ad)} satırını sil">×</button>
-            </div>`).join('');
     }
 
+    // Çatı alanı: sığan panel sayısı ızgarası; öneri hazırsa kullanılanlar dolu
+    let _oncekiPanelSayisi = 0;
+    function alanGorselCiz(r) {
+        const kutu = document.getElementById('tuAlanGorsel'), deg = document.getElementById('tuAlanDeg');
+        const alan = Number(D.alan) || 0;
+        const S = window.EPC_SETTINGS || {};
+        const pk = Number(S.kwpPerPanel) || 0.55, m2 = Number(S.roofM2PerKwp) || 5.5;
+        if (deg) deg.textContent = alan > 0 ? alan + ' m²' : 'Bilmiyorum';
+        if (!kutu) return;
+        if (!(alan > 0)) { kutu.innerHTML = ''; _oncekiPanelSayisi = 0; return; }
+        const sigan = Math.floor(alan / (pk * m2) + 1e-9);
+        const kullanilan = r && !r.eksik ? Math.min(r.panel, sigan) : 0;
+        const goster = Math.min(sigan, 60);
+        let h = '';
+        for (let i = 0; i < goster; i++) {
+            const dolu = i < kullanilan;
+            const yeni = i >= _oncekiPanelSayisi;
+            h += `<i class="${yeni ? 'tu-pop' : ''}" style="${dolu ? '' : 'background:transparent;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)'};${yeni ? `animation-delay:${Math.min(i - _oncekiPanelSayisi, 20) * 18}ms` : ''}"></i>`;
+        }
+        _oncekiPanelSayisi = goster;
+        kutu.innerHTML = `<div class="tu-panel-izgara">${h}${sigan > goster ? `<span class="text-xs text-slate-500 self-end ml-1">+${sigan - goster}</span>` : ''}</div>
+            <p class="text-xs text-slate-600 mt-2">En fazla <b>${sigan} panel</b> (${sade(sigan * pk)} kWp) sığar.${kullanilan ? ` Önerilen sistem <b>${kullanilan}</b> tanesini kullanıyor (dolu olanlar).` : ''}</p>`;
+    }
+
+    // Bölmeli seçicilerin kayan zemini
+    function segZeminleri() {
+        root.querySelectorAll('.tu-seg').forEach(s => {
+            const b = s.querySelector('button[aria-pressed="true"]'), z = s.querySelector('.tu-seg-zemin');
+            if (b && z) { z.style.left = b.offsetLeft + 'px'; z.style.width = b.offsetWidth + 'px'; }
+        });
+    }
+    window.addEventListener('resize', () => { if (root.offsetParent) segZeminleri(); });
+
+    // --- CİHAZ KARTLARI -------------------------------------------------------------
+    // Karta dokunmak cihazı açar/kapatır (adet 0 ↔ 1). ⚙ ayar panelini açar.
+    // Kart bir <div role="button">: içinde ⚙ düğmesi var ve iç içe <button>
+    // HTML'de geçersiz.
+    let _cihazSecili = null, _yukSecili = null;
+    const tlYil = (kwh) => (window.epcTarife ? window.epcTarife('tariffMesken') : 5.32) * kwh;
+    function kart(tur, i, ikon, ad, alt, acik, sayac) {
+        return `<div class="tu-secim" role="button" tabindex="0" data-${tur}="${i}" aria-pressed="${acik}" style="min-height:92px">
+            <span class="tu-tik" aria-hidden="true">✓</span>
+            <span class="tu-ikon" aria-hidden="true">${ikon}</span>
+            <span class="tu-baslik">${esc(ad)}${sayac > 1 ? ` <span class="text-amber-700">×${sayac}</span>` : ''}</span>
+            <span class="tu-alt">${alt}</span>
+            <button type="button" data-${tur}-ayar="${i}" class="absolute bottom-2 right-2 w-7 h-7 rounded-lg text-sm text-slate-400 hover:text-slate-800 hover:bg-slate-100 active:scale-90 transition" aria-label="${esc(ad)} ayarları">⚙</button>
+        </div>`;
+    }
+    // duzenDe === false: açık ayar paneli yeniden çizilmez (içinde yazılan alan
+    // odağını kaybetmesin); yalnız kartlar ve grafik yenilenir.
+    function cihazKartlariCiz(duzenDe) {
+        const k = document.getElementById('tuCihazKartlar');
+        if (!k) return;
+        k.innerHTML = D.cihazlar.map((c, i) => {
+            const acik = Number(c.adet) > 0;
+            return kart('cihaz', i, c.ikon || '🔌', c.ad, acik ? tr(motor.cihazYillik(c)) + ' kWh/yıl' : 'Kullanmıyorum', acik, Number(c.adet));
+        }).join('') + `<button type="button" data-tu-eylem="cihazEkle" class="tu-secim items-center justify-center" style="min-height:92px;border-style:dashed"><span class="tu-ikon">＋</span><span class="tu-baslik">Diğer cihaz</span></button>`;
+        if (duzenDe !== false) cihazDuzenCiz();
+        cihazGrafikCiz();
+    }
+    function chipSatiri(veri, alan, secenek, deger) {
+        return `<div class="flex flex-wrap gap-1.5">${Object.keys(secenek).map(k => `<button type="button" data-${veri}="${alan}" data-deger="${k}" aria-pressed="${deger === k}" class="text-xs font-bold px-2.5 py-1.5 rounded-lg border active:scale-95 transition ${deger === k ? 'bg-amber-500 text-white border-amber-500' : 'bg-slate-100 text-slate-600 border-slate-200'}">${secenek[k]}</button>`).join('')}</div>`;
+    }
+    function cihazDuzenCiz() {
+        const k = document.getElementById('tuCihazDuzen');
+        if (!k) return;
+        const c = D.cihazlar[_cihazSecili];
+        if (!c) { k.innerHTML = ''; return; }
+        const yil = motor.cihazYillik(c);
+        k.innerHTML = `<div class="tu-belir bg-slate-50 border border-amber-200 rounded-xl p-4">
+            <div class="flex items-center gap-3 mb-3">
+                <span class="text-2xl">${c.ikon || '🔌'}</span>
+                <input data-ced="ad" value="${esc(c.ad)}" class="${KUCUK} flex-1 min-w-0 font-bold" aria-label="Cihaz adı">
+                <span class="tu-oku text-sm text-slate-600 whitespace-nowrap"><b id="tuCedKwh" class="text-slate-800">${tr(yil)}</b> kWh · <b id="tuCedTl" class="text-slate-800">${tl(tlYil(yil))}</b>/yıl</span>
+                <button type="button" data-tu-eylem="duzenKapat" class="text-slate-400 hover:text-slate-800 text-xl px-1" aria-label="Kapat">×</button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>${etiket('Adet')}<div class="flex items-center gap-2">
+                    <button type="button" data-ced-adim="-1" class="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 font-black active:scale-90 transition" aria-label="Azalt">−</button>
+                    <b id="tuCedAdet" class="tu-oku w-8 text-center text-lg text-slate-800">${Number(c.adet) || 0}</b>
+                    <button type="button" data-ced-adim="1" class="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 font-black active:scale-90 transition" aria-label="Artır">+</button></div></div>
+                <div>${etiket('Güç (W)')}<input data-ced="w" type="number" min="0" step="10" value="${esc(c.w)}" class="${KUCUK} w-full"><p class="tu-neden">Cihazın etiketinde yazar.</p></div>
+                <div>${etiket('Tam güçte saat / gün')}<input data-ced="saat" type="number" min="0" max="24" step="0.1" value="${esc(c.saat)}" class="${KUCUK} w-full"><p class="tu-neden">Buzdolabı kompresörü ~8 saat.</p></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+                <div>${etiket('Günün hangi saatinde?')}${chipSatiri('ced-sec', 'zaman', ZAMAN_IKON, c.zaman)}</div>
+                <div>${etiket('Hangi mevsimde?')}${chipSatiri('ced-sec', 'mevsim', MEVSIM_AD, c.mevsim)}</div>
+            </div>
+            <div class="flex justify-between items-center mt-3">
+                <p class="tu-neden">Saat bilgisi, tüketimin ne kadarının doğrudan güneşten karşılanacağını belirler.</p>
+                <button type="button" data-tu-eylem="cihazSil" class="text-xs font-bold text-red-600 hover:underline shrink-0 ml-2">Listeden çıkar</button>
+            </div>
+        </div>`;
+    }
+    // En çok tüketen cihazlar: tek seri, büyükten küçüğe yatay çubuklar
+    function cihazGrafikCiz() {
+        const k = document.getElementById('tuCihazGrafik');
+        if (!k) return;
+        const l = D.cihazlar.map(c => ({ c, kwh: motor.cihazYillik(c) })).filter(x => x.kwh > 0).sort((a, b) => b.kwh - a.kwh);
+        if (!l.length) { k.innerHTML = ''; return; }
+        const ust = l.slice(0, 6), diger = l.slice(6).reduce((s, x) => s + x.kwh, 0), top = l.reduce((s, x) => s + x.kwh, 0);
+        if (diger > 0) ust.push({ c: { ikon: '…', ad: 'Diğer ' + (l.length - 6) + ' cihaz' }, kwh: diger });
+        const mx = ust[0].kwh;
+        k.innerHTML = `${etiket('Tüketiminiz nereye gidiyor?')}
+            <div class="space-y-1.5">${ust.map(x => `
+                <div class="grid items-center gap-2" style="grid-template-columns:minmax(0,9rem) 1fr 5.5rem">
+                    <span class="text-xs text-slate-600 truncate">${x.c.ikon} ${esc(x.c.ad)}</span>
+                    <span style="height:10px;border-radius:0 4px 4px 0;background:${RENK.tuketim};width:${(x.kwh / mx * 100).toFixed(1)}%;transition:width .4s cubic-bezier(.2,.8,.2,1)"></span>
+                    <span class="text-xs text-right text-slate-700 tu-oku"><b>${tr(x.kwh)}</b> kWh</span>
+                </div>`).join('')}</div>
+            <p class="text-xs text-slate-500 mt-2">Toplam <b class="text-slate-700">${tr(top)} kWh/yıl</b> · ~${tl(tlYil(top))}/yıl · ayda ~${tr(top / 12)} kWh</p>`;
+    }
+
+    // --- KESİNTİ YÜKÜ KARTLARI -------------------------------------------------------------
+    function yukKartlariCiz(duzenDe) {
+        const k = document.getElementById('tuYukKartlar');
+        if (!k) return;
+        k.innerHTML = D.yukler.map((y, i) => kart('yuk', i, y.ikon || '🔌', y.ad,
+            `${tr(y.w)} W${y.motor ? ' · motorlu' : ''}`, !!y.secili, Number(y.adet))).join('') +
+            `<button type="button" data-tu-eylem="yukEkle" class="tu-secim items-center justify-center" style="min-height:92px;border-style:dashed"><span class="tu-ikon">＋</span><span class="tu-baslik">Diğer yük</span></button>`;
+        if (duzenDe !== false) yukDuzenCiz();
+    }
+    function yukDuzenCiz() {
+        const k = document.getElementById('tuYukDuzen');
+        if (!k) return;
+        const y = D.yukler[_yukSecili];
+        if (!y) { k.innerHTML = ''; return; }
+        k.innerHTML = `<div class="tu-belir bg-slate-50 border border-amber-200 rounded-xl p-4">
+            <div class="flex items-center gap-3 mb-3">
+                <span class="text-2xl">${y.ikon || '🔌'}</span>
+                <input data-yed="ad" value="${esc(y.ad)}" class="${KUCUK} flex-1 min-w-0 font-bold" aria-label="Yük adı">
+                <button type="button" data-tu-eylem="duzenKapat" class="text-slate-400 hover:text-slate-800 text-xl px-1" aria-label="Kapat">×</button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>${etiket('Adet')}<div class="flex items-center gap-2">
+                    <button type="button" data-yed-adim="-1" class="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 font-black active:scale-90 transition" aria-label="Azalt">−</button>
+                    <b id="tuYedAdet" class="tu-oku w-8 text-center text-lg text-slate-800">${Number(y.adet) || 0}</b>
+                    <button type="button" data-yed-adim="1" class="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 font-black active:scale-90 transition" aria-label="Artır">+</button></div></div>
+                <div>${etiket('Güç (W)')}<input data-yed="w" type="number" min="0" step="10" value="${esc(y.w)}" class="${KUCUK} w-full"></div>
+                <div>${etiket('Çalışma oranı: <b id="tuYedOran">%' + (Number(y.oran) || 0) + '</b>')}${kaydirici('yedOran', 0, 100, 5, Number(y.oran) || 0, 'Çalışma oranı')}
+                    <p class="tu-neden">Kesinti boyunca açık kaldığı süre. Buzdolabı ~%40.</p></div>
+            </div>
+            <div class="flex justify-between items-center mt-3 gap-2">
+                <label class="flex items-center gap-2 text-sm font-bold text-slate-600"><input data-yed="motor" type="checkbox" ${y.motor ? 'checked' : ''} class="w-4 h-4"> Motorlu (kalkışta 3 kat güç çeker)</label>
+                <button type="button" data-tu-eylem="yukSil" class="text-xs font-bold text-red-600 hover:underline shrink-0">Listeden çıkar</button>
+            </div>
+        </div>`;
+    }
+
+    // --- ÖZETLER ------------------------------------------------------------------------
+    const kutuK = (baslik, degerHtml, alt) => `<div class="bg-slate-50 border border-slate-200 p-3 rounded-xl min-w-0"><p class="text-[11px] text-slate-500 font-bold">${baslik}</p><p class="text-lg font-black text-slate-800 mt-0.5 tu-oku">${degerHtml}</p>${alt ? `<p class="text-[11px] text-slate-500 leading-snug">${alt}</p>` : ''}</div>`;
+    const _canlandi = new Set();   // ilk görünüşte bir kez büyüyen grafikler
+    function ilkKez(id) { if (_canlandi.has(id)) return ''; _canlandi.add(id); return ' tu-yuksel'; }
+    // 12 aylık mini sütun grafiği (doğrudan etiket: en yüksek ve en düşük ay)
+    function aylikMini(id, v, renk, birim) {
+        const W = 300, H = 92, mx = Math.max(...v) || 1, bw = W / 12;
+        let enB = 0, enK = 0; v.forEach((x, m) => { if (x > v[enB]) enB = m; if (x < v[enK]) enK = m; });
+        const cls = ilkKez(id);
+        let s = `<svg viewBox="0 0 ${W} ${H + 16}" role="img" aria-label="Aylık ${birim}" style="width:100%;height:auto;display:block">`;
+        v.forEach((x, m) => {
+            const h = Math.max(1.5, x / mx * (H - 16)), y = H - h;
+            s += `<rect class="${cls.trim()}" style="animation-delay:${m * 25}ms" x="${(m * bw + 3).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 6).toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="${renk}"><title>${motor.AY_AD[m]}: ${tr(x)} ${birim}</title></rect>`;
+            if (m === enB || m === enK) s += `<text x="${(m * bw + bw / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="800" fill="#E8EEF7">${tr(x)}</text>`;
+            s += `<text x="${(m * bw + bw / 2).toFixed(1)}" y="${H + 12}" text-anchor="middle" font-size="9" fill="${RENK.eksen}">${motor.AY_AD[m].charAt(0)}</text>`;
+        });
+        return s + '</svg>';
+    }
+
+    function konumOzetCiz(r) {
+        ilGostergeCiz();
+        const u = r.u;
+        const k = document.getElementById('tuOzetKonum');
+        if (!k) return;
+        if (!u) {
+            k.innerHTML = `<div class="h-full min-h-[160px] flex items-center justify-center text-center text-sm text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-xl p-5">İlinizi seçin; 1 kWp güneş panelinin<br>orada ay ay ne üreteceğini gösterelim.</div>`;
+            return;
+        }
+        k.innerHTML = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <p class="text-xs text-slate-500 font-bold">1 kWp panel ${esc(u.il)}'de yılda</p>
+            <p class="font-black text-amber-700 tu-oku" style="font-size:34px;line-height:1.1"><span id="tuKonumKwh">${tr(u.yillik)}</span><span class="text-base"> kWh</span></p>
+            <p class="text-[11px] text-slate-500 mb-2">tüm kayıplar düşülmüş · çatı yönü ve eğiminiz dahil</p>
+            ${aylikMini('konumAy', u.aylik, RENK.uretim, 'kWh')}
+            ${u.kaynak === 'ayar' ? '<p class="text-[11px] text-slate-500 mt-1">Bu il için yöneticimizin girdiği yerinde ölçüm değeri kullanıldı.</p>' : ''}
+            ${D.yonMod === 'tek' && Math.abs(Number(D.az)) > 135 ? '<p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2"><b>Kuzeye bakan çatı önerilmez:</b> üretim belirgin düşer. Mümkünse başka bir yüzey ya da sehpa seçin.</p>' : ''}
+        </div>`;
+        const kwh = document.getElementById('tuKonumKwh');
+        if (kwh) { kwh.dataset.sayi = _onceki.konumKwh != null ? _onceki.konumKwh : u.yillik; sayiYaz(kwh, u.yillik, (x) => tr(x)); _onceki.konumKwh = u.yillik; }
+    }
+    const _onceki = {};
+
+    function donusumYaz(r) {
+        const el = document.getElementById('tuDonusum');
+        if (!el) return;
+        const v = Number(D.faturaDeger), kwh = aylikKwh();
+        if (!(v > 0)) { el.innerHTML = '<span class="text-slate-500">Son faturanızdaki tutarı ya da kWh değerini yazın.</span>'; return; }
+        const birimFiyat = r && r.tarifeTl ? r.tarifeTl : (window.epcTarife ? window.epcTarife('tariffMesken') : 5.32);
+        el.innerHTML = D.birim === 'tl'
+            ? `≈ <b class="text-slate-800">${tr(kwh)} kWh/ay</b> <span class="text-slate-500">· ${r && r.tarifeAd ? esc(r.tarifeAd) + ', ' : ''}₺${sade(birimFiyat)}/kWh ile</span>`
+            : `≈ <b class="text-slate-800">${tl(kwh * birimFiyat)}/ay</b> fatura <span class="text-slate-500">· ₺${sade(birimFiyat)}/kWh ile</span>`;
+    }
+
+    function tuketimOzetCiz(r) {
+        const t = r.t, k = document.getElementById('tuOzetTuketim');
+        donusumYaz(r);
+        const nk = document.getElementById('tuNetlestirme');
+        if (nk) nk.innerHTML = '';
+        if (!k) return;
+        if (!t || !(t.yillik > 0)) {
+            k.innerHTML = '';
+            return;
+        }
+        // Netleştirme: cihaz listesi ile fatura karşılaştırması
+        if (D.tmod === 'cihaz' && Number(D.faturaDeger) > 0 && nk) {
+            const yalniz = motor.tuketim(Object.assign({}, girdi().tuketim, { faturaEsas: false, evKm: 0 }));
+            const fatura = aylikKwh() * 12, fark = yalniz.yillik / fatura - 1, m = Math.abs(fark);
+            nk.innerHTML = `<p class="text-xs ${m <= 0.15 ? 'text-slate-600 bg-slate-50 border-slate-200' : 'text-amber-800 bg-amber-50 border-amber-200'} border rounded-lg p-3 mt-3">
+                Liste <b>${tr(yalniz.yillik)}</b> · fatura <b>${tr(fatura)}</b> kWh/yıl. ${m <= 0.15 ? `<b>Uyumlu</b> (fark ${yz(m)}).` : fark < 0 ? `<b>Listeniz ${yz(m)} düşük</b>: unuttuğunuz bir cihaz (termosifon, klima, ısıtıcı) olabilir.` : `<b>Listeniz ${yz(m)} yüksek</b>: süreler ya da güçler fazla girilmiş olabilir.`}</p>`;
+        }
+        // Gün içi örtüşme: tüketim profili ile güneş şekli (ikisi de yıllık ortalama)
+        const g = gunesOrt(), p = new Array(24).fill(0);
+        t.profil.forEach((ay, m) => ay.forEach((x, h) => { p[h] += x * t.aylik[m]; }));
+        const W = 300, H = 92;
+        const gYol = egriYolu(g, W, H, 10), pYol = egriYolu(p, W, H, 10);
+        const UST = { mesken: 2000, ticarethane: 20000, sanayi: 500000, tarimsal: 50000 };
+        const makul = (t.yillik - t.evYillik) / 12 > (UST[D.grup] || UST.mesken)
+            ? `<p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3"><b>Bu tüketim olağandışı görünüyor</b> (${tr((t.yillik - t.evYillik) / 12)} kWh/ay). Faturadaki <b>sayaç endeksini</b> tüketim yerine yazmış olabilirsiniz — tüketim, iki endeksin farkıdır.</p>` : '';
+        k.innerHTML = `<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <p class="text-xs text-slate-500 font-bold">Yıllık tüketiminiz${t.evYillik > 0 ? ' (elektrikli araç dahil)' : ''}</p>
+                <p class="font-black text-slate-800 tu-oku" style="font-size:30px;line-height:1.15"><span id="tuTukKwh">${tr(t.yillik)}</span><span class="text-base"> kWh</span></p>
+                <p class="text-[11px] text-slate-500 mb-2">ayda ~${tr(t.yillik / 12)} kWh · ${{ fatura: 'faturadan', cihaz: 'cihaz listesinden', 'cihaz+fatura': 'fatura toplamı, cihaz dağılımı' }[t.kaynak] || ''}</p>
+                ${aylikMini('tukAy', t.aylik, RENK.tuketim, 'kWh')}
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <p class="text-xs text-slate-500 font-bold">Gün içinde güneşle örtüşme</p>
+                <p class="font-black text-slate-800 tu-oku" style="font-size:30px;line-height:1.15"><span id="tuGunduzPay">%${tr(t.gunduzPay * 100)}</span><span class="text-sm font-bold text-slate-500"> gündüz (09–17)</span></p>
+                <svg viewBox="0 0 ${W} ${H + 16}" role="img" aria-label="Günlük tüketim ve güneş eğrisi" style="width:100%;height:auto;display:block;margin-top:6px">
+                    <path d="${gYol}L${W},${H}L0,${H}Z" fill="${RENK.uretim}" fill-opacity=".28"/>
+                    <path d="${gYol}" fill="none" stroke="${RENK.uretim}" stroke-width="2"/>
+                    <path d="${pYol}" fill="none" stroke="${RENK.tuketim}" stroke-width="2.5" stroke-linejoin="round"/>
+                    ${[0, 6, 12, 18, 23].map(h => `<text x="${(h / 23 * W).toFixed(1)}" y="${H + 12}" text-anchor="${h === 0 ? 'start' : h === 23 ? 'end' : 'middle'}" font-size="9" fill="${RENK.eksen}">${String(h).padStart(2, '0')}:00</text>`).join('')}
+                </svg>
+                <p class="text-[11px] text-slate-500 mt-1"><span style="display:inline-block;width:10px;height:3px;background:${RENK.uretim};vertical-align:middle"></span> güneş · <span style="display:inline-block;width:10px;height:3px;background:${RENK.tuketim};vertical-align:middle"></span> tüketiminiz. Sarı alanın altına düşen tüketim doğrudan güneşten gelir.</p>
+            </div>
+        </div>${makul}`;
+        const kw = document.getElementById('tuTukKwh');
+        if (kw) { kw.dataset.sayi = _onceki.tukKwh != null ? _onceki.tukKwh : t.yillik; sayiYaz(kw, t.yillik, (x) => tr(x)); _onceki.tukKwh = t.yillik; }
+    }
+
+    // Batarya: modül modül; yeşil dolgu kesinti için ayrılan enerji
+    let _oncekiModul = 0;
+    function yedekOzetCiz(r) {
+        const k = document.getElementById('tuOzetYedek');
+        if (!k) return;
+        if (D.hedef === 'yok') { k.innerHTML = ''; _oncekiModul = 0; return; }
+        const yd = r.yd || motor.yedek(D.yukler, D.saat);
+        if (!yd.secili.length) { k.innerHTML = `<p class="text-sm text-slate-500 bg-slate-50 border border-slate-200 rounded-xl p-4">Kesintide çalışacak en az bir cihaz seçin.</p>`; _oncekiModul = 0; return; }
+        const S = window.EPC_SETTINGS || {};
+        const modulKwh = Number(S.batteryModule) || 5, dod = Number(S.batteryDod) || 0.9, inv = Number(S.inverterEff) || 0.95;
+        const modul = r.eksik ? yd.modul : r.batModul;
+        const kullanilir = modulKwh * dod;
+        let yedekKwh = yd.enerji / inv;
+        let bloklar = '';
+        for (let i = 0; i < Math.max(modul, 1); i++) {
+            const dolu = Math.max(0, Math.min(1, yedekKwh / kullanilir)); yedekKwh -= kullanilir;
+            const yeni = i >= _oncekiModul;
+            bloklar += `<div class="tu-modul ${yeni ? 'tu-pop' : ''}" style="${yeni ? `animation-delay:${(i - _oncekiModul) * 70}ms` : ''}"><i style="height:${(dolu * 100).toFixed(0)}%"></i></div>`;
+        }
+        _oncekiModul = modul;
+        const sure = !r.eksik && r.yedekSure > 0 ? r.yedekSure : (yd.ort > 0 ? modul * kullanilir * inv / yd.ort : 0);
+        k.innerHTML = `<div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div class="flex items-end gap-2 flex-wrap" aria-hidden="true">${bloklar}</div>
+                <div class="min-w-0">
+                    <p class="font-black text-slate-800 tu-oku" style="font-size:26px;line-height:1.15">${modul} × ${sade(modulKwh)} kWh <span class="text-base">= ${sade(modul * modulKwh)} kWh</span></p>
+                    <p class="text-sm text-slate-600">Seçtiğiniz ${yd.secili.length} cihaz ${r.yedekGarantiSure != null ? `doluyken ~<b>${tr(sure)} saat</b> çalışır; her an en az ~<b>${tr(r.yedekGarantiSure)} saat</b>lik enerji saklı tutulur.` : `~<b>${tr(sure)} saat</b> çalışır.`}</p>
+                    <p class="text-[11px] text-slate-500 mt-1"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${RENK.batarya};vertical-align:-1px"></span> ${D.saat} saatlik kesinti için gereken enerji</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 mt-4">
+                ${kutuK('Ortalama yük', sade(yd.ort) + ' kW', 'kesinti boyunca')}
+                ${kutuK('Anlık tepe', sade(yd.tepe) + ' kW', 'hepsi birden açıkken')}
+                ${kutuK('Kalkış anı', sade(yd.kalkis) + ' kW', 'motor devreye girerken')}
+            </div>
+            ${!r.eksik && D.hedef === 'bagimsiz' && r.ozModul > yd.modul ? `<p class="text-xs text-slate-600 mt-3">Kesinti için ${yd.modul} modül yeterdi; gündüz fazlasını akşama taşımak için verimli kapasite <b>${r.ozModul} modül</b> çıktı (eklenen her modül yılda en az 100 tam döngü çalışıyor). Büyük olan seçildi.</p>` : ''}
+            ${!r.eksik && r.batModul > 0 ? `<p class="text-xs text-slate-600 mt-3">☀️ <b>Gündüz kesintilerinde paneller de devrede:</b> en zayıf ayda (${motor.AY_AD[r.enAzAy]}) bile sistem günde ~<b>${sade(r.enAzGunluk, 1)} kWh</b> üretir; seçtiğiniz cihazların günlük ihtiyacı ~<b>${sade(yd.ort * 24, 1)} kWh</b>.</p>` : ''}
+        </div>`;
+    }
+
+    // --- CANLI SONUÇ ÇUBUĞU ------------------------------------------------------------------
+    // Girdilerin altında yapışık durur; her seçimde sonuç burada sayarak değişir.
+    function cubukIskelet() {
+        const k = document.getElementById('tuCubukIc');
+        if (!k) return;
+        k.innerHTML = `
+            <span id="tuCubukEksik" class="text-slate-600"></span>
+            <span id="tuCubukDolu" class="hidden flex items-center gap-x-3 sm:gap-x-4 text-[13px] sm:text-sm">
+                <span class="whitespace-nowrap">☀️ <b id="tuCbKwp" class="text-base sm:text-lg font-black text-amber-700 tu-oku">0</b> <span class="text-slate-500">kWp<span class="hidden sm:inline"> · <span id="tuCbPanel">0</span> panel</span></span></span>
+                <span class="whitespace-nowrap">🔋 <b id="tuCbBat" class="font-black text-slate-800 tu-oku">0</b> <span class="text-slate-500">kWh</span></span>
+                <span class="whitespace-nowrap">💰 <b id="tuCbTas" class="font-black text-slate-800 tu-oku">₺0</b><span class="text-slate-500">/yıl<span class="hidden sm:inline"> tasarruf</span></span></span>
+            </span>`;
+    }
+    function cubukCiz(r) {
+        const eksik = document.getElementById('tuCubukEksik'), dolu = document.getElementById('tuCubukDolu');
+        if (!eksik || !dolu) return;
+        if (r.eksik) {
+            const tik = (ok, m) => `<span class="${ok ? 'text-slate-500 line-through' : 'text-slate-800 font-bold'}">${ok ? '✓' : '○'} ${m}</span>`;
+            eksik.innerHTML = `Sonuç için: ${tik(!!r.u, 'il')} &nbsp;${tik(r.t && r.t.yillik > 0, 'tüketim')}`;
+            eksik.classList.remove('hidden'); dolu.classList.add('hidden');
+            return;
+        }
+        eksik.classList.add('hidden'); dolu.classList.remove('hidden');
+        const kwp = document.getElementById('tuCbKwp');
+        const once = Number(kwp.dataset.sayi);
+        sayiYaz(kwp, r.kwp, (x) => sade(x));
+        if (isFinite(once) && Math.abs(once - r.kwp) > 1e-6) { kwp.classList.remove('tu-parla'); void kwp.offsetWidth; kwp.classList.add('tu-parla'); }
+        document.getElementById('tuCbPanel').textContent = r.panel;
+        sayiYaz(document.getElementById('tuCbBat'), r.batNominal, (x) => sade(x, 1));
+        sayiYaz(document.getElementById('tuCbTas'), r.ana.tasarruf, (x) => tl(x));
+    }
     // --- GELİŞMİŞ AYARLAR -----------------------------------------------------------------
     function gelismisCiz() {
         const kutu = document.getElementById('tuGelismis');
@@ -1147,9 +1905,7 @@
                 <div class="space-y-4">
                     <div>
                         <p class="text-sm font-black text-slate-700 mb-2">Mahsuplaşma</p>
-                        <div class="flex flex-wrap gap-2" data-grup="mahsup">
-                            ${chip('mahsup', 'aylik', 'Aylık (varsayılan)', D.mahsup === 'aylik')}${chip('mahsup', 'saatlik', 'Anlık / saatlik', D.mahsup === 'saatlik')}
-                        </div>
+                        ${seg('mahsup', [['aylik', 'Aylık (varsayılan)'], ['saatlik', 'Anlık / saatlik']], D.mahsup)}
                         <p class="text-xs text-slate-500 mt-2"><b>Aylık:</b> ay içinde şebekeye verdiğiniz enerji çektiğinizden düşülür, ay sonu fazlası satılır. <b>Saatlik:</b> anlık çekilen her kWh tarifeden ödenir, verilen her kWh satış bedelinden alınır — bu durumda bataryanın parasal değeri artar. Mevzuat değişirse karşılaştırma için.</p>
                     </div>
                     <label class="block text-sm text-slate-600">Elektrik tarifesi (₺/kWh, vergiler dahil)
@@ -1172,10 +1928,10 @@
         return (k <= 1 ? 1 : k <= 2 ? 2 : k <= 2.5 ? 2.5 : k <= 5 ? 5 : 10) * p;
     }
     // Üstü 4 px yuvarlak, tabanı düz sütun
-    function sutun(x, y, w, h, renk) {
+    function sutun(x, y, w, h, renk, cls, gecikme) {
         if (h <= 0.5) return '';
         const r = Math.min(4, h, w / 2), yb = y + h;
-        return `<path d="M${x},${yb}L${x},${y + r}Q${x},${y} ${x + r},${y}L${x + w - r},${y}Q${x + w},${y} ${x + w},${y + r}L${x + w},${yb}Z" fill="${renk}"/>`;
+        return `<path ${cls ? `class="${cls}" style="animation-delay:${gecikme || 0}ms"` : ''} d="M${x},${yb}L${x},${y + r}Q${x},${y} ${x + r},${y}L${x + w - r},${y}Q${x + w},${y} ${x + w},${y + r}L${x + w},${yb}Z" fill="${renk}"/>`;
     }
     const lejant = (ogeler) => `<div class="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs text-slate-600">${ogeler.map(o =>
         `<span class="inline-flex items-center gap-1.5">${o.cizgi
@@ -1219,7 +1975,8 @@
     }
     const IPUCU = '<div class="tu-ipucu" style="display:none;position:absolute;z-index:5;pointer-events:none;background:rgba(4,12,22,.94);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:8px 10px;font-size:12px;color:#E8EEF7;box-shadow:0 10px 30px -10px rgba(0,0,0,.8)"></div>';
 
-    function aylikGrafik(ay) {
+    function aylikGrafik(ay, ilkGorunus) {
+        const cls = (ilkGorunus || '').trim();
         const W = 680, H = 230, ml = 52, mr = 8, mt = 10, mb = 24, pw = W - ml - mr, ph = H - mt - mb;
         const enCok = Math.max(1, ...ay.map(a => Math.max(a.uretim, a.tuketim)));
         const adim = guzelAdim(enCok, 4), ust = Math.ceil(enCok / adim) * adim;
@@ -1232,8 +1989,8 @@
         }
         ay.forEach((a, m) => {
             const cx = ml + m * bant + bant / 2;
-            s += sutun(cx - bw - 1, y(a.uretim), bw, mt + ph - y(a.uretim), RENK.uretim);
-            s += sutun(cx + 1, y(a.tuketim), bw, mt + ph - y(a.tuketim), RENK.tuketim);
+            s += sutun(cx - bw - 1, y(a.uretim), bw, mt + ph - y(a.uretim), RENK.uretim, cls, m * 30);
+            s += sutun(cx + 1, y(a.tuketim), bw, mt + ph - y(a.tuketim), RENK.tuketim, cls, m * 30 + 15);
             s += `<text x="${cx}" y="${H - 6}" text-anchor="middle" font-size="11" fill="${RENK.eksen}">${motor.AY_AD[m].slice(0, 3)}</text>`;
         });
         return `<div class="tu-grafik" style="position:relative">
@@ -1268,7 +2025,6 @@
             ${IPUCU}</div>`;
     }
 
-    // --- ÖZET KUTULARI ---------------------------------------------------------------------
     const kutu = (baslik, deger, birim, vurgu, alt) => `
         <div class="${vurgu ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'} border p-3 rounded-xl min-w-0">
             <p class="text-[11px] ${vurgu ? 'text-amber-700' : 'text-slate-500'} font-bold leading-tight">${baslik}</p>
@@ -1278,89 +2034,26 @@
     const bos = (metin) => `<p class="text-sm text-slate-500 bg-slate-50 border border-slate-200 rounded-xl p-4">${metin}</p>`;
     const yaz = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
 
-    function konumOzetCiz(r) {
-        const u = r.u;
-        if (!u) { yaz('tuOzetKonum', bos('İlinizi seçin; 1 kWp panelin orada ne üreteceğini hemen gösterelim.')); return; }
-        let enIyi = 0, enKotu = 0;
-        u.aylik.forEach((v, m) => { if (v > u.aylik[enIyi]) enIyi = m; if (v < u.aylik[enKotu]) enKotu = m; });
-        const notlar = [];
-        if (D.yon === 'K' && !D.uzman) notlar.push('<b>Kuzeye bakan çatı önerilmez:</b> üretim optimumun yarısına kadar düşebilir. Mümkünse panelleri başka bir yüzeye ya da sehpayla güneye yönlendirin.');
-        if (u.kaynak === 'ayar') notlar.push('Bu il için yöneticimizin girdiği yerinde ölçüm değeri kullanıldı.');
-        yaz('tuOzetKonum', `
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                ${kutu('1 kWp yıllık üretim', tr(u.yillik), 'kWh', true, 'tüm kayıplar düşülmüş')}
-                ${kutu('En verimli ay', tr(u.aylik[enIyi]), 'kWh', false, motor.AY_AD[enIyi])}
-                ${kutu('En zayıf ay', tr(u.aylik[enKotu]), 'kWh', false, motor.AY_AD[enKotu])}
-                ${kutu('Optimum yöne göre', yz(u.optOran), '', false, `optimum: güney, ${u.optEgim}° eğim`)}
-            </div>
-            ${notlar.map(n => `<p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3">${n}</p>`).join('')}
-            <p class="text-[11px] text-slate-400 mt-2">Kaynak: PVGIS (AB Ortak Araştırma Merkezi) uydu ışınım verisi, ${esc(u.il)} · 2005–2020 ortalaması.</p>`);
-    }
-
-    function tuketimOzetCiz(r) {
-        const t = r.t;
-        if (!t || !(t.yillik > 0)) {
-            yaz('tuOzetTuketim', bos(D.tmod === 'cihaz' ? 'En az bir cihazın adet, watt ve saatini girin.' : 'Faturanızdaki aylık ortalama tüketimi (kWh) girin. Faturanız yanınızda değilse “Cihaz cihaz” sekmesini kullanın.'));
-            return;
+    // Önerilen sistemin panelleri, tek tek. Sayı değişince yalnız yeni gelenler belirir.
+    let _oncekiSonucPanel = 0;
+    function panelIzgara(n) {
+        const goster = Math.min(n, 48);
+        let h = '';
+        for (let i = 0; i < goster; i++) {
+            const yeni = i >= _oncekiSonucPanel;
+            h += `<i class="${yeni ? 'tu-pop' : ''}" style="${yeni ? `animation-delay:${Math.min(i - _oncekiSonucPanel, 24) * 22}ms` : ''}"></i>`;
         }
-        let netlestirme = '';
-        if (D.tmod === 'cihaz' && Number(D.aylikOrt) > 0) {
-            const yalniz = motor.tuketim(Object.assign({}, girdi().tuketim, { faturaEsas: false, evKm: 0 }));
-            const fatura = Number(D.aylikOrt) * 12;
-            const fark = yalniz.yillik / fatura - 1;
-            const mutlak = Math.abs(fark);
-            const durum = mutlak <= 0.15
-                ? `<b>Listeniz faturanızla uyumlu</b> (fark ${yz(mutlak)}).`
-                : fark < 0
-                    ? `<b>Listeniz faturanızdan ${yz(mutlak)} düşük.</b> Unuttuğunuz bir cihaz (termosifon, klima, ısıtıcı) olabilir ya da kullanım süreleri kısa girilmiş.`
-                    : `<b>Listeniz faturanızdan ${yz(mutlak)} yüksek.</b> Kullanım süreleri ya da güçler fazla girilmiş olabilir.`;
-            netlestirme = `<p class="text-xs ${mutlak <= 0.15 ? 'text-slate-600 bg-slate-50 border-slate-200' : 'text-amber-800 bg-amber-50 border-amber-200'} border rounded-lg p-3 mt-3">
-                Cihaz listesi: <b>${tr(yalniz.yillik)} kWh/yıl</b> · Fatura: <b>${tr(fatura)} kWh/yıl</b>. ${durum}
-                ${D.faturaEsas ? ' Hesapta <b>faturanızın toplamı</b> esas alınıyor; listeniz yalnız saatlik dağılımı belirliyor.' : ' Hesapta <b>cihaz listenizin toplamı</b> kullanılıyor.'}</p>`;
-        }
-        const ev = t.evYillik > 0 ? ` · elektrikli araç dahil (+${tr(t.evYillik)} kWh)` : '';
-        // Makullük: Fatura Analizi'ndeki sınırlarla aynı. Engellemiyor, uyarıyor —
-        // en sık hata faturadaki SAYAÇ ENDEKSİNİ tüketim diye yazmak.
-        const UST = { mesken: 2000, ticarethane: 20000, sanayi: 500000, tarimsal: 50000 };
-        const makul = (t.yillik - t.evYillik) / 12 > (UST[D.grup] || UST.mesken)
-            ? `<p class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3"><b>Bu tüketim olağandışı görünüyor</b> (${tr((t.yillik - t.evYillik) / 12)} kWh/ay). Faturadaki <b>sayaç endeksini</b> tüketim yerine yazmış olabilirsiniz — tüketim, iki endeksin farkıdır. Değer doğruysa devam edin.</p>` : '';
-        yaz('tuOzetTuketim', `
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                ${kutu('Yıllık tüketim', tr(t.yillik), 'kWh', true, (t.kaynak === 'fatura' ? 'faturadan' : t.kaynak === 'cihaz' ? 'cihaz listesinden' : 'fatura + cihaz listesi') + ev)}
-                ${kutu('Aylık ortalama', tr(t.yillik / 12), 'kWh')}
-                ${kutu('Günlük ortalama', sade(t.yillik / 365, 1), 'kWh')}
-                ${kutu('Gündüz (09–17) payı', yz(t.gunduzPay), '', false, 'panelden doğrudan karşılanabilen kısım')}
-            </div>
-            ${makul}${netlestirme}
-            ${r.tarifeAd ? `<p class="text-[11px] text-slate-400 mt-2">Tarife: ${esc(r.tarifeAd)} — ₺${sade(r.tarifeTl)}/kWh (EPDK, vergiler dahil). İhtiyaç fazlası satış: ₺${sade(r.satisTl)}/kWh.</p>` : ''}`);
+        _oncekiSonucPanel = goster;
+        return h + (n > goster ? `<span class="text-xs text-amber-700 font-black self-end ml-1">+${n - goster}</span>` : '');
     }
-
-    function yedekOzetCiz(r) {
-        if (D.hedef === 'yok') { yaz('tuOzetYedek', ''); return; }
-        const yd = r.yd || motor.yedek(D.yukler, D.saat);
-        if (!yd.secili.length || !(yd.sure > 0)) { yaz('tuOzetYedek', bos('Kesintide çalışacak en az bir cihaz seçin ve süreyi girin.')); return; }
-        const modulKwh = r.modulKwh || (window.EPC_SETTINGS || {}).batteryModule || 5;
-        const batModul = r.eksik ? yd.modul : r.batModul;
-        const ekBagimsiz = !r.eksik && D.hedef === 'bagimsiz' && r.ozModul > yd.modul
-            ? `<p class="text-xs text-slate-600 mt-3">Kesinti için ${yd.modul} modül yeterdi; gündüz fazlasını akşama taşımak için verimli kapasite <b>${r.ozModul} × ${sade(modulKwh)} kWh</b> çıktı (eklenen her modül yılda en az 100 tam döngü çalışıyor). Büyük olan seçildi.</p>` : '';
-        const gunes = !r.eksik && r.batModul > 0
-            ? `<p class="text-xs text-slate-600 mt-3">☀️ <b>Gündüz kesintilerinde paneller de devrede:</b> hibrit inverter evi doğrudan güneşten besler ve bataryayı doldurur. En zayıf ayda (${motor.AY_AD[r.enAzAy]}) bile sistem günde ortalama <b>${sade(r.enAzGunluk, 1)} kWh</b> üretir; seçtiğiniz yüklerin bir günlük ihtiyacı <b>${sade(yd.ort * 24, 1)} kWh</b>.</p>` : '';
-        yaz('tuOzetYedek', `
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                ${kutu('Ortalama yük', sade(yd.ort), 'kW', false, yd.secili.length + ' cihaz')}
-                ${kutu('Anlık tepe yük', sade(yd.tepe), 'kW', false, 'hepsi aynı anda çalışırsa')}
-                ${kutu('Kalkış anı tepe', sade(yd.kalkis), 'kW', false, 'motorlu yük devreye girerken')}
-                ${kutu('Gereken enerji', sade(yd.enerji, 1), 'kWh', false, yd.sure + ' saat için')}
-            </div>
-            <div class="mt-3 bg-slate-900 text-white rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-2">
-                <div>
-                    <p class="font-black">Önerilen batarya: ${batModul} × ${sade(modulKwh)} kWh = ${sade(batModul * modulKwh)} kWh</p>
-                    <p class="text-slate-300 text-xs mt-0.5">Kullanılabilir kapasite %${tr((window.EPC_SETTINGS || {}).batteryDod * 100 || 90)} deşarj derinliği ve inverter verimiyle hesaplandı. ${!r.eksik && r.yedekSure > 0 ? (r.yedekGarantiSure != null
-                        ? `Doluyken seçtiğiniz yükleri yaklaşık <b>${tr(r.yedekSure)} saat</b> çalıştırır. Günlük kullanımda batarya boşalıp dolar; kesinti için her an en az <b>${tr(r.yedekGarantiSure)} saat</b>lik enerji saklı tutulur.`
-                        : `Bu batarya seçtiğiniz yükleri yaklaşık <b>${tr(r.yedekSure)} saat</b> çalıştırır.`) : ''}</p>
-                </div>
-            </div>
-            ${ekBagimsiz}${gunes}`);
+    // %100 yığılmış çubuk: parçalar arası 2 px boşluk, etiketler çubuğun altında
+    function akisCubugu(baslik, toplam, parcalar) {
+        const p = parcalar.filter(x => x.kwh > 0.5);
+        return `<div>
+            <div class="flex justify-between items-baseline text-sm mb-1.5"><b class="text-slate-800">${baslik}</b><span class="text-xs text-slate-500 tu-oku">${tr(toplam)} kWh/yıl</span></div>
+            <div class="tu-akis" role="img" aria-label="${esc(baslik)}: ${p.map(x => x.ad + ' ' + yz(x.kwh / toplam)).join(', ')}">${p.map(x => `<span style="flex:${x.kwh.toFixed(1)} 1 0;min-width:4px;background:${x.renk}"></span>`).join('')}</div>
+            <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-600">${parcalar.map(x => `<span class="whitespace-nowrap"><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${x.renk};vertical-align:-1px"></i> ${x.ad} <b class="text-slate-800">${yz(toplam > 0 ? x.kwh / toplam : 0)}</b> <span class="text-slate-500">· ${tr(x.kwh)} kWh</span></span>`).join('')}</div>
+        </div>`;
     }
 
     function nedenMetni(r) {
@@ -1372,9 +2065,9 @@
     function sonucCiz(r) {
         if (r.eksik) {
             const tik = (ok, m) => `<li class="flex items-center gap-2 ${ok ? 'text-slate-500 line-through' : 'text-slate-700'}">${ok ? '✓' : '○'} ${m}</li>`;
-            yaz('tuSonuc', `<div class="bg-slate-50 border border-slate-200 rounded-xl p-5"><p class="font-black text-slate-700 mb-2">Sonuç için iki bilgi yeterli:</p>
-                <ul class="text-sm space-y-1">${tik(!!r.u, '1. adımda ilinizi seçin')}${tik(r.t && r.t.yillik > 0, '2. adımda tüketiminizi girin')}</ul></div>`);
-            yaz('tuSonucAlt', ''); return;
+            yaz('tuSonuc', `<div class="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-6 text-center"><p class="text-3xl mb-2">☀️</p><p class="font-black text-slate-700 mb-2">Sonuç için iki bilgi yeterli</p>
+                <ul class="text-sm space-y-1 inline-block text-left">${tik(!!r.u, '1. adımda ilinizi seçin')}${tik(r.t && r.t.yillik > 0, '2. adımda tüketiminizi girin')}</ul></div>`);
+            yaz('tuSonucAlt', ''); _oncekiSonucPanel = 0; return;
         }
         const a = r.ana;
         const go = a.geriOdeme != null && typeof window.epcSureMetni === 'function' ? window.epcSureMetni(a.geriOdeme) : (a.geriOdeme != null ? sade(a.geriOdeme, 1) + ' yıl' : '—');
@@ -1382,8 +2075,9 @@
             <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
                 <div class="lg:col-span-2 bg-amber-50 border border-amber-200 rounded-xl p-5">
                     <p class="text-xs font-bold text-amber-700">Önerilen kurulu güç</p>
-                    <p class="font-black text-amber-700 leading-none mt-2" style="font-size:52px">${sade(r.kwp)}<span class="text-lg font-black"> kWp</span></p>
+                    <p class="font-black text-amber-700 leading-none mt-2 tu-oku" style="font-size:52px"><span id="tuSonKwp" data-sayi="${_onceki.sonKwp != null ? _onceki.sonKwp : r.kwp}">${sade(_onceki.sonKwp != null ? _onceki.sonKwp : r.kwp)}</span><span class="text-lg font-black"> kWp</span></p>
                     <p class="text-sm font-bold text-slate-700 mt-3">${r.panel} × ${tr(r.panelKwp * 1000)} W panel · ~${tr(r.catiM2)} m² çatı</p>
+                    <div class="tu-panel-izgara mt-3" aria-hidden="true">${panelIzgara(r.panel)}</div>
                     <p class="text-xs text-slate-600 mt-3 leading-relaxed">${nedenMetni(r)}</p>
                 </div>
                 <div class="lg:col-span-3 grid grid-cols-2 gap-3">
@@ -1396,15 +2090,30 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
                 ${kutu('Anlık öz tüketim', yz(a.ozTuketim), '', false, 'üretimin evde o an kullanılan payı')}
                 ${kutu('Şebekeden bağımsızlık', yz(a.bagimsizlik), '', false, 'tüketimin güneşten karşılanan payı')}
-                ${kutu('1. yıl tasarruf', tl(a.tasarruf), '', true, 'aylık ~' + tl(a.tasarruf / 12))}
+                ${kutu('1. yıl tasarruf', `<span id="tuSonTas" data-sayi="${_onceki.sonTas != null ? _onceki.sonTas : a.tasarruf}">${tl(_onceki.sonTas != null ? _onceki.sonTas : a.tasarruf)}</span>`, '', true, 'aylık ~' + tl(a.tasarruf / 12))}
                 ${kutu('Geri ödeme', go, '', false, 'yatırım ~' + tl(a.yatirim))}
             </div>
             ${r.uyarilar.length ? `<div class="mt-3 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 space-y-1">${r.uyarilar.map(x => `<p>⚠️ ${esc(x)}</p>`).join('')}</div>` : ''}
 
             <div class="mt-6">
+                <h4 class="font-black text-slate-800 mb-1">Enerjiniz nereden gelip nereye gidiyor?</h4>
+                <p class="text-xs text-slate-500 mb-3">Bir yılın toplamı. Evde o an kullanılan güneş en değerlisidir; şebekeye giden fazla aynı ay içinde çekişinizden düşülür.</p>
+                <div class="space-y-4">
+                    ${akisCubugu('☀️ Ürettiğiniz güneş enerjisi', r.sim.y.uretim, [
+                        { ad: 'Evde o an kullanılan', kwh: r.sim.y.dogrudan, renk: RENK.uretim },
+                        { ad: 'Bataryaya', kwh: r.sim.y.sarj, renk: RENK.batarya },
+                        { ad: 'Şebekeye', kwh: r.sim.y.sebekeye, renk: RENK.sebeke }])}
+                    ${akisCubugu('🏠 Tükettiğiniz enerji', r.sim.y.tuketim, [
+                        { ad: 'Doğrudan güneşten', kwh: r.sim.y.dogrudan, renk: RENK.uretim },
+                        { ad: 'Bataryadan', kwh: r.sim.y.bataryadan, renk: RENK.batarya },
+                        { ad: 'Şebekeden', kwh: r.sim.y.sebekeden, renk: RENK.sebeke }])}
+                </div>
+            </div>
+
+            <div class="mt-6">
                 <h4 class="font-black text-slate-800 mb-1">Ay ay üretim ve tüketim</h4>
                 <p class="text-xs text-slate-500 mb-3">Yazın fazla üretim şebekeye gider ve aynı ay içindeki çekişinizden düşülür; kışın açık şebekeden karşılanır.</p>
-                ${aylikGrafik(r.sim.ay)}
+                ${aylikGrafik(r.sim.ay, ilkKez('sonucAy'))}
                 <details class="mt-2"><summary class="text-xs font-bold text-slate-500 cursor-pointer">Tablo olarak göster</summary>
                     <div class="overflow-x-auto mt-2"><table class="w-full text-xs text-slate-600" style="font-variant-numeric:tabular-nums">
                         <thead><tr class="text-slate-400 text-left"><th class="py-1 pr-3">Ay</th><th class="pr-3 text-right">Üretim</th><th class="pr-3 text-right">Tüketim</th><th class="pr-3 text-right">Doğrudan</th><th class="pr-3 text-right">Bataryadan</th><th class="pr-3 text-right">Şebekeden</th><th class="text-right">Şebekeye</th></tr></thead>
@@ -1413,6 +2122,9 @@
                     </table><p class="text-[11px] text-slate-400 mt-1">Tüm değerler kWh.</p></div>
                 </details>
             </div>`);
+        const kwpEl = document.getElementById('tuSonKwp');
+        sayiYaz(kwpEl, r.kwp, (x) => sade(x)); _onceki.sonKwp = r.kwp;
+        sayiYaz(document.getElementById('tuSonTas'), a.tasarruf, (x) => tl(x)); _onceki.sonTas = a.tasarruf;
         const svg = document.querySelector('#tuSonuc .tu-grafik svg');
         if (svg) ipucuKur(svg.parentNode, svg, 12, (m) => {
             const x = r.sim.ay[m], fark = x.uretim - x.tuketim;
@@ -1539,13 +2251,263 @@
             </div>`);
     }
 
-    function canliCiz(r) {
-        yaz('tuCanli', r.eksik
-            ? 'Başlamak için ilinizi seçin ve tüketiminizi girin — sonuç her değişiklikte anında güncellenir.'
-            : `<span class="text-slate-500 font-bold">Önerilen:</span> <span class="text-amber-700">${sade(r.kwp)} kWp</span> · ${r.panel} panel · ${sade(r.invAc)} kW ${r.hibrit ? 'hibrit ' : ''}inverter${r.batModul > 0 ? ` · ${sade(r.batNominal)} kWh batarya` : ''}
-               <button type="button" data-tu-eylem="sonuca" class="ml-1 text-amber-700 hover:underline">Sonuca git ↓</button>`);
+
+    // --- HESAPLA VE ÇİZ ---------------------------------------------------------------------
+    let _sonR = null, _olayAtildi = false, _zam = null, _raf = 0;
+    function hesaplaCiz() {
+        let r;
+        try { r = motor.analiz(girdi()); }
+        catch (err) { console.error('[tuketim-uretim]', err); r = { eksik: 'hata', u: null, t: null }; }
+        _sonR = r;
+        konumOzetCiz(r); tuketimOzetCiz(r); yedekOzetCiz(r); alanGorselCiz(r); cubukCiz(r);
+        sonucCiz(r); gunCiz(); yontemCiz(r);
+        sakla();
+        if (!r.eksik && !_olayAtildi && typeof window.epcOlay === 'function') {
+            _olayAtildi = true;
+            window.epcOlay('tuketim_uretim_sonuc', { il: D.il, kwp: Math.round(r.kwp * 10) / 10, batarya_kwh: r.batNominal });
+        }
+    }
+    // 0 → bir sonraki karede. Aksi hâlde kısma (throttle): sürüklerken sonuç
+    // her ~180 ms'de akar; erteleme (debounce) olsaydı kullanıcı durana kadar
+    // hiçbir şey değişmezdi.
+    function planla(g) {
+        if (g === 0) { clearTimeout(_zam); _zam = null; cancelAnimationFrame(_raf); _raf = requestAnimationFrame(hesaplaCiz); return; }
+        if (_zam) return;
+        _zam = setTimeout(() => { _zam = null; hesaplaCiz(); }, g == null ? 180 : g);
     }
 
+    function secimleriTazele() {
+        root.querySelectorAll('[data-tu-sec]').forEach(b => {
+            const alan = b.dataset.tuSec;
+            const acik = alan === 'evVar' ? !!D.evVar : String(D[alan]) === b.dataset.deger;
+            b.setAttribute('aria-pressed', acik);
+        });
+        segZeminleri();
+    }
+    function gorunurlukTazele() {
+        const g = (id, gizli) => document.getElementById(id)?.classList.toggle('hidden', gizli);
+        g('tuFaturaKutu', D.tmod !== 'fatura');
+        g('tuCihazKutu', D.tmod !== 'cihaz');
+        g('tuDesenKutu', !!D.ayAy);
+        g('tuAyAyKutu', !D.ayAy);
+        g('tuYukKutu', D.hedef === 'yok');
+        g('tuBataryaYokNot', D.hedef !== 'yok');
+        g('tuEvKutu', !D.evVar);
+        root.querySelectorAll('[data-birim-etiket]').forEach(s => { s.textContent = D.birim === 'tl' ? '₺/ay' : 'kWh/ay'; });
+        root.querySelectorAll('input[data-tu="faturaDeger"]').forEach(i => { i.placeholder = D.birim === 'tl' ? 'Örn. 1500' : 'Örn. 300'; });
+        segZeminleri();
+    }
+    function kaydirDolu(el) {
+        const min = Number(el.min), max = Number(el.max);
+        el.style.setProperty('--dolu', ((Number(el.value) - min) / (max - min) * 100).toFixed(1) + '%');
+    }
+    function evDegYaz() {
+        const el = document.getElementById('tuEvDeg');
+        if (el) el.textContent = tr(D.evKm) + ' km ≈ ' + tr(D.evKm * 0.18) + ' kWh';
+    }
+    function cedTazele() {
+        const c = D.cihazlar[_cihazSecili];
+        if (!c) return;
+        const yil = motor.cihazYillik(c);
+        const k = document.getElementById('tuCedKwh'), t = document.getElementById('tuCedTl'), a = document.getElementById('tuCedAdet');
+        if (k) k.textContent = tr(yil);
+        if (t) t.textContent = tl(tlYil(yil));
+        if (a) a.textContent = Number(c.adet) || 0;
+    }
+    const cihazlarTazele = (duzenDe) => cihazKartlariCiz(duzenDe);
+    const yuklerTazele = (duzenDe) => yukKartlariCiz(duzenDe);
+
+    // --- OLAYLAR ----------------------------------------------------------------------------
+    root.addEventListener('click', (e) => {
+        const t = e.target;
+        // Ayar (⚙) düğmeleri kartın İÇİNDE: önce onlara bak
+        const cAyar = t.closest('[data-cihaz-ayar]');
+        if (cAyar) {
+            const i = Number(cAyar.dataset.cihazAyar);
+            _cihazSecili = _cihazSecili === i ? null : i;
+            cihazDuzenCiz();
+            document.getElementById('tuCihazDuzen')?.scrollIntoView({ block: 'nearest', behavior: azHareket ? 'auto' : 'smooth' });
+            return;
+        }
+        const yAyar = t.closest('[data-yuk-ayar]');
+        if (yAyar) {
+            const i = Number(yAyar.dataset.yukAyar);
+            _yukSecili = _yukSecili === i ? null : i;
+            yukDuzenCiz();
+            document.getElementById('tuYukDuzen')?.scrollIntoView({ block: 'nearest', behavior: azHareket ? 'auto' : 'smooth' });
+            return;
+        }
+        const cKart = t.closest('[data-cihaz]');
+        if (cKart) {
+            const i = Number(cKart.dataset.cihaz), c = D.cihazlar[i];
+            c.adet = Number(c.adet) > 0 ? 0 : 1;
+            cihazlarTazele(_cihazSecili === i);
+            if (_cihazSecili === i) cedTazele();
+            planla(0); return;
+        }
+        const yKart = t.closest('[data-yuk]');
+        if (yKart) {
+            const i = Number(yKart.dataset.yuk), y = D.yukler[i];
+            y.secili = !y.secili;
+            if (y.secili && !(Number(y.adet) > 0)) y.adet = 1;
+            yuklerTazele(false);
+            planla(0); return;
+        }
+        const egimHizli = t.closest('[data-tu-egim]');
+        if (egimHizli) {
+            const v = Number(egimHizli.dataset.tuEgim);
+            if (D.yonMod === 'opt') { D.yonMod = 'tek'; D.az = 0; pusulaGoster(0, 'tek', false); secimleriTazele(); }
+            D.egim = v;
+            kesitGoster(v, false);
+            yonOkuTazele(Number(D.az), D.yonMod);
+            planla(0); return;
+        }
+        const ced = t.closest('[data-ced-sec]');
+        if (ced) {
+            const c = D.cihazlar[_cihazSecili];
+            if (c) { c[ced.dataset.cedSec] = ced.dataset.deger; cihazDuzenCiz(); cihazlarTazele(false); planla(0); }
+            return;
+        }
+        const cAdim = t.closest('[data-ced-adim]');
+        if (cAdim) {
+            const c = D.cihazlar[_cihazSecili];
+            if (c) { c.adet = Math.max(0, (Number(c.adet) || 0) + Number(cAdim.dataset.cedAdim)); cedTazele(); cihazlarTazele(false); planla(0); }
+            return;
+        }
+        const yAdim = t.closest('[data-yed-adim]');
+        if (yAdim) {
+            const y = D.yukler[_yukSecili];
+            if (y) {
+                y.adet = Math.max(0, (Number(y.adet) || 0) + Number(yAdim.dataset.yedAdim));
+                y.secili = y.adet > 0;
+                const a = document.getElementById('tuYedAdet'); if (a) a.textContent = y.adet;
+                yuklerTazele(false); planla(0);
+            }
+            return;
+        }
+        const sec = t.closest('[data-tu-sec]');
+        if (sec) {
+            const alan = sec.dataset.tuSec, v = sec.dataset.deger;
+            if (alan === 'evVar') { D.evVar = !D.evVar; evDegYaz(); }
+            else if (alan === 'yonMod') {
+                D.yonMod = D.yonMod === v ? 'tek' : v;        // aynı karta ikinci dokunuş pusulaya döner
+                pusulaGoster(Number(D.az) || 0, D.yonMod, false);
+                kesitGoster(D.yonMod === 'opt' ? (TU_IL[D.il] || TU_IL['Ankara'])[2] : Number(D.egim) || 0, false);
+            } else if (alan === 'birim') {
+                if (D.birim !== v && Number(D.faturaDeger) > 0) {
+                    // Birim değişince değer de çevrilsin: anlam aynı kalır
+                    const kwh = aylikKwh();
+                    const fiyat = _sonR && _sonR.tarifeTl ? _sonR.tarifeTl : (window.epcTarife ? window.epcTarife('tariffMesken') : 5.32);
+                    D.faturaDeger = v === 'kwh' ? String(Math.round(kwh)) : String(Math.round(kwh * fiyat));
+                    root.querySelectorAll('input[data-tu="faturaDeger"]').forEach(i => { i.value = D.faturaDeger; });
+                }
+                D.birim = v;
+            } else D[alan] = v;
+            secimleriTazele(); gorunurlukTazele();
+            planla(0); return;
+        }
+        const b = t.closest('[data-tu-eylem]');
+        if (!b) return;
+        const ey = b.dataset.tuEylem;
+        if (ey === 'cihazEkle') {
+            D.cihazlar.push({ ikon: '🔌', ad: 'Yeni cihaz', adet: 1, w: 100, saat: 1, zaman: 'aksam', mevsim: 'tum' });
+            _cihazSecili = D.cihazlar.length - 1; cihazKartlariCiz(); planla(0);
+            document.querySelector('#tuCihazDuzen input[data-ced="ad"]')?.select();
+        } else if (ey === 'yukEkle') {
+            D.yukler.push({ ikon: '🔌', ad: 'Yeni yük', secili: true, adet: 1, w: 100, oran: 100, motor: false });
+            _yukSecili = D.yukler.length - 1; yukKartlariCiz(); planla(0);
+            document.querySelector('#tuYukDuzen input[data-yed="ad"]')?.select();
+        } else if (ey === 'cihazSil') {
+            if (_cihazSecili != null) { D.cihazlar.splice(_cihazSecili, 1); _cihazSecili = null; cihazKartlariCiz(); planla(0); }
+        } else if (ey === 'yukSil') {
+            if (_yukSecili != null) { D.yukler.splice(_yukSecili, 1); _yukSecili = null; yukKartlariCiz(); planla(0); }
+        } else if (ey === 'duzenKapat') {
+            _cihazSecili = null; _yukSecili = null; cihazDuzenCiz(); yukDuzenCiz();
+        } else if (ey === 'gps') gpsBul();
+        else if (ey === 'kesif') kesifAc();
+        else if (ey === 'sonuca') document.getElementById('tuAdim4')?.scrollIntoView({ behavior: azHareket ? 'auto' : 'smooth', block: 'start' });
+        else if (ey === 'sifirla') {
+            if (!confirm('Tüm girdiler silinip varsayılanlara dönülsün mü?')) return;
+            D = kopya(VARSAYILAN);
+            try { localStorage.removeItem(SAKLA); localStorage.removeItem('epcTuGirdi.v1'); } catch (err) { }
+            _cihazSecili = _yukSecili = null; _oncekiModul = 0; _oncekiPanelSayisi = 0; _oncekiSonucPanel = 0;
+            Object.keys(_onceki).forEach(k => delete _onceki[k]); _canlandi.clear();
+            iskelet(); hesaplaCiz();
+            root.scrollIntoView({ block: 'start' });
+        }
+    });
+    // Kart <div role="button">: klavyeyle de açılıp kapansın
+    root.addEventListener('keydown', (e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-cihaz],[data-yuk]')) { e.preventDefault(); e.target.click(); }
+    });
+    // Kapalı <details> içindeki bölmeli seçicinin genişliği açılınca ölçülebilir
+    root.addEventListener('toggle', () => segZeminleri(), true);
+
+    function girdiOlayi(e) {
+        const el = e.target, ds = el.dataset;
+        const gecikme = e.type === 'change' ? 0 : null;
+        if (ds.tu) {
+            const a = ds.tu;
+            if (a === 'gunAy') {
+                if (e.type !== 'change') return;
+                D.gunAy = Number(el.value); gunCiz(); sakla();
+                root.querySelector('[data-tu="gunAy"]')?.focus();
+                return;
+            }
+            if (a === 'egim') {
+                const v = Number(el.value);
+                if (D.yonMod === 'opt') { D.yonMod = 'tek'; D.az = 0; pusulaGoster(0, 'tek', false); secimleriTazele(); }
+                D.egim = v;
+                kesitGoster(v, true);                     // kaydırıcı: 1:1, gecikmesiz
+                yonOkuTazele(Number(D.az), D.yonMod);
+                planla(gecikme); return;
+            }
+            if (a === 'alan') { D.alan = Number(el.value); kaydirDolu(el); alanGorselCiz(_sonR); planla(gecikme); return; }
+            if (a === 'saat') {
+                D.saat = Number(el.value); kaydirDolu(el);
+                const s = document.getElementById('tuSaatDeg'); if (s) s.textContent = D.saat + ' saat';
+                planla(gecikme); return;
+            }
+            if (a === 'evKm') { D.evKm = Number(el.value); kaydirDolu(el); evDegYaz(); planla(gecikme); return; }
+            if (a === 'yedOran') {
+                const y = D.yukler[_yukSecili];
+                if (y) { y.oran = Number(el.value); kaydirDolu(el); const o = document.getElementById('tuYedOran'); if (o) o.textContent = '%' + y.oran; planla(gecikme); }
+                return;
+            }
+            D[a] = el.type === 'checkbox' ? el.checked : el.value;
+            if (a === 'faturaDeger' || a === 'il') root.querySelectorAll(`[data-tu="${a}"]`).forEach(x => { if (x !== el) x.value = el.value; });
+            if (a === 'il') {
+                D.gpsLat = null; D.gpsLon = null;
+                const d = document.getElementById('tuGpsDurum'); if (d) d.textContent = '';
+                kesitGoster(D.yonMod === 'opt' ? (TU_IL[D.il] || TU_IL['Ankara'])[2] : Number(D.egim) || 0, false);
+                yonOkuTazele(Number(D.az), D.yonMod);
+            }
+            if (a === 'ayAy') gorunurlukTazele();
+            planla(gecikme); return;
+        }
+        if (ds.tuAy != null) { D.aylar[Number(ds.tuAy)] = el.value; planla(gecikme); return; }
+        if (ds.ced) {
+            const c = D.cihazlar[_cihazSecili];
+            if (!c) return;
+            c[ds.ced] = el.value;
+            cedTazele(); cihazlarTazele(false); planla(gecikme); return;
+        }
+        if (ds.yed) {
+            const y = D.yukler[_yukSecili];
+            if (!y) return;
+            if (ds.yed === 'motor') y.motor = el.checked;
+            else if (ds.yed === 'ad') y.ad = el.value;
+            else y[ds.yed] = Number(el.value) || 0;
+            yuklerTazele(false); planla(gecikme); return;
+        }
+        if (ds.tuKayip) {
+            if (el.value === '') delete D.kayiplar[ds.tuKayip];
+            else D.kayiplar[ds.tuKayip] = Math.max(0, Math.min(30, Number(el.value) || 0));
+            planla(gecikme); return;
+        }
+    }
+    root.addEventListener('input', girdiOlayi);
+    root.addEventListener('change', girdiOlayi);
     function yontemCiz(r) {
         const S = window.EPC_SETTINGS || {};
         yaz('tuYontem', `
@@ -1559,129 +2521,6 @@
             <p><b>Tarife ve satış:</b> EPDK 4 Nisan 2026 tarifesi (vergiler dahil). Mahsuplaşmayan fazla enerji, abone grubunuzun aktif enerji bedeli (vergisiz) üzerinden değerlendirilir varsayıldı. Mevzuat ve tarifeler değişebilir.</p>
             <p>Sonuçlar ön boyutlandırma içindir; kesin proje saha keşfi ve dağıtım şirketi onayıyla belirlenir.</p>`);
     }
-
-    // --- HESAPLA VE ÇİZ ---------------------------------------------------------------------
-    let _sonR = null, _olayAtildi = false, _zam = null;
-    function hesaplaCiz() {
-        let r;
-        try { r = motor.analiz(girdi()); }
-        catch (err) { console.error('[tuketim-uretim]', err); r = { eksik: 'hata', u: null, t: null }; }
-        _sonR = r;
-        konumOzetCiz(r); tuketimOzetCiz(r); yedekOzetCiz(r); sonucCiz(r); gunCiz(); canliCiz(r); yontemCiz(r);
-        sakla();
-        if (!r.eksik && !_olayAtildi && typeof window.epcOlay === 'function') {
-            _olayAtildi = true;
-            window.epcOlay('tuketim_uretim_sonuc', { il: D.il, kwp: Math.round(r.kwp * 10) / 10, batarya_kwh: r.batNominal });
-        }
-    }
-    function planla(gecikme) { clearTimeout(_zam); _zam = setTimeout(hesaplaCiz, gecikme == null ? 200 : gecikme); }
-
-    function chipleriTazele() {
-        root.querySelectorAll('[data-tu-chip]').forEach(c => {
-            const alan = c.dataset.tuChip, v = c.dataset.deger;
-            let acik = String(D[alan]) === v;
-            if (alan === 'saat') acik = Number(D.saat) === Number(v);
-            if ((alan === 'yon' || alan === 'egim') && D.uzman) acik = false;
-            c.setAttribute('aria-pressed', acik);
-            (acik ? CHIP_KAPALI : CHIP_ACIK).split(' ').forEach(k => c.classList.remove(k));
-            (acik ? CHIP_ACIK : CHIP_KAPALI).split(' ').forEach(k => c.classList.add(k));
-        });
-    }
-    function gorunurlukTazele() {
-        const g = (id, gizli) => document.getElementById(id)?.classList.toggle('hidden', gizli);
-        g('tuFaturaKutu', D.tmod !== 'fatura');
-        g('tuCihazKutu', D.tmod !== 'cihaz');
-        g('tuDesenKutu', !!D.ayAy);
-        g('tuAyAyKutu', !D.ayAy);
-        g('tuYukKutu', D.hedef === 'yok');
-        g('tuBataryaYokNot', D.hedef !== 'yok');
-        g('tuEgimKutu', D.yon === 'OPT' && !D.uzman);
-    }
-
-    // --- OLAYLAR ----------------------------------------------------------------------------
-    root.addEventListener('click', (e) => {
-        const c = e.target.closest('[data-tu-chip]');
-        if (c) {
-            const alan = c.dataset.tuChip;
-            let v = c.dataset.deger;
-            if (alan === 'egim' || alan === 'saat') v = Number(v);
-            D[alan] = v;
-            if (alan === 'yon' || alan === 'egim') {
-                D.uzman = false;
-                const cb = root.querySelector('[data-tu="uzman"]'); if (cb) cb.checked = false;
-            }
-            if (alan === 'saat') { const i = root.querySelector('input[data-tu="saat"]'); if (i) i.value = v; }
-            chipleriTazele(); gorunurlukTazele(); planla(0);
-            return;
-        }
-        const b = e.target.closest('[data-tu-eylem]');
-        if (!b) return;
-        const ey = b.dataset.tuEylem, i = Number(b.dataset.i);
-        if (ey === 'cihazEkle') { D.cihazlar.push({ ad: 'Yeni cihaz', adet: 1, w: 100, saat: 1, zaman: 'aksam', mevsim: 'tum' }); cihazListesiCiz(); planla(0); }
-        else if (ey === 'cihazSil') { D.cihazlar.splice(i, 1); cihazListesiCiz(); planla(0); }
-        else if (ey === 'yukEkle') { D.yukler.push({ ad: 'Yeni yük', secili: true, adet: 1, w: 100, oran: 100, motor: false }); yukListesiCiz(); planla(0); }
-        else if (ey === 'yukSil') { D.yukler.splice(i, 1); yukListesiCiz(); planla(0); }
-        else if (ey === 'pasifGoster') { D.pasifAcik = !D.pasifAcik; cihazListesiCiz(); sakla(); }
-        else if (ey === 'gps') gpsBul();
-        else if (ey === 'kesif') kesifAc();
-        else if (ey === 'sonuca') document.getElementById('tuAdim4')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        else if (ey === 'sifirla') {
-            if (!confirm('Tüm girdiler silinip varsayılanlara dönülsün mü?')) return;
-            D = kopya(VARSAYILAN);
-            try { localStorage.removeItem(SAKLA); } catch (err) { }
-            iskelet(); hesaplaCiz();
-        }
-    });
-
-    function girdiOlayi(e) {
-        const el = e.target;
-        const ds = el.dataset;
-        if (ds.tu) {
-            const a = ds.tu;
-            if (a === 'gunAy') {
-                if (e.type !== 'change') return;
-                D.gunAy = Number(el.value); gunCiz(); sakla();
-                root.querySelector('[data-tu="gunAy"]')?.focus();
-                return;
-            }
-            D[a] = el.type === 'checkbox' ? el.checked : el.value;
-            if (a === 'aylikOrt') root.querySelectorAll('[data-tu="aylikOrt"]').forEach(x => { if (x !== el) x.value = el.value; });
-            if (a === 'il') { D.gpsLat = null; D.gpsLon = null; const d = document.getElementById('tuGpsDurum'); if (d) d.textContent = ''; }
-            if ((a === 'egimU' || a === 'azU') && !D.uzman) {
-                D.uzman = true;
-                const cb = root.querySelector('[data-tu="uzman"]'); if (cb) cb.checked = true;
-            }
-            if (['saat', 'uzman', 'egimU', 'azU', 'ayAy'].includes(a)) { chipleriTazele(); gorunurlukTazele(); }
-            planla(e.type === 'change' ? 0 : 250);
-            return;
-        }
-        if (ds.tuAy != null) { D.aylar[Number(ds.tuAy)] = el.value; planla(); return; }
-        if (ds.tuCihaz != null) {
-            const i = Number(ds.tuCihaz), c = D.cihazlar[i];
-            if (!c) return;
-            c[ds.f] = el.value;
-            const yil = root.querySelector(`[data-cihaz-yil="${i}"]`);
-            if (yil) yil.textContent = tr(motor.cihazYillik(c));
-            root.querySelector(`[data-satir="${i}"]`)?.classList.toggle('opacity-60', !(Number(c.adet) > 0));
-            planla(); return;
-        }
-        if (ds.tuYuk != null) {
-            const i = Number(ds.tuYuk), y = D.yukler[i];
-            if (!y) return;
-            if (ds.f === 'secili' || ds.f === 'motor') y[ds.f] = el.checked;
-            else if (ds.f === 'ad') y.ad = el.value;
-            else y[ds.f] = Number(el.value) || 0;
-            root.querySelector(`[data-yuk-satir="${i}"]`)?.classList.toggle('opacity-60', !y.secili);
-            planla(); return;
-        }
-        if (ds.tuKayip) {
-            if (el.value === '') delete D.kayiplar[ds.tuKayip];
-            else D.kayiplar[ds.tuKayip] = Math.max(0, Math.min(30, Number(el.value) || 0));
-            planla(); return;
-        }
-    }
-    root.addEventListener('input', girdiOlayi);
-    root.addEventListener('change', girdiOlayi);
 
     // --- KONUM (GPS) ------------------------------------------------------------------------
     // Yalnız en yakın il verisini seçmek ve saatlik güneş profilini tam
@@ -1702,6 +2541,7 @@
             if (!enIyi || enKisa > 300) { durum('Konumunuz Türkiye dışında görünüyor; ilinizi listeden seçin.'); return; }
             D.il = enIyi; D.gpsLat = Math.round(la * 100) / 100; D.gpsLon = Math.round(lo * 100) / 100;
             const sel = root.querySelector('[data-tu="il"]'); if (sel) sel.value = enIyi;
+            kesitGoster(D.yonMod === 'opt' ? TU_IL[enIyi][2] : Number(D.egim) || 0, false);
             durum('En yakın il verisi: ' + enIyi + '. Farklıysa listeden düzeltin.');
             planla(0);
         }, (err) => durum(err && err.code === 1 ? 'Konum izni verilmedi; ilinizi listeden seçin.' : 'Konum alınamadı; ilinizi listeden seçin.'),
@@ -1710,8 +2550,7 @@
 
     // --- KEŞİF FORMUNA AKTARIM ----------------------------------------------------------------
     function ozetMetni(r) {
-        const y = (YONLER.find(x => x.k === D.yon) || {}).ad;
-        const cati = D.uzman ? `eğim ${D.egimU}°, azimut ${D.azU}°` : (D.yon === 'OPT' ? 'sehpa/arazi (optimum)' : `${y}, ${D.egim}°`);
+        const cati = D.yonMod === 'opt' ? 'düz çatı / sehpa (en iyi açı)' : D.yonMod === 'db' ? `doğu + batı, ${Math.round(D.egim)}°` : `${yonAdi(Number(D.az))} (${Math.round(D.az)}°), ${Math.round(D.egim)}° eğim`;
         const L = ['[Tüketim & Üretim Analizi]',
             `Konum: ${D.il} · Çatı: ${cati} · Gölgelenme: ${{ yok: 'yok', az: 'az', orta: 'orta', fazla: 'fazla' }[D.golge] || D.golge}`,
             `Yıllık tüketim: ${tr(r.t.yillik)} kWh (${{ fatura: 'faturadan', cihaz: 'cihaz listesinden', 'cihaz+fatura': 'fatura toplamı + cihaz listesi' }[r.t.kaynak] || ''})${r.t.evYillik > 0 ? ' — elektrikli araç dahil' : ''}`,
@@ -1729,12 +2568,14 @@
         const koy = (id, v) => { const el = document.getElementById(id); if (el && v && !el.value) el.value = v; };
         koy('leadCity', D.il);
         const kes = document.getElementById('leadOutage'); if (kes) kes.value = r.batModul > 0 ? 'Evet' : 'Hayır';
-        if (Number(D.evKm) > 0) koy('leadExtraConsumption', 'Elektrikli araç ~' + tr(D.evKm) + ' km/yıl');
+        if (D.evVar && Number(D.evKm) > 0) koy('leadExtraConsumption', 'Elektrikli araç ~' + tr(D.evKm) + ' km/yıl');
         koy('leadDetails', ozetMetni(r));
     }
 
+
     // --- BAŞLAT -------------------------------------------------------------------------------
     iskelet();
+    evDegYaz();
     hesaplaCiz();
     // Yönetici ayarları (tarife, kur, panel gücü…) sayfa açıldıktan sonra
     // geliyor; gelince ve sonradan değişince sonuç kendini tazeler.

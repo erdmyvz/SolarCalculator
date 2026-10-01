@@ -492,7 +492,7 @@ window.openPublicModule = function(moduleId, _adrestenGeldi) {
         try {
             // Paketin dışında tutulan büyük modüller: yalnız açılınca iner.
             //   sim3d.js          93 KB, en az açılan modül
-            //   tuketim-uretim.js 131 KB (sıkıştırılmış 42 KB) — 81 ilin aylık
+            //   tuketim-uretim.js 194 KB (sıkıştırılmış 60 KB) — 81 ilin aylık
             //                     PVGIS verisi + saatlik simülasyon motoru
             const _ayriBetik = EPC_AYRI_BETIK[moduleId];
             if (_ayriBetik) await window.epcLoadScript(_ayriBetik);
