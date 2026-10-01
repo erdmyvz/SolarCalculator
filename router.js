@@ -387,7 +387,16 @@ window.addEventListener('load', async () => {
             if (typeof routeAfterLogin === 'function') { _r = await routeAfterLogin(session.user); }
             else { await fetchUserProfile(session.user.id, session.user.email); }
             const _authHashes = ['#auth', '#yatirimciauth', '#kurulumcuauth', '#danismanauth', '#tedarikciauth', ''];
-            if (_r !== 'expired' && _r !== 'banned' && _r !== 'panel-yuklenemedi' && _authHashes.includes(window.location.hash)) {
+            // ⚠️ Temiz yol (/tuketim-uretim, /hesaplayici, /kvkk…) da hash'siz
+            // geliyor, yani '' kuralına takılıyordu: oturumu açık kullanıcı
+            // paylaşılan bir araç bağlantısını açınca aracı değil kendi
+            // panelini görüyordu. Yalnız kök adres ('/') panele götürür; yol
+            // bir görünüme karşılık geliyorsa aşağıdaki applyPathView açar.
+            // routeAfterLogin yine çalışıyor: rol, oturum ve panel dosyaları
+            // hazır olsun ki kullanıcı oradan paneline geçebilsin.
+            const _yol = window.location.pathname.replace(/\/+$/, '') || '/';
+            const _yolGorunumu = !window.location.hash && !!EPC_PATH_VIEWS[_yol];
+            if (!_yolGorunumu && _r !== 'expired' && _r !== 'banned' && _r !== 'panel-yuklenemedi' && _authHashes.includes(window.location.hash)) {
                 window.__epcRol = _r;
                 window.location.hash = epcPanelAdresi(); // Zaten giriş yapmışsa direkt panele al
             }
@@ -453,6 +462,14 @@ window.openPublicModule = function(moduleId, _adrestenGeldi) {
     epcTumModulleriGizle();
 
     document.getElementById('landingContainer').classList.add('hidden');
+    // ⚠️ Rol seçim ekranı ve giriş kabı da kapanmalı. Vitrinden açılınca
+    // ikisi zaten gizli; ama temiz yoldan (/fatura-analizi, /hesaplayici,
+    // /tuketim-uretim…) gelinince handleSPA_Routing hiç çalışmıyor ve
+    // boş kalan rol seçim kabı (min-h-screen) ilk ekranın TAMAMINI
+    // kaplıyordu: ziyaretçi boş, koyu bir sayfa görüyor, araç ekranın
+    // altından başlıyordu.
+    document.getElementById('gatewayContainer')?.classList.add('hidden');
+    document.getElementById('authContainer')?.classList.add('hidden');
     document.getElementById('appContainer').classList.remove('hidden');
     document.getElementById('mainMenu').classList.add('hidden');
     

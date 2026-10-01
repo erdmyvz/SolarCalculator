@@ -97,7 +97,13 @@
         if (n) n.textContent = me.name;
         if (c) c.textContent = 'Yatırımcı';
         if (i) i.textContent = String(me.name).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
-        document.getElementById('dashboardHeader')?.classList.remove('hidden');
+        // Üst çubuk yatırımcı panelinin parçası. Bu satır whoAmI() beklendikten
+        // SONRA çalışıyor; o arada kullanıcı bir ziyaretçi aracına geçtiyse
+        // (ör. oturum açıkken /tuketim-uretim adresini açtıysa) çubuk aracın
+        // üstünde yeniden belirmesin.
+        if (!document.getElementById('investorModule')?.classList.contains('hidden')) {
+            document.getElementById('dashboardHeader')?.classList.remove('hidden');
+        }
     }
 
     // ---------------------------------------------------------------- açılış
