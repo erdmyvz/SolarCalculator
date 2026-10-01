@@ -901,6 +901,22 @@
 #tuketimUretimRoot .tu-modul:before{content:"";position:absolute;top:-6px;left:10px;width:10px;height:4px;border-radius:2px 2px 0 0;background:rgba(255,255,255,.35)}
 #tuketimUretimRoot .tu-modul i{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(0deg,#199e70,#34d399);transition:height .5s cubic-bezier(.2,.8,.2,1)}
 #tuketimUretimRoot .tu-cubuk{position:sticky;bottom:12px;z-index:30}
+#tuketimUretimRoot .tu-ilerleme{position:sticky;top:8px;z-index:31;background:rgba(9,22,38,.86);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(255,255,255,.10);border-radius:18px;padding:12px 8px 10px;box-shadow:0 18px 40px -24px rgba(0,0,0,.9)}
+#tuketimUretimRoot .tu-ilerleme ol{position:relative;display:grid;grid-template-columns:repeat(5,1fr);margin:0;padding:0;list-style:none}
+#tuketimUretimRoot .tu-ilerleme-hat{position:absolute;top:17px;left:10%;right:10%;height:4px;border-radius:999px;background:rgba(255,255,255,.12)}
+#tuketimUretimRoot .tu-ilerleme-dolu{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#F59E0B,#FBBF24);width:0}
+#tuketimUretimRoot .tu-ilerleme button{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;background:none;border:0;cursor:pointer;color:var(--tu-soluk);-webkit-tap-highlight-color:transparent}
+#tuketimUretimRoot .tu-ilerleme .tu-nokta2{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;background:#14263d;border:2px solid rgba(255,255,255,.18);color:var(--tu-ikincil);transition:background-color .25s,border-color .25s,transform .1s ease-out,box-shadow .25s}
+#tuketimUretimRoot .tu-ilerleme button:active .tu-nokta2{transform:scale(.92)}
+#tuketimUretimRoot .tu-ilerleme button:hover .tu-nokta2{border-color:rgba(251,191,36,.6)}
+#tuketimUretimRoot .tu-ilerleme button[data-durum="gecti"] .tu-nokta2{background:#F59E0B;border-color:#F59E0B;color:#0B1B2E}
+#tuketimUretimRoot .tu-ilerleme button[aria-current="step"] .tu-nokta2{background:#FBBF24;border-color:#FDE68A;color:#0B1B2E;box-shadow:0 0 0 5px rgba(251,191,36,.22)}
+#tuketimUretimRoot .tu-ilerleme .tu-ilerleme-ad{font-size:11px;font-weight:800;letter-spacing:.02em}
+#tuketimUretimRoot .tu-ilerleme button[aria-current="step"] .tu-ilerleme-ad{color:var(--tu-metin)}
+#tuketimUretimRoot .tu-orta{text-align:center}
+#tuketimUretimRoot .tu-orta .tu-etiket{text-align:center}
+#tuketimUretimRoot .tu-sayfa-gir{animation:tuSayfa .38s cubic-bezier(.2,.8,.2,1) both}
+@keyframes tuSayfa{from{opacity:0;transform:translateX(var(--tu-yon,16px))}to{opacity:1;transform:none}}
 #tuketimUretimRoot .tu-cubuk-ic{background:rgba(9,22,38,.86);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border:1px solid rgba(251,191,36,.28);border-radius:16px;box-shadow:0 18px 40px -18px rgba(0,0,0,.9);padding:10px 12px}
 #tuketimUretimRoot .tu-akis{display:flex;height:14px;border-radius:999px;overflow:hidden;gap:2px;background:transparent}
 #tuketimUretimRoot .tu-akis span{display:block;height:100%;transition:width .5s cubic-bezier(.2,.8,.2,1)}
@@ -913,11 +929,11 @@
 @keyframes tuBelir{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes tuParla{0%{color:#FDE68A;text-shadow:0 0 18px rgba(251,191,36,.7)}100%{text-shadow:none}}
 @media (prefers-reduced-motion: reduce){
-  #tuketimUretimRoot .tu-pop,#tuketimUretimRoot .tu-yuksel,#tuketimUretimRoot .tu-belir,#tuketimUretimRoot .tu-parla{animation:none}
+  #tuketimUretimRoot .tu-pop,#tuketimUretimRoot .tu-yuksel,#tuketimUretimRoot .tu-belir,#tuketimUretimRoot .tu-parla,#tuketimUretimRoot .tu-sayfa-gir{animation:none}
   #tuketimUretimRoot *{transition-duration:0s !important}
 }
 @media (prefers-reduced-transparency: reduce){
-  #tuketimUretimRoot .tu-cubuk-ic{background:#0B1B2E;backdrop-filter:none;-webkit-backdrop-filter:none}
+  #tuketimUretimRoot .tu-cubuk-ic,#tuketimUretimRoot .tu-ilerleme{background:#0B1B2E;backdrop-filter:none;-webkit-backdrop-filter:none}
 }`;
         document.head.appendChild(st);
     }
@@ -980,7 +996,7 @@
         grup: 'mesken', sozlesme: '', evVar: false, evKm: 15000, evZaman: 'gece',
         hedef: 'yedek', yukler: kopya(KRITIK_HAZIR), saat: 4,
         mahsup: 'aylik', kayiplar: {}, batVerim: 92, tarifeTl: '', satisTl: '',
-        gunAy: 5
+        gunAy: 5, sayfa: 1
     };
     const SAKLA = 'epcTuGirdi.v2';
     let D = kopya(VARSAYILAN);
@@ -1075,15 +1091,25 @@
         `<input type="range" class="tu-kaydir" data-tu="${alan}" min="${min}" max="${max}" step="${adim}" value="${esc(deger)}" aria-label="${esc(etiketMetni)}" style="--dolu:${((deger - min) / (max - min) * 100).toFixed(1)}%">`;
     const GIRIS = 'w-full border border-slate-300 p-2.5 rounded-lg text-sm outline-none focus:border-amber-500';
     const KUCUK = 'border border-slate-300 px-2 py-1.5 rounded-md text-sm outline-none focus:border-amber-500';
+    // Her adım bir SAYFA: ortalı başlık + ortalanmış içerik kartı. Yalnız
+    // geçerli sayfa görünür; ilerleme çubuğundan her an istenen sayfaya geçilir.
+    const SAYFALAR = [['Başlangıç', '⚡'], ['Çatı', '🏠'], ['Tüketim', '🔌'], ['Kesinti', '🔋'], ['Sonuç', '📊']];
     const adimKarti = (no, baslik, alt, icerik, id) => `
-        <section ${id ? `id="${id}"` : ''} class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 mb-5 scroll-mt-4">
-            <div class="flex items-start gap-3 mb-5">
-                <span class="shrink-0 w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-black text-sm flex items-center justify-center">${no}</span>
-                <div class="min-w-0"><h3 class="text-lg font-black text-slate-800 leading-tight">${baslik}</h3>
-                <p class="text-sm text-slate-500 mt-1">${alt}</p></div>
-            </div>
-            ${icerik}
+        <section id="${id}" data-sayfa="${no}" class="tu-sayfa ${Number(D.sayfa) === no ? '' : 'hidden'}" aria-labelledby="${id}B">
+            <header class="text-center mb-6 max-w-2xl mx-auto">
+                <p class="text-xs font-black uppercase tracking-widest text-amber-700">Adım ${no} / ${SAYFALAR.length}</p>
+                <h3 id="${id}B" class="text-2xl md:text-3xl font-black text-slate-800 mt-1 leading-tight" tabindex="-1">${baslik}</h3>
+                <p class="text-sm text-slate-500 mt-2">${alt}</p>
+            </header>
+            <div class="bg-white border border-slate-200 rounded-2xl p-4 md:p-8 max-w-5xl mx-auto">${icerik}</div>
         </section>`;
+    const ilerlemeHtml = () => `
+        <nav id="tuIlerleme" class="tu-ilerleme mb-6 max-w-3xl mx-auto" aria-label="Analiz adımları">
+            <ol><span class="tu-ilerleme-hat" aria-hidden="true"><span class="tu-ilerleme-dolu"></span></span>
+            ${SAYFALAR.map(([ad, ik], i) => `<li><button type="button" data-tu-sayfa="${i + 1}" aria-label="${i + 1}. adım: ${ad}">
+                <span class="tu-nokta2">${ik}</span><span class="tu-ilerleme-ad">${ad}</span></button></li>`).join('')}
+            </ol>
+        </nav>`;
 
     const MEVSIM_AD = { tum: 'Tüm yıl', yaz: 'Yaz', kis: 'Kış' };
     const ZAMAN_IKON = { sabah: '🌅 Sabah', gunduz: '☀️ Gündüz', aksam: '🌆 Akşam', gece: '🌙 Gece', gunboyu: '🔁 Gün boyu' };
@@ -1092,25 +1118,24 @@
     function iskelet() {
         const iller = Object.keys(TU_IL).sort((a, b) => a.localeCompare(b, 'tr'));
         root.innerHTML = `
-        <div class="mb-3 flex items-center gap-2">
-            <span class="mx-2 text-slate-300">/</span><span class="text-slate-800 font-black text-xl">⚡ Tüketim & Üretim Analizi</span>
+        <div class="text-center mb-5">
+            <p class="text-slate-800 font-black text-2xl">⚡ Tüketim & Üretim Analizi</p>
+            <p class="text-sm text-slate-500 mt-1">5 kısa adım · istediğiniz adıma üstteki çubuktan geçebilirsiniz</p>
         </div>
-        <p class="text-sm text-slate-600 mb-4 max-w-3xl leading-relaxed">İki bilgiyle sonucu hemen görün; aşağıdaki adımlar çatınızı, gün içi kullanımınızı ve kesinti ihtiyacınızı ekleyerek sonucu hassaslaştırır. Her seçim alttaki çubukta anında yansır.</p>
-
+        ${ilerlemeHtml()}
         <div id="tuGirdiler">
-        <section class="bg-amber-50 border border-amber-200 rounded-2xl p-4 md:p-5 mb-5" aria-label="Hızlı başlangıç">
-            <p class="text-xs font-black uppercase tracking-wider text-amber-700 mb-3">⚡ Hızlı başlangıç · 2 bilgi yeterli</p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        ${adimKarti(1, 'İki bilgiyle başlayalım', 'Sonucu hemen hesaplamak için yeterli. Sonraki adımlar sonucu hassaslaştırır; atlayabilirsiniz.', `
+            <div class="tu-orta max-w-md mx-auto space-y-6">
                 <div>
                     ${etiket('İliniz')}
                     <select data-tu="il" class="${GIRIS} tu-buyuk" style="font-size:18px" aria-label="İl">
                         <option value="">İlinizi seçin…</option>
                         ${iller.map(i => `<option value="${esc(i)}" ${D.il === i ? 'selected' : ''}>${esc(i)}</option>`).join('')}
                     </select>
-                    <div class="flex items-center gap-2 mt-2"><button type="button" data-tu-eylem="gps" class="text-xs font-bold text-amber-700 hover:underline">📍 Konumumu kullan</button><span id="tuGpsDurum" class="text-xs text-slate-500"></span></div>
+                    <div class="flex items-center justify-center gap-2 mt-2"><button type="button" data-tu-eylem="gps" class="text-xs font-bold text-amber-700 hover:underline">📍 Konumumu kullan</button><span id="tuGpsDurum" class="text-xs text-slate-500"></span></div>
                 </div>
                 <div>
-                    <div class="flex items-center justify-between gap-2 mb-2">${etiket('Aylık elektrik faturanız')} ${seg('birim', [['tl', '₺ tutar'], ['kwh', 'kWh']], D.birim)}</div>
+                    <div class="flex flex-col items-center gap-2 mb-2">${etiket('Aylık elektrik faturanız')} ${seg('birim', [['tl', '₺ tutar'], ['kwh', 'kWh']], D.birim)}</div>
                     <div class="relative">
                         <input data-tu="faturaDeger" type="number" min="0" step="1" inputmode="decimal" placeholder="${D.birim === 'tl' ? 'Örn. 1500' : 'Örn. 300'}" value="${esc(D.faturaDeger)}" class="${GIRIS} tu-buyuk pr-16" aria-label="Aylık ortalama fatura">
                         <span data-birim-etiket class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">${D.birim === 'tl' ? '₺/ay' : 'kWh/ay'}</span>
@@ -1118,8 +1143,8 @@
                     <p id="tuDonusum" class="text-sm text-slate-600 mt-2 tu-oku"></p>
                 </div>
             </div>
-        </section>
-        ${adimKarti(1, 'Nerede ve nasıl bir çatı?', 'Panelin yılda ne kadar üreteceğini belirler. Bilmediğiniz yeri olduğu gibi bırakın.', `
+        `, 'tuSayfa1')}
+        ${adimKarti(2, 'Nerede ve nasıl bir çatı?', 'Panelin yılda ne kadar üreteceğini belirler. Bilmediğiniz yeri olduğu gibi bırakın.', `
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
                 <div>
                     ${etiket('İlinizin güneşi')}
@@ -1130,22 +1155,18 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div>
+                <div class="tu-orta">
                     ${etiket('Panellerin baktığı yön')}
-                    <div class="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-4 items-center">
-                        <div class="w-56 max-w-full shrink-0">${pusulaSvg()}</div>
-                        <div class="flex-1 min-w-0 w-full">
-                            <p class="text-sm text-slate-600 mb-1">Pusulada çatınızın baktığı yöne dokunun ya da evi sürükleyip çevirin.</p>
-                            <p class="tu-oku text-slate-800"><b id="tuYonAd" class="text-xl font-black">Güney</b><span class="text-slate-500 text-sm"> · en iyi yönün </span><b id="tuYonOran" class="text-xl font-black text-amber-700">%100</b><span class="text-slate-500 text-sm">'ü</span></p>
-                            <div class="flex flex-wrap gap-2 mt-3">
-                                ${secim('yonMod', 'db', '↔️', 'Doğu + Batı', 'İki yöne bakan çatı', D.yonMod === 'db')}
-                                ${secim('yonMod', 'opt', '📐', 'Düz çatı / arazi', 'Sehpayla en iyi açı', D.yonMod === 'opt')}
-                            </div>
-                        </div>
+                    <div class="w-60 max-w-full mx-auto">${pusulaSvg()}</div>
+                    <p class="tu-oku text-slate-800 mt-2"><b id="tuYonAd" class="text-xl font-black">Güney</b><span class="text-slate-500 text-sm"> · en iyi yönün </span><b id="tuYonOran" class="text-xl font-black text-amber-700">%100</b><span class="text-slate-500 text-sm">'ü</span></p>
+                    <p class="text-xs text-slate-500 mt-1">Yöne dokunun ya da evi sürükleyip çevirin.</p>
+                    <div class="flex justify-center flex-wrap gap-2 mt-3">
+                        ${secim('yonMod', 'db', '↔️', 'Doğu + Batı', 'İki yöne bakan çatı', D.yonMod === 'db')}
+                        ${secim('yonMod', 'opt', '📐', 'Düz çatı / arazi', 'Sehpayla en iyi açı', D.yonMod === 'opt')}
                     </div>
                     ${neden('Panel en çok güneye bakarken üretir. Doğu ve batı ~%15–20 daha az üretir ama sabah ya da akşam güçlüdür; akşam tüketimi yüksek evlerde bu bir avantaj olabilir.')}
                 </div>
-                <div>
+                <div class="tu-orta">
                     ${etiket('Çatı / panel eğimi')}
                     ${kesitSvg()}
                     <div class="flex items-center gap-3 mt-2">
@@ -1155,14 +1176,14 @@
                         </div>
                         <p class="tu-oku text-slate-800 shrink-0 w-28 text-right"><b id="tuEgimDeg" class="text-xl font-black">30°</b><br><span class="text-xs text-slate-500">en iyinin </span><b id="tuEgimOran" class="text-sm font-black text-amber-700">%100</b><span class="text-xs text-slate-500">'ü</span></p>
                     </div>
-                    <div class="flex flex-wrap gap-2 mt-2" id="tuEgimHizli">
+                    <div class="flex justify-center flex-wrap gap-2 mt-2" id="tuEgimHizli">
                         ${[[0, 'Düz'], [15, '15°'], [30, '30°'], [45, '45°']].map(([e, a]) => `<button type="button" data-tu-egim="${e}" class="text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-600 active:scale-95 transition">${a}</button>`).join('')}
                     </div>
                     ${neden('Panel güneşi ne kadar dik görürse o kadar üretir. Türkiye’de en iyi açı çoğu ilde 30–34°; kiremit çatılar genelde buna yakındır. ▼ işareti ilinizin en iyi açısı.')}
                 </div>
             </div>
 
-            <div class="mb-6">
+            <div class="mb-6 tu-orta">
                 ${etiket('Çatıya gölge düşüyor mu?')}
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                     ${secim('golge', 'yok', '☀️', 'Hayır', 'Gün boyu açık', D.golge === 'yok')}
@@ -1173,7 +1194,7 @@
                 ${neden('Ağaç, komşu bina ya da baca gölgesi yalnız gölgede kalan paneli değil, aynı dizideki diğer panelleri de düşürebilir. Kesin değer keşifte ölçülür.')}
             </div>
 
-            <div>
+            <div class="tu-orta max-w-xl mx-auto">
                 ${etiket('Kullanılabilir çatı alanı')}
                 <div class="flex items-center gap-3">
                     <div class="flex-1">${kaydirici('alan', 0, 200, 5, D.alan, 'Çatı alanı, metrekare')}</div>
@@ -1182,10 +1203,10 @@
                 <div id="tuAlanGorsel" class="mt-3"></div>
                 ${neden('Önerilen sistemin çatınıza sığmasını sağlar. Panel başına yürüme payıyla ~3 m² gerekir. Bilmiyorsanız en solda bırakın.')}
             </div>
-        `, 'tuAdim1')}
+        `, 'tuSayfa2')}
 
-        ${adimKarti(2, 'Ne kadar elektrik kullanıyorsunuz?', 'Sistemi tüketiminize göre boyutlandırırız: küçüğü faturayı sıfırlamaz, gereğinden büyüğün fazlası düşük bedelle satılır.', `
-            <div class="mb-5">${seg('tmod', [['fatura', '🧾 Faturamdan'], ['cihaz', '🔌 Cihaz cihaz']], D.tmod)}</div>
+        ${adimKarti(3, 'Ne kadar elektrik kullanıyorsunuz?', 'Sistemi tüketiminize göre boyutlandırırız: küçüğü faturayı sıfırlamaz, gereğinden büyüğün fazlası düşük bedelle satılır.', `
+            <div class="mb-6 text-center">${seg('tmod', [['fatura', '🧾 Faturamdan'], ['cihaz', '🔌 Cihaz cihaz']], D.tmod)}</div>
 
             <div id="tuFaturaKutu" class="${D.tmod === 'fatura' ? '' : 'hidden'}">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
@@ -1207,19 +1228,20 @@
                         ${neden('Güneş yazın çok, kışın az üretir. Tüketiminizin hangi mevsimde arttığı, yaz fazlasını ve kış açığını belirler.')}
                     </div>
                 </div>
-                ${etiket('Gündüz evde kim var?')}
+                <div class="tu-orta">${etiket('Gündüz evde kim var?')}</div>
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
                     ${secim('yasam', 'calisan', '💼', 'Kimse yok', yasamMini('calisan'), D.yasam === 'calisan')}
                     ${secim('yasam', 'evde', '🏠', 'Evde biri var', yasamMini('evde'), D.yasam === 'evde')}
                     ${secim('yasam', 'evofis', '💻', 'Evden çalışıyorum', yasamMini('evofis'), D.yasam === 'evofis')}
                     ${secim('yasam', 'isyeri', '🏪', 'İş yeri (gündüz)', yasamMini('isyeri'), D.yasam === 'isyeri')}
                 </div>
-                ${neden('Panel gündüz üretir. Gündüz kullandığınız elektrik doğrudan güneşten gelir ve en çok tasarrufu sağlar; küçük grafiklerde sarı güneşi, mavi tüketimi gösteriyor.')}
+                <div class="tu-orta">${neden('Panel gündüz üretir. Gündüz kullandığınız elektrik doğrudan güneşten gelir ve en çok tasarrufu sağlar; küçük grafiklerde sarı güneşi, mavi tüketimi gösteriyor.')}</div>
             </div>
 
             <div id="tuCihazKutu" class="${D.tmod === 'cihaz' ? '' : 'hidden'}">
-                <p class="text-sm text-slate-600 mb-3">Kullandığınız cihazlara dokunun; <b>⚙</b> ile adet, güç ve kullanım saatini ayarlayın.</p>
+                <p class="text-sm text-slate-600 mb-4 text-center">Kullandığınız cihazlara dokunun; <b>⚙</b> ile adet, güç ve kullanım saatini ayarlayın.</p>
                 <div id="tuCihazKartlar" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"></div>
+                <button type="button" data-tu-eylem="cihazEkle" class="mt-3 mx-auto flex items-center gap-2 px-4 py-2 rounded-xl border border-dashed border-slate-300 text-sm font-bold text-slate-600 hover:text-slate-800 active:scale-95 transition">＋ Listede olmayan cihaz ekle</button>
                 <div id="tuCihazDuzen" class="mt-3"></div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
                     <div id="tuCihazGrafik"></div>
@@ -1235,19 +1257,19 @@
                 </div>
             </div>
 
-            <div class="mt-6">
+            <div class="mt-8 flex flex-col items-center">
                 <button type="button" class="tu-secim w-full sm:w-auto" data-tu-sec="evVar" data-deger="${D.evVar ? '0' : '1'}" aria-pressed="${!!D.evVar}">
                     <span class="tu-tik" aria-hidden="true">✓</span><span class="tu-ikon" aria-hidden="true">🚗</span>
                     <span class="tu-baslik">Elektrikli aracım var ya da alacağım</span><span class="tu-alt">Şarj tüketimini sisteme ekleriz</span>
                 </button>
-                <div id="tuEvKutu" class="${D.evVar ? '' : 'hidden'} mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div id="tuEvKutu" class="${D.evVar ? '' : 'hidden'} mt-4 w-full max-w-2xl grid grid-cols-1 gap-4">
                     <div>
                         <div class="flex items-center gap-3">
                             <div class="flex-1">${kaydirici('evKm', 5000, 40000, 1000, D.evKm, 'Yıllık kilometre')}</div>
                             <b id="tuEvDeg" class="tu-oku text-slate-800 w-40 text-right shrink-0"></b>
                         </div>
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex justify-center flex-wrap gap-2">
                         ${secim('evZaman', 'gece', '🌙', 'Gece şarj', '', D.evZaman === 'gece')}
                         ${secim('evZaman', 'gunduz', '☀️', 'Gündüz şarj', 'Güneşle en uyumlu', D.evZaman === 'gunduz')}
                         ${secim('evZaman', 'aksam', '🌆', 'Akşam şarj', '', D.evZaman === 'aksam')}
@@ -1256,7 +1278,7 @@
             </div>
 
             <details class="tu-acilir mt-5">
-                <summary class="text-sm font-bold text-slate-600"><span class="tu-ok">▸</span> Daha fazla ayrıntı (isteğe bağlı): abone grubu, sözleşme gücü</summary>
+                <summary class="text-sm font-bold text-slate-600 text-center"><span class="tu-ok">▸</span> Daha fazla ayrıntı (isteğe bağlı): abone grubu, sözleşme gücü</summary>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-4">
                     <div>
                         ${etiket('Abone grubu')}
@@ -1277,51 +1299,53 @@
             </details>
 
             <div id="tuOzetTuketim" class="mt-6"></div>
-        `, 'tuAdim2')}
+        `, 'tuSayfa3')}
 
-        ${adimKarti(3, 'Elektrik kesilince ne çalışsın?', 'Bataryayı yalnız gerçekten ihtiyacınız olan cihazlara ve süreye göre boyutlandırırız.', `
+        ${adimKarti(4, 'Elektrik kesilince ne çalışsın?', 'Bataryayı yalnız gerçekten ihtiyacınız olan cihazlara ve süreye göre boyutlandırırız.', `
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-5">
                 ${secim('hedef', 'yok', '🔌', 'Batarya istemiyorum', 'En düşük yatırım; kesintide sistem kapanır', D.hedef === 'yok')}
                 ${secim('hedef', 'yedek', '🔋', 'Kesintide yedek', 'Seçtiğiniz cihazlar kesintide çalışır', D.hedef === 'yedek')}
                 ${secim('hedef', 'bagimsiz', '🏝️', 'Yedek + bağımsızlık', 'Gündüz fazlası akşama da taşınır', D.hedef === 'bagimsiz')}
             </div>
             <div id="tuYukKutu" class="${D.hedef === 'yok' ? 'hidden' : ''}">
+                <div class="tu-orta max-w-xl mx-auto">
                 ${etiket('Kesinti kaç saat sürse dayanmalı?')}
                 <div class="flex items-center gap-3">
                     <div class="flex-1">${kaydirici('saat', 1, 48, 1, D.saat, 'Kesinti süresi, saat')}</div>
                     <b id="tuSaatDeg" class="tu-oku text-slate-800 w-20 text-right shrink-0">${D.saat} saat</b>
                 </div>
                 ${neden('Süre, batarya kapasitesini doğrudan belirler: süreyi ikiye katlamak kapasiteyi de ikiye katlar.')}
-                <div class="mt-5">${etiket('Kesintide çalışacak cihazlar')}</div>
+                </div>
+                <div class="mt-6 tu-orta">${etiket('Kesintide çalışacak cihazlar')}</div>
                 <div id="tuYukKartlar" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"></div>
+                <button type="button" data-tu-eylem="yukEkle" class="mt-3 mx-auto flex items-center gap-2 px-4 py-2 rounded-xl border border-dashed border-slate-300 text-sm font-bold text-slate-600 hover:text-slate-800 active:scale-95 transition">＋ Listede olmayan yük ekle</button>
                 <div id="tuYukDuzen" class="mt-3"></div>
-                ${neden('Yalnız kesintide gerçekten gerekenleri seçin; her cihaz bataryayı büyütür. Motorlu cihazlar (buzdolabı, pompa) kalkışta 3 kat güç çeker, inverter buna göre seçilir.')}
+                <div class="tu-orta">${neden('Yalnız kesintide gerçekten gerekenleri seçin; her cihaz bataryayı büyütür. Motorlu cihazlar (buzdolabı, pompa) kalkışta 3 kat güç çeker, inverter buna göre seçilir.')}</div>
             </div>
-            <p id="tuBataryaYokNot" class="${D.hedef === 'yok' ? '' : 'hidden'} text-sm text-slate-500">Bataryasız (on-grid) sistem kesintide güvenlik gereği kapanır; güneş olsa bile evi beslemez. Kesintide çalışmak için hibrit inverter ve batarya gerekir.</p>
+            <p id="tuBataryaYokNot" class="${D.hedef === 'yok' ? '' : 'hidden'} text-sm text-slate-500 text-center max-w-xl mx-auto">Bataryasız (on-grid) sistem kesintide güvenlik gereği kapanır; güneş olsa bile evi beslemez. Kesintide çalışmak için hibrit inverter ve batarya gerekir.</p>
             <div id="tuOzetYedek" class="mt-5"></div>
-        `, 'tuAdim3')}
+        `, 'tuSayfa4')}
 
-        <div class="tu-cubuk" id="tuCubuk" aria-live="polite"><div class="tu-cubuk-ic flex items-center gap-2 sm:gap-3">
-            <div id="tuCubukIc" class="flex-1 min-w-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"></div>
-            <button type="button" data-tu-eylem="sonuca" class="shrink-0 bg-amber-500 hover:bg-amber-600 font-black px-3 sm:px-4 py-2.5 rounded-xl text-sm active:scale-95 transition" aria-label="Sonuca git"><span class="hidden sm:inline">Sonuç </span>↓</button>
-        </div></div>
-        </div>
-
-        <section id="tuAdim4" class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 mb-5 mt-5 scroll-mt-4">
-            <div class="flex items-start gap-3 mb-5">
-                <span class="shrink-0 w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-black text-sm flex items-center justify-center">4</span>
-                <div class="min-w-0"><h3 class="text-lg font-black text-slate-800 leading-tight">Size önerdiğimiz sistem</h3>
-                <p class="text-sm text-slate-500 mt-1">Tüketiminiz ve güneş, bir yılın her ayı için saat saat çakıştırıldı.</p></div>
-            </div>
+        ${adimKarti(5, 'Size önerdiğimiz sistem', 'Tüketiminiz ve güneş, bir yılın her ayı için saat saat çakıştırıldı.', `
             <div id="tuSonuc"></div>
             <div id="tuGunKutu" class="mt-6"></div>
             <div id="tuSonucAlt"></div>
-        </section>
+            <details class="tu-acilir border-t border-slate-200 pt-5 mt-8">
+                <summary class="font-black text-slate-800 text-center"><span class="tu-ok">▸</span> ⚙️ Varsayımlar ve gelişmiş ayarlar</summary>
+                <div id="tuGelismis" class="mt-4"></div>
+            </details>
+        `, 'tuSayfa5')}
 
-        <details class="tu-acilir bg-white border border-slate-200 rounded-2xl p-4 md:p-6 mb-5">
-            <summary class="font-black text-slate-800"><span class="tu-ok">▸</span> ⚙️ Varsayımlar ve gelişmiş ayarlar</summary>
-            <div id="tuGelismis" class="mt-4"></div>
-        </details>`;
+        <div class="flex items-center justify-center gap-3 mt-6 mb-4">
+            <button type="button" data-tu-eylem="geri" id="tuGeri" class="min-w-[9rem] px-5 py-3 rounded-xl font-black text-sm border border-slate-200 bg-slate-100 text-slate-600 active:scale-95 transition">← Geri</button>
+            <button type="button" data-tu-eylem="ileri" id="tuIleri" class="min-w-[9rem] px-5 py-3 rounded-xl font-black text-sm bg-amber-500 hover:bg-amber-600 active:scale-95 transition">İleri →</button>
+        </div>
+
+        <div class="tu-cubuk max-w-3xl mx-auto" id="tuCubuk" aria-live="polite"><div class="tu-cubuk-ic flex items-center gap-2 sm:gap-3">
+            <div id="tuCubukIc" class="flex-1 min-w-0 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm"></div>
+            <button type="button" data-tu-eylem="sonuca" class="shrink-0 bg-amber-500 hover:bg-amber-600 font-black px-3 sm:px-4 py-2.5 rounded-xl text-sm active:scale-95 transition" aria-label="Sonucu gör"><span class="hidden sm:inline">Sonuç </span>→</button>
+        </div></div>
+        </div>`;
         cubukIskelet();
         cihazKartlariCiz();
         yukKartlariCiz();
@@ -1621,7 +1645,9 @@
         k.innerHTML = D.cihazlar.map((c, i) => {
             const acik = Number(c.adet) > 0;
             return kart('cihaz', i, c.ikon || '🔌', c.ad, acik ? tr(motor.cihazYillik(c)) + ' kWh/yıl' : 'Kullanmıyorum', acik, Number(c.adet));
-        }).join('') + `<button type="button" data-tu-eylem="cihazEkle" class="tu-secim items-center justify-center" style="min-height:92px;border-style:dashed"><span class="tu-ikon">＋</span><span class="tu-baslik">Diğer cihaz</span></button>`;
+        }).join('');
+        // "Diğer cihaz" ızgaranın İÇİNDE değil: 18 kart 2/3/6 sütunda tam satır
+        // doluyor; 19. kart son satırda tek başına sola yaslanıyordu.
         if (duzenDe !== false) cihazDuzenCiz();
         cihazGrafikCiz();
     }
@@ -1683,8 +1709,7 @@
         const k = document.getElementById('tuYukKartlar');
         if (!k) return;
         k.innerHTML = D.yukler.map((y, i) => kart('yuk', i, y.ikon || '🔌', y.ad,
-            `${tr(y.w)} W${y.motor ? ' · motorlu' : ''}`, !!y.secili, Number(y.adet))).join('') +
-            `<button type="button" data-tu-eylem="yukEkle" class="tu-secim items-center justify-center" style="min-height:92px;border-style:dashed"><span class="tu-ikon">＋</span><span class="tu-baslik">Diğer yük</span></button>`;
+            `${tr(y.w)} W${y.motor ? ' · motorlu' : ''}`, !!y.secili, Number(y.adet))).join('');
         if (duzenDe !== false) yukDuzenCiz();
     }
     function yukDuzenCiz() {
@@ -2072,15 +2097,15 @@
         const a = r.ana;
         const go = a.geriOdeme != null && typeof window.epcSureMetni === 'function' ? window.epcSureMetni(a.geriOdeme) : (a.geriOdeme != null ? sade(a.geriOdeme, 1) + ' yıl' : '—');
         yaz('tuSonuc', `
-            <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                <div class="lg:col-span-2 bg-amber-50 border border-amber-200 rounded-xl p-5">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-5">
                     <p class="text-xs font-bold text-amber-700">Önerilen kurulu güç</p>
                     <p class="font-black text-amber-700 leading-none mt-2 tu-oku" style="font-size:52px"><span id="tuSonKwp" data-sayi="${_onceki.sonKwp != null ? _onceki.sonKwp : r.kwp}">${sade(_onceki.sonKwp != null ? _onceki.sonKwp : r.kwp)}</span><span class="text-lg font-black"> kWp</span></p>
                     <p class="text-sm font-bold text-slate-700 mt-3">${r.panel} × ${tr(r.panelKwp * 1000)} W panel · ~${tr(r.catiM2)} m² çatı</p>
                     <div class="tu-panel-izgara mt-3" aria-hidden="true">${panelIzgara(r.panel)}</div>
                     <p class="text-xs text-slate-600 mt-3 leading-relaxed">${nedenMetni(r)}</p>
                 </div>
-                <div class="lg:col-span-3 grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-3">
                     ${kutu('İnverter', sade(r.invAc), 'kW', false, (r.hibrit ? 'Hibrit (bataryalı)' : 'On-grid') + ' · DC/AC ' + sade(r.dcAc))}
                     ${kutu('Batarya', r.batModul > 0 ? sade(r.batNominal) : 'Yok', r.batModul > 0 ? 'kWh' : '', false, r.batModul > 0 ? r.batModul + ' × ' + sade(r.modulKwh) + ' kWh modül' : 'Kesinti yedeği seçilmedi')}
                     ${kutu('Yıllık üretim', tr(a.uretim), 'kWh', false, 'yıllık tüketim ' + tr(r.t.yillik) + ' kWh')}
@@ -2259,7 +2284,7 @@
         try { r = motor.analiz(girdi()); }
         catch (err) { console.error('[tuketim-uretim]', err); r = { eksik: 'hata', u: null, t: null }; }
         _sonR = r;
-        konumOzetCiz(r); tuketimOzetCiz(r); yedekOzetCiz(r); alanGorselCiz(r); cubukCiz(r);
+        konumOzetCiz(r); tuketimOzetCiz(r); yedekOzetCiz(r); alanGorselCiz(r); cubukCiz(r); ilerlemeTazele(true);
         sonucCiz(r); gunCiz(); yontemCiz(r);
         sakla();
         if (!r.eksik && !_olayAtildi && typeof window.epcOlay === 'function') {
@@ -2274,6 +2299,58 @@
         if (g === 0) { clearTimeout(_zam); _zam = null; cancelAnimationFrame(_raf); _raf = requestAnimationFrame(hesaplaCiz); return; }
         if (_zam) return;
         _zam = setTimeout(() => { _zam = null; hesaplaCiz(); }, g == null ? 180 : g);
+    }
+
+    // --- SAYFALAR ------------------------------------------------------------------------
+    const SAYFA_SAYISI = 5;
+    let _ilerlemeYay = null;
+    function sayfaGit(n, ilk) {
+        n = Math.max(1, Math.min(SAYFA_SAYISI, Number(n) || 1));
+        const once = Number(D.sayfa) || 1;
+        D.sayfa = n;
+        root.querySelectorAll('.tu-sayfa').forEach(s => {
+            const bu = Number(s.dataset.sayfa) === n;
+            s.classList.toggle('hidden', !bu);
+            if (bu && !ilk) {
+                // Ileri giderken sağdan, geri giderken soldan girer (yön tutarlılığı)
+                s.style.setProperty('--tu-yon', (n >= once ? 16 : -16) + 'px');
+                s.classList.remove('tu-sayfa-gir'); void s.offsetWidth; s.classList.add('tu-sayfa-gir');
+            }
+        });
+        ilerlemeTazele(ilk);
+        const geri = document.getElementById('tuGeri'), ileri = document.getElementById('tuIleri');
+        // Gizli düğme yer KAPLAMASIN: tek düğme kalınca tam ortada dursun
+        if (geri) geri.classList.toggle('hidden', n === 1);
+        if (ileri) {
+            ileri.classList.toggle('hidden', n === SAYFA_SAYISI);
+            ileri.textContent = n === SAYFA_SAYISI - 1 ? 'Sonucu gör →' : 'İleri →';
+        }
+        const cubuk = document.getElementById('tuCubuk');
+        if (cubuk) cubuk.classList.toggle('hidden', n === SAYFA_SAYISI);
+        segZeminleri();
+        if (!ilk) {
+            sakla();
+            const ust = document.getElementById('tuIlerleme');
+            if (ust) ust.scrollIntoView({ behavior: azHareket ? 'auto' : 'smooth', block: 'start' });
+            // Ekran okuyucu yeni sayfanın başlığını duysun
+            document.getElementById('tuSayfa' + n + 'B')?.focus({ preventScroll: true });
+        }
+    }
+    function ilerlemeTazele(anlik) {
+        const n = Number(D.sayfa) || 1;
+        const tamam = { 1: !!D.il && Number(D.faturaDeger) > 0 };
+        root.querySelectorAll('[data-tu-sayfa]').forEach(b => {
+            const i = Number(b.dataset.tuSayfa);
+            if (i === n) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+            b.dataset.durum = i < n || tamam[i] ? 'gecti' : '';
+            const nokta = b.querySelector('.tu-nokta2');
+            if (nokta) nokta.textContent = i !== n && (i < n || tamam[i]) ? '✓' : SAYFALAR[i - 1][1];
+        });
+        const dolu = root.querySelector('.tu-ilerleme-dolu');
+        if (!dolu) return;
+        if (!_ilerlemeYay) _ilerlemeYay = Yay((n - 1) / (SAYFA_SAYISI - 1) * 100, (x) => { dolu.style.width = x.toFixed(2) + '%'; }, 0.45, 1);
+        const hedef = (n - 1) / (SAYFA_SAYISI - 1) * 100;
+        if (anlik) _ilerlemeYay.ayarla(hedef); else _ilerlemeYay.hedefle(hedef);
     }
 
     function secimleriTazele() {
@@ -2406,6 +2483,8 @@
             secimleriTazele(); gorunurlukTazele();
             planla(0); return;
         }
+        const sy = t.closest('[data-tu-sayfa]');
+        if (sy) { sayfaGit(Number(sy.dataset.tuSayfa)); return; }
         const b = t.closest('[data-tu-eylem]');
         if (!b) return;
         const ey = b.dataset.tuEylem;
@@ -2425,14 +2504,17 @@
             _cihazSecili = null; _yukSecili = null; cihazDuzenCiz(); yukDuzenCiz();
         } else if (ey === 'gps') gpsBul();
         else if (ey === 'kesif') kesifAc();
-        else if (ey === 'sonuca') document.getElementById('tuAdim4')?.scrollIntoView({ behavior: azHareket ? 'auto' : 'smooth', block: 'start' });
+        else if (ey === 'sonuca') sayfaGit(SAYFA_SAYISI);
+        else if (ey === 'ileri') sayfaGit((Number(D.sayfa) || 1) + 1);
+        else if (ey === 'geri') sayfaGit((Number(D.sayfa) || 1) - 1);
         else if (ey === 'sifirla') {
             if (!confirm('Tüm girdiler silinip varsayılanlara dönülsün mü?')) return;
             D = kopya(VARSAYILAN);
             try { localStorage.removeItem(SAKLA); localStorage.removeItem('epcTuGirdi.v1'); } catch (err) { }
             _cihazSecili = _yukSecili = null; _oncekiModul = 0; _oncekiPanelSayisi = 0; _oncekiSonucPanel = 0;
             Object.keys(_onceki).forEach(k => delete _onceki[k]); _canlandi.clear();
-            iskelet(); hesaplaCiz();
+            _ilerlemeYay = null;
+            iskelet(); sayfaGit(1, true); hesaplaCiz();
             root.scrollIntoView({ block: 'start' });
         }
     });
@@ -2575,6 +2657,7 @@
 
     // --- BAŞLAT -------------------------------------------------------------------------------
     iskelet();
+    sayfaGit(D.sayfa, true);
     evDegYaz();
     hesaplaCiz();
     // Yönetici ayarları (tarife, kur, panel gücü…) sayfa açıldıktan sonra
