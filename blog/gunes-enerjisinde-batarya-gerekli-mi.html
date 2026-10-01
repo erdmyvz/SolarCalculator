@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Güneş Enerjisinde Batarya Gerekli mi? Kesinti ve Kapasite</title>
+<meta name="description" content="Elektrik kesilince güneş paneliniz neden durur? Bataryanın faturaya gerçek etkisi, kesinti için kaç kWh gerektiği ve hibrit inverter seçimi, örnek hesaplarla.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://epcmerkezim.com/blog/gunes-enerjisinde-batarya-gerekli-mi">
+<meta name="theme-color" content="#0B1B2E">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☀️</text></svg>">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="epcmerkezim">
+<meta property="og:locale" content="tr_TR">
+<meta property="og:url" content="https://epcmerkezim.com/blog/gunes-enerjisinde-batarya-gerekli-mi">
+<meta property="og:title" content="Güneş Enerjisinde Batarya Gerekli mi? Kesinti ve Kapasite">
+<meta property="og:description" content="Elektrik kesilince güneş paneliniz neden durur? Bataryanın faturaya gerçek etkisi, kesinti için kaç kWh gerektiği ve hibrit inverter seçimi, örnek hesaplarla.">
+<meta property="og:image" content="https://epcmerkezim.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://epcmerkezim.com/og.png">
+<meta property="article:published_time" content="2026-10-01">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0B1B2E;--navy2:#0E2540;--amber:#F59E0B;--amber-l:#FBBF24;--emerald:#10B981;--ink:#1e293b;--muted:#64748b;--line:#e2e8f0}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:'Manrope',ui-sans-serif,system-ui,sans-serif;color:var(--ink);background:#fff;line-height:1.7;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:'Sora',ui-sans-serif,sans-serif;letter-spacing:-.02em;color:#0f172a;line-height:1.25}
+a{color:#0f766e;text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+.wrap-wide{max-width:1080px;margin:0 auto;padding:0 20px}
+/* üst bar */
+.top{position:sticky;top:0;z-index:20;background:var(--navy);border-bottom:1px solid #1e293b}
+.top .wrap-wide{display:flex;align-items:center;justify-content:space-between;height:60px}
+.brand{font-family:'Sora';font-weight:800;font-size:20px;color:#34D399;text-decoration:none}
+.top nav a{color:#cbd5e1;font-weight:700;font-size:14px;margin-left:20px}
+.top nav a:hover{color:#fff;text-decoration:none}
+.cta-sun{background:linear-gradient(100deg,#F59E0B,#FBBF24 40%,#10B981);color:#fff !important;padding:9px 16px;border-radius:10px;font-weight:800;font-size:14px}
+.cta-sun:hover{text-decoration:none;filter:saturate(1.05)}
+/* hero */
+.hero{background:radial-gradient(900px 380px at 78% -30%,rgba(245,158,11,.18),transparent 60%),linear-gradient(140deg,#0A1A2F,#0E2540 55%,#0B1B2E);color:#fff;padding:54px 0 46px}
+.eyebrow{text-transform:uppercase;letter-spacing:.18em;font-size:11px;font-weight:800;color:var(--amber-l);margin:0 0 12px}
+.hero h1{color:#fff;font-size:40px;margin:0 0 14px}
+.hero p{color:#cbd5e1;font-size:18px;margin:0}
+.meta{color:#94a3b8;font-size:13px;margin-top:16px}
+/* içerik */
+article{padding:40px 0 10px;font-size:17px}
+article h2{font-size:26px;margin:38px 0 12px}
+article h3{font-size:20px;margin:26px 0 8px}
+article p{margin:0 0 16px}
+article ul,article ol{margin:0 0 18px;padding-left:22px}article li{margin:6px 0}
+article strong{color:#0f172a}
+.lead{font-size:19px;color:#334155}
+.callout{background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:18px 20px;margin:24px 0}
+.callout .k{font-weight:800;color:#92400e;font-size:12px;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px}
+.tip{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:18px 20px;margin:24px 0}
+.toc{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin:26px 0}
+.toc .k{font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
+.toc a{display:block;padding:3px 0;font-weight:600}
+/* dönüşüm kutusu */
+.convert{background:linear-gradient(140deg,#0A1A2F,#0E2540);border-radius:20px;padding:30px;margin:44px 0;text-align:center;color:#fff}
+.convert h3{color:#fff;font-size:23px;margin:0 0 8px}
+.convert p{color:#cbd5e1;margin:0 0 20px}
+.convert .row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-ghost{border:1px solid rgba(255,255,255,.25);color:#fff !important;padding:12px 22px;border-radius:11px;font-weight:700}
+.btn-ghost:hover{background:rgba(255,255,255,.06);text-decoration:none}
+.btn-fill{background:linear-gradient(100deg,#F59E0B,#FBBF24 40%,#10B981);color:#fff !important;padding:12px 24px;border-radius:11px;font-weight:800}
+.btn-fill:hover{text-decoration:none;filter:saturate(1.05)}
+/* kart ızgarası (blog indeks) */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;padding:38px 0}
+.card{border:1px solid var(--line);border-radius:16px;overflow:hidden;transition:box-shadow .2s,border-color .2s;background:#fff}
+.card:hover{box-shadow:0 18px 40px -24px rgba(15,23,42,.4);border-color:#fcd34d}
+.card a{text-decoration:none;color:inherit;display:block;height:100%}
+.card .body{padding:20px}
+.card .tag{font-size:11px;font-weight:800;color:var(--amber);text-transform:uppercase;letter-spacing:.06em}
+.card h3{font-size:18px;margin:8px 0 8px}
+.card p{color:var(--muted);font-size:14px;margin:0}
+.card .rd{color:#0f766e;font-weight:700;font-size:13px;margin-top:12px;display:inline-block}
+/* breadcrumb + footer */
+.crumb{font-size:13px;color:var(--muted);padding:16px 0 0}
+.crumb a{color:var(--muted)}
+.rel{border-top:1px solid var(--line);margin-top:30px;padding:26px 0}
+.rel .k{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px}
+footer{background:var(--navy);color:#94a3b8;padding:30px 0;margin-top:20px;font-size:14px}
+footer .wrap-wide{display:flex;gap:18px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+footer a{color:#cbd5e1;font-weight:700}footer .links a{margin-left:16px}
+@media(max-width:640px){.hero h1{font-size:30px}article{font-size:16px}.top nav a:not(.cta-sun){display:none}}
+/* tablo ve kontrol listesi (bu yazıyla eklendi) */
+.tbl{overflow-x:auto;margin:20px 0 24px;border:1px solid var(--line);border-radius:14px}
+.tbl table{width:100%;border-collapse:collapse;font-size:15px;min-width:560px}
+.tbl th,.tbl td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl th{background:#f8fafc;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.tbl .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tip .k{font-weight:800;color:#166534;font-size:12px;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px}
+.check{list-style:none;padding-left:0}.check li{padding-left:30px;position:relative}
+.check li:before{content:"✓";position:absolute;left:6px;color:#059669;font-weight:800}
+</style>
+
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "Güneş Enerjisinde Batarya Gerekli mi? Kesinti, Hibrit İnverter ve Doğru Kapasite", "description": "Elektrik kesilince güneş paneliniz neden durur? Bataryanın faturaya gerçek etkisi, kesinti için kaç kWh gerektiği ve hibrit inverter seçimi, örnek hesaplarla.", "inLanguage": "tr-TR", "datePublished": "2026-10-01", "dateModified": "2026-10-01", "author": {"@type": "Organization", "name": "epcmerkezim"}, "publisher": {"@type": "Organization", "name": "epcmerkezim", "logo": {"@type": "ImageObject", "url": "https://epcmerkezim.com/og.png"}}, "image": "https://epcmerkezim.com/og.png", "mainEntityOfPage": {"@type": "WebPage", "@id": "https://epcmerkezim.com/blog/gunes-enerjisinde-batarya-gerekli-mi"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Ana Sayfa", "item": "https://epcmerkezim.com/"}, {"@type": "ListItem", "position": 2, "name": "Solar Akademi", "item": "https://epcmerkezim.com/blog"}, {"@type": "ListItem", "position": 3, "name": "Güneş Enerjisinde Batarya Gerekli mi?", "item": "https://epcmerkezim.com/blog/gunes-enerjisinde-batarya-gerekli-mi"}]}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Elektrik kesilince güneş panelim evimi besler mi?", "acceptedAnswer": {"@type": "Answer", "text": "Bataryasız, şebeke bağlantılı (on-grid) bir sistemde hayır: inverter kesinti anında güvenlik gereği kapanır ve güneş olsa bile evi beslemez. Kesintide çalışmak için hibrit inverter ve batarya gerekir. Bu durumda seçilen devreler bataryadan beslenir; kesinti gündüze denk gelirse paneller de hem evi besler hem bataryayı doldurur."}}, {"@type": "Question", "name": "Batarya faturamı sıfırlar mı?", "acceptedAnswer": {"@type": "Answer", "text": "Aylık mahsuplaşmada bataryanın faturaya katkısı sınırlıdır, çünkü gündüz şebekeye verdiğiniz fazla zaten aynı ay içindeki çekişinizden düşülür. Örnek hesabımızda 10 kWh batarya şebekeden bağımsızlığı %27’den %82’ye çıkardı ama dolum-boşalım kayıpları yüzünden yıllık tasarruf ₺17.454’ten ₺16.889’a indi. Faturayı düşüren asıl unsur doğru boyutlandırılmış panel sistemidir."}}, {"@type": "Question", "name": "Ev bataryası kaç yıl dayanır?", "acceptedAnswer": {"@type": "Answer", "text": "Günümüzde yaygın olan LFP (lityum demir fosfat) ev bataryaları için pek çok üretici 10 yıl civarı garanti ve binlerce tam döngü belirtiyor. Gerçek ömür; döngü sayısı, deşarj derinliği ve sıcaklığa bağlıdır. Yalnız kesinti yedeği olarak kullanılan bir batarya çok daha az döngü yaptığı için daha yavaş yıpranır."}}, {"@type": "Question", "name": "Kesinti için kaç kWh batarya yeterli?", "acceptedAnswer": {"@type": "Answer", "text": "Cihazlarınıza ve süreye bağlıdır. Buzdolabı, kombi, aydınlatma, televizyon, modem ve şarj gibi temel cihazlar ortalama 325 W çeker; 4 saatlik kesinti için yaklaşık 1,5 kWh kapasite gerekir ve tek bir 5 kWh modül bu cihazları yaklaşık 13 saat çalıştırır. 24 saat dayanması istenirse iki modül gerekir. Hesap: gereken enerji ÷ deşarj derinliği ÷ inverter verimi."}}, {"@type": "Question", "name": "Bataryayı gece şebekeden doldurmak mantıklı mı?", "acceptedAnswer": {"@type": "Answer", "text": "Tek zamanlı tarifede genellikle hayır: aynı fiyattan aldığınız elektriği dolum-boşalımda bir kısmını kaybederek kullanmış olursunuz. Çok zamanlı tarifede gece ile puant saatleri arasındaki fiyat farkı bu kaybı aşıyorsa kısmen anlamlı olabilir; bu, tarifenize ve hibrit inverterin ayarlarına bağlıdır."}}]}</script>
+    <!-- Plausible — çerezsiz ölçüm, KVKK için onay bandı gerektirmez.
+         script.hash.js: site # ile yönlendiriyor, düz sürüm panel içi
+         gezinmeyi saymaz. -->
+    <script defer data-domain="epcmerkezim.com" src="https://plausible.io/js/script.hash.js"></script>
+</head>
+<body>
+<header class="top"><div class="wrap-wide">
+<a href="/" class="brand">epcmerkezim</a>
+<nav>
+<a href="/" class="cta-sun">☀️ Ücretsiz Teklif</a>
+</nav>
+</div></header>
+
+<div class="hero"><div class="wrap">
+<p class="eyebrow">Depolama · 9 dk okuma</p>
+<h1>Güneş Enerjisinde Batarya Gerekli mi? Kesinti, Hibrit İnverter ve Doğru Kapasite</h1>
+<p>Bataryanın gerçekte ne işe yaradığı, faturanıza etkisi ve kesinti için doğru kapasite — simülasyonla hesaplanmış örneklerle.</p>
+</div></div>
+<main class="wrap"><article>
+<div class="toc"><div class="k">İçindekiler</div><a href="#kesinti">Elektrik kesilince paneliniz neden durur?</a><a href="#iki-is">Bataryanın iki ayrı işi</a><a href="#ornek">Batarya faturanızı ne kadar düşürür? Örnek hesap</a><a href="#kapasite">Kesinti için kaç kWh gerekir?</a><a href="#hibrit">Hibrit inverter: sistemin beyni</a><a href="#tur">Batarya türleri: LFP neden öne çıkıyor?</a><a href="#karar">Ne zaman alınır, ne zaman beklenir?</a><a href="#sonradan">Sonradan batarya eklenebilir mi?</a><a href="#teklif">Teklif alırken sorulacak 8 soru</a><a href="#sss">Sıkça sorulan sorular</a></div>
+
+<p class="lead">Güneş enerjisi kurmayı düşünenlerin en sık sorduğu sorulardan biri: <strong>“Elektrik kesilince güneş panelim evimi besler mi?”</strong> Çoğu kişi evet sanır. Oysa bataryasız, şebekeye bağlı bir sistem kesinti anında güvenlik gereği kapanır; güneş tepedeyken bile.</p>
+<p>Bu rehberde bataryanın gerçekte ne işe yaradığını, faturanıza etkisini <strong>gerçek bir simülasyonla</strong>, kesinti için gereken kapasiteyi adım adım ve teklif alırken nelere bakmanız gerektiğini anlatıyoruz. Örneklerdeki rakamlar, <a href="/tuketim-uretim">Tüketim &amp; Üretim Analizi</a> aracımızın saat saat çalışan hesap motorundan geliyor.</p>
+
+<h2 id="kesinti">Elektrik kesilince güneş paneliniz neden durur?</h2>
+<p>Evlerde en yaygın kurulum <strong>on-grid</strong> (şebeke bağlantılı) sistemdir: paneller gündüz üretir, fazlası şebekeye gider, akşam eksik şebekeden çekilir. Bu sistemin inverteri, şebeke kesildiğini algıladığı anda <strong>kendini kapatır</strong>.</p>
+<p>Sebep güvenliktir. Kesinti sırasında arızayı gidermek için hatta çalışan teknisyen, hattın enerjisiz olduğunu varsayar. Çatınızdaki inverter o sırada şebekeye elektrik basmaya devam etseydi, hat yeniden canlanır ve hayati risk oluşurdu. Bu yüzden şebeke bağlantılı inverterler, şebeke yokken çalışmayacak şekilde tasarlanır.</p>
+<div class="callout"><span class="k">Kısacası</span>Bataryasız on-grid sistem kesintide <strong>hiçbir şey çalıştırmaz</strong>. Kesintide ev ayakta kalsın istiyorsanız iki şeye ihtiyacınız var: <strong>hibrit inverter</strong> ve <strong>batarya</strong>.</div>
+
+<h2 id="iki-is">Bataryanın iki ayrı işi: yedek ve bağımsızlık</h2>
+<p>“Batarya alayım mı?” sorusunun cevabı, bataryadan ne beklediğinize bağlı. Bataryanın birbirinden farklı iki işi var:</p>
+<h3>1. Kesinti yedeği</h3>
+<p>Batarya dolu bekler. Elektrik kesildiğinde hibrit inverter saniyenin küçük bir kesrinde bataryaya geçer ve <strong>seçtiğiniz cihazları</strong> (buzdolabı, aydınlatma, modem, kombi…) çalıştırır. Bu iş için büyük batarya gerekmez; birkaç kWh çoğu evde yeter.</p>
+<h3>2. Şebekeden bağımsızlık (öz tüketim)</h3>
+<p>Batarya her gün dolup boşalır: öğlen kullanmadığınız güneş elektriği bataryaya, akşam ve gece tüketiminiz bataryadan karşılanır. Şebekeye ihtiyacınız belirgin şekilde azalır. Bu iş için daha büyük bir batarya gerekir ve batarya her gün çalıştığı için ömrü de buna göre harcanır.</p>
+
+<h2 id="ornek">Batarya faturanızı ne kadar düşürür? Örnek hesap</h2>
+<p>Şaşırtıcı ama önemli bir gerçek: Türkiye'de konutlarda yaygın olan <strong>aylık mahsuplaşmada</strong>, bataryanın faturaya katkısı sınırlıdır. Çünkü gündüz şebekeye verdiğiniz fazla elektrik, aynı ay içinde akşam çektiğiniz elektrikten zaten düşülür. Şebeke bir anlamda “bedava bir batarya” gibi çalışır. (Mahsuplaşmanın nasıl işlediğini <a href="/blog/mahsuplasma-nedir-fazla-elektrik">bu yazıda</a> anlattık.)</p>
+<p>Somut bir örnekle bakalım. <strong>Varsayımlar:</strong> İstanbul, güneye bakan 30° eğimli gölgesiz çatı, ayda 300 kWh tüketim, gündüz evde kimse yok, 2,75 kWp güneş sistemi (5 panel), EPDK 2026 mesken tarifesi (₺5,32/kWh), mahsuplaşmayan fazla için ₺1,90/kWh. Hesap, yılın her ayı için tipik bir günü saat saat simüle ediyor.</p>
+<div class="tbl"><table>
+<thead><tr><th>Senaryo</th><th class="n">Batarya</th><th class="n">Şebekeden bağımsızlık</th><th class="n">1. yıl tasarruf<br>(aylık mahsup)</th><th class="n">1. yıl tasarruf<br>(saatlik mahsup)</th></tr></thead>
+<tbody>
+<tr><td>Bataryasız on-grid</td><td class="n">—</td><td class="n">%27</td><td class="n">₺17.454</td><td class="n">₺10.515</td></tr>
+<tr><td>Yalnız kesinti yedeği</td><td class="n">5 kWh</td><td class="n">%27</td><td class="n">₺17.454</td><td class="n">₺10.515</td></tr>
+<tr><td>Yedek + bağımsızlık</td><td class="n">10 kWh</td><td class="n">%82</td><td class="n">₺16.889</td><td class="n">₺16.889</td></tr>
+</tbody></table></div>
+<p>Tablo üç şey söylüyor:</p>
+<ul>
+<li><strong>Yalnız yedek batarya faturayı değiştirmez.</strong> Batarya dolu bekler; tasarruf bataryasız sistemle aynıdır. Kazancınız parasal değil, kesintide ayakta kalmaktır.</li>
+<li><strong>Bağımsızlık %27'den %82'ye çıkar ama aylık mahsuplaşmada tasarruf biraz düşer.</strong> Bataryaya giren her enerjinin bir kısmı dolum-boşalımda kaybolur; bu örnekte yılda ~170 kWh. Mahsuplaşma zaten şebekeyi batarya gibi kullandırdığı için, gerçek batarya bu kaybı eklemiş olur.</li>
+<li><strong>Saatlik mahsuplaşmada tablo tersine döner.</strong> Gündüz verdiğiniz her kWh düşük bedelden alınıp akşam çektiğiniz her kWh tam tarifeden ödenirse, batarya yılda ~₺6.400 ek tasarruf sağlar. Mahsuplaşma kuralları değişirse bataryanın değeri artar.</li>
+</ul>
+<div class="tip"><span class="k">Kilit çıkarım</span>Bugünkü aylık mahsuplaşmada bataryayı <strong>tasarruf için değil, kesinti güvencesi ve bağımsızlık için</strong> alırsınız. Bataryanın parasını çıkaracağını vaat eden bir teklifte hesabın nasıl yapıldığını mutlaka sorun.</div>
+
+<h2 id="kapasite">Kesinti için kaç kWh batarya gerekir? Adım adım</h2>
+<p>Kesinti bataryasını “ne kadar büyük o kadar iyi” mantığıyla seçmek pahalıya patlar. Doğru kapasite üç bilgiyle hesaplanır: <strong>hangi cihazlar</strong>, <strong>ne kadar güç</strong> ve <strong>kaç saat</strong>.</p>
+<h3>1. Kesintide gerçekten gerekenleri seçin</h3>
+<p>Her cihaz sürekli tam güçte çalışmaz. Buzdolabının kompresörü zamanın yaklaşık %40'ında çalışır; bu yüzden hesapta cihazın gücünü <strong>çalışma oranıyla</strong> çarparız:</p>
+<div class="tbl"><table>
+<thead><tr><th>Cihaz</th><th class="n">Güç</th><th class="n">Çalışma oranı</th><th class="n">Ortalama yük</th></tr></thead>
+<tbody>
+<tr><td>Buzdolabı</td><td class="n">150 W</td><td class="n">%40</td><td class="n">60 W</td></tr>
+<tr><td>Kombi elektroniği ve pompası</td><td class="n">120 W</td><td class="n">%50</td><td class="n">60 W</td></tr>
+<tr><td>Aydınlatma (LED)</td><td class="n">60 W</td><td class="n">%100</td><td class="n">60 W</td></tr>
+<tr><td>Televizyon</td><td class="n">100 W</td><td class="n">%100</td><td class="n">100 W</td></tr>
+<tr><td>Telefon / laptop şarjı</td><td class="n">60 W</td><td class="n">%50</td><td class="n">30 W</td></tr>
+<tr><td>Modem / internet</td><td class="n">15 W</td><td class="n">%100</td><td class="n">15 W</td></tr>
+<tr><td><strong>Toplam</strong></td><td class="n"><strong>505 W</strong></td><td class="n"></td><td class="n"><strong>325 W</strong></td></tr>
+</tbody></table></div>
+<h3>2. Süreyle çarpın, kayıpları ekleyin</h3>
+<p>4 saatlik bir kesinti için: 0,325 kW × 4 saat = <strong>1,3 kWh</strong>. Ama bataryanın tamamı kullanılamaz ve inverter dönüşümde biraz kayıp verir. Bu yüzden:</p>
+<p style="text-align:center;font-weight:800;font-size:18px;margin:20px 0">Batarya kapasitesi = Gereken enerji ÷ Deşarj derinliği ÷ İnverter verimi</p>
+<p>%90 deşarj derinliği ve %95 inverter verimiyle: 1,3 ÷ 0,90 ÷ 0,95 ≈ <strong>1,5 kWh</strong>. Piyasadaki ev bataryaları genellikle 5 kWh'lik modüller hâlinde satıldığı için tek bir modül yeterlidir ve bu cihazları <strong>yaklaşık 13 saat</strong> çalıştırır. 24 saat dayanması istenseydi gereken enerji 7,8 kWh'ye, kapasite iki modüle çıkardı.</p>
+<h3>3. Güç de önemli: tepe yük ve kalkış</h3>
+<p>Batarya kapasitesi (kWh) <em>ne kadar süre</em> dayanacağınızı, inverterin gücü (kW) ise <em>aynı anda ne kadar yükü</em> taşıyacağını belirler. Motorlu cihazlar (buzdolabı, hidrofor, klima) devreye girerken kısa bir an çalışma gücünün yaklaşık 3 katını çeker.</p>
+<p>Listeye 750 W'lık bir hidrofor eklediğinizde enerji ihtiyacı yalnız 1,3'ten 1,75 kWh'ye çıkar; ama hidroforun kalkış anında anlık güç <strong>2,8 kW</strong>'ı bulabilir. Batarya yeterli olsa bile inverter bu anı kaldıramazsa sistem kesintide kapanır. Bu yüzden kesinti listesi yalnız kapasiteyi değil, inverter seçimini de belirler.</p>
+<h3>4. Gündüz kesintilerinde paneller de çalışır</h3>
+<p>Hibrit sistemde kesinti gündüze denk gelirse paneller hem evi besler hem bataryayı doldurur. Örneğimizdeki 2,75 kWp sistem, en zayıf ay olan Aralık'ta bile günde ortalama ~5,1 kWh üretir; seçtiğimiz cihazların bir günlük ihtiyacı ~7,8 kWh. Yani kışın bile uzun bir kesintide güneş, bataryanın yükünün önemli bir kısmını üstlenir.</p>
+
+<h2 id="hibrit">Hibrit inverter: bataryalı sistemin beyni</h2>
+<p>Hibrit inverter; paneller, batarya, şebeke ve eviniz arasındaki enerji akışını yönetir. Teklif karşılaştırırken bakmanız gereken özellikleri:</p>
+<ul>
+<li><strong>Yedek (kesinti) çıkışı:</strong> Pek çok modelde kesintide yalnız ayrı bir “yedek” çıkışa bağlı devreler beslenir. Hangi prizlerin ve sigortaların bu çıkışa bağlanacağı kurulumda belirlenir; kesintide çalışmasını istediğiniz cihazları önceden söyleyin.</li>
+<li><strong>Geçiş süresi:</strong> Şebeke kesildiğinde bataryaya geçiş modele göre birkaç on milisaniye sürebilir. Çoğu cihaz bunu fark etmez; masaüstü bilgisayar gibi hassas cihazlar yeniden başlayabilir. Kritik bir cihazınız varsa bu değeri teklifte sorun.</li>
+<li><strong>Yedek güç ve kalkış kapasitesi:</strong> Yukarıda hesapladığınız tepe yükü ve motor kalkışını karşılayabilmeli.</li>
+<li><strong>Batarya uyumluluğu:</strong> İnverter ile batarya birbirini tanımalı ve haberleşmeli; uyumsuz eşleşmeler garanti sorunu yaratabilir.</li>
+</ul>
+
+<h2 id="tur">Batarya türleri: LFP neden öne çıkıyor?</h2>
+<p>Ev tipi güneş sistemlerinde bugün en yaygın tercih <strong>LFP</strong> (lityum demir fosfat) bataryalardır:</p>
+<ul>
+<li><strong>Uzun ömür:</strong> Pek çok üretici LFP ev bataryaları için binlerce tam döngü ve 10 yıl civarı garanti belirtiyor. Garantinin hangi döngü sayısı ve kalan kapasite şartına bağlı olduğunu teklifte okuyun.</li>
+<li><strong>Derin deşarj:</strong> Kapasitenin %90 civarı güvenle kullanılabilir.</li>
+<li><strong>Güvenlik:</strong> Isıl kararlılığı yüksektir; yine de yerleşik bir batarya yönetim sistemi (BMS) şarttır.</li>
+</ul>
+<p>Eski tip <strong>kurşun-asit</strong> aküler daha ucuzdur ama ömürlerini korumak için genellikle kapasitelerinin yarısı kadar kullanılabilir ve daha sık değişir. Kullanılabilir kapasite başına maliyet hesaplandığında aradaki fark kapanır.</p>
+<p><strong>Kurulum yeri önemlidir:</strong> Bataryalar aşırı sıcaktan ve dondurucu soğuktan korunmalı. Doğrudan güneş alan bir balkon ya da kışın donan bir depo uygun değildir. Üreticinin belirttiği sıcaklık aralığına uyan, havalanan bir yer seçin.</p>
+
+<h2 id="karar">Ne zaman batarya alınır, ne zaman beklenir?</h2>
+<h3>Batarya mantıklı, eğer:</h3>
+<ul class="check">
+<li>Bölgenizde sık ya da uzun kesintiler yaşanıyorsa (kırsal bölgeler, fırtına alan hatlar).</li>
+<li>Evde kesintide durmaması gereken bir cihaz varsa (oksijen konsantratörü gibi medikal cihazlar, akvaryum, güvenlik sistemi).</li>
+<li>Evden çalışıyor ve internet/bilgisayar kesintisini kaldıramıyorsanız.</li>
+<li>Hidrofor ya da pompa olmadan su gelmeyen bir evdeyseniz.</li>
+<li>Şebeke bağlantısının olmadığı ya da çok pahalı olduğu bir yerdeyseniz (bağ evi, yayla evi gibi; bu tamamen şebekeden bağımsız “off-grid” sistem ister).</li>
+</ul>
+<h3>Beklemek daha akıllıca olabilir, eğer:</h3>
+<ul>
+<li>Kesinti nadiren yaşanıyorsa ve önceliğiniz en hızlı geri ödemeyse: bataryasız sistemin geri ödemesi belirgin şekilde kısadır.</li>
+<li>Bütçeniz sınırlıysa: aynı parayla daha büyük bir panel sistemi faturanızı daha çok düşürür.</li>
+</ul>
+<p>Beklemeyi seçseniz bile, ileride batarya eklemeyi düşünüyorsanız şimdiden <strong>hibrit inverter</strong> seçmek, sonradan inverter değiştirme maliyetini ortadan kaldırır.</p>
+
+<h2 id="sonradan">Mevcut sisteme sonradan batarya eklenebilir mi?</h2>
+<p>Evet, iki yolla:</p>
+<ul>
+<li><strong>Hibrit inverteriniz varsa:</strong> En kolay yol. Uyumlu bataryayı bağlamak çoğu zaman yeterlidir.</li>
+<li><strong>Standart on-grid inverteriniz varsa:</strong> Ya mevcut inverter hibritle değiştirilir ya da sisteme ayrı bir batarya inverteri eklenir (AC bağlantılı çözüm). İkincisi mevcut sistemi bozmadan eklenebilir ama biraz daha fazla dönüşüm kaybı verir.</li>
+</ul>
+
+<h2 id="teklif">Bataryalı teklif alırken sorulacak 8 soru</h2>
+<ul class="check">
+<li>Bataryanın <strong>kullanılabilir</strong> kapasitesi kaç kWh? (Nominal değil.)</li>
+<li>Garanti kaç yıl, kaç döngü ve hangi kalan kapasite şartıyla?</li>
+<li>İnverter hibrit mi? Kesintide hangi devreler beslenecek?</li>
+<li>Kesintide inverterin sürekli ve kalkış anı gücü ne kadar? Hidroforu ya da klimayı kaldırır mı?</li>
+<li>Şebekeden bataryaya geçiş süresi ne kadar?</li>
+<li>Batarya ileride modül eklenerek büyütülebilir mi?</li>
+<li>Batarya nereye kurulacak? Sıcaklık ve havalandırma uygun mu?</li>
+<li>Teklifteki tasarruf hesabında bataryanın etkisi nasıl hesaplandı?</li>
+</ul>
+
+<h2 id="sss">Sıkça sorulan sorular</h2>
+<h3>Elektrik kesilince güneş panelim evimi besler mi?</h3><p>Bataryasız, şebeke bağlantılı (on-grid) bir sistemde hayır: inverter kesinti anında güvenlik gereği kapanır ve güneş olsa bile evi beslemez. Kesintide çalışmak için hibrit inverter ve batarya gerekir. Bu durumda seçilen devreler bataryadan beslenir; kesinti gündüze denk gelirse paneller de hem evi besler hem bataryayı doldurur.</p><h3>Batarya faturamı sıfırlar mı?</h3><p>Aylık mahsuplaşmada bataryanın faturaya katkısı sınırlıdır, çünkü gündüz şebekeye verdiğiniz fazla zaten aynı ay içindeki çekişinizden düşülür. Örnek hesabımızda 10 kWh batarya şebekeden bağımsızlığı %27’den %82’ye çıkardı ama dolum-boşalım kayıpları yüzünden yıllık tasarruf ₺17.454’ten ₺16.889’a indi. Faturayı düşüren asıl unsur doğru boyutlandırılmış panel sistemidir.</p><h3>Ev bataryası kaç yıl dayanır?</h3><p>Günümüzde yaygın olan LFP (lityum demir fosfat) ev bataryaları için pek çok üretici 10 yıl civarı garanti ve binlerce tam döngü belirtiyor. Gerçek ömür; döngü sayısı, deşarj derinliği ve sıcaklığa bağlıdır. Yalnız kesinti yedeği olarak kullanılan bir batarya çok daha az döngü yaptığı için daha yavaş yıpranır.</p><h3>Kesinti için kaç kWh batarya yeterli?</h3><p>Cihazlarınıza ve süreye bağlıdır. Buzdolabı, kombi, aydınlatma, televizyon, modem ve şarj gibi temel cihazlar ortalama 325 W çeker; 4 saatlik kesinti için yaklaşık 1,5 kWh kapasite gerekir ve tek bir 5 kWh modül bu cihazları yaklaşık 13 saat çalıştırır. 24 saat dayanması istenirse iki modül gerekir. Hesap: gereken enerji ÷ deşarj derinliği ÷ inverter verimi.</p><h3>Bataryayı gece şebekeden doldurmak mantıklı mı?</h3><p>Tek zamanlı tarifede genellikle hayır: aynı fiyattan aldığınız elektriği dolum-boşalımda bir kısmını kaybederek kullanmış olursunuz. Çok zamanlı tarifede gece ile puant saatleri arasındaki fiyat farkı bu kaybı aşıyorsa kısmen anlamlı olabilir; bu, tarifenize ve hibrit inverterin ayarlarına bağlıdır.</p>
+
+<p>Batarya bir zorunluluk değil, bir tercihtir. Bugünkü aylık mahsuplaşmada asıl değeri parasal değil, kesintide evinizi ayakta tutması ve şebekeden bağımsızlıktır. Doğru kararın yolu basit: önce kesintide neyin çalışması gerektiğine ve kaç saat dayanmasına karar verin, kapasiteyi buna göre hesaplayın, sonra bu güvenceye ne kadar değer verdiğinizi tartın.</p>
+
+<div class="convert">
+<h3>Eviniz için kaç kWh batarya gerekir?</h3>
+<p>Kesintide çalışacak cihazları ve süreyi seçin; batarya kapasitesini, inverter gücünü ve bataryalı/bataryasız tasarrufu saniyeler içinde görün. Ücretsiz, kayıt gerektirmez.</p>
+<div class="row">
+<a href="/tuketim-uretim" class="btn-fill">🔋 Bataryamı Hesapla</a>
+<a href="/fatura-analizi" class="btn-ghost">🧾 Faturamı Yükle</a>
+</div></div>
+<div class="rel"><div class="k">İlgili yazılar</div><a href="/blog/mahsuplasma-nedir-fazla-elektrik" style="display:block;margin-bottom:10px"><strong>Mahsuplaşma Nedir? Ürettiğiniz Fazla Elektrik Ne Oluyor?</strong></a><a href="/blog/evde-enerji-verimliligi-nasil-saglanir" style="display:block;margin-bottom:10px"><strong>Evde Enerji Verimliliği Nasıl Sağlanır? Lambayı Kapatmaktan Fazlası</strong></a><a href="/blog/gunes-enerjisi-amortisman-suresi" style="display:block;margin-bottom:10px"><strong>Güneş Enerjisi Sistemi Kaç Yılda Kendini Amorti Eder? (2026 Rehberi)</strong></a></div>
+
+</article></main>
+
+<footer><div class="wrap-wide">
+<a href="/" class="brand" style="font-size:16px">epcmerkezim</a>
+<span style="font-size:12px">Güneş enerjisinde dijital dönüşüm · Türkiye</span>
+</div></footer>
+</body>
+</html>
